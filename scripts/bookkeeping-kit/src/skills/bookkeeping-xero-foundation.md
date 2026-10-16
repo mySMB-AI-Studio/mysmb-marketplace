@@ -16,7 +16,9 @@ Use when someone asks about supplier bills, bill reviews, exceptions, ledger che
 | `Bookkeeping/Rules/<client>.json` | Saved coding rules: `suppliers` (bills) and `customers` (sales invoices), each keyed by Xero ContactID and by `name:<normalised name>` → `account_code`, `tax_type` |
 | `Bookkeeping/Bills/<review item id>.json` | One record per bill or sales invoice (`proposal.doc_type` is `ACCPAY` for a bill, `ACCREC` for a sales invoice): `status` (`in_review`, `awaiting_client`, `waiting_client`, `approved`, `rejected`, `auto_approved`), `bill_id` (Xero InvoiceID), `proposal` (supplier, dates, lines with `account_code`, `tax_type`, `source`, `reason`, `confidence`), `warnings`, `blocking`, `checks` (catalogue IDs of the intake checks raised, also tagged `[CHK-…]` at the end of each warning), `file`, `history`. A record with only `link` points to the original record. |
 | `Bookkeeping Inbox/<client>/` | Drop bill PDFs here. Each new PDF is processed automatically. Email intake saves emailed bills here too (file names start with the date and a short tag). |
-| `Bookkeeping/Mail/<outlook or gmail>.json` | Email intake's ledger: every email it has looked at (`seen`, with the outcome: `filed`, `unmatched`, `not_a_bill`, `no_pdf`, `failed`) and when intake started (`since`). |
+| `Bookkeeping/Mail/<outlook, outlook-shared or gmail>.json` | Email intake's ledger: every email it has looked at (`seen`, with the outcome: `filed`, `unmatched`, `not_a_bill`, `no_attachment`, `nothing_filed`, `failed`) and where each folder carries on from (`cursors`). |
+| `Bookkeeping/Mail/routing.json` | What email intake has learned: `names` (a name a document was addressed to, mapped to the client slug, taught by filing an unmatched document) and `senders` (sender to the clients their documents were for). `unmatched.json` lists documents still waiting for a client. |
+| `Bookkeeping Split/<client>/` | Parts of a PDF that held several invoices or statements, on their way into the client's inbox folder (*File split documents* moves them). |
 | `Bookkeeping Failed/unmatched/` | Emailed bills that couldn't be matched to a client |
 | `Bookkeeping/Payroll/<client>.json` | Payroll settings: `calendar` (Xero pay calendar name), `prep_day`, `prep_time`, `timesheets` (`deputy`, `xero`, `emailed`, `none`), `ts_owner`, `ts_email`, `officer_id`, `reviewer_id`, `approvers`, `who_posts` (`client` or `practice`) |
 | `Bookkeeping/PayRuns/<client>-<period start>.json` | One record per pay run: `status` (`open`, `checked`, `in_review`, `changes`, `client_approval`, `approved`, `done`, `cancelled`), `period_start`, `period_end`, `payment_date`, `item_id`, `last_check` (`open_items`, `summary`, `changes`, `url`), `notes`, `pack_url`. A file named after a WorkQ item id holds only `link` |
@@ -41,8 +43,11 @@ Every item has `bookkeeping` plus one of: `bill-review` (review a bill), `invoic
 3. **"Why was this coded like that?"**: read the bill record. `source` is `rule` (a saved rule for this supplier), `history` (the supplier's recent bills), `ai` (suggested from the chart of accounts), or `reviewer` (changed in review). Quote the `reason`.
 4. **Exceptions**: the item description holds the problem. Common fixes:
    - *No client settings for the folder*: run **Bookkeeping: Start setup** with the business name and submit its settings form, then move the PDF into the folder it names.
-   - *No readable text*: it's a scan or photo. Key it by hand; the automation can't read scans yet.
-   - *Several invoices in one PDF*: split it and drop each back into the inbox.
+   - *No readable text* or *the AI couldn't read the image*: key it by hand.
+   - *Several invoices in one PDF*: PDFs of up to 20 pages are split automatically; a longer one must be split by hand and each part dropped back into the inbox.
+   - *An iPhone photo in Apple's HEIC format*: email it to the bookkeeping inbox (email intake converts it) or save it as JPEG and drop it in again.
+   - *Bill with nothing to read attached* (email intake): the email only links to the bill online, or attaches a Word or Excel file. Download the bill as a PDF and drop it into the client's inbox folder.
+   - *Check this email* (email intake): it looked like a bill, but none of its attachments did (or a photo couldn't be converted). Look at the email and drop the bill in by hand if there is one.
    - *Which client is this bill for?* (email intake): the AI couldn't tell who the bill is addressed to. Ask which client, then upload the PDF from `Bookkeeping Failed/unmatched/` into that client's inbox folder.
    - *Did an email come through?*: look it up in `Bookkeeping/Mail/<outlook or gmail>.json`. An email marked `not_a_bill` was judged not to be a bill and left in the mailbox as it was.
    - *Duplicate*: the bill is already in Xero; complete the item.

@@ -89,12 +89,22 @@ class ScanTests(Base):
         self.assertIn(("Invoices", bill["InvoiceID"], "IMG_0412 (photo).pdf"), self.w.xero.orgs[T_ACME]["attachment_hosts"])
         self.assertIn("read by AI from a scan or a photo", self.review_items()[0]["description"])
 
-    def test_a_png_photo_works_too_and_other_images_are_ignored(self):
+    def test_png_webp_and_tiff_photos_work_too_and_other_files_are_ignored(self):
         self.setup_practice()
-        steps = self.drop(name="receipt.PNG", data=photo("PNG"))
-        self.assertTrue(steps["resolve_file"]["outputs"]["should_process"])
-        steps = self.drop(name="receipt.heic", data=b"heic")
+        for name, kind in (("receipt.PNG", "PNG"), ("receipt.webp", "WEBP"), ("scan.tif", "TIFF")):
+            steps = self.drop(name=name, data=photo(kind))
+            self.assertTrue(steps["resolve_file"]["outputs"]["should_process"], name)
+            self.assertTrue(steps["resolve_file"]["outputs"]["path"].endswith(" (photo).pdf"), name)
+        steps = self.drop(name="notes.txt", data=b"text")
         self.assertEqual(steps["resolve_file"]["outputs"]["skip_reason"], "not a PDF or a photo of a bill")
+
+    def test_an_iphone_heic_photo_dropped_in_knowledge_says_what_to_do(self):
+        self.setup_practice()
+        steps = self.drop(name="IMG_0042.HEIC", data=b"\x00\x00\x00\x18ftypheic" + bytes(64))
+        self.assertEqual(steps["route_review"]["outputs"]["outcome"], "exception")
+        item = next(i for i in self.w.items.values() if "bill-exception" in i["labels"])
+        self.assertIn("Apple's HEIC format", item["description"])
+        self.assertIn("Email it to the bookkeeping inbox", item["description"])
 
     def test_a_photo_that_is_not_an_image_is_an_exception(self):
         self.setup_practice()
@@ -167,8 +177,10 @@ class EmailPhotoTests(Base):
         steps = self.run_intake()
         self.assertEqual(steps["file_bills"]["outputs"]["filed"], 1)
         [path] = [p for p in self.w.files if p.startswith("Bookkeeping Inbox/beta-cafe/")]
-        self.assertTrue(path.endswith("IMG_2231.JPG"))
-        self.assertTrue(self.w.ai_files[0].endswith("IMG_2231.JPG"))
+        # The photo is filed as a PDF (so it's attached in Xero like any other) and placed from the image.
+        self.assertTrue(path.endswith("IMG_2231 (photo).pdf"))
+        self.assertEqual(self.w.files[path][:5], b"%PDF-")
+        self.assertTrue(self.w.ai_files[0].endswith("IMG_2231 (photo).pdf"))
 
     def test_an_email_with_a_pdf_keeps_its_photos_and_logos_out(self):
         from test_intake import pdf, recent

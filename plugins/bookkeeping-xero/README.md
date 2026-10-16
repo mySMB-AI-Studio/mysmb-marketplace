@@ -6,8 +6,8 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 
 ## What's in the box
 
-- **Connector:** `xero-accounting` (the mySMB Xero connector). Email intake uses `m365-mail-read` (Microsoft 365 extension) or `google-workspace-gmail` (Google Workspace extension).
-- **Automations (15):**
+- **Connectors:** `xero-accounting` (the mySMB Xero connector), and `m365-mail-shared` for reading a shared Outlook mailbox. Email intake otherwise uses `m365-mail-read` (Microsoft 365 extension) or `google-workspace-gmail` (Google Workspace extension).
+- **Automations (17):**
   - *Bookkeeping: Start setup* (run by hand): creates the setup items.
   - *Bookkeeping: Apply setup (Xero)*: saves the setup answers and matches each client to its Xero organisation.
   - *Bookkeeping: Process bill, invoice or statement (Xero)*: runs when a PDF lands in `Bookkeeping Inbox/<client>/`. A PDF dropped into `Bookkeeping Inbox` itself is matched to its client by AI (with one client, it's that client); if that isn't clear, it waits in `Bookkeeping Failed/unmatched/` with a *Which client is this for?* item.
@@ -15,6 +15,8 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
     - **Bank or credit card statement:** attached to its bank account in Xero (matched on the last four digits of the account or card, then the name). If Xero's balance at the period end already matches, that's all. Otherwise the transactions are read off the PDF and, when they add up from the opening to the closing balance, saved as a CSV in Xero's statement import format (`Bookkeeping Processed/<client>/`, also attached in Xero) with a WorkQ item to upload it (Bank accounts, Import a Statement, date format dd/mm/yyyy). Xero only lets bank feeds add statement lines directly, so that upload stays manual.
     - **Statement of account:** attached to the supplier or customer in Xero, with the amount owing and the listed invoices compared with what Xero shows open.
     - Statements are logged in `Bookkeeping/Statements/<client>.json`; a WorkQ item appears only for differences, an unknown account or contact, or an unreadable file.
+    - **Several invoices or statements in one PDF** (up to 20 pages): AI finds where each one starts and ends, the PDF is split into one PDF each in `Bookkeeping Split/<client>/`, and the original is filed in `Bookkeeping Processed/<client>/`.
+  - *Bookkeeping: File split documents*: moves each part of a split PDF from `Bookkeeping Split/<client>/` into the client's inbox folder, where it's processed like any other PDF. (An automation's own new files never start it again, so this small automation does the hand-over.)
   - *Bookkeeping: Apply bill or invoice review (Xero)*: runs when a Bill review, Invoice review or Client bill approval form is submitted.
   - *Bookkeeping: Draft requested invoice (Xero)*: runs when Email intake files a request in `Bookkeeping Requests/<client>/`, or by hand with the client's name and the request text (a phone request, say).
   - *Bookkeeping: Weekly AP digest (Xero)*: Mondays at 8am.
@@ -34,7 +36,7 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
       Then it posts a report and one drafted query email.
     - *Bookkeeping: Build payroll review pack (Xero Payroll)*: the draft pay run's totals and payslips, the last check, the changes and the notes, sent to the internal reviewer.
     - *Bookkeeping: Apply payroll review*: internal approval → client approval item with a drafted email → done (or "post it" when the practice posts).
-  - *Bookkeeping: Email intake (Outlook)* and *Bookkeeping: Email intake (Gmail)*: every 15 minutes, read the owner's inbox, have AI pick out supplier bills (emails with a PDF, or a photo of one, that is a bill to pay), work out which client each bill is addressed to, and save it into that client's `Bookkeeping Inbox/<client>/` folder. Other emails are left untouched: nothing in the mailbox is changed. Bills it can't place with a client become exception items. An email moved out of the inbox and back isn't filed again (Outlook gives it a new id, so it's recognised by its sender, subject and time received). Publish the one(s) for the mailbox you use.
+  - *Bookkeeping: Email intake (Outlook)*, *Email intake (Outlook shared mailbox)* and *Email intake (Gmail)*: every 15 minutes, read the new emails in the owner's mailbox (or the practice's shared Outlook mailbox), have AI pick out supplier bills, sales invoices, statements and invoice requests, work out which client each one belongs to, and save it into that client's `Bookkeeping Inbox/<client>/` folder. See *How email intake works*. Other emails are left untouched: nothing in the mailbox is changed. Publish the one(s) for the mailbox you use.
 - **Forms (11):** Bookkeeping setup, Client bookkeeping settings, Bill review, Invoice review, Invoice to send, Client bill approval, Client payroll settings, Pay run, Payroll review, Client payroll approval, Check findings.
 - **Agent (1):** Bookkeeping Coordinator (Xero). It answers status questions, explains coding and exceptions, drafts client emails, and can build a live Aged Payables, Purchases Overview, Exceptions Dashboard or GST Reconciliation Detail report on request. It never approves or sends anything.
 - **Skill (1):** `bookkeeping-xero-foundation`. Also reuses four report skills from `xero-reporting-studio` (`xero-report-foundation`, `xero-aged-payables`, `xero-purchases-overview`, `xero-exceptions-dashboard`, `xero-gst-reconciliation-detail`) — **`xero-reporting-studio` must be installed on the same workspace** for these to resolve; without it, the agent simply won't have them available.
@@ -43,7 +45,7 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 
 No configuration variables are required. Settings are collected by the setup forms and stored in Knowledge (`Bookkeeping/settings.json`, `Bookkeeping/Clients/<client>.json`).
 
-**Requires** `myhub-mcp-servers` with `xero_tenant_id` support on write tools (PR #558). Without it, every bill is written to the connection's default Xero organisation. Email intake also needs the mail attachment tools (`list_email_attachments` / `get_email_attachment` for Outlook, `get_attachment` for Gmail). Reading scanned PDFs and photos needs the myHubV2 version where `api.ai` accepts a file (myHubV2 #1769).
+**Requires** `myhub-mcp-servers` with `xero_tenant_id` support on write tools (PR #558). Without it, every bill is written to the connection's default Xero organisation. Email intake also needs the mail attachment tools (`list_email_attachments` / `get_email_attachment` for Outlook, `get_attachment` for Gmail). Folders by path, reading in order from the last run, shared mailboxes and HEIC conversion need the mail connector update (`list_mail_folders`, `receivedAfter`/`oldestFirst`, `mailbox`, Gmail `pageToken`, `heicToJpeg`, and the `m365-mail-shared` route). With an older connector, email intake still reads the Inbox, but only the newest 50 emails each run, and an iPhone photo becomes an item asking for a JPEG. Reading scanned PDFs and photos needs the myHubV2 version where `api.ai` accepts a file (myHubV2 #1769).
 
 ## After installing
 
@@ -53,15 +55,15 @@ No configuration variables are required. Settings are collected by the setup for
 4. **Publish the automations.** They install as drafts; publishing shows the permissions each one asks for. Publish *Start setup* and *Apply setup (Xero)* first.
 5. **Run *Bookkeeping: Start setup*** and fill in the Bookkeeping setup form on the item it creates.
 6. **Run it again with your client business names** (one per line), and fill in each client's settings form. Enter the Xero organisation name exactly as it appears in Xero.
-7. **Publish** *Process bill or invoice*, *Apply bill or invoice review*, *Weekly AP digest* and *Ledger checks*.
-8. **For bills by email:** install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, and publish *Email intake (Outlook)* or *Email intake (Gmail)*. The first run looks back 24 hours.
+7. **Publish** *Process bill or invoice*, *File split documents*, *Apply bill or invoice review*, *Weekly AP digest* and *Ledger checks*.
+8. **For bills by email:** install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, and publish *Email intake (Outlook)* or *Email intake (Gmail)*. For a shared Outlook mailbox (accounts@…), put its address in the Bookkeeping setup form, connect *m365-mail-shared* as someone with Full Access to it, and publish *Email intake (Outlook shared mailbox)*. List any other folders to read in the setup form, and each client's own folder (if it has one) in its client settings. Each folder's first run looks back 24 hours.
 9. **Try it:** email a supplier bill PDF to that inbox, or drop one into `Bookkeeping Inbox/<client>/` in Knowledge.
 
 After every extension update, publish the updated automation drafts again. Updates arrive as drafts, and the previous version keeps running until you do.
 
 ## How a bill flows
 
-1. **Read:** the PDF's text is read and AI extracts the supplier, ABN, invoice number, dates, lines, GST and total. A scanned PDF or a photo (JPG or PNG; a photo becomes a one-page PDF first) has no text, so the AI reads its first 10 pages from the image instead. Bills read that way are always reviewed, with a reminder to check them against the image.
+1. **Read:** the PDF's text is read and AI extracts the supplier, ABN, invoice number, dates, lines, GST and total. A scanned PDF or a photo (JPG, PNG, WebP, GIF or TIFF; a photo becomes a PDF first) has no text, so the AI reads its first 10 pages from the image instead. Bills read that way are always reviewed, with a reminder to check them against the image. A PDF holding several invoices is split into one PDF per invoice, and each goes through these steps on its own.
 2. **Check:** totals, GST at 10%, the ABN checksum, and duplicates (same supplier and invoice number already in Xero). Plus the checks catalogue's intake checks, as warnings tagged with their IDs (never blocks, since the AI can misread a PDF): bank details on the PDF that differ from the supplier's in Xero (CHK-020), a new supplier whose bank details are only on the invoice (CHK-060), an ABN on the PDF that isn't the contact's (CHK-089) or isn't the one on its earlier bills (CHK-090), more than one ABN on the PDF (CHK-091), GST on the PDF but coded GST-free (CHK-092) or the reverse (CHK-124), and the exact same file processed before (CHK-130).
 3. **Code:** a saved rule for the supplier comes first, then the supplier's recent bills in Xero, then an AI suggestion from the chart of accounts. Every line shows where its coding came from.
 4. **Draft:** a DRAFT bill is created in the client's Xero organisation with the PDF attached. For new suppliers, the contact and bill are only created once the bill is approved.
@@ -118,6 +120,14 @@ The checks are the mySMB checks catalogue's release 1 checks that need nothing b
 
 Findings are kept in `Bookkeeping/Checks/<client>.json`. Supplier bank details are never stored: change detection keeps a keyed fingerprint of each account instead.
 
+## How email intake works
+
+1. **What it reads:** the Inbox, the extra folders (Outlook folder paths such as `Inbox/Bills`, or Gmail labels) listed in the Bookkeeping setup form, and each client's own mail folder from its client settings. Each folder carries on from the last email it handled, oldest first, 20 emails a run, so none are missed however many arrive; the run summary says how many are waiting. An email that fails to download is read again next run (three tries, then an item).
+2. **Triage:** AI decides which emails are supplier bills, sales invoices, statements or invoice requests; everything else is left alone.
+3. **Attachments:** with several attachments, each one is checked, so terms and conditions, a remittance or a brochure sent with the bill are left out. Photos are taken only from emails with no PDF (and only over 30 KB, so logos and signatures are ignored); several photos become one PDF, which Process splits if it holds more than one bill. An iPhone's HEIC photo is converted to JPEG by the mail connector. A bill with nothing readable attached (a link to view it online, or a Word or Excel file) becomes a *Bill with nothing to read attached* item asking for the PDF.
+4. **Which client:** an email in a client's own mail folder is that client's. Otherwise AI compares who the document is addressed to (or, for a sales invoice, who issued it) with every client's name, Xero organisation name, the other names in its client settings (trading names, the owner's name) and its ABN, using which clients earlier documents from that sender were for as a hint. When the AI isn't sure, a name the practice taught or a single client ABN printed on the document still places it. Otherwise the file waits in `Bookkeeping Failed/unmatched/` with a *Which client is this invoice for?* item. When you upload it into the right client's inbox folder, the name it was addressed to is remembered (`Bookkeeping/Mail/routing.json`), so the next one is placed by itself.
+5. **Once only:** an email moved between folders, or copied to two mailboxes, isn't filed twice: it's recognised by its sender, subject and time received.
+
 ## How an invoice request flows
 
 1. **Triage:** Email intake reads every new email, with or without attachments. A client asking the bookkeeper to raise an invoice is an *invoice request*.
@@ -129,8 +139,9 @@ Findings are kept in `Bookkeeping/Checks/<client>.json`. Supplier bank details a
 ## Limits
 
 - One Xero connection covers all clients. The connection owner's Xero login must include every client organisation. If an organisation is added later, reconnect Xero.
-- One invoice per PDF. Credit notes and receipts are sent to exceptions.
-- Photos must be JPG or PNG (an iPhone's HEIC isn't read; email or export it as JPG). By email, photos are taken only from emails with no PDF, and only those over 30 KB, so logos and signature images are left alone.
+- A PDF of more than 20 pages holding several invoices isn't split; it goes to exceptions. Credit notes and receipts are sent to exceptions.
+- An iPhone HEIC photo dropped straight into Knowledge can't be read (nothing in the automation sandbox decodes HEIC): email it in, or save it as JPEG. By email, photos are taken only from emails with no PDF, and only those over 30 KB, so logos and signature images are left alone.
+- A shared mailbox is Outlook only (Gmail has no shared mailboxes through its API).
 - A scanned bank statement is read one page at a time from the image, and a scanned page holds about 40 transactions at most. When a page has more, the lines don't add up and the statement is flagged rather than imported.
 - Payroll checks read Xero Payroll AU and Deputy only; the officer makes every correction. Deputy is one connection per client business. Penalty rules beyond the day start/end, weekends, public holidays and a daily overtime threshold are not modelled yet.
 - Gmail requests are read from the email's snippet (the first couple of lines): the Gmail connector doesn't return the full body. Outlook requests are read in full.

@@ -1,0 +1,62 @@
+{
+  "attachments": [],
+  "contentHash": "a83040d49ba415e2f117063cad9ce7092ea3eb430d9b1753a245fe9dbe62c025",
+  "declaredScopes": [
+    "files:read",
+    "files:write"
+  ],
+  "dependencies": [],
+  "description": "When Process bill splits a PDF that holds several invoices or statements, it saves the parts in Bookkeeping Split/<client>. This moves each part into the client’s Bookkeeping Inbox folder, where Process bill takes it like any other PDF (an automation’s own new files never start it again, so the move has to come from here). Other files are ignored.",
+  "flowIr": {
+    "description": "When Process bill splits a PDF that holds several invoices or statements, it saves the parts in Bookkeeping Split/<client>. This moves each part into the client’s Bookkeeping Inbox folder, where Process bill takes it like any other PDF (an automation’s own new files never start it again, so the move has to come from here). Other files are ignored.",
+    "irVersion": 1,
+    "name": "Bookkeeping: File split documents",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nimport hashlib\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\nBK_CHECKS = \"Bookkeeping/Checks\"\n# One threshold for \"needs a tax invoice / an ABN / an attachment\": $75 excluding GST = $82.50 including GST.\nBK_GST_INVOICE_LIMIT = 82.5\n\n\ndef bk_move(src, dst):\n    \"\"\"Move a knowledge file (binary-safe): copy through the run's scratch space, then delete the source.\"\"\"\n    local = api.files.get(file=src)\n    with open(local, \"rb\") as fh:\n        data = fh.read()\n    scratch = api.files.scratch_path(dst.split(\"/\")[-1])\n    with open(scratch, \"wb\") as fh:\n        fh.write(data)\n    api.files.put(file=dst, scratch_file=scratch)\n    api.files.delete(file=src)\n    return dst\n\n\n# ── Move the part to the inbox ──\n\n\n# Process bill saves the parts of a split PDF here; moving them into the inbox starts Process bill for each one.\nBK_SPLIT = \"Bookkeeping Split\"\n\npath = str(params.get(\"path\") or \"\").replace(\"\\\\\", \"/\").strip(\"/\")\nparts = path.split(\"/\")\nmoved_to = \"\"\nif len(parts) == 3 and parts[0] == BK_SPLIT and parts[2].lower().endswith(\".pdf\") and not parts[2].startswith(\"_\"):\n    moved_to = bk_move(path, BK_INBOX + \"/\" + parts[1] + \"/\" + parts[2])\n",
+        "id": "relay",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Where the part went, or empty when the file wasn’t a split part",
+            "name": "moved_to",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.path }}",
+            "control": "hidden",
+            "label": "File path",
+            "name": "path",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Moves a PDF saved in Bookkeeping Split/<client> into Bookkeeping Inbox/<client>.",
+        "title": "Move the part to the inbox"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "relay"
+    ],
+    "triggers": [
+      {
+        "eventType": "knowledge.file_created",
+        "filter": {
+          "scope": "org"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: File split documents",
+  "originKey": "64369350-4011-4200-8d84-4110d421a6ef",
+  "tags": [
+    "bookkeeping"
+  ]
+}

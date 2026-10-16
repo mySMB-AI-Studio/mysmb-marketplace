@@ -82,6 +82,19 @@ def _lines_of(chunk, depth=0):
 # A scan or a photo has no text layer, so the AI reads the pages themselves (an AI step reads at most 20).
 SCAN_PAGES = 10
 
+SPLIT_PROMPT = (
+    "This PDF holds several separate documents one after another: invoices, bills, receipts or statements. List each "
+    "one with its first and last page (pages count from 1; in text they are marked '=== Page N ==='). Leave out pages "
+    "that belong to no document, such as a cover letter, a remittance slip or a blank page. For each, give its type, "
+    "number and who issued it."
+)
+SPLIT_HINT = '{"documents": [{"first_page": 1, "last_page": 2, "type": "tax invoice", "number": "INV-1001", "issuer": ""}]}'
+# The most pages a PDF can have to be split (an AI step reads at most 20 pages of a scan).
+SPLIT_PAGES = 20
+# Process bill can't start itself, so the parts go here and Bookkeeping: File split documents moves each into the
+# client's inbox folder, where each one is processed like any other PDF.
+BK_SPLIT = "Bookkeeping Split"
+
 
 def _pages_pdf(first, count, name):
     """A scratch PDF of `count` pages from page `first` (the file itself when that's all of it)."""
@@ -119,9 +132,70 @@ def _scan_lines(i):
 PAID_MARKS = [r"(?i)\bpaid in full\b", r"(?i)\bpaid\s+(on\s+)?\d{1,2}[/.-]\d{1,2}", r"(?<![A-Za-z])PAID(?![A-Za-z])",
               r"(?i)\b(amount|balance)\s+(due|owing|outstanding)\W{0,3}(aud)?\s*\$?\s*0(\.00)?(?![\d.])"]
 
+def _ranges(got, total):
+    """[(first, last, doc)] from the AI's answer: whole pages within the PDF, in order, not overlapping; [] otherwise."""
+    docs = got.get("documents") if isinstance(got, dict) else got
+    out = []
+    for d in docs if isinstance(docs, list) else []:
+        if not isinstance(d, dict):
+            return []
+        first = d.get("first_page")
+        last = d.get("last_page")
+        if not isinstance(first, (int, float)) or not isinstance(last, (int, float)):
+            return []
+        first, last = int(first), int(last)
+        if first < 1 or last < first or last > total:
+            return []
+        out.append((first, last, d))
+    out.sort(key=lambda r: r[0])
+    for a, b in zip(out, out[1:]):
+        if b[0] <= a[1]:
+            return []
+    return out
+
+
+def _split(count, what):
+    """Split a PDF holding `count` documents into one PDF each (in Bookkeeping Split, from where they reach the
+    client's inbox folder) and file the original. Returns how many parts, or 0 with the problem to report."""
+    pdf = reader
+    total = len(pdf.pages) if pdf is not None else 0
+    fallback = ("This PDF contains " + str(int(count)) + " " + what + ". Split it into one PDF per " + what.rstrip("s")
+                + " and drop them in again.")
+    if pdf is None or total < 2 or total > SPLIT_PAGES or not folder:
+        return 0, fallback
+    exc = None  # the platform lint wants names bound before `except ... as`
+    try:
+        if scanned:
+            got = api.ai.extract(prompt=SPLIT_PROMPT, schema_hint=SPLIT_HINT, scratch_file=local)
+        else:
+            every = [(page.extract_text() or "") for page in pdf.pages]
+            got = api.ai.extract(prompt=SPLIT_PROMPT, schema_hint=SPLIT_HINT,
+                                 input="\n".join("=== Page " + str(i + 1) + " ===\n" + t for i, t in enumerate(every))[:28000])
+    except Exception as exc:
+        return 0, fallback
+    ranges = _ranges(got, total)
+    if len(ranges) < 2:
+        return 0, fallback
+    name = params["path"].split("/")[-1]
+    base = name.rsplit(".", 1)[0]
+    for i, (first, last, doc) in enumerate(ranges):
+        writer = PdfWriter()
+        for page in pdf.pages[first - 1:last]:
+            writer.add_page(page)
+        number = re.sub(r"[^A-Za-z0-9 -]+", "", str(doc.get("number") or "")).strip()[:30]
+        part = (base[:70] + " (part " + str(i + 1) + " of " + str(len(ranges)) + (", " + number if number else "") + ").pdf")
+        out = api.files.scratch_path(part)
+        writer.write(out)
+        api.files.put(file=BK_SPLIT + "/" + folder + "/" + part, scratch_file=out)
+    bk_move(params["path"], BK_PROCESSED + "/" + folder + "/" + name)
+    return len(ranges), ""
+
+
 problem = params.get("problem") or ""
+folder = params.get("folder") or ""
 invoice = {}
 statement = {}
+split_into = 0
 if not problem:
     text = ""
     pages = []
@@ -133,8 +207,13 @@ if not problem:
         pages = [(page.extract_text() or "") for page in reader.pages[:STATEMENT_PAGES]]
         text = "\n".join(pages[:10])
     except Exception as exc:
-        problem = (("The PDF" if params["path"].lower().endswith(".pdf") else "The photo") + " couldn't be opened ("
-                   + str(exc)[:200] + ").")
+        if params["path"].lower().endswith((".heic", ".heif")):
+            problem = ("This is an iPhone photo in Apple's HEIC format, which can't be opened here. Email it to the "
+                       "bookkeeping inbox instead (Email intake converts it), or save it as a JPEG (on an iPhone: Settings, "
+                       "Camera, Formats, Most Compatible) and drop it in again.")
+        else:
+            problem = (("The PDF" if params["path"].lower().endswith(".pdf") else "The photo") + " couldn't be opened ("
+                       + str(exc)[:200] + ").")
     scanned = not problem and len(text.strip()) < 40
     if not problem:
         result, error = _read(EXTRACT_PROMPT, SCHEMA_HINT)
@@ -164,8 +243,7 @@ if not problem:
                 if not isinstance(read, dict):
                     problem = "The AI couldn't read this statement."
                 elif isinstance(read.get("statement_count"), (int, float)) and read["statement_count"] > 1:
-                    problem = ("This PDF contains " + str(int(read["statement_count"])) + " statements. Split it into one PDF "
-                               "per statement and drop them in again.")
+                    split_into, problem = _split(read["statement_count"], "statements")
                 else:
                     statement = read
                     if scanned:
@@ -186,7 +264,7 @@ if not problem:
             elif doc_type not in ("tax invoice", "invoice"):
                 problem = "This document looks like a " + (doc_type or "non-invoice") + ", not an invoice, so it wasn't posted."
             elif isinstance(count, (int, float)) and count > 1:
-                problem = "This PDF contains " + str(int(count)) + " invoices. Split it into one PDF per invoice and drop them in again."
+                split_into, problem = _split(count, "invoices")
             else:
                 invoice = result
                 invoice["paid_mark"] = paid_mark

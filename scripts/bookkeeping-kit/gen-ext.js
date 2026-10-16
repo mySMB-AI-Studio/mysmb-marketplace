@@ -74,7 +74,7 @@ function parseLib(name) {
   }
   return { name, header: header.join('\n').trim(), defs };
 }
-const LIBS = Object.fromEntries(['util', 'xero', 'mail', 'payroll', 'checks', 'abr'].map((n) => [n, parseLib(n)]));
+const LIBS = Object.fromEntries(['util', 'xero', 'mail', 'payroll', 'checks', 'abr', 'route'].map((n) => [n, parseLib(n)]));
 // Only the helpers the node (transitively) calls, so each automation carries — and is scope-checked on — what it uses.
 function prelude(libNames, body) {
   const available = new Map();
@@ -138,7 +138,12 @@ for (const f of fs.readdirSync(path.join(SRC, 'skills'))) fs.copyFileSync(path.j
 fs.copyFileSync(path.join(SRC, 'README.md'), path.join(PLUGIN, 'README.md'));
 fs.mkdirSync(path.join(PLUGIN, 'assets'), { recursive: true });
 fs.copyFileSync(path.join(SRC, 'assets', 'logo.svg'), path.join(PLUGIN, 'assets', 'logo.svg'));
-writeJson(path.join(PLUGIN, '.mcp.json'), { mcpServers: { 'xero-accounting': { type: 'http', url: `${MCP_HOST}/xero-accounting/mcp` } } });
+// m365-mail-shared (a shared Outlook mailbox, for Email intake (Outlook shared mailbox)) isn't in the Microsoft 365
+// extension, so this extension brings it.
+writeJson(path.join(PLUGIN, '.mcp.json'), { mcpServers: {
+  'xero-accounting': { type: 'http', url: `${MCP_HOST}/xero-accounting/mcp` },
+  'm365-mail-shared': { type: 'http', url: `${MCP_HOST}/m365-mail-shared/mcp` },
+} });
 
 const description = 'Supplier bills from PDF to approved in each client’s own Xero organisation: read, checked and coded by AI, reviewed in WorkQ, with a weekly AP digest. Built for bookkeeping practices.';
 const content = { agents: [agentRel], automations: automationFiles, formTemplates: [], forms: formFiles, workqTemplates: [] };
