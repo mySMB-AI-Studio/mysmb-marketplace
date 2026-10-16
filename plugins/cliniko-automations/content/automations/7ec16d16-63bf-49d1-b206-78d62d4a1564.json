@@ -1,0 +1,414 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "ai:generate",
+    "connectors:m365-mail-read",
+    "connectors:cliniko-patients",
+    "connectors:cliniko-scheduling",
+    "users:read"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "b0b596aa-778f-4f43-85c2-367a920bf67f",
+      "sourceId": "b0b596aa-778f-4f43-85c2-367a920bf67f"
+    }
+  ],
+  "description": "Every 15 minutes, checks the practice inbox for reschedule/cancellation requests, matches the patient and their upcoming Cliniko appointment, checks real availability over the next 6 days, cross-checks each candidate against the practitioner's actual configured working hours, and drafts a reply. The draft goes to a WorkQ item with a review form attached for approval — it never sends an email or changes a booking itself (see Apply reschedule or cancellation reply).",
+  "flowIr": {
+    "description": "Polls the practice inbox for reschedule/cancellation requests (no email-received trigger exists), matches the patient via Cliniko, checks real availability against the practitioner's own Daily Availability, drafts a reply, and routes it to WorkQ for approval.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Draft reschedule or cancellation reply",
+    "nodes": [
+      {
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\nstate = {\"last_seen_received_at\": \"\"}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\nif not slug:\n    problem = \"No practice_slug configured for this automation.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug\n                           + \"'. Run Healthcare Practice Management: Start practice setup first.\")\n    else:\n        settings = found\n        state_data, _ = read_json(\"PracticeManager/State/\" + slug + \"-reschedule-desk.json\")\n        state = state_data or {\"last_seen_received_at\": \"\"}\n",
+        "id": "load_context",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The practice slug in use this run.",
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "description": "The practice's PracticeManager settings file.",
+            "name": "settings",
+            "type": "dict"
+          },
+          {
+            "description": "This automation's own poll-cursor state.",
+            "name": "state",
+            "type": "dict"
+          },
+          {
+            "description": "Non-empty when settings couldn't be loaded.",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.practice_slug }}",
+            "control": "hidden",
+            "label": "Practice slug",
+            "name": "practice_slug",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Load practice settings"
+      },
+      {
+        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"]",
+        "else": [],
+        "id": "gate_settings",
+        "kind": "if",
+        "then": [
+          "list_new_emails",
+          "foreach_candidate",
+          "save_state"
+        ],
+        "title": "Settings loaded okay?"
+      },
+      {
+        "code": "slug = params[\"slug\"]\nsettings = params[\"settings\"] or {}\nstate = params[\"state\"] or {}\nlast_seen = state.get(\"last_seen_received_at\") or \"\"\n\n# No \"email received\" trigger exists on this platform — this automation is\n# scheduled every 15 minutes instead, tracking the newest receivedDateTime\n# it has already looked at so the same email is never re-processed.\nKEYWORDS = (\"resched\", \"cancel\", \"move my appointment\", \"change my appointment\", \"can't make it\", \"cant make it\")\n\nraw = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"inbox\", \"limit\": 25})\nmessages = raw if isinstance(raw, list) else ((raw or {}).get(\"value\") or [])\n\ncandidates = []\nnewest_seen = last_seen\nfor m in messages:\n    received = m.get(\"receivedDateTime\") or \"\"\n    if received and received > newest_seen:\n        newest_seen = received\n    if last_seen and received and received <= last_seen:\n        continue\n    subject = m.get(\"subject\") or \"\"\n    preview = m.get(\"bodyPreview\") or \"\"\n    text = (subject + \" \" + preview).lower()\n    if not any(k in text for k in KEYWORDS):\n        continue\n    sender = m.get(\"from\") or {}\n    addr = sender.get(\"emailAddress\") or {}\n    candidates.append({\n        \"id\": m.get(\"id\") or \"\",\n        \"subject\": subject,\n        \"from_email\": (addr.get(\"address\") or \"\").lower(),\n        \"from_name\": addr.get(\"name\") or \"\",\n        \"received_at\": received,\n        \"conversation_id\": m.get(\"conversationId\") or \"\",\n    })\n\nnew_last_seen = newest_seen\n",
+        "id": "list_new_emails",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "New emails that look like reschedule/cancel requests.",
+            "name": "candidates",
+            "type": "list[dict]"
+          },
+          {
+            "description": "The newest receivedDateTime seen this run, for the next poll's cursor.",
+            "name": "new_last_seen",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.state }}",
+            "control": "hidden",
+            "label": "State",
+            "name": "state",
+            "required": true,
+            "type": "dict"
+          }
+        ],
+        "title": "Find new reschedule/cancel emails"
+      },
+      {
+        "body": [
+          "classify_and_match",
+          "gate_matched"
+        ],
+        "id": "foreach_candidate",
+        "itemVar": "email_item",
+        "items": "{{ steps.list_new_emails.outputs.candidates }}",
+        "kind": "foreach",
+        "maxIterations": 25,
+        "title": "Handle each candidate email"
+      },
+      {
+        "code": "import json\n\nsubject = params[\"subject\"] or \"\"\nfrom_email = (params[\"from_email\"] or \"\").strip()\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-patients\" if tool.endswith((\"patients\", \"contacts\")) else \"cliniko-scheduling\", tool=tool, args=args) or {}\n\nintent = \"cancel\" if \"cancel\" in subject.lower() else \"reschedule\"\ntry:\n    raw = api.ai.generate(\n        prompt=(\n            'A patient emailed a medical/allied-health practice with this subject line: \"' + subject + '\". '\n            \"Classify the request as exactly one of: reschedule, cancel, other. \"\n            'Reply with ONLY JSON: {\"intent\": \"reschedule\" | \"cancel\" | \"other\"}'\n        ),\n    )\n    ai_intent = (json.loads(raw) or {}).get(\"intent\")\n    if ai_intent in (\"reschedule\", \"cancel\", \"other\"):\n        intent = ai_intent\nexcept Exception:\n    pass\n\nmatched = False\npatient_id = \"\"\npatient_name = \"\"\nappointment_id = \"\"\nappointment_type_id = \"\"\npractitioner_id = \"\"\nbusiness_id = \"\"\nappointment_starts_at = \"\"\nproblem = \"\"\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\nif intent in (\"reschedule\", \"cancel\") and from_email:\n    found_patients = (cliniko(\"list_patients\", {\"q\": [\"email:=\" + from_email]}).get(\"patients\") or [])\n    if len(found_patients) == 1:\n        patient_id = found_patients[0].get(\"id\") or \"\"\n        patient_name = ((found_patients[0].get(\"first_name\") or \"\") + \" \" + (found_patients[0].get(\"last_name\") or \"\")).strip()\n    elif not found_patients:\n        found_contacts = (cliniko(\"list_contacts\", {\"q\": [\"email:=\" + from_email]}).get(\"contacts\") or [])\n        if len(found_contacts) == 1:\n            patient_id = link_id(found_contacts[0], \"patient\")\n    else:\n        problem = \"More than one Cliniko patient matched \" + from_email + \" — needs a human to pick.\"\n\n    if patient_id and not patient_name and not problem:\n        patient = cliniko(\"get_patient\", {\"id\": patient_id})\n        patient_name = ((patient.get(\"first_name\") or \"\") + \" \" + (patient.get(\"last_name\") or \"\")).strip()\n\n    if patient_id and not problem:\n        import datetime\n        now_utc = datetime.datetime.now(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n        appts = (cliniko(\n            \"list_individual_appointments\",\n            {\"patient_id\": patient_id, \"sort\": \"starts_at:asc\", \"q\": [\"starts_at:>=\" + now_utc]},\n        ).get(\"individual_appointments\") or [])\n        if appts:\n            appt = appts[0]\n            appointment_id = appt.get(\"id\") or \"\"\n            appointment_starts_at = appt.get(\"starts_at\") or \"\"\n            appointment_type_id = link_id(appt, \"appointment_type\")\n            practitioner_id = link_id(appt, \"practitioner\")\n            business_id = link_id(appt, \"business\")\n            matched = True\n        else:\n            problem = \"No upcoming appointment found for \" + (patient_name or from_email) + \".\"\n    elif not patient_id and not problem:\n        problem = \"Couldn't match \" + from_email + \" to a Cliniko patient or contact.\"\n",
+        "id": "classify_and_match",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "reschedule | cancel | other",
+            "name": "intent",
+            "type": "str"
+          },
+          {
+            "description": "True when a patient and an upcoming appointment were both found.",
+            "name": "matched",
+            "type": "bool"
+          },
+          {
+            "name": "patient_id",
+            "type": "str"
+          },
+          {
+            "name": "patient_name",
+            "type": "str"
+          },
+          {
+            "name": "appointment_id",
+            "type": "str"
+          },
+          {
+            "name": "appointment_type_id",
+            "type": "str"
+          },
+          {
+            "name": "practitioner_id",
+            "type": "str"
+          },
+          {
+            "name": "business_id",
+            "type": "str"
+          },
+          {
+            "name": "appointment_starts_at",
+            "type": "str"
+          },
+          {
+            "description": "Why matching failed, when it did.",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ item.id }}",
+            "control": "hidden",
+            "label": "Email id",
+            "name": "email_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.subject }}",
+            "control": "hidden",
+            "label": "Subject",
+            "name": "subject",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.from_email }}",
+            "control": "hidden",
+            "label": "Sender email",
+            "name": "from_email",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Classify intent and match the patient"
+      },
+      {
+        "cond": "steps[\"classify_and_match\"][\"outputs\"][\"matched\"] and not steps[\"classify_and_match\"][\"outputs\"][\"problem\"]",
+        "else": [],
+        "id": "gate_matched",
+        "kind": "if",
+        "then": [
+          "draft_and_review"
+        ],
+        "title": "Patient and appointment both matched?"
+      },
+      {
+        "code": "import json\nimport datetime\n\ndef cliniko(server, tool, args):\n    return api.connectors.invoke(server=server, tool=tool, args=args) or {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception:\n        return None\n    try:\n        return json.loads(raw)\n    except Exception:\n        return None\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True), scope=\"org\")\n\ndef practice_today(settings):\n    tz_name = (settings or {}).get(\"timezone\") or \"UTC\"\n    try:\n        from zoneinfo import ZoneInfo\n        return datetime.datetime.now(ZoneInfo(tz_name)).date()\n    except Exception:\n        return datetime.datetime.now(datetime.timezone.utc).date()\n\ndef format_local(iso_str, tz_name):\n    # Cliniko's available_times come back as UTC — showing those digits\n    # directly to a patient reads as a wrong, odd-hours offer (e.g. 1:00 AM\n    # instead of the real local 9:00 AM). Converts to the practice's own\n    # timezone and drops the leading zero from day/hour for a natural read.\n    try:\n        from zoneinfo import ZoneInfo\n        dt = datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n        local = dt.astimezone(ZoneInfo(tz_name))\n    except Exception:\n        try:\n            local = datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n        except Exception:\n            return iso_str\n    return local.strftime(\"%a %d %b, %I:%M %p\").replace(\" 0\", \" \")\n\nslug = params[\"slug\"]\nsettings = params[\"settings\"] or {}\npolicy = settings.get(\"policy\") or {}\ntone = policy.get(\"tone\") or \"warm, concise, no jargon\"\ncancellation_window_hours = policy.get(\"cancellation_window_hours\", 24)\n\nemail_id = params[\"email_id\"]\nconversation_id = params[\"conversation_id\"]\nfrom_email = params[\"from_email\"]\npatient_name = params[\"patient_name\"]\nfrom_name = params[\"from_name\"] or patient_name or \"there\"\nintent = params[\"intent\"]\npatient_id = params[\"patient_id\"]\nappointment_id = params[\"appointment_id\"]\nappointment_type_id = params[\"appointment_type_id\"]\npractitioner_id = params[\"practitioner_id\"]\nbusiness_id = params[\"business_id\"]\nappointment_starts_at = params[\"appointment_starts_at\"]\n\n# Flag anything inside the practice's cancellation window for a human to\n# judge rather than auto-offering a reschedule, per practice policy.\nwithin_window = False\ntry:\n    starts = datetime.datetime.fromisoformat(appointment_starts_at.replace(\"Z\", \"+00:00\"))\n    now = datetime.datetime.now(datetime.timezone.utc)\n    within_window = (starts - now) < datetime.timedelta(hours=cancellation_window_hours)\nexcept Exception:\n    within_window = False\n\ntoday = practice_today(settings)\nto_date = (today + datetime.timedelta(days=6)).isoformat()\ntimes_result = cliniko(\n    \"cliniko-scheduling\", \"get_available_times\",\n    {\"business_id\": business_id, \"practitioner_id\": practitioner_id, \"appointment_type_id\": appointment_type_id,\n     \"from_time\": today.isoformat(), \"to_time\": to_date},\n)\nraw_times = (times_result or {}).get(\"available_times\") or []\ntz_name = settings.get(\"timezone\") or \"UTC\"\n\n# Cross-check each candidate against the practitioner's actual configured\n# working hours (Daily Availability) before offering it to a patient --\n# get_available_times's own docs don't document that it always respects\n# business/practitioner hours, and a live test surfaced a slot well outside\n# the practitioner's real schedule. Day-of-week mapping (0=Sunday..6=Saturday)\n# follows Cliniko's apparent Rails convention; this isn't confirmed in their\n# public API docs, so verify it against a real account's data before fully\n# trusting it on a new practice. Fails open -- keeps every raw candidate,\n# today's pre-existing behaviour -- if no daily-availability data comes back\n# at all, rather than risk silently hiding every slot behind a wrong guess.\nwindows_by_day = {}\ntry:\n    avail_result = cliniko(\n        \"cliniko-scheduling\", \"list_daily_availabilities\",\n        {\"business_id\": business_id, \"practitioner_id\": practitioner_id, \"per_page\": 100},\n    )\n    for rec in (avail_result or {}).get(\"daily_availabilities\") or []:\n        day = rec.get(\"day_of_week\")\n        if day is None:\n            continue\n        for block in rec.get(\"availabilities\") or []:\n            start, end = block.get(\"starts_at\"), block.get(\"ends_at\")\n            if start and end:\n                windows_by_day.setdefault(day, []).append((start, end))\nexcept Exception:\n    windows_by_day = {}\n\ndef local_weekday_and_time(iso_str):\n    try:\n        from zoneinfo import ZoneInfo\n        dt = datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\")).astimezone(ZoneInfo(tz_name))\n        return (dt.weekday() + 1) % 7, dt.strftime(\"%H:%M\")\n    except Exception:\n        return None, None\n\ndef within_working_hours(iso_str):\n    day, hhmm = local_weekday_and_time(iso_str)\n    if day is None:\n        return True  # couldn't parse -- don't silently drop a real slot\n    return any(start <= hhmm < end for start, end in windows_by_day.get(day, []))\n\ncandidate_times = [t.get(\"appointment_start\") for t in raw_times if t.get(\"appointment_start\")]\nif windows_by_day:\n    candidate_times = [t for t in candidate_times if within_working_hours(t)]\nproposed_times_raw = candidate_times[:3]\nproposed_times = [format_local(t, tz_name) for t in proposed_times_raw]\n\npractice_name = settings.get(\"name\") or \"\"\ndraft_text = \"\"\ntry:\n    prompt = (\n        \"Draft a short, \" + tone + \" plain-text email reply from an allied-health practice\"\n        + (\" called \\\"\" + practice_name + \"\\\"\" if practice_name else \"\") + \" to a patient named \" + from_name + \" \"\n        \"who asked to \" + intent + \" their appointment.\\n\\n\"\n        \"Format it as a real email with actual line breaks: a short greeting on its own line, a blank line, \"\n        \"the body, a blank line, then the sign-off on its own line.\\n\\n\"\n        + (\"No real alternative times were found in the next 6 days — apologise and ask them to call the practice, as its own short paragraph.\\n\\n\"\n           if not proposed_times else\n           \"List these exact times as a bulleted list, one per line (each starting with \\\"- \\\"), already in the \"\n           \"practice's own local time zone — do not convert or recalculate them:\\n\"\n           + \"\\n\".join(\"- \" + t for t in proposed_times) + \"\\n\\n\")\n        + (\"This request is inside the practice's \" + str(cancellation_window_hours) + \"-hour cancellation window — \"\n           \"acknowledge there may be a cancellation fee per practice policy, without stating an amount, as its own short paragraph.\\n\\n\"\n           if within_window else \"\")\n        + \"Sign off on its own line, using the real practice name above if one was given — never a placeholder like \"\n        \"'[Practice name]'. If no practice name was given, sign off without naming the practice at all. \"\n        \"Do not invent any clinical detail. Return ONLY the email body text, with real newline characters \"\n        \"between the greeting, body, list items and sign-off — never a single run-on paragraph.\"\n    )\n    draft_text = api.ai.generate(prompt=prompt)\nexcept Exception:\n    draft_text = \"\"\n\ntitle = (\"Reschedule request: \" if intent == \"reschedule\" else \"Cancellation request: \") + (patient_name or from_email)\ndescription = (\n    \"**Patient:** \" + (patient_name or \"unknown\") + \" (\" + from_email + \")\\n\"\n    + \"**Request:** \" + intent + \"\\n\"\n    + \"**Current appointment:** \" + (format_local(appointment_starts_at, tz_name) if appointment_starts_at else \"unknown\") + \"\\n\"\n    + (\"**Inside cancellation window — flag for judgement.**\\n\" if within_window else \"\")\n    + \"**Proposed times:** \" + (\", \".join(proposed_times) if proposed_times else \"none found — no availability in the next 6 days\") + \"\\n\\n\"\n    + \"**Drafted reply:**\\n\" + (draft_text or \"(draft failed — write the reply yourself)\")\n)\n\n# The practitioner reviews their own reschedule/cancellation requests —\n# hardcoded for this single-practice test setup rather than derived from\n# Cliniko (that would need the cliniko-practice connector, not bundled\n# here, plus a reliable email field on the practitioner record).\nPRACTITIONER_EMAIL = \"sean.baker@mysmb.com\"\nassignee_ids: list[str] = []\ntry:\n    users = api.users.list()\n    for user in users or []:\n        if (user.get(\"email\") or \"\").strip().lower() == PRACTITIONER_EMAIL:\n            user_id = user.get(\"id\")\n            if user_id:\n                assignee_ids = [str(user_id)]\n            break\nexcept Exception:\n    assignee_ids = []\n\nitem = api.workq.create(\n    title=title[:200],\n    scope=\"org\",\n    description=description,\n    priority=\"high\" if within_window else \"medium\",\n    labels=[\"cliniko-automations\", \"reschedule-desk\"],\n    assignee_ids=assignee_ids or None,\n)\napi.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"review_form\"])\n\n# Save everything the apply automation needs once this item is approved —\n# the form-response event only carries todo_id/form_id/responses, not any\n# of this context. Flat filename (not a subfolder) to respect Knowledge's\n# 2-level folder nesting limit.\nwrite_json(\n    \"PracticeManager/State/\" + slug + \"-reschedule-pending-\" + item[\"id\"] + \".json\",\n    {\n        \"slug\": slug, \"email_id\": email_id, \"from_email\": from_email, \"from_name\": from_name,\n        \"intent\": intent, \"patient_id\": patient_id,\n        \"appointment_id\": appointment_id, \"business_id\": business_id,\n        \"practitioner_id\": practitioner_id, \"appointment_type_id\": appointment_type_id,\n        \"appointment_starts_at\": appointment_starts_at, \"proposed_times\": proposed_times,\n        \"proposed_times_raw\": proposed_times_raw, \"conversation_id\": conversation_id,\n        \"draft_text\": draft_text, \"patient_name\": patient_name,\n    },\n)\n\n# Commitment memory (healthcare-practice-management-foundation format). A\n# write hiccup here must never mask whether the patient-facing reply above\n# actually went out, so this is best-effort like every other side effect in\n# this script -- multiple automations in this extension share this one file\n# with no locking (see Apply reschedule or cancellation reply, and Apply\n# patient's chosen reschedule time, for the same pattern).\ntry:\n    commitments_path = \"PracticeManager/Commitments/\" + slug + \".json\"\n    commitments = read_json(commitments_path) or []\n    commitments.append({\n        \"id\": item[\"id\"],\n        \"type\": \"reschedule_offer\",\n        \"patient_name\": patient_name or from_email,\n        \"description\": \"Offered \" + (\", \".join(proposed_times) if proposed_times else \"a reply\") + \" after a \" + intent + \" request\",\n        \"created_at\": datetime.datetime.now(datetime.timezone.utc).isoformat(),\n        \"due_date\": None,\n        \"status\": \"open\",\n        \"source\": {\"kind\": \"email\", \"id\": email_id},\n        \"resolved_at\": None,\n    })\n    write_json(commitments_path, commitments)\nexcept Exception:\n    pass\n\n# Audit trail (healthcare-practice-management-guardrail-audit format).\ntoday_str = practice_today(settings).isoformat()\naudit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\ntry:\n    existing_log = api.files.read(file=audit_path, scope=\"org\")\nexcept Exception:\n    existing_log = \"\"\naudit_line = json.dumps({\n    \"ts\": datetime.datetime.now(datetime.timezone.utc).isoformat(),\n    \"practice_slug\": slug,\n    \"actor\": \"agent\",\n    \"source\": \"automation:Cliniko Automations: Draft reschedule or cancellation reply\",\n    \"action\": \"drafted\",\n    \"target\": {\"kind\": \"email\", \"id\": email_id},\n    \"summary\": \"Drafted a \" + intent + \" reply for \" + (patient_name or from_email),\n    \"guardrails\": [{\"rule\": \"patient_facing_requires_approval\", \"result\": \"pass\", \"detail\": \"routed to WorkQ for approval before send\"}],\n    \"workq_item_id\": item[\"id\"],\n}, sort_keys=True)\napi.files.put(file=audit_path, content=existing_log + audit_line + \"\\n\", scope=\"org\")\n\ntodo_id = item[\"id\"]\n",
+        "id": "draft_and_review",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The created WorkQ review item's id.",
+            "name": "todo_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ item.id }}",
+            "control": "hidden",
+            "label": "Email id",
+            "name": "email_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.from_email }}",
+            "control": "hidden",
+            "label": "Sender email",
+            "name": "from_email",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ item.from_name }}",
+            "control": "hidden",
+            "label": "Sender name",
+            "name": "from_name",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.intent }}",
+            "control": "hidden",
+            "label": "Intent",
+            "name": "intent",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.patient_id }}",
+            "control": "hidden",
+            "label": "Patient id",
+            "name": "patient_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.patient_name }}",
+            "control": "hidden",
+            "label": "Patient name",
+            "name": "patient_name",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.appointment_id }}",
+            "control": "hidden",
+            "label": "Appointment id",
+            "name": "appointment_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.appointment_type_id }}",
+            "control": "hidden",
+            "label": "Appointment type id",
+            "name": "appointment_type_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.practitioner_id }}",
+            "control": "hidden",
+            "label": "Practitioner id",
+            "name": "practitioner_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.business_id }}",
+            "control": "hidden",
+            "label": "Business id",
+            "name": "business_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.classify_and_match.outputs.appointment_starts_at }}",
+            "control": "hidden",
+            "label": "Appointment start",
+            "name": "appointment_starts_at",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Reschedule or cancellation reply review form",
+            "name": "review_form",
+            "required": true,
+            "type": "uuid",
+            "value": "b0b596aa-778f-4f43-85c2-367a920bf67f"
+          },
+          {
+            "binding": "{{ item.conversation_id }}",
+            "control": "hidden",
+            "label": "Conversation id",
+            "name": "conversation_id",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Check availability, draft a reply, create the review item"
+      },
+      {
+        "code": "import json\n\nslug = params[\"slug\"]\nnew_last_seen = params[\"new_last_seen\"] or \"\"\n\napi.files.put(\n    file=\"PracticeManager/State/\" + slug + \"-reschedule-desk.json\",\n    content=json.dumps({\"last_seen_received_at\": new_last_seen}, indent=2),\n    scope=\"org\",\n)\n",
+        "id": "save_state",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.list_new_emails.outputs.new_last_seen }}",
+            "control": "hidden",
+            "label": "New last seen",
+            "name": "new_last_seen",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Advance the poll cursor"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json) — set this to the SAME slug on every Cliniko Automations automation in this extension; each automation keeps its own separate copy of this value, so leaving one blank makes that one automation silently do nothing.",
+        "name": "practice_slug",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "load_context",
+      "gate_settings"
+    ],
+    "triggers": [
+      {
+        "cron": "*/15 * * * *",
+        "kind": "schedule",
+        "timezone": "UTC"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Draft reschedule or cancellation reply",
+  "originKey": "7ec16d16-63bf-49d1-b206-78d62d4a1564",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "email"
+  ],
+  "contentHash": "9b95a13b7b90453f0b7863dd5bdf07ce660e672e753f74be65c91df5e0ea3868"
+}
