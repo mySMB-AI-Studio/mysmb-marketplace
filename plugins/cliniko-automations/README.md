@@ -20,10 +20,11 @@ patient-facing or diary-changing through WorkQ before it happens.
     between 2 hours and 7 days from now. These are cancelled bookings, plus old times freed when
     *Apply patient's chosen reschedule time* moves a booking (it leaves a note in
     `PracticeManager/State/<slug>-freed-slots.json`). It skips slots that have been rebooked since.
-    For each free slot it lists candidate patients and creates one WorkQ item. Candidates are
-    patients booked later with the same practitioner, and overdue patients last seen 6–16 weeks
-    ago with nothing booked. It sends nothing; sending offers and booking the first acceptance are
-    the next steps. Override the window with `gap_filler.min_notice_hours` / `max_days_ahead` in
+    For each free slot it lists candidate patients: those booked later with the same practitioner,
+    and overdue patients last seen 6–16 weeks ago with nothing booked. AI ranks them and drafts a
+    personalised offer for each, and it creates one WorkQ item with the **Freed slot offer
+    approval** form attached. It sends nothing; sending the approved offers and booking the first
+    acceptance are the next steps. Override the window with `gap_filler.min_notice_hours` / `max_days_ahead` in
     the practice settings file.
 
 More automations from the practice's Top 10 shortlist (referral/care plan watchdog, no-show
