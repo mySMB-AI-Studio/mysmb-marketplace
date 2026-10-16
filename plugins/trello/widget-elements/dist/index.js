@@ -316,6 +316,12 @@ const flatten_team_workload = (args) => {
         for (let i = 0; i < rawName.length; i++)
             hash = (hash * 31 + rawName.charCodeAt(i)) >>> 0;
         const avatarTone = rawName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
+        const rawCards = Array.isArray(member.cards) ? member.cards : [];
+        const cards = rawCards.map((card) => ({
+            id: String(card.id ?? ''),
+            name: String(card.name ?? ''),
+            board_label: String(card.board_name ?? ''),
+        }));
         return {
             member_id: String(member.member_id ?? ''),
             name: displayName || rawName,
@@ -323,8 +329,29 @@ const flatten_team_workload = (args) => {
             count,
             pct,
             avatar_tone: avatarTone,
+            cards,
         };
     });
+};
+/**
+ * Looks up one member's cards array within the already-flattened
+ * flatten_team_workload output, by member_id. Powers the Team Workload
+ * tile's click-to-expand drill-down: a row click only records which
+ * member_id is expanded (a plain string, via $bindItem since action params
+ * resolve $item to a state PATH, not a value); this function re-derives the
+ * actual card list from the already-loaded /ui/members array on every
+ * change, rather than copying the cards array into a second state slot at
+ * click time.
+ *
+ * Args: { members: array, member_id: string }
+ */
+const find_member_cards = (args) => {
+    const members = Array.isArray(args.members) ? args.members : [];
+    const memberId = String(args.member_id ?? '');
+    if (!memberId)
+        return [];
+    const match = members.find((m) => String(m.member_id ?? '') === memberId);
+    return Array.isArray(match?.cards) ? match.cards : [];
 };
 const elements = {
     slug: 'trello',
@@ -338,6 +365,7 @@ const elements = {
         flatten_due_date_tracker,
         format_tracker_legend,
         flatten_team_workload,
+        find_member_cards,
     },
 };
 export default elements;

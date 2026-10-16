@@ -1,30 +1,52 @@
 {
-  "id": "trello-overdue-cards",
-  "title": "Overdue Cards",
-  "description": "Cards assigned to you in Trello that are past their due date, with per-card overdue badges and summary stats.",
   "category": "tasks",
-  "tags": ["trello", "cards", "overdue", "due dates", "at risk"],
-  "keywords": ["trello overdue", "overdue cards", "past due", "late cards", "kanban"],
-  "connectorsUsed": ["trello"],
+  "connectorsUsed": [
+    "trello"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "trello",
+    "params": {},
+    "tool": "list_my_cards"
+  },
+  "description": "Cards assigned to you in Trello that are past their due date, with per-card overdue badges and summary stats.",
+  "id": "trello-overdue-cards",
+  "keywords": [
+    "trello overdue",
+    "overdue cards",
+    "past due",
+    "late cards",
+    "kanban"
+  ],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
-    "max": { "colSpan": 8, "rowSpan": 12 }
-  },
-  "dataProvider": {
-    "mcp": "trello",
-    "tool": "list_my_cards",
-    "params": {}
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
       "card": {
-        "type": "Card",
+        "children": [
+          "headerRow",
+          "div0",
+          "loading",
+          "empty",
+          "kpiGrid",
+          "div1",
+          "cardList"
+        ],
         "props": {},
-        "children": ["headerRow", "div0", "loading", "empty", "kpiGrid", "div1", "cardList"],
+        "type": "Card",
         "watch": {
           "/trello/list_my_cards/data": [
             {
@@ -33,132 +55,361 @@
                 "statePath": "/ui/rows",
                 "value": {
                   "$computed": "trello_flatten_overdue_cards",
-                  "args": { "value": { "$state": "/trello/list_my_cards/data" } }
+                  "args": {
+                    "value": {
+                      "$state": "/trello/list_my_cards/data"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "TriangleAlert", "tone": "destructive", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Overdue Cards", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
-
-      "div0": { "type": "Divider", "props": {} },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/trello.list_my_cards" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No overdue cards. You're all caught up!" },
+      "cardBoard": {
+        "props": {
+          "text": {
+            "$item": "board_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption",
         "visible": {
-          "$and": [
-            { "$state": "/_loading/trello.list_my_cards", "not": true },
-            { "$state": "/ui/rows/0", "not": true }
-          ]
+          "$item": "board_label"
         }
-      },
-
-      "kpiGrid": {
-        "type": "Grid",
-        "props": { "cols": 3, "gap": "sm" },
-        "children": ["tileOverdue", "tileBoards", "tileLongest"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/trello.list_my_cards", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "tileOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackOverdue"] },
-      "stackOverdue": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valOverdue", "lblOverdue"] },
-      "valOverdue": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_overdue" }, "size": "md" } },
-      "lblOverdue": { "type": "Caption", "props": { "text": "Overdue", "tone": "destructive" } },
-
-      "tileBoards": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackBoards"] },
-      "stackBoards": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valBoards", "lblBoards"] },
-      "valBoards": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_boards" }, "size": "md" } },
-      "lblBoards": { "type": "Caption", "props": { "text": "Boards", "tone": "muted" } },
-
-      "tileLongest": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackLongest"] },
-      "stackLongest": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["valLongest", "lblLongest"] },
-      "valLongest": { "type": "Stat", "props": { "value": { "$state": "/ui/rows/0/stat_longest" }, "size": "md" } },
-      "lblLongest": { "type": "Caption", "props": { "text": "Longest", "tone": "destructive" } },
-
-      "div1": {
-        "type": "Divider",
-        "props": {},
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/trello.list_my_cards", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "cardList": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["cardRow"],
-        "repeat": { "statePath": "/ui/rows", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/trello.list_my_cards", "not": true },
-            { "$state": "/ui/rows/0" }
-          ]
-        }
-      },
-
-      "cardRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["cardInfo", "cardOverdueBadge"]
       },
       "cardInfo": {
+        "children": [
+          "cardTitle",
+          "cardBoard"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "cardList": {
+        "children": [
+          "cardRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/rows"
+        },
         "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["cardTitle", "cardBoard"]
-      },
-      "cardTitle": {
-        "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "cardBoard": {
-        "type": "Caption",
-        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true },
-        "visible": { "$item": "board_label" }
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_my_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
       },
       "cardOverdueBadge": {
-        "type": "Badge",
         "props": {
-          "text": { "$item": "overdue_label" },
+          "text": {
+            "$item": "overdue_label"
+          },
           "tone": "destructive",
           "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "cardRow": {
+        "children": [
+          "cardInfo",
+          "cardOverdueBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "cardTitle": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_my_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
         }
+      },
+      "empty": {
+        "props": {
+          "message": "No overdue cards. You're all caught up!"
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_my_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Trello"
+        },
+        "type": "Eyebrow"
+      },
+      "headerRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "kpiGrid": {
+        "children": [
+          "tileOverdue",
+          "tileBoards",
+          "tileLongest"
+        ],
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "type": "Grid",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_my_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/rows/0"
+            }
+          ]
+        }
+      },
+      "lblBoards": {
+        "props": {
+          "text": "Boards",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "lblLongest": {
+        "props": {
+          "text": "Longest",
+          "tone": "destructive"
+        },
+        "type": "Caption"
+      },
+      "lblOverdue": {
+        "props": {
+          "text": "Overdue",
+          "tone": "destructive"
+        },
+        "type": "Caption"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_my_cards"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "stackBoards": {
+        "children": [
+          "valBoards",
+          "lblBoards"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "stackLongest": {
+        "children": [
+          "valLongest",
+          "lblLongest"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "stackOverdue": {
+        "children": [
+          "valOverdue",
+          "lblOverdue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "tileBoards": {
+        "children": [
+          "stackBoards"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "tileLongest": {
+        "children": [
+          "stackLongest"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "tileOverdue": {
+        "children": [
+          "stackOverdue"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Overdue Cards"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "TriangleAlert",
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "valBoards": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_boards"
+          }
+        },
+        "type": "Stat"
+      },
+      "valLongest": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_longest"
+          }
+        },
+        "type": "Stat"
+      },
+      "valOverdue": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/rows/0/stat_overdue"
+          }
+        },
+        "type": "Stat"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "trello",
+    "cards",
+    "overdue",
+    "due dates",
+    "at risk"
+  ],
+  "title": "Overdue Cards"
 }

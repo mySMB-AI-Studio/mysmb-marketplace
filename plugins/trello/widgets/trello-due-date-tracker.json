@@ -1,29 +1,104 @@
 {
-  "id": "trello-due-date-tracker",
-  "title": "Due Date Tracker",
-  "description": "Overdue, due-today, and due-this-week card counts across every open board, with a status breakdown.",
   "category": "tasks",
-  "tags": ["trello", "cards", "due dates", "overdue", "tracker"],
-  "keywords": ["trello overdue", "due date tracker", "due today", "due this week", "kanban"],
-  "connectorsUsed": ["trello"],
+  "connectorsUsed": [
+    "trello"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "trello",
+    "params": {},
+    "tool": "list_all_cards"
+  },
+  "description": "Overdue, due-today, and due-this-week card counts across every open board, with a status breakdown.",
+  "id": "trello-due-date-tracker",
+  "keywords": [
+    "trello overdue",
+    "due date tracker",
+    "due today",
+    "due this week",
+    "kanban"
+  ],
   "popularity": 65,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 5 },
-    "max": { "colSpan": 6, "rowSpan": 8 }
-  },
-  "dataProvider": {
-    "mcp": "trello",
-    "tool": "list_all_cards",
-    "params": {}
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "barOverdue": {
+        "props": {
+          "tone": "destructive",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "barRow": {
+        "children": [
+          "barOverdue",
+          "barToday",
+          "barWeek"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/_loading/trello.list_all_cards",
+          "not": true
+        }
+      },
+      "barToday": {
+        "props": {
+          "tone": "warning",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "barWeek": {
+        "props": {
+          "tone": "info",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "bigStatGroup": {
+        "children": [
+          "statValue",
+          "statLabel"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/trello.list_all_cards",
+          "not": true
+        }
+      },
       "card": {
-        "type": "Card",
+        "children": [
+          "headerRow",
+          "loading",
+          "bigStatGroup",
+          "todayWeekRow",
+          "barRow",
+          "legendRowCollapsed",
+          "legendRowExpanded",
+          "trackerDetailSection",
+          "openInTrelloRow"
+        ],
         "props": {},
-        "children": ["headerRow", "loading", "bigStatGroup", "todayWeekRow", "barRow", "legendRowCollapsed", "legendRowExpanded", "trackerDetailSection", "openInTrelloRow"],
+        "type": "Card",
         "watch": {
           "/trello/list_all_cards/data": [
             {
@@ -32,343 +107,845 @@
                 "statePath": "/ui/tracker",
                 "value": {
                   "$computed": "trello_flatten_due_date_tracker",
-                  "args": { "value": { "$state": "/trello/list_all_cards/data" } }
+                  "args": {
+                    "value": {
+                      "$state": "/trello/list_all_cards/data"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "tone": "destructive", "size": "sm" } },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": { "type": "Heading", "props": { "text": "Due Date Tracker", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/trello.list_all_cards" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "1.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "1rem", "rounded": "md" } },
-
-      "bigStatGroup": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["statValue", "statLabel"],
-        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
-      },
-      "statValue": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/tracker/overdue_count" }, "size": "lg" }
-      },
-      "statLabel": { "type": "Caption", "props": { "text": "Cards overdue", "tone": "destructive" } },
-
-      "todayWeekRow": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center" },
-        "children": ["todayGroup", "vDivider", "weekGroup"],
-        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
-      },
-      "todayGroup": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "baseline" },
-        "children": ["todayNum", "todayLabel"]
-      },
-      "todayNum": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/tracker/today_count" }, "size": "sm" }
-      },
-      "todayLabel": { "type": "Caption", "props": { "text": "Due today", "tone": "muted" } },
-      "vDivider": { "type": "Divider", "props": { "vertical": true } },
-      "weekGroup": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "baseline" },
-        "children": ["weekNum", "weekLabel"]
-      },
-      "weekNum": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/tracker/week_count" }, "size": "sm" }
-      },
-      "weekLabel": { "type": "Caption", "props": { "text": "Due this week", "tone": "muted" } },
-
-      "barRow": {
-        "type": "Row",
-        "props": { "gap": "none" },
-        "children": ["barOverdue", "barToday", "barWeek"],
-        "visible": { "$state": "/_loading/trello.list_all_cards", "not": true }
-      },
-      "barOverdue": { "type": "ProgressBar", "props": { "value": 100, "tone": "destructive" } },
-      "barToday": { "type": "ProgressBar", "props": { "value": 100, "tone": "warning" } },
-      "barWeek": { "type": "ProgressBar", "props": { "value": 100, "tone": "info" } },
-
-      "legendRowCollapsed": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "clickable": true },
-        "children": ["legendOverdue", "legendToday", "legendWeek"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/trello.list_all_cards", "not": true },
-            { "$state": "/ui/trackerExpanded", "not": true }
-          ]
+      "dotOverdue": {
+        "props": {
+          "size": "sm",
+          "tone": "destructive"
         },
+        "type": "Dot"
+      },
+      "dotOverdueB": {
+        "props": {
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "type": "Dot"
+      },
+      "dotToday": {
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Dot"
+      },
+      "dotTodayB": {
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Dot"
+      },
+      "dotWeek": {
+        "props": {
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Dot"
+      },
+      "dotWeekB": {
+        "props": {
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Dot"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Trello"
+        },
+        "type": "Eyebrow"
+      },
+      "headerRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "legendOverdue": {
+        "children": [
+          "dotOverdue",
+          "textOverdue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "legendOverdueB": {
+        "children": [
+          "dotOverdueB",
+          "textOverdueB"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "legendRowCollapsed": {
+        "children": [
+          "legendOverdue",
+          "legendToday",
+          "legendWeek"
+        ],
         "on": {
           "click": [
-            { "action": "setState", "params": { "statePath": "/ui/trackerExpanded", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/overdue", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/today", "value": false } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/week", "value": false } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerExpanded",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/overdue",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/today",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/week",
+                "value": false
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md"
+        },
+        "type": "Row",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_all_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/trackerExpanded",
+              "not": true
+            }
           ]
         }
       },
       "legendRowExpanded": {
-        "type": "Row",
-        "props": { "gap": "md", "align": "center", "clickable": true },
-        "children": ["legendOverdueB", "legendTodayB", "legendWeekB"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/trello.list_all_cards", "not": true },
-            { "$state": "/ui/trackerExpanded" }
-          ]
-        },
+        "children": [
+          "legendOverdueB",
+          "legendTodayB",
+          "legendWeekB"
+        ],
         "on": {
           "click": [
-            { "action": "setState", "params": { "statePath": "/ui/trackerExpanded", "value": false } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerExpanded",
+                "value": false
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "md"
+        },
+        "type": "Row",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/trello.list_all_cards",
+              "not": true
+            },
+            {
+              "$state": "/ui/trackerExpanded"
+            }
           ]
         }
       },
-      "legendOverdue": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotOverdue", "textOverdue"]
-      },
-      "dotOverdue": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
-      "textOverdue": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Overdue", "value": { "$state": "/ui/tracker/overdue_count" } } } }
-      },
       "legendToday": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotToday", "textToday"]
-      },
-      "dotToday": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
-      "textToday": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Today", "value": { "$state": "/ui/tracker/today_count" } } } }
-      },
-      "legendWeek": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotWeek", "textWeek"]
-      },
-      "dotWeek": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
-      "textWeek": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Upcoming", "value": { "$state": "/ui/tracker/week_count" } } } }
-      },
-
-      "legendOverdueB": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotOverdueB", "textOverdueB"]
-      },
-      "dotOverdueB": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
-      "textOverdueB": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Overdue", "value": { "$state": "/ui/tracker/overdue_count" } } } }
+        "children": [
+          "dotToday",
+          "textToday"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
       "legendTodayB": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotTodayB", "textTodayB"]
+        "children": [
+          "dotTodayB",
+          "textTodayB"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
-      "dotTodayB": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
-      "textTodayB": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Today", "value": { "$state": "/ui/tracker/today_count" } } } }
+      "legendWeek": {
+        "children": [
+          "dotWeek",
+          "textWeek"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
       "legendWeekB": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["dotWeekB", "textWeekB"]
+        "children": [
+          "dotWeekB",
+          "textWeekB"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
       },
-      "dotWeekB": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
-      "textWeekB": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "trello_format_tracker_legend", "args": { "label": "Upcoming", "value": { "$state": "/ui/tracker/week_count" } } } }
-      },
-
-      "trackerDetailSection": {
-        "type": "Body",
-        "props": {},
-        "children": ["trackerDetailInner"],
-        "visible": { "$state": "/ui/trackerExpanded" }
-      },
-      "trackerDetailInner": {
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["trackerTabRow", "overdueContent", "todayContent", "weekContent"]
+        "visible": {
+          "$state": "/_loading/trello.list_all_cards"
+        }
       },
-      "trackerTabRow": {
-        "type": "Row",
-        "props": { "gap": "xs" },
-        "children": ["tabOverdueOn", "tabOverdueOff", "tabTodayOn", "tabTodayOff", "tabWeekOn", "tabWeekOff"]
+      "openInTrelloButton": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://trello.com/b/tcjhGlBx/myimpact-qa-trello-tile-test-data"
+            }
+          }
+        },
+        "props": {
+          "label": "Open in Trello",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
       },
-      "tabOverdueOn": {
-        "type": "Button",
-        "props": { "label": "Overdue", "variant": "primary", "size": "sm" },
-        "visible": { "$state": "/ui/trackerTab/overdue" }
+      "openInTrelloRow": {
+        "children": [
+          "openInTrelloButton"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "overdueContent": {
+        "children": [
+          "overdueEmpty",
+          "overdueRepeatList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/trackerTab/overdue"
+        }
+      },
+      "overdueEmpty": {
+        "props": {
+          "message": "No overdue cards."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/tracker/overdue_rows/0",
+          "not": true
+        }
+      },
+      "overdueRepeatList": {
+        "children": [
+          "trackerCardRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/tracker/overdue_rows"
+        },
+        "type": "Stack"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "1rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "statLabel": {
+        "props": {
+          "text": "Cards overdue",
+          "tone": "destructive"
+        },
+        "type": "Caption"
+      },
+      "statValue": {
+        "props": {
+          "size": "lg",
+          "value": {
+            "$state": "/ui/tracker/overdue_count"
+          }
+        },
+        "type": "Stat"
       },
       "tabOverdueOff": {
-        "type": "Button",
-        "props": { "label": "Overdue", "variant": "ghost", "size": "sm" },
-        "visible": { "$state": "/ui/trackerTab/overdue", "not": true },
         "on": {
           "click": [
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/overdue", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/today", "value": false } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/week", "value": false } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/overdue",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/today",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/week",
+                "value": false
+              }
+            }
           ]
+        },
+        "props": {
+          "label": "Overdue",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/trackerTab/overdue",
+          "not": true
+        }
+      },
+      "tabOverdueOn": {
+        "props": {
+          "label": "Overdue",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/trackerTab/overdue"
+        }
+      },
+      "tabTodayOff": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/overdue",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/today",
+                "value": true
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/week",
+                "value": false
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Today",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/trackerTab/today",
+          "not": true
         }
       },
       "tabTodayOn": {
+        "props": {
+          "label": "Today",
+          "size": "sm",
+          "variant": "primary"
+        },
         "type": "Button",
-        "props": { "label": "Today", "variant": "primary", "size": "sm" },
-        "visible": { "$state": "/ui/trackerTab/today" }
+        "visible": {
+          "$state": "/ui/trackerTab/today"
+        }
       },
-      "tabTodayOff": {
-        "type": "Button",
-        "props": { "label": "Today", "variant": "ghost", "size": "sm" },
-        "visible": { "$state": "/ui/trackerTab/today", "not": true },
+      "tabWeekOff": {
         "on": {
           "click": [
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/overdue", "value": false } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/today", "value": true } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/week", "value": false } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/overdue",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/today",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/trackerTab/week",
+                "value": true
+              }
+            }
           ]
+        },
+        "props": {
+          "label": "Upcoming",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/trackerTab/week",
+          "not": true
         }
       },
       "tabWeekOn": {
+        "props": {
+          "label": "Upcoming",
+          "size": "sm",
+          "variant": "primary"
+        },
         "type": "Button",
-        "props": { "label": "Upcoming", "variant": "primary", "size": "sm" },
-        "visible": { "$state": "/ui/trackerTab/week" }
-      },
-      "tabWeekOff": {
-        "type": "Button",
-        "props": { "label": "Upcoming", "variant": "ghost", "size": "sm" },
-        "visible": { "$state": "/ui/trackerTab/week", "not": true },
-        "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/overdue", "value": false } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/today", "value": false } },
-            { "action": "setState", "params": { "statePath": "/ui/trackerTab/week", "value": true } }
-          ]
+        "visible": {
+          "$state": "/ui/trackerTab/week"
         }
       },
-
-      "overdueContent": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["overdueEmpty", "overdueRepeatList"],
-        "visible": { "$state": "/ui/trackerTab/overdue" }
+      "textOverdue": {
+        "props": {
+          "text": {
+            "$computed": "trello_format_tracker_legend",
+            "args": {
+              "label": "Overdue",
+              "value": {
+                "$state": "/ui/tracker/overdue_count"
+              }
+            }
+          }
+        },
+        "type": "Caption"
       },
-      "overdueEmpty": {
-        "type": "Empty",
-        "props": { "message": "No overdue cards." },
-        "visible": { "$state": "/ui/tracker/overdue_rows/0", "not": true }
+      "textOverdueB": {
+        "props": {
+          "text": {
+            "$computed": "trello_format_tracker_legend",
+            "args": {
+              "label": "Overdue",
+              "value": {
+                "$state": "/ui/tracker/overdue_count"
+              }
+            }
+          }
+        },
+        "type": "Caption"
       },
-      "overdueRepeatList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["trackerCardRow"],
-        "repeat": { "statePath": "/ui/tracker/overdue_rows", "key": "id" }
+      "textToday": {
+        "props": {
+          "text": {
+            "$computed": "trello_format_tracker_legend",
+            "args": {
+              "label": "Today",
+              "value": {
+                "$state": "/ui/tracker/today_count"
+              }
+            }
+          }
+        },
+        "type": "Caption"
       },
-
+      "textTodayB": {
+        "props": {
+          "text": {
+            "$computed": "trello_format_tracker_legend",
+            "args": {
+              "label": "Today",
+              "value": {
+                "$state": "/ui/tracker/today_count"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "textWeek": {
+        "props": {
+          "text": {
+            "$computed": "trello_format_tracker_legend",
+            "args": {
+              "label": "Upcoming",
+              "value": {
+                "$state": "/ui/tracker/week_count"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "textWeekB": {
+        "props": {
+          "text": {
+            "$computed": "trello_format_tracker_legend",
+            "args": {
+              "label": "Upcoming",
+              "value": {
+                "$state": "/ui/tracker/week_count"
+              }
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Due Date Tracker"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Clock",
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
       "todayContent": {
+        "children": [
+          "todayEmpty",
+          "todayRepeatList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
         "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["todayEmpty", "todayRepeatList"],
-        "visible": { "$state": "/ui/trackerTab/today" }
+        "visible": {
+          "$state": "/ui/trackerTab/today"
+        }
       },
       "todayEmpty": {
+        "props": {
+          "message": "No cards due today."
+        },
         "type": "Empty",
-        "props": { "message": "No cards due today." },
-        "visible": { "$state": "/ui/tracker/today_rows/0", "not": true }
+        "visible": {
+          "$state": "/ui/tracker/today_rows/0",
+          "not": true
+        }
+      },
+      "todayGroup": {
+        "children": [
+          "todayNum",
+          "todayLabel"
+        ],
+        "props": {
+          "align": "baseline",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "todayLabel": {
+        "props": {
+          "text": "Due today",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "todayNum": {
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/tracker/today_count"
+          }
+        },
+        "type": "Stat"
       },
       "todayRepeatList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["trackerCardRow"],
-        "repeat": { "statePath": "/ui/tracker/today_rows", "key": "id" }
+        "children": [
+          "trackerCardRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/tracker/today_rows"
+        },
+        "type": "Stack"
       },
-
-      "weekContent": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["weekEmpty", "weekRepeatList"],
-        "visible": { "$state": "/ui/trackerTab/week" }
-      },
-      "weekEmpty": {
-        "type": "Empty",
-        "props": { "message": "No cards due this week." },
-        "visible": { "$state": "/ui/tracker/week_rows/0", "not": true }
-      },
-      "weekRepeatList": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["trackerCardRow"],
-        "repeat": { "statePath": "/ui/tracker/week_rows", "key": "id" }
-      },
-
-      "trackerCardRow": {
+      "todayWeekRow": {
+        "children": [
+          "todayGroup",
+          "vDivider",
+          "weekGroup"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["trackerCardInfo", "trackerCardDue"]
-      },
-      "trackerCardInfo": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["trackerCardName", "trackerCardBoard"]
-      },
-      "trackerCardName": {
-        "type": "Text",
-        "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true }
+        "visible": {
+          "$state": "/_loading/trello.list_all_cards",
+          "not": true
+        }
       },
       "trackerCardBoard": {
-        "type": "Caption",
-        "props": { "text": { "$item": "board_label" }, "tone": "muted", "truncate": true }
+        "props": {
+          "text": {
+            "$item": "board_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Caption"
       },
       "trackerCardDue": {
-        "type": "Caption",
-        "props": { "text": { "$item": "due_label" }, "tone": "muted" }
+        "props": {
+          "text": {
+            "$item": "due_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
-
-      "openInTrelloRow": {
-        "type": "Row",
-        "props": { "justify": "end" },
-        "children": ["openInTrelloButton"]
+      "trackerCardInfo": {
+        "children": [
+          "trackerCardName",
+          "trackerCardBoard"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
       },
-      "openInTrelloButton": {
-        "type": "Button",
-        "props": { "label": "Open in Trello", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
-        "on": {
-          "click": { "action": "open_url", "params": { "url": "https://trello.com/b/tcjhGlBx/myimpact-qa-trello-tile-test-data", "target": "_blank" } }
+      "trackerCardName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "trackerCardRow": {
+        "children": [
+          "trackerCardInfo",
+          "trackerCardDue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "trackerDetailInner": {
+        "children": [
+          "trackerTabRow",
+          "overdueContent",
+          "todayContent",
+          "weekContent"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "trackerDetailSection": {
+        "children": [
+          "trackerDetailInner"
+        ],
+        "props": {},
+        "type": "Body",
+        "visible": {
+          "$state": "/ui/trackerExpanded"
         }
+      },
+      "trackerTabRow": {
+        "children": [
+          "tabOverdueOn",
+          "tabOverdueOff",
+          "tabTodayOn",
+          "tabTodayOff",
+          "tabWeekOn",
+          "tabWeekOff"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "vDivider": {
+        "props": {
+          "vertical": true
+        },
+        "type": "Divider"
+      },
+      "weekContent": {
+        "children": [
+          "weekEmpty",
+          "weekRepeatList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/trackerTab/week"
+        }
+      },
+      "weekEmpty": {
+        "props": {
+          "message": "No cards due this week."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/tracker/week_rows/0",
+          "not": true
+        }
+      },
+      "weekGroup": {
+        "children": [
+          "weekNum",
+          "weekLabel"
+        ],
+        "props": {
+          "align": "baseline",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "weekLabel": {
+        "props": {
+          "text": "Due this week",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "weekNum": {
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/tracker/week_count"
+          }
+        },
+        "type": "Stat"
+      },
+      "weekRepeatList": {
+        "children": [
+          "trackerCardRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/tracker/week_rows"
+        },
+        "type": "Stack"
       }
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "trello",
+    "cards",
+    "due dates",
+    "overdue",
+    "tracker"
+  ],
+  "title": "Due Date Tracker"
 }
