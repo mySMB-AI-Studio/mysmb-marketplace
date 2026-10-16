@@ -1,75 +1,28 @@
 {
-  "category": "tasks",
-  "connectorsUsed": [
-    "trello"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "trello",
-    "params": {},
-    "tool": "get_team_workload"
-  },
-  "description": "Assigned open card counts per board member across every open board, sorted highest to lowest.",
   "id": "trello-team-workload",
-  "keywords": [
-    "trello team workload",
-    "assigned cards",
-    "member workload",
-    "idMembers",
-    "kanban"
-  ],
+  "title": "Team Workload",
+  "description": "Assigned open card counts per board member across every open board, sorted highest to lowest.",
+  "category": "tasks",
+  "tags": ["trello", "cards", "members", "workload", "team"],
+  "keywords": ["trello team workload", "assigned cards", "member workload", "idMembers", "kanban"],
+  "connectorsUsed": ["trello"],
+  "brandColor": "#34DFBA",
   "popularity": 60,
   "sizing": {
-    "max": {
-      "colSpan": 6,
-      "rowSpan": 8
-    },
-    "min": {
-      "colSpan": 3,
-      "rowSpan": 5
-    },
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 6
-    }
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "trello",
+    "tool": "get_team_workload",
+    "params": {}
   },
   "spec": {
+    "root": "card",
     "elements": {
-      "avatar": {
-        "props": {
-          "initials": {
-            "$item": "initials"
-          },
-          "size": "md",
-          "tone": {
-            "$item": "avatar_tone"
-          }
-        },
-        "type": "Avatar"
-      },
-      "bigStatGroup": {
-        "children": [
-          "statValue",
-          "statLabel"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/_loading/trello.get_team_workload",
-          "not": true
-        }
-      },
       "card": {
-        "children": [
-          "headerRow",
-          "loading",
-          "bigStatGroup",
-          "memberEmpty",
-          "memberList",
-          "footerRow"
-        ],
+        "type": "Card",
         "props": {},
         "children": ["headerRow", "loading", "bigStatGroup", "memberEmpty", "memberList", "memberCardsDetailSection", "viewInTrelloRow"],
         "watch": {
@@ -80,11 +33,7 @@
                 "statePath": "/ui/members",
                 "value": {
                   "$computed": "trello_flatten_team_workload",
-                  "args": {
-                    "value": {
-                      "$state": "/trello/get_team_workload/members"
-                    }
-                  }
+                  "args": { "value": { "$state": "/trello/get_team_workload/members" } }
                 }
               }
             }
@@ -106,102 +55,54 @@
           ]
         }
       },
-      "countText": {
-        "props": {
-          "size": "sm",
-          "text": {
-            "$item": "count"
-          },
-          "weight": "semibold"
-        },
-        "type": "Text"
-      },
-      "eyebrow": {
-        "props": {
-          "text": "Trello"
-        },
-        "type": "Eyebrow"
-      },
-      "footerIcon": {
-        "props": {
-          "name": "Database",
-          "size": "sm",
-          "tone": "muted"
-        },
-        "type": "Icon"
-      },
-      "footerRow": {
-        "children": [
-          "footerIcon",
-          "footerText"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "xs"
-        },
-        "type": "Row"
-      },
-      "footerText": {
-        "props": {
-          "text": "Members endpoint + card idMembers fields",
-          "tone": "muted"
-        },
-        "type": "Caption"
-      },
+
       "headerRow": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
       },
-      "loading": {
-        "children": [
-          "sk1",
-          "sk2",
-          "sk3"
-        ],
-        "props": {
-          "gap": "sm"
-        },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "brand", "size": "sm" } },
+      "titleStack": {
         "type": "Stack",
-        "visible": {
-          "$state": "/_loading/trello.get_team_workload"
-        }
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
       },
+      "title": { "type": "Heading", "props": { "text": "Team Workload", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/trello.get_team_workload" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "bigStatGroup": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statValue", "statLabel"],
+        "visible": { "$state": "/_loading/trello.get_team_workload", "not": true }
+      },
+      "statValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/trello/get_team_workload/total_assigned" }, "size": "lg" }
+      },
+      "statLabel": { "type": "Caption", "props": { "text": "Cards assigned", "tone": "brand" } },
+
       "memberEmpty": {
-        "props": {
-          "message": "No cards assigned to any member."
-        },
         "type": "Empty",
+        "props": { "message": "No cards assigned to any member." },
         "visible": {
           "$and": [
-            {
-              "$state": "/_loading/trello.get_team_workload",
-              "not": true
-            },
-            {
-              "$state": "/ui/members/0",
-              "not": true
-            }
+            { "$state": "/_loading/trello.get_team_workload", "not": true },
+            { "$state": "/ui/members/0", "not": true }
           ]
         }
       },
       "memberList": {
-        "children": [
-          "memberRow"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "repeat": {
-          "key": "member_id",
-          "statePath": "/ui/members"
-        },
         "type": "Stack",
         "props": { "gap": "sm" },
         "children": ["memberRowCollapsed", "memberRowExpanded"],
@@ -249,35 +150,21 @@
         "children": ["progressBar"]
       },
       "nameCountRow": {
-        "children": [
-          "nameText",
-          "countText"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["nameText", "countText"]
       },
       "nameText": {
-        "props": {
-          "size": "sm",
-          "text": {
-            "$item": "name"
-          },
-          "truncate": true,
-          "weight": "semibold"
-        },
-        "type": "Text"
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "countText": {
+        "type": "Text",
+        "props": { "text": { "$item": "count" }, "size": "sm", "weight": "semibold" }
       },
       "progressBar": {
-        "props": {
-          "tone": "info",
-          "value": {
-            "$item": "pct"
-          }
-        },
-        "type": "ProgressBar"
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "pct" }, "tone": { "$item": "avatar_tone" } }
       },
 
       "avatarB": {
@@ -309,7 +196,7 @@
       },
       "progressBarB": {
         "type": "ProgressBar",
-        "props": { "value": { "$item": "pct" }, "tone": "info" }
+        "props": { "value": { "$item": "pct" }, "tone": { "$item": "avatar_tone" } }
       },
 
       "memberCardsDetailSection": {
@@ -362,12 +249,5 @@
       }
     }
   },
-  "tags": [
-    "trello",
-    "cards",
-    "members",
-    "workload",
-    "team"
-  ],
-  "title": "Team Workload"
+  "status": "published"
 }
