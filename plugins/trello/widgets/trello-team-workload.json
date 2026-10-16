@@ -1,0 +1,138 @@
+{
+  "id": "trello-team-workload",
+  "title": "Team Workload",
+  "description": "Assigned open card counts per board member across every open board, sorted highest to lowest.",
+  "category": "tasks",
+  "tags": ["trello", "cards", "members", "workload", "team"],
+  "keywords": ["trello team workload", "assigned cards", "member workload", "idMembers", "kanban"],
+  "connectorsUsed": ["trello"],
+  "popularity": 60,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "trello",
+    "tool": "get_team_workload",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "loading", "bigStatGroup", "memberEmpty", "memberList", "footerRow"],
+        "watch": {
+          "/trello/get_team_workload/members": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/members",
+                "value": {
+                  "$computed": "trello_flatten_team_workload",
+                  "args": { "value": { "$state": "/trello/get_team_workload/members" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "info", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Team Workload", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Trello" } },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/trello.get_team_workload" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+
+      "bigStatGroup": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["statValue", "statLabel"],
+        "visible": { "$state": "/_loading/trello.get_team_workload", "not": true }
+      },
+      "statValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/trello/get_team_workload/total_assigned" }, "size": "lg" }
+      },
+      "statLabel": { "type": "Caption", "props": { "text": "Cards assigned", "tone": "muted" } },
+
+      "memberEmpty": {
+        "type": "Empty",
+        "props": { "message": "No cards assigned to any member." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/trello.get_team_workload", "not": true },
+            { "$state": "/ui/members/0", "not": true }
+          ]
+        }
+      },
+      "memberList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberRow"],
+        "repeat": { "statePath": "/ui/members", "key": "member_id" },
+        "visible": { "$state": "/_loading/trello.get_team_workload", "not": true }
+      },
+      "memberRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["avatar", "memberStack"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "avatar_tone" }, "size": "md" }
+      },
+      "memberStack": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["nameCountRow", "progressBar"]
+      },
+      "nameCountRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["nameText", "countText"]
+      },
+      "nameText": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "countText": {
+        "type": "Text",
+        "props": { "text": { "$item": "count" }, "size": "sm", "weight": "semibold" }
+      },
+      "progressBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "pct" }, "tone": "info" }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["footerIcon", "footerText"]
+      },
+      "footerIcon": { "type": "Icon", "props": { "name": "Database", "tone": "muted", "size": "sm" } },
+      "footerText": { "type": "Caption", "props": { "text": "Members endpoint + card idMembers fields", "tone": "muted" } }
+    }
+  },
+  "status": "published"
+}

@@ -284,6 +284,75 @@ const format_tracker_legend: ComputedFunction = (args) => {
   return `${label} · ${value}`;
 };
 
+/**
+ * Turns a raw member name into "F. Lastname" display + "FL" initials.
+ * Handles the data-quality wrinkle also seen in Asana's own team-workload
+ * tile: some accounts have no display name set, so `name` is a raw email —
+ * split on "." in the local part to recover a name-shaped string first.
+ */
+function formatPersonName(rawName: string): { displayName: string; initials: string } {
+  let fullName = rawName.trim();
+  if (fullName.includes('@')) {
+    const localPart = fullName.split('@')[0];
+    fullName = localPart
+      .split(/[.\-_]+/)
+      .filter(Boolean)
+      .map((p) => p[0].toUpperCase() + p.slice(1))
+      .join(' ');
+  }
+  if (!fullName) return { displayName: '', initials: '' };
+
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  const displayName = parts.length >= 2 ? `${parts[0][0]}. ${parts[parts.length - 1]}` : fullName;
+  const initials = (parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+    : fullName.slice(0, 2)
+  ).toUpperCase();
+  return { displayName, initials };
+}
+
+const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+
+/**
+ * Flattens a get_team_workload response into display rows for the Team
+ * Workload tile. Sorts descending by count, derives "F. Lastname" + initials
+ * per member, assigns each a deterministic chart-1..5 tone (categorical, not
+ * status — per TILE-DISPLAY-STANDARDS.md §7's "coloring several arbitrary
+ * category labels distinctly" guidance, same pattern as Asana's own
+ * recent-activity avatar coloring), and scales each bar relative to the top
+ * member's count (not the grand total) — matching Asana's own Team Workload
+ * tile's pct formula in this same codebase.
+ *
+ * Args: { value: array } — get_team_workload's `members` array.
+ */
+const flatten_team_workload: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (raw.length === 0) return [];
+
+  const sorted = [...raw].sort((a, b) => Number(b.count ?? 0) - Number(a.count ?? 0));
+  const maxCount = Number(sorted[0].count ?? 0);
+
+  return sorted.map((member) => {
+    const rawName = String(member.name ?? '');
+    const { displayName, initials } = formatPersonName(rawName);
+    const count = Number(member.count ?? 0);
+    const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+
+    let hash = 0;
+    for (let i = 0; i < rawName.length; i++) hash = (hash * 31 + rawName.charCodeAt(i)) >>> 0;
+    const avatarTone = rawName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
+
+    return {
+      member_id: String(member.member_id ?? ''),
+      name: displayName || rawName,
+      initials,
+      count,
+      pct,
+      avatar_tone: avatarTone,
+    };
+  });
+};
+
 const elements: PluginElementsModule = {
   slug: 'trello',
   functions: {
@@ -295,6 +364,7 @@ const elements: PluginElementsModule = {
     format_lists_cards_summary,
     flatten_due_date_tracker,
     format_tracker_legend,
+    flatten_team_workload,
   },
 };
 
