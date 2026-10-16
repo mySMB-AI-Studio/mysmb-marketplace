@@ -156,15 +156,7 @@
       "header": {
         "type": "Header",
         "children": [
-          "headerRow"
-        ]
-      },
-      "headerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": [
-          "titleRow",
-          "workspaceBadge"
+          "titleRow"
         ]
       },
       "titleRow": {
@@ -194,10 +186,6 @@
       "titleSubtitle": {
         "type": "Caption",
         "props": { "text": "Meeting Summaries", "tone": "muted" }
-      },
-      "workspaceBadge": {
-        "type": "Badge",
-        "props": { "text": "Google Workspace", "tone": "muted", "variant": "outline" }
       },
       "body": {
         "type": "Body",
@@ -267,7 +255,17 @@
       },
       "summariseAllButton": {
         "type": "Button",
-        "props": { "label": "Summarize all", "variant": "primary", "size": "sm", "leadingIcon": "Sparkles" },
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard" },
+            "$then": "Summarizing…",
+            "$else": "Summarize all"
+          },
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Sparkles",
+          "disabled": { "$state": "/_loading/google-workspace-meet.get_meeting_summaries_dashboard" }
+        },
         "visible": { "$state": "/ui/meetingSummariesView/banner/canSummarizeAll" },
         "on": {
           "click": [
@@ -540,7 +538,17 @@
       },
       "summarizeButton": {
         "type": "Button",
-        "props": { "label": "Summarize", "variant": "primary", "size": "sm", "leadingIcon": "Sparkles" },
+        "props": {
+          "label": {
+            "$cond": { "$state": "/_loading/google-workspace-meet.summarize_meeting_transcript" },
+            "$then": "Summarizing…",
+            "$else": "Summarize"
+          },
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Sparkles",
+          "disabled": { "$state": "/_loading/google-workspace-meet.summarize_meeting_transcript" }
+        },
         "visible": { "$item": "canSummarize" },
         "on": {
           "click": {
