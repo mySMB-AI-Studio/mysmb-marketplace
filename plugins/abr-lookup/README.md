@@ -16,10 +16,14 @@ Useful for bookkeeping checks such as a supplier with a cancelled ABN, GST charg
 
 ## Configuration
 
-No environment variables and no sign-in (`authType: none`). Lookups go through mySMB's own ABN Lookup registration, held as a secret on the MCP server; users never enter or see it.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ABR_ACCESS_KEY` | Yes | The ABR Lookup access key mySMB issues to your workspace, sent as `Authorization: Bearer`. A workspace admin can enter it once as a **service connection** (Admin → Service connections) so tiles, reports and automations work for everyone; chat agents and mySidekick use each person's own connection. |
+
+Lookups go through mySMB's own ABN Lookup registration (the ABR GUID), held as a secret on the MCP server; users never enter or see it. The server refuses any call without a valid access key.
 
 ## Notes
 
-- The server is in `myhub-mcp-servers` (`src/integrations/abr`, mounted at `/abr/mcp`) and is deployed to **staging** (QA) only. It isn't on production yet, so this extension isn't ready to promote past QA.
-- The server doesn't yet authenticate callers. Access control is planned before production.
+- The server is in `myhub-mcp-servers` (`src/integrations/abr`, mounted at `/abr/mcp`) and is deployed to **staging** (QA). Before this extension goes to production, the server must be on `master` with `ABR_GUID` and `ABR_ACCESS_KEYS` wired into the production deploy, and each production workspace needs its own access key.
+- The server checks every call against its list of access keys (`ABR_ACCESS_KEYS` on the server, one key per workspace so each can be revoked).
 - ABN Lookup is free to use under the ABR web services agreement, which permits passing relevant extracts to third parties.
