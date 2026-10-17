@@ -144,3 +144,7 @@ The plugin ships a small `widget-elements` module (compiled to `widget-elements/
 - [People API reference](https://developers.google.com/people/api/rest)
 - [Google OAuth 2.0 scopes](https://developers.google.com/identity/protocols/oauth2/scopes)
 - [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground/)
+
+## Briefing reply drafts
+
+The briefing opens Gmail’s web compose window with the recipient, subject and draft text filled in. Check the From account in Gmail before sending: the browser chooses the signed-in sending account. This action needs no Gmail write connector or additional OAuth scope, and it does not send email automatically.
