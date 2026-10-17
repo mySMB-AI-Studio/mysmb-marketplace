@@ -5,8 +5,12 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as RB from './platform/report-bindings.ts';
+import { createRequire } from 'node:module';
 import { z } from 'zod';
+
+// The kit is CommonJS; load the vendored TypeScript through tsx's require hook
+// rather than an ESM namespace whose exports are nested under default on Node 22.
+const RB = createRequire(import.meta.url)('./platform/report-bindings.ts') as typeof import('./platform/report-bindings.ts');
 
 const base = process.argv[2] || dirname(fileURLToPath(import.meta.url));
 const dir = join(base, 'reports'), out = join(base, 'out');

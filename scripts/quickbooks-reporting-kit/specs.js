@@ -71,7 +71,7 @@ module.exports = {
   custom: { primary: 'custom_report', fx: (F) => ({ custom_report: F.customerSales, company_info: CI(F), prefs: PR(F) }), contains: ['Civica Pty Ltd', 'TOTAL', 'Top lines'], checks: ['TOTAL row = Σ rows'],
     snapshotInputs: { start_date: '2026-08-01', end_date: '2026-08-31' }, snapshotPeriod: 'August 2026' },
   custom_sectioned: { report: 'custom', primary: 'custom_report', fx: (F) => ({ custom_report: F.pnl, company_info: CI(F), prefs: PR(F) }), contains: ['Total for Income', 'Top lines'], checks: ["Each 'Total for' = Σ its rows"] },
-  catalogue: { primary: 'company_info', fx: (F) => ({ company_info: CI(F), prefs: PR(F) }), contains: ['Reports catalogue', 'Financial statements', 'Profit and Loss', 'Live', 'Payroll reports', 'reports live'], checks: ['Every report maps to a family prompt'] },
+  catalogue: { primary: 'company_info', fx: (F) => ({ company_info: CI(F), prefs: PR(F) }), contains: ['Reports catalogue', 'Financial statements', 'Profit and Loss', 'Live', 'Employees and time', 'reports live'], checks: ['Every report maps to a family prompt'] },
   forecast: { primary: 'pnl_monthly', fx: (F) => ({ pnl_monthly: F.pnl, company_info: CI(F), prefs: PR(F) }), contains: ['Growth assumptions', 'Total for Income', 'Gross Profit', 'Net Profit', 'Net profit — actual to forecast', '80% range (estimate)'],
     checks: ['Base period equals actuals', 'Monthly columns = QuickBooks total (every account)', 'Forecast net profit = income', 'Base period has enough history for the method'], snapshotInputs: { start_date: '2025-09-01' } },
   'employees-time': { primary: 'time_activities', fx: (F) => ({ time_activities: F.timeActivities, employees: F.employees, company_info: CI(F), prefs: PR(F) }),

@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const ROOT = process.argv[2] || path.resolve(__dirname, '..', '..');
 const SLUG = 'quickbooks-reporting-studio', P = path.join(ROOT, 'plugins', SLUG), K = __dirname;
-const FAM = require('./families.js');
+const { families: FAM, deferredFamilies } = require('./release-families.js');
 const rd = (f) => fs.readFileSync(path.join(K, f), 'utf8').replace(/\r\n/g, '\n');
 const w = (rel, s) => { const f = path.join(P, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s.replace(/\r\n/g, '\n')); };
 const kitCompact = rd('qb-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n').split('\n').map((l) => l.replace(/^\s+/, '')).filter((l) => l && !/^\/\//.test(l)).join('\n');
@@ -22,7 +22,7 @@ const NAME = { pnl: 'Profit and Loss', bs: 'Balance Sheet', scf: 'Statement of C
   payroll: 'Payroll Reports', employees: 'Employee Reports', ato: 'ATO Reports' };
 // The connectors a family's bindings call (payroll families: Employment Hero Payroll, where AU QuickBooks payroll runs).
 const mcpsOf = (f) => [...new Set(JSON.parse(rd('reports/' + f.id + '.manifest.json')).bindings.map((b) => b.tool.mcp))];
-const CONNECTORS = ['quickbooks-accounting', 'employment-hero-payroll'];
+const CONNECTORS = ['quickbooks-accounting'];
 const templated = (f) => !f.static && !f.custom;
 FAM.filter((f) => !f.static).forEach((f) => { if (!NAME[f.id]) throw new Error('no report name for ' + f.id); });
 // One report document, exactly as the copy path assembles it (build.js on the code extracted from the skills gives the same bytes).
@@ -38,7 +38,7 @@ description: Shared build recipe, controls contract, validation rules, QuickBook
 
 Use when you build any QuickBooks Online report, dashboard or report pack. Load this skill first, then the family skill (for example \`quickbooks-profit-and-loss\`). This file carries the tested report kit and stylesheet, and every family skill carries its own tested \`dataBindings\` and report config. You assemble them. You do not write report code from scratch.
 
-Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). Waves 1–4 are built. The payroll families (Q32–Q34) read Employment Hero Payroll (the \`employment-hero-payroll\` connector), because Australian QuickBooks Online payroll runs there. Each family skill traces its FULL PROMPT sections to this build.
+Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). The initial release includes the supported QuickBooks families. Payroll, Employee and ATO reports (Q32–Q34) are deferred until their payroll connector is supported; do not build them or ask the user to reconnect for them. Each family skill traces its FULL PROMPT sections to this build.
 
 ## Build a report (every family)
 
@@ -49,7 +49,6 @@ Every report skill except *Custom report builder* names its **template**: the ex
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is \`Header\` / \`Columns\` / \`Rows.Row[]\`, with sections carrying \`group\`, \`Header\`, \`Rows\` and \`Summary\`).
    - Read \`CompanyName\` and \`FiscalYearStartMonth\` for the date defaults. Do not copy any returned figure into the document.
-   - **Payroll families (Q32–Q34):** call \`list_businesses\` on \`employment-hero-payroll\` instead of \`qbo_query\`. The report's client is the payroll business, and its year is the Australian payroll year (1 July). A connection error means the user must install the Employment Hero Payroll extension and connect it with their payroll API key.
 3. **Starting values.** Decide the inputs the report opens on, starting from the family's \`dataBindings\` defaults. Change only the \`default\` values of date inputs, as the family skill's *Date defaults* line says (\`YYYY-MM-DD\` or \`"today"\`). The \`display\` default is a JSON string: set \`p\` (period preset), \`a\` (as-of preset), \`c\` (compare mode) and \`v\` (report view or member) to match the request. **Branding:** set \`b\` to a brand colour (\`#rrggbb\`) only when the user asks for their own or their customer's branding in chat ("use our brand colour #1a4d8f", "match Acme's navy"); otherwise leave \`b\` empty and the report uses QuickBooks branding, because the data comes from QuickBooks. Keep every other key, input name, option, binding id, tool name and param.
 4. **Title and description.** \`title\` = the family skill's *Report title* exactly (for example "QuickBooks Profit and Loss"): the platform, then the report's agreed name in Title Case — no company and no period, because the reader can switch both in the report and the saved title cannot follow; the report header always shows the current company and period. Put them in the one-line \`description\` instead ("Opens on <Company> · August 2026, accrual basis").
 5. **Create the report.**
@@ -79,10 +78,10 @@ The kit renders the control row from the config, so every report has the same gr
 
 ## Data and validation rules
 
-- Only \`quickbooks-accounting\` tools, plus \`employment-hero-payroll\` tools for the payroll families (Q32–Q34). Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
+- Only \`quickbooks-accounting\` tools. Never invent, estimate or reuse example figures. Anything missing is "N/A — not in source" and is listed under Sources & limitations. A tool that returns no rows is *unavailable*, not zero.
 - Every family has STEP 4 checks. The kit recomputes them on every load and every control change and shows them in the validation banner: Pass, Fail (red, listed first), N/A (cannot be computed) or information only (\`info: true\`), with the data timestamp, the financial-year source and the mechanism used. Only real checks count in "x/y passed"; N/A and information lines are listed and counted separately, so a report with nothing wrong never reads as a failure.
 - Sign and classification: QuickBooks can return credits where you expect debits (for example a negative Cost of Sales). The report shows the figures as QuickBooks returned them and adds a note. It never silently flips a sign.
-- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (\`report_date\`, \`aging_period\`, \`num_periods\`, \`aging_method\` and \`past_due\` are not passed by the connector yet); the Tax Summary returns BAS figures only for a named tax agency (\`agency_id\`; the GST reports list the agencies with \`list_tax_agency\` and use the ATO); payroll, employee and ATO reports come from Employment Hero Payroll (Q32–Q34; its API has no STP lodgement history; QuickBooks time activities and the employee contact list are in Q31); the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
+- Connector limits that the reports state rather than work around: one company per connection; the ageing reports age as of today (\`report_date\`, \`aging_period\`, \`num_periods\`, \`aging_method\` and \`past_due\` are not passed by the connector yet); the Tax Summary returns BAS figures only for a named tax agency (\`agency_id\`; the GST reports list the agencies with \`list_tax_agency\` and use the ATO); payroll, employee and ATO reports (Q32–Q34) are not included in this release; QuickBooks time activities and the employee contact list remain in Q31; the Audit Log is UI-only; a forecast (Q09) is an estimate projected from actuals, never a QuickBooks figure.
 - If the user needs data the connector does not expose, ask them for the QuickBooks export (Reports › open the report › set the controls › Export › Excel). Read the company, report name, period and basis from the export header and confirm them. Then save a STATIC report (no \`dataBindings\`) with \`connectors: ["quickbooks-accounting"]\` and say it is frozen.
 - Financial output is decision support, not audit, tax or legal advice.
 
@@ -241,7 +240,6 @@ Use when ${f.trigger}. This replaces QuickBooks' "Ask a question (BETA)" and Int
 | Assets, liabilities, equity at a date | \`get_report_balance_sheet\` (end_date) | Groups TotalAssets, Liabilities, Equity |
 | GST for a quarter | \`list_tax_agency\`, then \`get_report_tax_summary\` with \`agency_id\` = the Australian Tax Office's Id | BAS labels 1A, 1B, 9 (no rows = no GST transactions for that agency in the period — a nil period, every label A$0 — but only if the agency has GST rows over a longer history; if it never does, or no tax agency is set up, say GST is unavailable, not zero) |
 | A specific invoice or bill | \`list_invoice\` / \`list_bill\` (where "DocNumber = '…'") | Balance, DueDate |
-| Payroll for a period: wages, PAYG, super (AU) | \`get_report_gross_to_net\` on \`employment-hero-payroll\` (from_date, to_date) | \`totals\` (grossEarnings, payg, help, netEarnings, sgc); BAS W1 / W2 from \`get_report_payg\`. Not connected → the user connects the Employment Hero Payroll extension |
 
 4. **Answer** in one to three sentences: the figure (QuickBooks format, e.g. -A$175,286.75), the period, the basis, and the source — "from the QuickBooks Profit and Loss, 1 August 2026 to 31 August 2026, accrual basis, line Net Income". If you added lines together, list them.
 5. **Offer the full report** ("Want the live Profit and Loss for August?") and build it with the family skill if the user says yes.
@@ -250,7 +248,8 @@ Use when ${f.trigger}. This replaces QuickBooks' "Ask a question (BETA)" and Int
 
 - Only figures a tool returned. Never estimate, forecast or advise. Missing data is "N/A — not in source".
 - If QuickBooks is not connected, say so and point to Settings → Connections.
-- Questions neither connector can answer (audit log, bank-feed status, STP lodgement history): say so and offer the QuickBooks export route.
+- Payroll, Employee and ATO reports are deferred in this release; do not call a payroll connector or ask for reconnects.
+- Questions the connector cannot answer (audit log, bank-feed status, STP lodgement history): say so and offer the QuickBooks export route.
 
 ## Validation
 
@@ -372,13 +371,16 @@ FAM.filter(templated).forEach((f) => {
 // A template whose report no longer ships as one would linger in the Reports library: remove it.
 for (const d of fs.existsSync(path.join(P, 'reports')) ? fs.readdirSync(path.join(P, 'reports')) : []) if (!FAM.some((f) => templated(f) && f.skill === d)) fs.rmSync(path.join(P, 'reports', d), { recursive: true, force: true });
 
+// Deferred source stays in the kit, outside every runtime discovery directory.
+for (const f of deferredFamilies) fs.rmSync(path.join(P, 'skills', f.skill + '.md'), { force: true });
+
 // ---------------------------------------------------------------- agent
 const route = FAM.map((f) => `- ${f.q} ${f.title} → ${SLUG}:${f.skill}`).join('\n');
 const rolePrompt = `You are the QuickBooks Reporting Specialist (AGT-003). You build accurate, validated, live QuickBooks Online reports, dashboards and report packs in QuickBooks' own styling, from the connected QuickBooks company.
 
 For every report request:
 1. Choose the family skill from the routing list below. Load ${SLUG}:quickbooks-report-foundation and that family skill before calling any tool.
-2. Follow the foundation's "Build a report" steps exactly. Make one discovery call to the family's primary tool and one qbo_query for CompanyInfo (for the payroll families Q32–Q34, list_businesses on employment-hero-payroll instead). When you have the artifact_from_template tool and the family skill names a template, create the report with it, passing only the inputs the request changes (the date defaults and the display settings). Otherwise copy the family's dataBindings and report config with those changes, assemble the skeleton with the stylesheet, kit and config verbatim, and save with artifact_save, passing dataBindings.
+2. Follow the foundation's "Build a report" steps exactly. Make one discovery call to the family's primary tool and one qbo_query for CompanyInfo. When you have the artifact_from_template tool and the family skill names a template, create the report with it, passing only the inputs the request changes (the date defaults and the display settings). Otherwise copy the family's dataBindings and report config with those changes, assemble the skeleton with the stylesheet, kit and config verbatim, and save with artifact_save, passing dataBindings.
 3. Ask only for what cannot be defaulted, such as a specific period the user named ambiguously. Never ask for an output format: every report is HTML with Download PDF and Download Excel buttons.
 4. Reply with a short completion note (3–6 lines) and the report button.
 
@@ -386,13 +388,13 @@ Routing (built):
 ${route}
 
 ${((todo) => todo.length ? `Families not built yet: ${todo.map((r) => r.family.split(' (')[0] + ' (' + r.q + ', Wave ' + r.wave + ')').join(', ')}. For these, say the report is on the Reporting Library roadmap. Offer the closest built report, or offer to reproduce a QuickBooks export the user attaches. Never improvise one of these from adjacent data.`
-  : 'Every Reporting Library family (Q00–Q39) is built. For a QuickBooks report or view that no family covers, say so, offer the closest built report or the Custom report builder, or offer to reproduce a QuickBooks export the user attaches. Never improvise a report from adjacent data.')(JSON.parse(rd('reports/catalogue.data.json')).filter((r) => !r.skill))}
+  : 'All included Reporting Library families are built. For a QuickBooks report or view that no family covers, say so, offer the closest built report or the Custom report builder, or offer to reproduce a QuickBooks export the user attaches. Never improvise a report from adjacent data.')(JSON.parse(rd('reports/catalogue.data.json')).filter((r) => !r.skill))}
 
 Rules:
-- Use only the quickbooks-accounting connector, plus the employment-hero-payroll connector for the payroll families (Q32–Q34), and only what they return. Never invent, estimate or reuse example figures. Missing data is "N/A — not in source", and empty data is unavailable, not zero.
+- Use only the quickbooks-accounting connector and only what it returns. Never invent, estimate or reuse example figures. Missing data is "N/A — not in source", and empty data is unavailable, not zero.
 - The client is the company this QuickBooks connection is authorised for (one company per connection). To report on another client, the user connects that company under Settings → Connections. Never type or guess a client name, and never mix two companies in one report.
 - QuickBooks connection mechanisms named in the prompt library other than this connector (the Intuit connector, Intuit's open-source MCP, CData, Spreadsheet Sync) are not available in the workspace. Do not mention them to the user unless they ask.
-- State connector limits plainly when they apply: ageing is as of today; the GST Tax Summary needs the tax agency (the GST reports use the ATO); payroll, employee and ATO reports (Q32–Q34) come from Employment Hero Payroll — if it is not connected, tell the user to install the Employment Hero Payroll extension and connect it under Settings → Connections with their payroll API key.
+- State connector limits plainly when they apply: ageing is as of today; the GST Tax Summary needs the tax agency (the GST reports use the ATO); Payroll, Employee and ATO reports (Q32–Q34) are deferred and unavailable in this release. Do not build them, route to a deferred skill or ask for payroll installation, API keys or reconnects. QuickBooks employee contacts and time activities remain available in Q31.
 - A forecast is an estimate projected from QuickBooks actuals. Always call it an estimate, and never present a forecast figure as a QuickBooks figure.
 - If QuickBooks is not connected, say so and point to Settings → Connections. Do not build an empty report.
 - Branding: reports use QuickBooks branding by default. If the user asks for their own or their customer's branding, set the brand colour as the foundation skill describes (the display input; on the copy path also the config defaults); never guess a colour.
@@ -420,25 +422,25 @@ w('README.md', `# QuickBooks Reporting Studio
 
 ${description}
 
-Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This version delivers **Waves 1–4** (${FAM.length} families). The payroll families (Q32–Q34) read **Employment Hero Payroll**, where Australian QuickBooks Online payroll runs.
+Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This initial release delivers **30 report templates** (${FAM.length} supported families and guides). Payroll, Employee and ATO reports (Q32–Q34) are deferred until their payroll connector is supported.
 
 ## What's in the box
 
-- **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the \`quickbooks-accounting\` connector, and \`employment-hero-payroll\` (from the Employment Hero Payroll extension) for the payroll families.
+- **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the \`quickbooks-accounting\` connector.
 - **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + ${FAM.length} family skills:
 ${FAM.map((f) => '  - ' + f.q + ' ' + f.title + ' — `' + f.skill + '`').join('\n')}
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
 
 - **Report templates:** every family except the custom report builder also ships as a report template (\`reports/<skill>/\`), listed in the workspace under Reports → From your plugins (**Use this report**). The agent creates reports from them with \`artifact_from_template\` when the platform has it, so it never retypes the report.
 
-Connect QuickBooks under Settings → Connections (OAuth) before asking for a report. For the payroll, employee and ATO reports (Q32–Q34), also install the **Employment Hero Payroll** extension and connect it with your payroll API key.
+Connect QuickBooks under Settings → Connections (OAuth) before asking for a report. No payroll connector is required for this release.
 
 ## Connector limits (stated in the reports)
 
 - One QuickBooks company per connection.
 - Ageing reports age as of today: \`report_date\`, \`aging_period\`, \`num_periods\`, \`aging_method\` and \`past_due\` are not passed by the connector yet.
 - \`get_report_tax_summary\` returns BAS figures only when \`agency_id\` names the tax agency (added in myhub-mcp-servers #542). The GST reports list the agencies and use the Australian Tax Office.
-- Payroll, employee and ATO reports (Q32–Q34) come from the \`employment-hero-payroll\` connector: one payroll business per report, pay figures shown, tax file numbers, bank details, dates of birth, addresses and contact details removed, and no STP lodgement history (not in Employment Hero's API). QuickBooks time activities and the employee contact list are in Q31.
+- Payroll, Employee and ATO reports (Q32–Q34) are excluded from this release. Their source remains in \`scripts/quickbooks-reporting-kit/\` for future support. QuickBooks time activities and the employee contact list remain in Q31.
 - \`get_company_info\` looks CompanyInfo up by realm id and returns "not found". The reports read CompanyInfo through \`qbo_query\` instead.
 
 ## Maintenance

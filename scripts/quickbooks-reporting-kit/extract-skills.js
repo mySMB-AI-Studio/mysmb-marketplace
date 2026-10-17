@@ -1,6 +1,6 @@
 // Rebuild kit/css/skeleton/manifests/configs FROM the generated skill markdown, into $OUT — the agent's view of the world.
 const fs = require('fs'), path = require('path');
-const [skillsDir, OUT] = process.argv.slice(2), FAM = require('./families.js');
+const [skillsDir, OUT] = process.argv.slice(2), { families: FAM } = require('./release-families.js');
 const blocks = (md) => { const out = []; md.replace(/\r\n/g, '\n').replace(/```(\w+)\n([\s\S]*?)\n```/g, (_, lang, body) => out.push({ lang, body })); return out; };
 fs.mkdirSync(path.join(OUT, 'reports'), { recursive: true });
 const fnd = blocks(fs.readFileSync(path.join(skillsDir, 'quickbooks-report-foundation.md'), 'utf8'));

@@ -1,13 +1,16 @@
 // Builds the live reports catalogue (Q02): reports/catalogue.data.json, reports/catalogue.manifest.json and reports/catalogue.cfg.js.
 // Status comes from families.js (built skills), wave and Q-ID from the library Index tab, category + description from catalogue-cards.js.
 const fs = require('fs'), path = require('path');
-const idx = fs.readFileSync(process.argv[2] || 'C:/tmp/rl/QB_v1.1/Index.txt', 'utf8').split(/\r?\n/).filter((l) => /^\[\d+\] \d+ \|/.test(l));
-const FAM = require('./families.js'), CARDS = require('./catalogue-cards.js'), built = { Q38: 'quickbooks-report-foundation', Q39: 'quickbooks-report-foundation' };
+const { families: FAM, isIncluded } = require('./release-families.js');
+const CARDS = require('./catalogue-cards.js'), built = { Q38: 'quickbooks-report-foundation', Q39: 'quickbooks-report-foundation' };
+// The committed index makes regeneration portable; an explicit source Index.txt remains supported.
+const idx = process.argv[2] ? fs.readFileSync(process.argv[2], 'utf8').split(/\r?\n/).filter((l) => /^\[\d+\] \d+ \|/.test(l)) : null;
 FAM.forEach((f) => { built[f.q] = f.skill; });
-const rows = idx.map((l) => {
+const sourceRows = idx ? idx.map((l) => {
   const c = l.replace(/^\[\d+\] /, '').split(' | '), qi = c.findIndex((x) => /^Q\d\d$/.test(x)), after = c.slice(qi);
   return { q: after[0], family: c[2], type: after[1], users: after[2], priority: after[3], wave: +after[4], skill: built[after[0]] || null };
-});
+}) : require('./catalogue-index.json');
+const rows = sourceRows.filter(isIncluded).map((r) => ({ ...r, skill: built[r.q] || null }));
 fs.writeFileSync(path.join(__dirname, 'reports', 'catalogue.data.json'), JSON.stringify(rows));
 const missing = rows.filter((r) => !CARDS.cards[r.q]).map((r) => r.q);
 if (missing.length) throw new Error('catalogue-cards.js has no card for: ' + missing.join(', '));
