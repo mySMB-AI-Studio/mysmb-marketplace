@@ -69,7 +69,7 @@ module.exports = [
     discovery: '`qbo_query` (`SELECT * FROM CompanyInfo`) and `get_preferences` — only the company name, country and home currency are shown; the catalogue itself is built into the config',
     dates: 'None.',
     fileName: 'quickbooks-reports-catalogue.html', tags: ['quickbooks', 'catalogue', 'library'],
-    members: [['Every QuickBooks report family (Q00–Q39) as a card', 'Name, plain-English description, Live or Not yet implemented · Wave N, grouped by category'], ['Search and category chips', 'Filter by name, description or Q-ID; one chip per category'], ['Favourites, Create new report', 'Use saved reports in the Reports library; the custom report builder (Q35) builds any standard report']],
+    members: [['Every included QuickBooks report family as a card', 'Name, plain-English description, Live or Not yet implemented · Wave N, grouped by category'], ['Search and category chips', 'Filter by name, description or Q-ID; one chip per category'], ['Favourites, Create new report', 'Use saved reports in the Reports library; the custom report builder (Q35) builds any standard report']],
     checks: ['Every report maps to a family prompt (Q00–Q39)'],
     golden: 'Same layout as the Xero Reports Catalog: company header, search, category chips, cards marked Live or Not yet implemented.' }
 ];

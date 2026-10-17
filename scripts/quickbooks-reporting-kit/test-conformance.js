@@ -7,7 +7,7 @@ const { run } = require('./harness.js');
 const F = require('./fixtures.js');
 const fs = require('fs'), path = require('path');
 const SPECS = require('./specs.js');
-const FAM = require('./families.js');
+const { families: FAM } = require('./release-families.js');
 const kit = new Set(FAM.filter((f) => !f.static && !f.custom).map((f) => f.id));
 const all = Object.keys(SPECS).filter((n) => kit.has(SPECS[n].report || n) && !SPECS[n].report); // one run per report
 const names = process.argv.slice(2).length ? process.argv.slice(2) : all;

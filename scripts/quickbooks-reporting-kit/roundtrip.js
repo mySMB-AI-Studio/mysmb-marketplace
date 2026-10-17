@@ -3,11 +3,14 @@
 // runs the platform validators, checks every report template against the skills, and checks the skills' size limits.
 const fs = require('fs'), path = require('path'), os = require('os'), { execFileSync } = require('child_process');
 const K = __dirname, PLUGIN = path.resolve(K, '..', '..', 'plugins', 'quickbooks-reporting-studio'), SKILLS = path.join(PLUGIN, 'skills');
-const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-rt-')), FAM = require('./families.js'), KIT = FAM.filter((f) => !f.static);
+const OUT = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-rt-')), { families: FAM } = require('./release-families.js'), KIT = FAM.filter((f) => !f.static);
 const run = (cmd, args, env) => execFileSync(cmd, args, { cwd: K, stdio: 'inherit', env: Object.assign({}, process.env, env || {}), shell: process.platform === 'win32' });
 const rdx = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 console.log('1. extract from', SKILLS); run('node', ['extract-skills.js', SKILLS, OUT]);
-console.log('2. tests on the extracted copy'); for (const t of ['test-all.js', 'test-w4.js', 'test-payroll.js', 'test-pnl.js', 'test-conformance.js']) run('node', [t], { KIT_DIR: OUT });
+console.log('2. tests on the extracted copy'); for (const t of ['test-all.js', 'test-w4.js', 'test-pnl.js', 'test-conformance.js']) {
+  const names = t === 'test-all.js' ? Object.entries(require('./specs.js')).filter(([n, s]) => KIT.some((f) => f.id === (s.report || n))).map(([n]) => n) : [];
+  run('node', [t, ...names], { KIT_DIR: OUT });
+}
 console.log('3. build every kit report'); for (const f of KIT) run('node', ['build.js', f.id], { KIT_DIR: OUT });
 console.log('4. platform validators'); run('npx', ['tsx', 'check-reports.mts', OUT]);
 console.log('5. templates = the skills: reports/<skill>/report.html is the document the copy path assembles, report.json the skill\'s dataBindings');

@@ -30,3 +30,9 @@ npm run roundtrip    # before a PR: extract the code from the generated skills, 
 The tests pin the report clock to 25 September 2026, the date the fixtures are built around, so rolling presets give the same dates on any day.
 
 Other helpers: `gen-variants.js` (the inventory and projects overview configs from their family configs), `fix-manifest-format.js` (re-formats manifests in the house style), `demo.js <report>` (a standalone demo page backed by the fixtures).
+
+## Initial release scope
+
+`release-families.js` excludes Q32 Payroll, Q33 Employee and Q34 ATO reports until Employment Hero Payroll is supported in production. Their family metadata, manifests, configs, fixtures and source tests remain here; generation removes their runtime skills and templates. The remaining 30 templates, catalogue cards, agent routing and connector declarations are generated from the same supported set. Q31 QuickBooks employee contacts and time activities stay available.
+
+`catalogue-index.json` retains the full source index so `npm run gen` works without an external Windows Index.txt. Pass an Index.txt path to `gen-catalogue.js` only when refreshing that source.
