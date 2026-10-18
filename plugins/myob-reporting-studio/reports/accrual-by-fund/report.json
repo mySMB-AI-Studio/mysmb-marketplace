@@ -1,0 +1,160 @@
+{
+  "title": "MYOB Accrual by Fund",
+  "description": "Live, validated MYOB Accrual by Fund (M25): Accrual by fund, Accrual by fund (detail).",
+  "tags": [
+    "myob",
+    "payroll",
+    "superannuation",
+    "M25",
+    "M26"
+  ],
+  "fileName": "myob-accrual-by-fund.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "from_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "to_date",
+        "label": "To",
+        "type": "date",
+        "default": "today"
+      },
+      {
+        "name": "adv_from",
+        "label": "Pay advices from (derived)",
+        "type": "date",
+        "default": "2026-05-17"
+      },
+      {
+        "name": "adv_to",
+        "label": "Pay advices to (derived)",
+        "type": "date",
+        "default": "2026-11-12"
+      },
+      {
+        "name": "company_file",
+        "label": "Company file",
+        "type": "string",
+        "maxLength": 64,
+        "default": ""
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Bookkeeper"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"fund\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "adv",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_payroll_advices"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "adv_from"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "adv_to"
+          },
+          "include_advices": {
+            "kind": "static",
+            "value": true
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "cats",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_payroll_category_summary"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "journals",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_journal_transactions"
+        },
+        "params": {
+          "from_date": {
+            "kind": "input",
+            "input": "from_date"
+          },
+          "to_date": {
+            "kind": "input",
+            "input": "to_date"
+          },
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "accounts",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        },
+        "params": {
+          "myob_company_file_id": {
+            "kind": "input",
+            "input": "company_file"
+          }
+        }
+      },
+      {
+        "id": "company_files",
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        },
+        "params": {}
+      }
+    ]
+  }
+}
