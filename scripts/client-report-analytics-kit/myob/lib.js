@@ -19,7 +19,8 @@ function spendMoney(p) {
 const TOOL = { get_profit_and_loss: L.profitAndLoss, get_profit_and_loss_3m: L.profitAndLoss, get_balance_sheet: L.balanceSheet, list_accounts: L.listAccounts, list_company_files: L.companyFiles,
   list_invoices: L.listInvoices, list_bills: L.listBills, list_journal_transactions: L.listJournalTransactions, list_tax_codes: L.listTaxCodes, get_aged_receivables: L.agedReceivables, get_aged_payables: L.agedPayables,
   get_gst_summary: L.taxCodeSummary, list_invoice_lines: L.listInvoiceLines, list_bill_lines: L.listBillLines, list_spend_money: spendMoney, list_payments: L.listPayments, list_supplier_payments: L.listSupplierPayments,
-  list_contacts: L.listContacts, workq_activity: workqActivity, list_bank_statement_lines: L.listBankStatementLines, list_payroll_advices: L.listPayrollAdvices };
+  list_contacts: L.listContacts, workq_activity: workqActivity, list_bank_statement_lines: L.listBankStatementLines, list_payroll_advices: L.listPayrollAdvices,
+  list_suppliers: L.listSuppliers, list_timesheets: L.listTimesheets };
 // workq_activity (the 'workspace' built-in report server, CRA-15): no production shape to copy from anywhere in this repo —
 // this kit's own best-effort test shape, flagged in the PR as unverified against the real platform. Company file 1's name
 // appears on two in-period items (one out of period); company file 2's name appears on none.

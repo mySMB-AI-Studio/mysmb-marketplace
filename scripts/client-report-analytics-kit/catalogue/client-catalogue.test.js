@@ -27,11 +27,15 @@ const rows = (d) => [...d.querySelectorAll('[data-row]')].map((e) => e.getAttrib
   ok('portal check is information, not a pass', /ℹ Boxes hidden from the client portal/.test(txt(t.doc, '#banner')));
   const fo = t.doc.querySelector('[data-row="CRA-01"]').textContent;
   ok('CRA-01 box is Live and names the Xero template and the client', /Live/.test(fo) && fo.includes('Xero Financial Overview') && fo.includes('Northwind Trading Pty Ltd'), fo);
-  ok('CRA-12 box says no time source', /no time source/.test(t.doc.querySelector('[data-row="CRA-12"]').textContent));
-  for (const id of ['CRA-02', 'CRA-08', 'CRA-10']) ok(id + ' box points to the weekly Ledger checks report (Bookkeeping for Xero)', /weekly Ledger checks report/.test(t.doc.querySelector('[data-row="' + id + '"]').textContent), t.doc.querySelector('[data-row="' + id + '"]').textContent);
-  ok('CRA-09 box says a live report can’t read the findings yet', /can’t read the checks engine/.test(t.doc.querySelector('[data-row="CRA-09"]').textContent));
-  ok('live (or export-routed) boxes are exactly the Wave 1 + Wave 2 items', [...t.doc.querySelectorAll('.pill.live')].map((p) => p.closest('[data-row]').getAttribute('data-row')).filter((r) => /^CRA/.test(r)).join() === 'CRA-01,CRA-03,CRA-04,CRA-05,CRA-06,CRA-07,CRA-11,CRA-14');
-  ok('CRA-15 box says the platform has no per-client WorkQ activity yet', /no link to a client yet/.test(t.doc.querySelector('[data-row="CRA-15"]').textContent), t.doc.querySelector('[data-row="CRA-15"]').textContent);
+  ok('CRA-12 on a Xero client says Xero has no time records', /Xero’s accounting API has no time records/.test(t.doc.querySelector('[data-row="CRA-12"]').textContent), t.doc.querySelector('[data-row="CRA-12"]').textContent);
+  ok('CRA-13 on a Xero client says why it is not available', /doesn’t link a quote to the invoices raised from it/.test(t.doc.querySelector('[data-row="CRA-13"]').textContent));
+  for (const [id, title] of [['CRA-02', 'Xero Data Quality'], ['CRA-08', 'Xero Client Queries'], ['CRA-09', 'Xero Health Check'], ['CRA-10', 'Xero GST Check']]) {
+    const box = t.doc.querySelector('[data-row="' + id + '"]').textContent;
+    ok(id + ' box is Live, names ' + title + ' and says the checks run as the report opens', /Live/.test(box) && box.includes(title) && /run on the client’s ledger as the report opens/.test(box), box);
+  }
+  ok('live (or export-routed, or workspace) boxes on a Xero client are every item but the two time reports', [...t.doc.querySelectorAll('.pill.live')].map((p) => p.closest('[data-row]').getAttribute('data-row')).filter((r) => /^CRA/.test(r)).join() === 'CRA-01,CRA-02,CRA-03,CRA-04,CRA-05,CRA-06,CRA-07,CRA-08,CRA-09,CRA-10,CRA-11,CRA-14,CRA-15');
+  ok('CRA-15 routes to the built-in Workspace Activity report and says it is workspace-wide', /Live · Workspace/.test(t.doc.querySelector('[data-row="CRA-15"]').textContent) && /Reports → Workspace Activity/.test(t.doc.querySelector('[data-row="CRA-15"]').textContent) && /not this client only/.test(t.doc.querySelector('[data-row="CRA-15"]').textContent), t.doc.querySelector('[data-row="CRA-15"]').textContent);
+  ok('no box says "Not available" without a reason', [...t.doc.querySelectorAll('.pill.na')].every((p) => p.closest('[data-row]').querySelector('.how').textContent.trim().length > 20));
 
   // 2. switch to the MYOB file: library + template names follow, setInputs records it, no refetch
   const sel = t.doc.getElementById('client'); sel.value = 'myob:cf-demo'; sel.dispatchEvent(new t.w.Event('change'));
@@ -42,10 +46,16 @@ const rows = (d) => [...d.querySelectorAll('[data-row]')].map((e) => e.getAttrib
   ok('selection is announced with the declared input', JSON.stringify(t.setInputsLog.pop()) === '{"client":"myob:cf-demo"}');
   ok('a client switch makes no tool call (no data per client yet)', t.calls.length === 3);
 
+  ok('MYOB client: CRA-12 is Live, names MYOB Actual Time and says it is the client’s own staff time', /Live/.test(t.doc.querySelector('[data-row="CRA-12"]').textContent) && t.doc.querySelector('[data-row="CRA-12"]').textContent.includes('MYOB Actual Time') && /not the practice’s time/.test(t.doc.querySelector('[data-row="CRA-12"]').textContent));
+  ok('MYOB client: CRA-13 says why it is not available on MYOB yet', /Not available on MYOB yet/.test(t.doc.querySelector('[data-row="CRA-13"]').textContent));
+  ok('MYOB client: CRA-02 names MYOB Data Quality', t.doc.querySelector('[data-row="CRA-02"]').textContent.includes('MYOB Data Quality'));
+
   // 3. QuickBooks: one-company notice; no "then pick" step
   sel.value = 'quickbooks:1'; sel.dispatchEvent(new t.w.Event('change'));
   ok('QuickBooks one-company limit is stated', /one company per connection/.test(txt(t.doc, '#notices')));
   ok('QuickBooks library listed', rows(t.doc).length === 15 + LIB.quickbooks.reports.length);
+  ok('QuickBooks client: CRA-13 is Live and names QuickBooks Estimate Accuracy (dollars, not time)', /Live/.test(t.doc.querySelector('[data-row="CRA-13"]').textContent) && t.doc.querySelector('[data-row="CRA-13"]').textContent.includes('QuickBooks Estimate Accuracy') && /no time estimates/.test(t.doc.querySelector('[data-row="CRA-13"]').textContent), t.doc.querySelector('[data-row="CRA-13"]').textContent);
+  ok('QuickBooks client: CRA-12 names QuickBooks Actual Time', t.doc.querySelector('[data-row="CRA-12"]').textContent.includes('QuickBooks Actual Time'));
 
   // 4. chips + search
   t.doc.querySelector('[data-chip="Tax & BAS"]').click();
