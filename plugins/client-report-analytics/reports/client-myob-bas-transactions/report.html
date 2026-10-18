@@ -872,7 +872,9 @@ var CRA = MK.app({
       order.forEach(function (u) { var ls = by[u], f = ls[0], hd = H[u], tot = hd ? MK.num(hd.TotalAmount) : null, neg = tot != null ? tot < 0 : MK.sum(ls.map(function (l) { return MK.num(l.Total) || 0; })) < 0;
         split({ tax: hd ? MK.num(hd.TotalTax) : null, gross: tot, incl: hd ? !!hd.IsTaxInclusive : !!f.IsTaxInclusive, src: neg ? label[1] : label[0], ref: f.Number || '', date: MK.isoDate(f.Date), contact: (f[ckey] || {}).Name || '', side: side },
           ls.map(function (l) { return { amt: MK.num(l.Total) || 0, code: String((l.TaxCode || {}).Code || '').toUpperCase(), account: l.Type === 'Freight' && !l.Account ? 'Freight' : acct(l.Account), desc: l.Description || '' }; })); });
-      return { docs: order.length, headers: Object.keys(H).length, missing: Object.keys(H).filter(function (u) { return !by[u]; }), trunc: !!(v && v.Truncated), errors: v && v.Errors ? v.Errors : null };
+      // A $0 document with no lines (seen on QA: a converted quote, Q-2026-0057) has nothing to list or tie: it's named, not missing.
+      var miss = Object.keys(H).filter(function (u) { return !by[u]; }), empty = miss.filter(function (u) { return Math.abs(MK.num(H[u].TotalAmount) || 0) < 0.005; });
+      return { docs: order.length, headers: Object.keys(H).length, missing: miss.filter(function (u) { return empty.indexOf(u) < 0; }), empty: empty.map(function (u) { return H[u].Number || u; }), trunc: !!(v && v.Truncated), errors: v && v.Errors ? v.Errors : null };
     };
     var INV = c.data.inv_lines ? docsFrom('inv_lines', 's', 'invoices', 'Customer', ['Invoice', 'Credit note']) : null, BIL = c.data.bill_lines ? docsFrom('bill_lines', 'p', 'bills', 'Supplier', ['Bill', 'Supplier credit']) : null;
     var SP = c.data.spend ? MK.items(c.data.spend) : null;
@@ -917,7 +919,7 @@ var CRA = MK.app({
     // ---- checks
     var cov = function (X, what, hid) { if (!X) return { name: what + ' lines loaded', pass: null, detail: 'N/A' }; if (c.errors[hid]) return { name: 'Every ' + what + ' in the period has its lines', pass: null, detail: c.err(hid) };
       var e = X.errors ? Object.keys(X.errors).map(function (k) { return k + ': ' + X.errors[k]; }).join('; ') : '';
-      return { name: 'Every ' + what + ' in the period has its lines (' + X.headers + ' in list_' + what + 's, ' + X.docs + ' with lines; at most 5,000 lines)', pass: !X.trunc && !X.missing.length && X.docs >= X.headers, detail: X.trunc ? 'Truncated at 5,000 lines — narrow the dates' : X.missing.length ? X.missing.length + ' without lines' + (e ? ' (' + e + ')' : '') : e ? 'complete; layouts not read: ' + e : 'complete' }; };
+      return { name: 'Every ' + what + ' in the period has its lines (' + X.headers + ' in list_' + what + 's, ' + X.docs + ' with lines; at most 5,000 lines)', pass: !X.trunc && !X.missing.length && X.docs + X.empty.length >= X.headers, detail: X.trunc ? 'Truncated at 5,000 lines — narrow the dates' : X.missing.length ? X.missing.length + ' without lines' + (e ? ' (' + e + ')' : '') : (e ? 'complete; layouts not read: ' + e : 'complete') + (X.empty.length ? '; ' + X.empty.length + ' $0 ' + what + '(s) with no lines left out: ' + X.empty.slice(0, 5).join(', ') : '') }; };
     var badT = rec.filter(function (x) { return !MK.near(x.tc, x.stc) || !MK.near(x.tp, x.stp); });
     var g = c.data.gst, dOf = function (v) { return String(v || '').slice(0, 10); };
     var checks = [
