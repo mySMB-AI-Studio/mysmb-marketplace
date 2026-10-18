@@ -33,8 +33,22 @@ patient-facing or diary-changing through WorkQ before it happens.
     booking, or creating a new one), confirms with them, tells the others it's filled, and
     completes the WorkQ item. A moved booking's old time goes back to *Find freed slots to fill*.
 
-More automations from the practice's Top 10 shortlist (referral/care plan watchdog, no-show
-recovery, new-enquiry-to-booked-patient, calendar guard) will be added here.
+- **#3 Referral and care plan watchdog** — three automations:
+  - *Find referrals running out* (daily, 6 AM Kuala Lumpur / 22:00 UTC): checks open Medicare and
+    DVA referral cases for patients booked in the next 28 days. Counts sessions used and already
+    booked against the case's maximum and flags any referral that expires within 21 days (or before
+    the next booking), has 1 or fewer sessions left, or would leave bookings unfunded. AI drafts a
+    new-referral request to the patient and (if the case's contact has an email) the GP, and one
+    WorkQ item is created with the **Referral request approval** form. Saves the at-risk list to
+    `PracticeManager/State/<slug>-referral-watchdog-summary.json` for the morning brief. Override
+    `referral_watchdog.expiry_days` / `sessions_left` / `lookahead_days` in the practice settings.
+  - *Send approved referral request* (triggered by that form's submission): emails the approved
+    or edited request to the patient or GP. The item stays open until the new referral arrives.
+  - *Follow up referral requests* (daily): completes the item when a new Medicare/DVA case (or an
+    extended one) appears in Cliniko; after 5 days (`referral_watchdog.follow_up_days`) without one,
+    comments a reminder and raises the item's priority. Nothing is re-sent automatically.
+
+More automations from the practice's Top 10 shortlist (no-show recovery, new-enquiry-to-booked-patient, calendar guard) will be added here.
 
 ## Requires
 

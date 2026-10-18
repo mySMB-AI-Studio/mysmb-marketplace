@@ -1,0 +1,200 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "ai:generate",
+    "users:read",
+    "connectors:cliniko-scheduling",
+    "connectors:cliniko-patients"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "02db3452-ad75-4d59-9848-7780467981b0",
+      "sourceId": "02db3452-ad75-4d59-9848-7780467981b0"
+    }
+  ],
+  "description": "Every morning, checks open Medicare and DVA referral cases in Cliniko for patients with a booking in the next 28 days. Counts sessions used and already booked against the referral's maximum, and flags a referral that expires within 21 days (or before the next booking), has 1 or fewer sessions left, or would leave bookings unfunded. For each one, AI drafts a request for a new referral to the patient and, if the case has a GP contact with an email, to the GP, and one WorkQ item is created with an approval form. It never contacts anyone itself. It also saves today's list of at-risk referrals for the morning brief.",
+  "flowIr": {
+    "description": "Daily: finds Medicare/DVA referrals running out for patients booked soon, drafts new-referral requests, and raises one WorkQ item each with an approval form.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Find referrals running out",
+    "nodes": [
+      {
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\n# No slug set (the param ships blank and can't be edited in the app): use\n# the practice settings file, as long as there's exactly one.\nif not slug:\n    try:\n        practice_entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\") or []\n    except Exception:\n        practice_entries = []\n    practice_slugs = []\n    for e in practice_entries:\n        name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n        if name.endswith(\".json\"):\n            practice_slugs.append(name[: -len(\".json\")])\n    if len(practice_slugs) == 1:\n        slug = practice_slugs[0]\n\nif not slug:\n    problem = \"No practice_slug configured for this automation, and there isn't exactly one practice settings file in PracticeManager/Practices to fall back on.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug + \"'.\")\n    else:\n        settings = found\n\nstate = {\"handled_keys\": []}\nif slug and not problem:\n    found_state, _ = read_json(\"PracticeManager/State/\" + slug + \"-referral-watchdog.json\")\n    state = found_state or {\"handled_keys\": []}\n",
+        "id": "load_context",
+        "kind": "python",
+        "outputs": [
+          {
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "name": "settings",
+            "type": "dict"
+          },
+          {
+            "name": "problem",
+            "type": "str"
+          },
+          {
+            "name": "state",
+            "type": "dict"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.practice_slug }}",
+            "control": "hidden",
+            "label": "Practice slug",
+            "name": "practice_slug",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Load practice settings"
+      },
+      {
+        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"]",
+        "else": [],
+        "id": "gate_settings",
+        "kind": "if",
+        "then": [
+          "find_referrals",
+          "foreach_referral"
+        ],
+        "title": "Settings loaded okay?"
+      },
+      {
+        "code": "import json\nimport datetime\n\ndef invoke(server, tool, args):\n    return api.connectors.invoke(server=server, tool=tool, args=args) or {}\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\ndef parse(iso_str):\n    return datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\ndef is_live(a):\n    return not a.get(\"cancelled_at\") and not a.get(\"archived_at\") and not a.get(\"deleted_at\")\n\nslug = str(params[\"slug\"] or \"\")\nsettings = params[\"settings\"] or {}\nstate = params[\"state\"] or {}\ntz_name = str(settings.get(\"timezone\") or \"UTC\")\n\n# A practice can override any of these via \"referral_watchdog\" in its\n# settings file.\ncfg = settings.get(\"referral_watchdog\") or {}\nexpiry_days = int(cfg.get(\"expiry_days\", 21))\nsessions_left_threshold = int(cfg.get(\"sessions_left\", 1))\nlookahead_days = int(cfg.get(\"lookahead_days\", 28))\n\nnow = datetime.datetime.now(datetime.timezone.utc)\ntry:\n    from zoneinfo import ZoneInfo\n    today = now.astimezone(ZoneInfo(tz_name)).date()\nexcept Exception:\n    today = now.date()\nlookahead_end = now + datetime.timedelta(days=lookahead_days)\n\ndef format_local(iso_str, fmt=\"%a %d %b, %I:%M %p\"):\n    try:\n        from zoneinfo import ZoneInfo\n        return parse(iso_str).astimezone(ZoneInfo(tz_name)).strftime(fmt).replace(\" 0\", \" \").lstrip(\"0\")\n    except Exception:\n        return iso_str\n\ndef format_date(date_str):\n    try:\n        return datetime.date.fromisoformat(date_str[:10]).strftime(\"%d %b %Y\").lstrip(\"0\")\n    except Exception:\n        return date_str\n\nhandled = set(str(k) for k in (state.get(\"handled_keys\") or []) if k)\n\n# 1. Open Medicare / DVA referral cases. Cliniko can filter by referral_type,\n# but reading the active cases and filtering here avoids relying on its enum\n# filter syntax.\ncases = []\ncases_checked = 0\npage = 1\nwhile page <= 5:\n    res = invoke(\"cliniko-patients\", \"list_patient_cases\", {\"active_only\": True, \"per_page\": 100, \"page\": page})\n    batch = res.get(\"patient_cases\") or []\n    cases_checked += len(batch)\n    for c in batch:\n        rtype = str(c.get(\"referral_type\") or \"\").lower()\n        if rtype in (\"medicare\", \"dva\") and not c.get(\"archived_at\") and not c.get(\"closed_at\"):\n            cases.append(c)\n    if len(batch) < 100:\n        break\n    page += 1\n\n# 2. Sessions used and booked against each, and the patient's next booking.\nat_risk = []\nfor c in cases:\n    case_id = str(c.get(\"id\") or \"\")\n    patient_id = link_id(c, \"patient\")\n    if not case_id or not patient_id:\n        continue\n    issue_date = str(c.get(\"issue_date\") or \"\")\n    expiry_date = str(c.get(\"expiry_date\") or \"\")\n    max_sessions = c.get(\"max_sessions\")\n    count_dna = bool(c.get(\"include_dna_attendees\"))\n\n    since = issue_date[:10] + \"T00:00:00Z\" if issue_date else zulu(now - datetime.timedelta(days=400))\n    appts = []\n    p = 1\n    while p <= 3:\n        res = invoke(\"cliniko-scheduling\", \"list_individual_appointments\", {\n            \"patient_id\": patient_id, \"q\": [\"starts_at:>=\" + since], \"sort\": \"starts_at:asc\", \"per_page\": 100, \"page\": p,\n        })\n        batch = res.get(\"individual_appointments\") or []\n        appts += batch\n        if len(batch) < 100:\n            break\n        p += 1\n\n    used = 0\n    booked = 0\n    next_booking = None\n    future_live = []\n    for a in appts:\n        if not is_live(a):\n            continue\n        try:\n            start = parse(str(a.get(\"starts_at\") or \"\"))\n        except Exception:\n            continue\n        on_case = link_id(a, \"patient_case\") == case_id\n        if start <= now:\n            if on_case and (count_dna or not a.get(\"did_not_arrive\")):\n                used += 1\n        else:\n            future_live.append(start)\n            if on_case:\n                booked += 1\n            if next_booking is None or start < next_booking:\n                next_booking = start\n\n    # Only patients who are actually coming in soon need chasing.\n    if next_booking is None or next_booking > lookahead_end:\n        continue\n\n    reasons = []\n    remaining = None\n    if isinstance(max_sessions, int) and max_sessions > 0:\n        remaining = max_sessions - used - booked\n        if remaining <= sessions_left_threshold:\n            reasons.append((\"No sessions left\" if remaining <= 0 else str(remaining) + \" session\" + (\"\" if remaining == 1 else \"s\") + \" left\")\n                           + \" (\" + str(used) + \" used, \" + str(booked) + \" booked, of \" + str(max_sessions) + \")\")\n    days_left = None\n    bookings_after_expiry = 0\n    if expiry_date:\n        try:\n            expiry = datetime.date.fromisoformat(expiry_date[:10])\n            days_left = (expiry - today).days\n            bookings_after_expiry = len([s for s in future_live if s.date() > expiry])\n            if days_left < 0:\n                reasons.append(\"Expired \" + format_date(expiry_date))\n            elif days_left <= expiry_days:\n                reasons.append(\"Expires \" + format_date(expiry_date) + \" (in \" + str(days_left) + \" day\" + (\"\" if days_left == 1 else \"s\") + \")\")\n            elif next_booking.date() > expiry:\n                reasons.append(\"Expires \" + format_date(expiry_date) + \", before the next booking\")\n        except Exception:\n            pass\n    if bookings_after_expiry:\n        reasons.append(str(bookings_after_expiry) + \" booking(s) after the expiry date would be unfunded\")\n    if not reasons:\n        continue\n\n    at_risk.append({\n        \"key\": case_id + \":\" + expiry_date + \":\" + str(max_sessions or \"\"),\n        \"case_id\": case_id,\n        \"case_name\": str(c.get(\"name\") or \"\"),\n        \"referral_type\": \"DVA\" if str(c.get(\"referral_type\") or \"\").lower() == \"dva\" else \"Medicare\",\n        \"patient_id\": patient_id,\n        \"contact_id\": link_id(c, \"contact\"),\n        \"issue_date\": issue_date,\n        \"issue_label\": format_date(issue_date) if issue_date else \"\",\n        \"expiry_date\": expiry_date,\n        \"expiry_label\": format_date(expiry_date) if expiry_date else \"\",\n        \"days_left\": days_left,\n        \"max_sessions\": max_sessions if isinstance(max_sessions, int) else None,\n        \"used\": used,\n        \"booked\": booked,\n        \"remaining\": remaining,\n        \"bookings_after_expiry\": bookings_after_expiry,\n        \"next_booking_at\": zulu(next_booking),\n        \"next_booking_label\": format_local(zulu(next_booking)),\n        \"reasons\": reasons,\n    })\n\n# 3. Names (and the GP contact) for the ones worth reporting.\nfor r in at_risk[:30]:\n    try:\n        p = invoke(\"cliniko-patients\", \"get_patient\", {\"id\": r[\"patient_id\"]})\n    except Exception:\n        p = {}\n    r[\"patient_name\"] = (str(p.get(\"first_name\") or \"\") + \" \" + str(p.get(\"last_name\") or \"\")).strip() or \"Patient \" + str(r[\"patient_id\"])\n    r[\"patient_first_name\"] = str(p.get(\"preferred_first_name\") or p.get(\"first_name\") or \"\")\n    r[\"patient_email\"] = str(p.get(\"email\") or \"\")\n    r[\"gp_name\"] = \"\"\n    r[\"gp_email\"] = \"\"\n    if r[\"contact_id\"]:\n        try:\n            ct = invoke(\"cliniko-patients\", \"get_contact\", {\"id\": r[\"contact_id\"]})\n            r[\"gp_name\"] = (\" \".join(str(ct.get(k) or \"\") for k in (\"title\", \"first_name\", \"last_name\")).strip()\n                            or str(ct.get(\"company_name\") or \"\"))\n            r[\"gp_email\"] = str(ct.get(\"email\") or \"\")\n        except Exception:\n            pass\n\n# New ones only get a WorkQ item; a renewed referral (new expiry or session\n# count) has a different key, so it's checked afresh.\nflagged = [r for r in at_risk[:30] if r[\"key\"] not in handled][:10]\n\n# For #10 morning brief: every referral currently running out, raised or not.\ntry:\n    api.files.put(\n        file=\"PracticeManager/State/\" + slug + \"-referral-watchdog-summary.json\",\n        content=json.dumps({\"generated_at\": zulu(now), \"at_risk\": [{\n            k: r.get(k) for k in (\"patient_name\", \"referral_type\", \"case_name\", \"expiry_date\", \"remaining\",\n                                  \"next_booking_label\", \"reasons\")\n        } for r in at_risk[:30]]}, indent=2, sort_keys=True),\n        scope=\"org\",\n    )\nexcept Exception:\n    pass\n\nsummary = (\"Checked \" + str(cases_checked) + \" active cases; \" + str(len(cases)) + \" Medicare/DVA referrals; \"\n           + str(len(at_risk)) + \" running out with a booking in the next \" + str(lookahead_days) + \" days; \"\n           + str(len(flagged)) + \" newly raised.\")\n",
+        "id": "find_referrals",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Referrals running out that don't have a WorkQ item yet (max 10 per run).",
+            "name": "flagged",
+            "type": "list[dict]"
+          },
+          {
+            "description": "What was checked and found.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.state }}",
+            "control": "hidden",
+            "label": "State",
+            "name": "state",
+            "required": true,
+            "type": "dict"
+          }
+        ],
+        "title": "Find referrals running out"
+      },
+      {
+        "body": [
+          "draft_referral"
+        ],
+        "id": "foreach_referral",
+        "itemVar": "referral_item",
+        "items": "{{ steps.find_referrals.outputs.flagged }}",
+        "kind": "foreach",
+        "maxIterations": 10,
+        "title": "Raise each referral"
+      },
+      {
+        "code": "import json\nimport datetime\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True), scope=\"org\")\n\nslug = str(params[\"slug\"] or \"\")\nsettings = params[\"settings\"] or {}\nr = params[\"referral\"] or {}\npolicy = settings.get(\"policy\") or {}\ntone = str(policy.get(\"tone\") or \"warm, concise, no jargon\")\npractice_name = str(settings.get(\"name\") or \"\")\ntz_name = str(settings.get(\"timezone\") or \"UTC\")\nnow = datetime.datetime.now(datetime.timezone.utc)\n\npatient_name = str(r.get(\"patient_name\") or \"\")\nfirst_name = str(r.get(\"patient_first_name\") or \"\") or patient_name.split(\" \")[0]\npatient_email = str(r.get(\"patient_email\") or \"\")\ngp_name = str(r.get(\"gp_name\") or \"\")\ngp_email = str(r.get(\"gp_email\") or \"\")\nrtype = str(r.get(\"referral_type\") or \"Medicare\")\nreasons = [str(x) for x in (r.get(\"reasons\") or [])]\ntitle = (\"Referral running out: \" + patient_name + \" (\" + rtype + \")\")[:200]\n\n# Skip if this patient's referral already has an open item (overlapping runs).\nalready_open = False\ntry:\n    for row in api.workq.list(search=title) or []:\n        if (row.get(\"title\") == title and row.get(\"status\") not in (\"done\", \"cancelled\")\n                and \"referral-watchdog\" in (row.get(\"labels\") or [])):\n            already_open = True\n            break\nexcept Exception:\n    already_open = False\n\ntodo_id = \"\"\nif not already_open:\n    facts = (\n        \"Patient: \" + patient_name + \"\\n\"\n        + \"Referral: \" + rtype + (\" (\" + str(r.get(\"case_name\") or \"\") + \")\" if r.get(\"case_name\") else \"\") + \"\\n\"\n        + (\"Issued: \" + str(r.get(\"issue_label\") or \"\") + \"\\n\" if r.get(\"issue_label\") else \"\")\n        + (\"Expires: \" + str(r.get(\"expiry_label\") or \"\") + \"\\n\" if r.get(\"expiry_label\") else \"\")\n        + (\"Sessions: \" + str(r.get(\"used\")) + \" used, \" + str(r.get(\"booked\")) + \" booked, of \" + str(r.get(\"max_sessions\")) + \"\\n\"\n           if r.get(\"max_sessions\") else \"\")\n        + \"Next booking: \" + str(r.get(\"next_booking_label\") or \"\") + \"\\n\"\n        + \"Why it's flagged: \" + \"; \".join(reasons)\n    )\n\n    def fallback_patient():\n        return (\"Hi \" + (first_name or \"there\") + \",\\n\\nYour \" + rtype + \" referral for your sessions with us is \"\n                + (\"nearly used up\" if any(\"left\" in x for x in reasons) else \"due to expire soon\")\n                + \". To keep your upcoming appointments covered, please book in with your GP for a new referral and \"\n                + \"send it through to us (or ask your GP to send it directly).\\n\\nThank you,\\n\" + (practice_name or \"The team\"))\n\n    def fallback_gp():\n        return (\"Dear \" + (gp_name or \"Doctor\") + \",\\n\\nWe are currently seeing your patient \" + patient_name + \" under a \"\n                + rtype + \" referral that is \" + (\"nearly used up\" if any(\"left\" in x for x in reasons) else \"due to expire soon\")\n                + \". If you consider ongoing care appropriate, could you please issue a new referral and send it through to us?\\n\\n\"\n                + \"Kind regards,\\n\" + (practice_name or \"The team\"))\n\n    drafts = {\"patient\": \"\", \"gp\": \"\"}\n    ai_problem = \"\"\n    try:\n        raw = str(api.ai.generate(prompt=(\n            \"An allied-health practice\" + (\" called \\\"\" + practice_name + \"\\\"\" if practice_name else \"\")\n            + \" needs a new referral for a patient whose current one is running out:\\n\" + facts + \"\\n\\n\"\n            \"Draft two short plain-text emails in a \" + tone + \" tone:\\n\"\n            \"1. \\\"patient\\\": to the patient (first name \" + (first_name or \"unknown\") + \"), asking them to see their GP for a new \"\n            + rtype + \" referral and send it to the practice, so their upcoming sessions stay covered.\\n\"\n            \"2. \\\"gp\\\": to the patient's GP\" + (\" (\" + gp_name + \")\" if gp_name else \"\") + \", politely asking whether they would \"\n            \"issue a new referral if they consider ongoing care appropriate.\\n\"\n            \"Use real line breaks: greeting, blank line, body, blank line, sign-off\" + (\" with the practice name\" if practice_name else \"\")\n            + \". Never give clinical advice, never state Medicare or DVA rules or fees, and never invent details.\\n\\n\"\n            'Reply with ONLY JSON, no markdown: {\"patient\": \"<email body>\", \"gp\": \"<email body>\"}'\n        )) or \"\")\n        cleaned = raw.strip().strip(\"`\").strip()\n        if cleaned.lower().startswith(\"json\"):\n            cleaned = cleaned[4:]\n        parsed = json.loads(cleaned.strip()) or {}\n        drafts[\"patient\"] = str(parsed.get(\"patient\") or \"\").strip()\n        drafts[\"gp\"] = str(parsed.get(\"gp\") or \"\").strip()\n    except Exception as exc:\n        ai_problem = str(exc)\n    drafts[\"patient\"] = drafts[\"patient\"] or fallback_patient()\n    drafts[\"gp\"] = drafts[\"gp\"] or fallback_gp()\n\n    def quoted(text):\n        return \"\\n\".join(\"> \" + ln for ln in text.split(\"\\n\"))\n\n    description = (\n        \"**Patient:** \" + patient_name + (\" (\" + patient_email + \")\" if patient_email else \" (no email on file)\") + \"\\n\\n\"\n        + \"**Referral:** \" + rtype + (\" · \" + str(r.get(\"case_name\") or \"\") if r.get(\"case_name\") else \"\")\n        + (\" · issued \" + str(r.get(\"issue_label\") or \"\") if r.get(\"issue_label\") else \"\")\n        + (\" · expires \" + str(r.get(\"expiry_label\") or \"\") if r.get(\"expiry_label\") else \"\") + \"\\n\\n\"\n        + (\"**Sessions:** \" + str(r.get(\"used\")) + \" used, \" + str(r.get(\"booked\")) + \" booked, of \" + str(r.get(\"max_sessions\")) + \"\\n\\n\"\n           if r.get(\"max_sessions\") else \"\")\n        + \"**Next booking:** \" + str(r.get(\"next_booking_label\") or \"\") + \"\\n\\n\"\n        + \"**Why it's flagged:** \" + \"; \".join(reasons) + \"\\n\\n\"\n        + \"**GP:** \" + ((gp_name or \"Linked contact\") + (\" (\" + gp_email + \")\" if gp_email else \" (no email on file)\") if (gp_name or gp_email) else \"no referring contact linked to this case\") + \"\\n\\n\"\n        + \"**Draft to the patient:**\\n\\n\" + quoted(drafts[\"patient\"]) + \"\\n\\n\"\n        + (\"**Draft to the GP:**\\n\\n\" + quoted(drafts[\"gp\"]) + \"\\n\\n\" if gp_email else \"\")\n        + (\"_AI drafting failed (\" + ai_problem[:200] + \"); showing a standard message._\\n\\n\" if ai_problem else \"\")\n        + \"Nothing has been sent yet. Use the form to send the request to the patient or the GP, or close this item if it's handled.\"\n    )\n\n    # Same single-practice test assignee as the other Cliniko automations.\n    PRACTITIONER_EMAIL = \"sean.baker@mysmb.com\"\n    assignee_ids: list[str] = []\n    try:\n        for user in api.users.list() or []:\n            if str(user.get(\"email\") or \"\").strip().lower() == PRACTITIONER_EMAIL:\n                if user.get(\"id\"):\n                    assignee_ids = [str(user.get(\"id\"))]\n                break\n    except Exception:\n        assignee_ids = []\n\n    days_left = r.get(\"days_left\")\n    remaining = r.get(\"remaining\")\n    urgent = ((isinstance(days_left, int) and days_left <= 7) or (isinstance(remaining, int) and remaining <= 0)\n              or bool(r.get(\"bookings_after_expiry\")))\n    item = api.workq.create(\n        title=title,\n        scope=\"org\",\n        description=description,\n        priority=\"high\" if urgent else \"medium\",\n        labels=[\"cliniko-automations\", \"referral-watchdog\"],\n        assignee_ids=assignee_ids or None,\n    )\n    todo_id = str(item[\"id\"])\n    if patient_email or gp_email:\n        api.workq.attach_form(todo_id=todo_id, form_id=params[\"request_form\"])\n\n    # Everything \"Send approved referral request\" needs. Flat filename for\n    # Knowledge's 2-level folder limit.\n    write_json(\"PracticeManager/State/\" + slug + \"-referral-req-\" + todo_id + \".json\", {\n        \"referral\": r, \"drafts\": drafts, \"patient_email\": patient_email, \"gp_email\": gp_email,\n        \"gp_name\": gp_name, \"patient_name\": patient_name, \"created_at\": zulu(now),\n    })\n\n    # Audit trail (healthcare-practice-management-guardrail-audit format).\n    try:\n        from zoneinfo import ZoneInfo\n        today_str = now.astimezone(ZoneInfo(tz_name)).date().isoformat()\n    except Exception:\n        today_str = now.date().isoformat()\n    audit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\n    try:\n        existing_log = api.files.read(file=audit_path, scope=\"org\")\n    except Exception:\n        existing_log = \"\"\n    try:\n        api.files.put(file=audit_path, scope=\"org\", content=existing_log + json.dumps({\n            \"ts\": zulu(now), \"practice_slug\": slug, \"actor\": \"agent\",\n            \"source\": \"automation:Cliniko Automations: Find referrals running out\",\n            \"action\": \"drafted\", \"target\": {\"kind\": \"patient_case\", \"id\": str(r.get(\"case_id\") or \"\")},\n            \"summary\": rtype + \" referral for \" + patient_name + \" running out: \" + \"; \".join(reasons),\n            \"guardrails\": [{\"rule\": \"patient_facing_requires_approval\", \"result\": \"pass\", \"detail\": \"request drafted only; routed to WorkQ for approval\"}],\n            \"workq_item_id\": todo_id,\n        }, sort_keys=True) + \"\\n\")\n    except Exception:\n        pass\n\n# Mark this referral handled only once its item exists (or one was already open).\nif todo_id or already_open:\n    state_path = \"PracticeManager/State/\" + slug + \"-referral-watchdog.json\"\n    try:\n        current_state = json.loads(api.files.read(file=state_path, scope=\"org\") or \"{}\") or {}\n    except Exception:\n        current_state = {}\n    keys = [str(k) for k in (current_state.get(\"handled_keys\") or []) if k]\n    key = str(r.get(\"key\") or \"\")\n    if key and key not in keys:\n        keys.append(key)\n    api.files.put(file=state_path, content=json.dumps({\"handled_keys\": keys[-1000:]}, indent=2), scope=\"org\")\n",
+        "id": "draft_referral",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "label": "Referral",
+            "name": "referral",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "form-picker",
+            "label": "Referral request approval form",
+            "name": "request_form",
+            "required": true,
+            "type": "uuid",
+            "value": "02db3452-ad75-4d59-9848-7780467981b0"
+          }
+        ],
+        "title": "Draft the requests and create the WorkQ item"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json). Leave blank to use the only practice settings file there; only needed when more than one practice is set up.",
+        "name": "practice_slug",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "load_context",
+      "gate_settings"
+    ],
+    "triggers": [
+      {
+        "cron": "0 22 * * *",
+        "kind": "schedule",
+        "timezone": "UTC"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Find referrals running out",
+  "originKey": "b11519bc-ecda-4a68-855e-cedfb42619e8",
+  "tags": [
+    "cliniko",
+    "referrals"
+  ],
+  "contentHash": "3932b0584e3b10cca6c985392570463ac759d35c9e54662a56ce9e679249d961"
+}
