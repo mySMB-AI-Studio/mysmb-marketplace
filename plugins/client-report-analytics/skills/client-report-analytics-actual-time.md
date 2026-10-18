@@ -1,6 +1,6 @@
 ---
 name: client-report-analytics-actual-time
-description: CRA-12 Actual Time for one client (MYOB or QuickBooks) as a live, validated report. Use when the user asks for the actual time of a client, hours recorded in the client's file, timesheets or time activities by person and job.
+description: CRA-12 Actual Time for one client (Xero, MYOB or QuickBooks) as a live, validated report. Use when the user asks for the actual time of a client, hours recorded in the client's file, Xero Projects time, timesheets or time activities by person and job.
 ---
 
 # CRA-12 Actual Time
@@ -20,8 +20,21 @@ Use when the user asks for the Actual Time (CRA-12) of one client: hours recorde
 
 | Platform | Template slug | Client input |
 |---|---|---|
+| Xero | `client-xero-actual-time` | the organisation id (`tenantId` from `list_connections`) |
 | MYOB | `client-myob-actual-time` | the company file id (`Id` from `list_company_files`) |
 | QuickBooks | `client-quickbooks-actual-time` | none: QuickBooks is the one connected company |
+
+### Xero Actual Time (`client-xero-actual-time`)
+
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `from_date` | From | date | `2026-07-01` |
+| `to_date` | To | date | `2026-09-25` |
+| `org` | Organisation | string | `` |
+| `project` | Project (set by the report, one per call: leave empty) | string | `` |
+| `after` | Entries from (set by the report from the dates) | string | `2026-06-30T00:00:00Z` |
+| `before` | Entries to (set by the report from the dates) | string | `2026-09-27T00:00:00Z` |
+| `display` | Display settings | string | `{"cents":0,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,…` |
 
 ### MYOB Actual Time (`client-myob-actual-time`)
 
@@ -52,8 +65,9 @@ Use when the user asks for the Actual Time (CRA-12) of one client: hours recorde
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Hours by person, by job / customer / activity and by month each add up to the same total.
-- This is time recorded in the client's own file (MYOB timesheets, QuickBooks time activities): the client's staff time, not the practice's time on the client. Xero's accounting API has no time records.
+- Hours by person, by job / project / customer / activity and by month each add up to the same total.
+- This is time recorded in the client's own file (Xero Projects time entries, MYOB timesheets, QuickBooks time activities): the client's staff time, not the practice's time on the client.
+- On Xero it needs the Xero Projects extension connected for the organisation; time entries are read one call per project, so a snapshot doesn't include them.
 - Switching client refetches every source for the new client; nothing of the previous client stays on the page or in the Excel download.
 
 ## QA test (sandbox / demo organisations only)

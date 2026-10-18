@@ -50,15 +50,17 @@ const ITEMS = {
     cra: 'CRA-10', name: 'GST Check', chip: 'Tax & BAS',
     blurb: 'the scope and method of every GST check, which are clear and which carry GST risk, with the GST at risk.'
   },
-  // Time from the client's own file: MYOB timesheets and QuickBooks time activities (Xero's accounting API has none). This
-  // is the client's staff time, not the practice's time on the client, which needs a practice-management time source.
+  // Time from the client's own file: Xero Projects time entries (the Xero Projects extension), MYOB timesheets and QuickBooks
+  // time activities. This is the client's staff time, not the practice's time on the client, which needs a practice-management
+  // time source. Estimates: Xero Projects task time estimates and project estimates; QuickBooks estimates vs invoices. MYOB
+  // has neither in its API; its catalogue box routes to the MYOB Reporting Studio's budget report.
   'actual-time': {
-    cra: 'CRA-12', name: 'Actual Time', chip: 'Time', platforms: ['myob', 'quickbooks'],
+    cra: 'CRA-12', name: 'Actual Time', chip: 'Time', platforms: ['xero', 'myob', 'quickbooks'],
     blurb: 'hours recorded in the client\'s own file by person, job or customer and activity, by month (the client\'s staff time, not the practice\'s time on the client).'
   },
   'estimate-accuracy': {
-    cra: 'CRA-13', name: 'Estimate Accuracy', chip: 'Time', platforms: ['quickbooks'],
-    blurb: 'each estimate against the invoices raised from it, with the variance in dollars (QuickBooks has no time estimates).'
+    cra: 'CRA-13', name: 'Estimate Accuracy', chip: 'Time', platforms: ['xero', 'quickbooks'],
+    blurb: 'estimated against actual: on Xero, each Xero Projects task\'s time estimate against the time logged and each project\'s estimate against its time and expenses; on QuickBooks, each estimate against the invoices raised from it, in dollars.'
   }
   // CRA-15 Workspace User Activity has no template: workq_activity is workspace-wide counts per user with no client link
   // (live QA 2026-10-13), so the catalogue box routes to the platform's built-in Workspace Activity report instead.

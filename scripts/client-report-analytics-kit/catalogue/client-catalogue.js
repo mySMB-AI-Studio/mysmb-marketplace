@@ -10,19 +10,20 @@ const LIB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'libraries.jso
 const CHIPS = ['Financial', 'Tax & BAS', 'Sales & purchases', 'Quality', 'Activity', 'Time', 'Platform reports'];
 const NA = {};
 // Why a live item has no template on a platform (shown in place of "how to open" when that platform's client is picked).
-const GAP = {
-  xeroTime: 'Not available on Xero — Xero’s accounting API has no time records (time lives in Xero Projects or Xero Practice Manager, which aren’t connected).',
-  xeroEstimates: 'Not available on Xero — Xero’s API doesn’t link a quote to the invoices raised from it.',
-  myobEstimates: 'Not available on MYOB yet — built on QuickBooks estimates first.'
+const GAP = {};
+// A live item with no template of its own on a platform, opened from that platform's Reporting Studio instead (a studio
+// template's client input is company_file on MYOB, so "then pick" applies). The note says what the routed report measures.
+const ROUTE = {
+  myobBudget: { title: 'MYOB Budget Management', studio: 'MYOB Reporting Studio', note: 'On MYOB, the file’s own estimates are its budgets: MYOB Budget Management compares budget with actual by account and month, in dollars. MYOB’s API has no job budgets or quotes linked to invoices. Needs a budget set up in the company file.' }
 };
 // Said under the "how to open" line of an item whose source is narrower than its one-line description.
 const LIVE_CHECKS = 'The checks run on the client’s ledger as the report opens, with the overnight checks engine’s rules. Register (ABR) checks and checks that compare with the last run stay in the overnight engine (Bookkeeping for Xero).';
 const NOTE = {
   'CRA-02': LIVE_CHECKS, 'CRA-08': LIVE_CHECKS, 'CRA-09': LIVE_CHECKS, 'CRA-10': LIVE_CHECKS,
-  'CRA-12': 'Shows time recorded in the client’s own file (MYOB timesheets, QuickBooks time activities): the client’s staff time, not the practice’s time on this client.',
-  'CRA-13': 'Estimated vs actual in dollars, from the client’s QuickBooks estimates and the invoices raised from them: QuickBooks has no time estimates.'
+  'CRA-12': 'Shows time recorded in the client’s own file (Xero Projects time entries, MYOB timesheets, QuickBooks time activities): the client’s staff time, not the practice’s time on this client. On Xero, needs the Xero Projects extension connected.',
+  'CRA-13': 'Xero: each Xero Projects task’s time estimate against the time logged on it, and each project’s estimate against its time and expenses (needs the Xero Projects extension connected). QuickBooks: each estimate against the invoices raised from it, in dollars (QuickBooks has no time estimates).'
 };
-// [id, name, chip, state, one line, gaps by platform] — the Index tab of the Prompt Library v1.1. state 'export' (CRA-14 only)
+// [id, name, chip, state, one line, gaps by platform, routes by platform] — the Index tab of the Prompt Library v1.1. state 'export' (CRA-14 only)
 // is live in the sense that asking for it does something real now, but it has no "Use this report" template in this
 // extension: it routes to the QuickBooks and MYOB Reporting Studios' own export-based audit-log skills (Xero has no org-wide
 // audit log at all). state 'workspace' (CRA-15 only) routes to the platform's built-in Workspace Activity report.
@@ -38,15 +39,15 @@ const ITEMS = [
   ['CRA-09', 'Health Check', 'Quality', 'live', "Key summary of the client's financial activity and data quality on one page."],
   ['CRA-10', 'GST Check', 'Tax & BAS', 'live', 'Scope and method of the GST checks, with resolved vs unresolved GST risk.'],
   ['CRA-11', 'Activity Count', 'Activity', 'live', 'Transaction activity across key functions for the client.'],
-  ['CRA-12', 'Actual Time', 'Time', 'live', 'Time allocated to this client by staff and task source.', { xero: GAP.xeroTime }],
-  ['CRA-13', 'Estimate Accuracy', 'Time', 'live', "Estimated vs actual time for this client's work items.", { xero: GAP.xeroEstimates, myob: GAP.myobEstimates }],
+  ['CRA-12', 'Actual Time', 'Time', 'live', 'Time allocated to this client by staff and task source.'],
+  ['CRA-13', 'Estimate Accuracy', 'Time', 'live', "Estimated vs actual time for this client's work items.", null, { myob: ROUTE.myobBudget }],
   ['CRA-14', 'Ledger User Activity', 'Activity', 'export', "What people have been doing in the client's accounting file — routes to the QuickBooks and MYOB audit-log skills (export-based); Xero has no org-wide audit log, only per-record history on request."],
   ['CRA-15', 'Workspace User Activity', 'Activity', 'workspace', "Actions taken in Workspace to resolve this client's findings and tasks."]
 ];
 const live = {}; REPORTS.filter((r) => r.platform).forEach((r) => { (live[r.cra] = live[r.cra] || {})[r.platform] = { slug: r.slug, title: r.title }; });
 const DATA = {
   chips: CHIPS, na: NA, platforms: PLATFORM,
-  items: ITEMS.map(([id, name, chip, state, line, gap]) => ({ id, name, chip, state, line, gap: gap || null, note: NOTE[id] || '', live: live[id] || null })),
+  items: ITEMS.map(([id, name, chip, state, line, gap, route]) => ({ id, name, chip, state, line, gap: gap || null, route: route || null, note: NOTE[id] || '', live: live[id] || null })),
   libraries: Object.fromEntries(Object.entries(LIB).map(([p, l]) => [p, { plugin: l.plugin, studio: PLATFORM[p] + ' Reporting Studio', reports: l.reports.map((r) => ({ slug: r.slug, title: r.title, code: r.code, line: r.blurb })) }]))
 };
 
@@ -111,16 +112,16 @@ const SCRIPT = `
   function badges(on) { return '<span class="badges">' + ['xero', 'myob', 'quickbooks'].map(function (p) { return '<span class="badge' + (p === on ? ' on' : '') + '" title="' + esc(D.platforms[p]) + '">' + D.platforms[p].charAt(0) + '</span>'; }).join('') + '</span>'; }
   function match(text) { return !state.q || text.toLowerCase().indexOf(state.q.toLowerCase()) >= 0; }
   function itemBox(it, c) {
-    var p = c && c.platform, t = it.live && p ? it.live[p] : null;
+    var p = c && c.platform, rt = it.route && p ? it.route[p] : null, t = (it.live && p ? it.live[p] : null) || rt;
     var gap = it.gap && p && it.gap[p] ? it.gap[p] : it.state === 'live' && p && !t ? 'Not available on ' + D.platforms[p] + ' yet.' : null;
     var isLive = it.state === 'live' && !gap, isExport = it.state === 'export', isWs = it.state === 'workspace';
     var how = gap ? esc(gap)
-      : isLive ? (t ? 'Open: Reports → From your plugins → <b>' + esc(t.title) + '</b> → Use this report' + (p === 'quickbooks' ? '' : ', then pick <b>' + esc(c.name) + '</b>') + '.<br>Or ask the Client Report Analytics agent: <b>“' + esc(it.name) + ' for ' + esc(c.name) + '”</b>.' + (it.note ? '<br>' + esc(it.note) : '') : 'Pick a client above to see how to open it.')
+      : isLive ? (t ? 'Open: Reports → From your plugins → <b>' + esc(t.title) + '</b>' + (rt ? ' (' + esc(rt.studio) + ')' : '') + ' → Use this report' + (p === 'quickbooks' ? '' : ', then pick <b>' + esc(c.name) + '</b>') + '.<br>Or ask the Client Report Analytics agent: <b>“' + esc(it.name) + ' for ' + esc(c.name) + '”</b>.' + (rt ? '<br>' + esc(rt.note) : it.note ? '<br>' + esc(it.note) : '') : 'Pick a client above to see how to open it.')
       : isExport ? 'No "Use this report" template: ask the Client Report Analytics agent (<b>“' + esc(it.name) + ' for ' + esc(c ? c.name : 'a client') + '”</b>). QuickBooks and MYOB route to their own audit-log skills (you attach an export); Xero has no org-wide audit log, only per-record history on request.'
       : isWs ? 'Open: Reports → <b>Workspace Activity</b> (built into Workspace): WorkQ items created, completed, open and overdue per person, with a trend. It covers the whole workspace, not this client only: Workspace doesn’t link WorkQ activity to a client yet.'
       : esc(D.na[it.state] || 'Not available');
     return '<article class="box" data-row="' + esc(it.id) + '"><div class="top"><div><h3>' + esc(it.name) + '</h3><span class="id">' + esc(it.id) + ' · ' + esc(it.chip) + '</span></div>' + badges((isLive || isExport) ? p : null) + '</div>' +
-      '<div><span class="pill ' + ((isLive || isExport) ? 'live">Live' : isWs ? 'live">Live · Workspace' : 'na">Not available') + '</span></div><div>' + esc(it.line) + '</div><div class="how">' + how + '</div></article>';
+      '<div><span class="pill ' + ((isLive || isExport) ? 'live">Live' + (isLive && rt ? ' · ' + esc(rt.studio) : '') : isWs ? 'live">Live · Workspace' : 'na">Not available') + '</span></div><div>' + esc(it.line) + '</div><div class="how">' + how + '</div></article>';
   }
   function libBox(r, lib, c) {
     return '<article class="box" data-row="' + esc(r.slug) + '"><div class="top"><div><h3>' + esc(r.title) + '</h3><span class="id">' + esc(r.code || 'Library') + ' · Platform reports</span></div>' + badges(c.platform) + '</div>' +
@@ -159,7 +160,7 @@ const SCRIPT = `
   }
   function excel() {
     var c = current(), rows = [['Client Report Catalogue'], ['Client', c ? c.name + ' (' + D.platforms[c.platform] + ')' : 'None'], [], ['ID', 'Report', 'Group', 'State', 'How to open']];
-    D.items.forEach(function (it) { var t = it.live && c ? it.live[c.platform] : null, gap = it.gap && c ? it.gap[c.platform] : null; rows.push([it.id, it.name, it.chip, gap ? gap : it.state === 'live' ? 'Live' : it.state === 'export' ? 'Live (ask the agent — no template)' : it.state === 'workspace' ? 'Live · Workspace (built-in Workspace Activity report, whole workspace)' : D.na[it.state] || 'Not available', t ? 'Use this report: ' + t.title : it.state === 'workspace' ? 'Reports → Workspace Activity' : '']); });
+    D.items.forEach(function (it) { var rt = it.route && c ? it.route[c.platform] : null, t = it.live && c ? it.live[c.platform] || rt : rt, gap = it.gap && c ? it.gap[c.platform] : null; rows.push([it.id, it.name, it.chip, gap ? gap : rt ? 'Live · ' + rt.studio : it.state === 'live' ? 'Live' : it.state === 'export' ? 'Live (ask the agent — no template)' : it.state === 'workspace' ? 'Live · Workspace (built-in Workspace Activity report, whole workspace)' : D.na[it.state] || 'Not available', t ? 'Use this report: ' + t.title : it.state === 'workspace' ? 'Reports → Workspace Activity' : '']); });
     if (c) D.libraries[c.platform].reports.forEach(function (r) { rows.push([r.code, r.title, 'Platform reports', 'Live · ' + D.libraries[c.platform].studio, 'Use this report: ' + r.title]); });
     var x = '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Catalogue"><Table>' + rows.map(function (r) { return '<Row>' + r.map(function (v) { return '<Cell><Data ss:Type="String">' + esc(v) + '</Data></Cell>'; }).join('') + '</Row>'; }).join('') + '</Table></Worksheet></Workbook>';
     var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([x], { type: 'application/vnd.ms-excel' }));
