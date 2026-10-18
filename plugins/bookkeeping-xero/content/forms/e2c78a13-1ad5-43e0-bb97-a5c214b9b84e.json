@@ -1,0 +1,125 @@
+{
+  "contentHash": "8335cfdbd7a51478d27bf907f85f18e3bbbea234647e0a126191cc3effc35a2d",
+  "kind": "form",
+  "originKey": "e2c78a13-1ad5-43e0-bb97-a5c214b9b84e",
+  "schema": {
+    "description": "Settings for one business whose books you keep. Submit it once per business, and again whenever something changes.",
+    "sections": [
+      {
+        "id": "business",
+        "questions": [
+          {
+            "id": "q_client_name",
+            "label": "Business name",
+            "maxLength": 120,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_xero_org",
+            "label": "Xero organisation name (exactly as it appears in Xero)",
+            "maxLength": 200,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_gst",
+            "label": "Is this business registered for GST?",
+            "required": true,
+            "type": "yes_no"
+          },
+          {
+            "id": "q_aliases",
+            "label": "Other names its bills may be addressed to, one per line (trading names, the owner's name). Used to match emailed bills to this business.",
+            "maxLength": 2000,
+            "type": "long_text"
+          },
+          {
+            "id": "q_mail_folder",
+            "label": "Mail folder (or Gmail label) that holds only this business's emails (optional; e.g. Inbox/Clients/Acme). Bills there are filed for this business without asking AI.",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "The business"
+      },
+      {
+        "id": "approvals",
+        "questions": [
+          {
+            "entity": "user",
+            "id": "q_reviewer",
+            "label": "Who reviews this business's bills? (leave blank to use the default reviewer)",
+            "type": "lookup"
+          },
+          {
+            "id": "q_client_above",
+            "label": "Bills above this amount need the business owner's approval (leave blank to use the default)",
+            "maxLength": 20,
+            "type": "short_text"
+          },
+          {
+            "id": "q_contact_name",
+            "label": "Who approves bills at the business? (name)",
+            "maxLength": 120,
+            "type": "short_text"
+          },
+          {
+            "id": "q_contact_email",
+            "label": "Their email address",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "Reviews and approvals"
+      },
+      {
+        "id": "coding",
+        "questions": [
+          {
+            "id": "q_notes",
+            "label": "Coding notes for the AI (e.g. \"Bunnings is always 449 Repairs and Maintenance\")",
+            "maxLength": 4000,
+            "type": "long_text"
+          }
+        ],
+        "title": "Coding"
+      },
+      {
+        "id": "checks",
+        "questions": [
+          {
+            "id": "q_checks",
+            "label": "Run the ledger checks on this business’s Xero file?",
+            "options": [
+              "Yes",
+              "No"
+            ],
+            "type": "single_choice"
+          },
+          {
+            "entity": "user",
+            "id": "q_checks_owner",
+            "label": "Who follows up its findings? (leave blank to use the practice default, then the reviewer)",
+            "type": "lookup"
+          },
+          {
+            "id": "q_tpar",
+            "label": "Does this business lodge a taxable payments annual report (TPAR)? (building and construction, cleaning, courier, road freight, IT, security and investigation services)",
+            "type": "yes_no"
+          },
+          {
+            "id": "q_suspense",
+            "label": "Suspense or clearing account codes to watch, separated by commas (optional; accounts named suspense, clearing or uncoded are watched anyway)",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "Ledger checks"
+      }
+    ],
+    "title": "Client bookkeeping settings",
+    "version": 1
+  },
+  "title": "Client bookkeeping settings"
+}
