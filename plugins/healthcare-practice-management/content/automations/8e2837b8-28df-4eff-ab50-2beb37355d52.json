@@ -1,0 +1,111 @@
+{
+  "contentHash": "5743a2e0efb407e567842fe17c2c3fefac0a50651eb8716690d540e81b64bd97",
+  "declaredScopes": [
+    "ai:generate",
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:cliniko-scheduling",
+    "connectors:cliniko-patients",
+    "connectors:m365-mail-read",
+    "connectors:google-workspace-gmail"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f660cc88-e525-4b42-b3fb-a6f6537fb763",
+      "sourceId": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+    }
+  ],
+  "description": "Every 30 minutes, scans each configured practice's inbox for a patient asking to move a booking, proposes real open times for the same appointment type and practitioner, and raises a WorkQ item with the No-show follow-up approval form attached (reused as-is - see build notes). Nothing is sent until that item is approved; sending itself is handled by the existing Apply no-show follow-up decision automation.",
+  "flowIr": {
+    "description": "Every 30 minutes, scans each configured practice's inbox for a patient asking to move a booking, proposes real open times for the same appointment type and practitioner, and raises a WorkQ item with the No-show follow-up approval form attached (reused as-is - see build notes). Nothing is sent until that item is approved; sending itself is handled by the existing Apply no-show follow-up decision automation.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Detect reschedule request, draft offer",
+    "nodes": [
+      {
+        "code": "import json\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\n# Every configured practice, not a single hardcoded one - same pattern as Detect no-show.\npractices = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    if not fname or not str(fname).endswith(\".json\"):\n        continue\n    slug = str(fname)[:-5]\n    practice = read_json(\"PracticeManager/Practices/\" + fname, {}) or {}\n    if practice:\n        practices.append({\"slug\": slug, \"practice\": practice})\n\nnew_items = []\nfor p in practices:\n    provider = str(p[\"practice\"].get(\"email_provider\") or \"outlook\")\n    seen = read_json(\"PracticeManager/RescheduleSeen/\" + p[\"slug\"] + \".json\", []) or []\n    seen_ids = {str(x) for x in seen}\n    try:\n        if provider == \"outlook\":\n            result = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"inbox\", \"limit\": 25, \"unreadOnly\": True})\n            rows = result if isinstance(result, list) else (result or {}).get(\"value\") or (result or {}).get(\"emails\") or []\n        else:\n            result = api.connectors.invoke(server=\"google-workspace-gmail\", tool=\"list_messages\", args={\"maxResults\": 25})\n            rows = result if isinstance(result, list) else (result or {}).get(\"messages\") or []\n    except Exception:\n        rows = []\n    for row in rows:\n        email_id = str(row.get(\"id\") or \"\")\n        if not email_id or email_id in seen_ids:\n            continue\n        new_items.append({\"slug\": p[\"slug\"], \"practice\": p[\"practice\"], \"provider\": provider, \"email_id\": email_id})\n",
+        "id": "find_candidate_emails",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "One entry per not-yet-seen inbox email, across every configured practice.",
+            "name": "new_items",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [],
+        "summary": "Lists unseen inbox emails for every configured practice.",
+        "title": "Find candidate emails"
+      },
+      {
+        "body": [
+          "classify_and_draft"
+        ],
+        "id": "foreach_candidate",
+        "itemVar": "item",
+        "items": "{{ steps.find_candidate_emails.outputs.new_items }}",
+        "kind": "foreach",
+        "maxIterations": 25,
+        "title": "For each candidate email"
+      },
+      {
+        "code": "import json\nimport re\n\nAI_CLASSIFY_PROMPT = (\n    \"Read this email to a healthcare clinic. Decide if the sender is a patient asking to move or reschedule \"\n    \"an existing booking (not a new enquiry, not a cancellation with no reschedule request, not anything else). \"\n    \"Return is_reschedule_request (bool) and, only if true, any specific day or time preference the patient \"\n    \"mentioned as preferred_time_note (string, empty if none).\"\n)\nAI_CLASSIFY_HINT = '{\"is_reschedule_request\": false, \"preferred_time_note\": \"\"}'\n\nAI_DRAFT_PROMPT = (\n    \"You are drafting a short, warm reply on behalf of a healthcare clinic to a patient who asked to reschedule \"\n    \"their booking. Offer the real available times given, in the tone instructed. Never give clinical advice, \"\n    \"diagnosis or interpretation. Keep it under 120 words.\"\n)\nAI_DRAFT_HINT = '{\"subject\": \"\", \"body\": \"\"}'\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef extract_sender_email(row):\n    sender = row.get(\"sender\") or row.get(\"from\") or \"\"\n    if isinstance(sender, dict):\n        addr = ((sender.get(\"emailAddress\") or {}).get(\"address\") or sender.get(\"address\") or \"\")\n        if addr:\n            return str(addr).lower()\n        sender = json.dumps(sender)\n    m = re.search(r\"[\\w.+-]+@[\\w-]+\\.[\\w.-]+\", str(sender))\n    return m.group(0).lower() if m else \"\"\n\n\ndef extract_id(link):\n    if not isinstance(link, dict):\n        return \"\"\n    url = ((link.get(\"links\") or {}).get(\"self\")) or \"\"\n    m = re.search(r\"/(\\d+)(?:$|\\?)\", str(url))\n    return m.group(1) if m else \"\"\n\n\ndef format_time(iso):\n    return str(iso or \"\").replace(\"T\", \" \").replace(\"Z\", \" UTC\")\n\n\nitem = params.get(\"item\") or {}\nslug = item.get(\"slug\") or \"\"\npractice = item.get(\"practice\") or {}\nprovider = item.get(\"provider\") or \"outlook\"\nemail_id = item.get(\"email_id\") or \"\"\noutcome = \"skipped\"\n\nif slug and email_id:\n    seen_path = \"PracticeManager/RescheduleSeen/\" + slug + \".json\"\n    seen = read_json(seen_path, []) or []\n    seen_set = {str(x) for x in seen}\n\n    try:\n        if provider == \"outlook\":\n            full = api.connectors.invoke(server=\"m365-mail-read\", tool=\"get_email\", args={\"id\": email_id})\n        else:\n            full = api.connectors.invoke(server=\"google-workspace-gmail\", tool=\"get_message\", args={\"id\": email_id})\n    except Exception:\n        full = {}\n    full = full if isinstance(full, dict) else {}\n    body_text = str(full.get(\"body\") or full.get(\"bodyPreview\") or full.get(\"snippet\") or \"\")\n    sender_email = extract_sender_email(full)\n\n    try:\n        classified = api.ai.extract(prompt=AI_CLASSIFY_PROMPT, input=body_text[:4000], schema_hint=AI_CLASSIFY_HINT)\n    except Exception:\n        classified = {}\n    classified = classified if isinstance(classified, dict) else {}\n\n    if not classified.get(\"is_reschedule_request\"):\n        seen_set.add(email_id)\n        write_json(seen_path, sorted(seen_set))\n        outcome = \"not_a_reschedule_request\"\n    elif not sender_email:\n        seen_set.add(email_id)\n        write_json(seen_path, sorted(seen_set))\n        outcome = \"no_sender_email\"\n    else:\n        patients = []\n        try:\n            found = api.connectors.invoke(server=\"cliniko-patients\", tool=\"list_patients\", args={\"q\": [\"email:=\" + sender_email]})\n            patients = (found or {}).get(\"patients\") or []\n        except Exception:\n            patients = []\n\n        if len(patients) != 1:\n            # Zero or ambiguous (more than one patient sharing an email) - never guess. Leave unseen so a human\n            # can be asked; this skill's own patient-resolution rule (\"never guess a match\") applies here too.\n            api.workq.create(\n                title=\"Reschedule request needs a patient match: \" + sender_email,\n                scope=\"org\",\n                description=(\n                    \"An email from \" + sender_email + \" looks like a reschedule request, but \"\n                    + (\"no Cliniko patient\" if not patients else str(len(patients)) + \" Cliniko patients\")\n                    + \" matched that email address. Match it by hand.\"\n                ),\n                priority=\"normal\",\n                assignee_ids=[practice.get(\"reviewer_id\")] if practice.get(\"reviewer_id\") else None,\n                labels=[\"healthcare-practice-management\", \"reschedule\", \"needs-match\"],\n            )\n            outcome = \"patient_not_resolved\"\n        else:\n            patient = patients[0]\n            patient_id = str(patient.get(\"id\") or \"\")\n            patient_name = (str(patient.get(\"first_name\") or \"\") + \" \" + str(patient.get(\"last_name\") or \"\")).strip() or sender_email\n\n            upcoming = []\n            try:\n                appts = api.connectors.invoke(\n                    server=\"cliniko-scheduling\", tool=\"list_individual_appointments\",\n                    args={\"q\": [\"patient_id:=\" + patient_id], \"sort\": \"starts_at:asc\", \"per_page\": 20},\n                )\n                rows = (appts or {}).get(\"individual_appointments\") or []\n                for r in rows:\n                    if not r.get(\"cancelled_at\"):\n                        upcoming.append(r)\n            except Exception:\n                upcoming = []\n\n            if not upcoming:\n                seen_set.add(email_id)\n                write_json(seen_path, sorted(seen_set))\n                outcome = \"no_upcoming_appointment\"\n            else:\n                appt = upcoming[0]\n                business_id = extract_id(appt.get(\"business\"))\n                practitioner_id = extract_id(appt.get(\"practitioner\"))\n                appointment_type_id = extract_id(appt.get(\"appointment_type\"))\n\n                slots = []\n                if business_id and practitioner_id and appointment_type_id:\n                    try:\n                        avail = api.connectors.invoke(\n                            server=\"cliniko-scheduling\", tool=\"get_available_times\",\n                            args={\"business_id\": business_id, \"practitioner_id\": practitioner_id, \"appointment_type_id\": appointment_type_id},\n                        )\n                        raw_slots = avail if isinstance(avail, list) else (avail or {}).get(\"available_times\") or []\n                        for s in raw_slots[:3]:\n                            t = s.get(\"appointment_start\") if isinstance(s, dict) else s\n                            if t:\n                                slots.append(format_time(t))\n                    except Exception:\n                        slots = []\n\n                tone = (practice.get(\"policy\") or {}).get(\"tone\") or \"warm, concise, no jargon\"\n                try:\n                    drafted = api.ai.extract(\n                        prompt=AI_DRAFT_PROMPT,\n                        input=json.dumps({\n                            \"patient_name\": patient_name,\n                            \"current_time\": format_time(appt.get(\"starts_at\")),\n                            \"available_times\": slots,\n                            \"preferred_time_note\": classified.get(\"preferred_time_note\") or \"\",\n                            \"tone\": tone,\n                        }),\n                        schema_hint=AI_DRAFT_HINT,\n                    )\n                except Exception:\n                    drafted = {}\n                drafted = drafted if isinstance(drafted, dict) else {}\n                subject = drafted.get(\"subject\") or \"Rescheduling your appointment\"\n                body = drafted.get(\"body\") or (\n                    \"Hi \" + patient_name + \", happy to move your booking. Let us know which of these times suits: \"\n                    + \", \".join(slots)\n                )\n\n                description = (\n                    \"**Patient:** \" + patient_name + \"  \\n\"\n                    \"**Current appointment:** \" + format_time(appt.get(\"starts_at\")) + \"  \\n\"\n                    \"**Proposed times:** \" + (\", \".join(slots) if slots else \"none found\") + \"  \\n\\n\"\n                    \"**Drafted subject:** \" + subject + \"  \\n\\n\"\n                    \"**Drafted message:**\\n\\n\" + body\n                )\n\n                reviewer = practice.get(\"reviewer_id\") or \"\"\n                workq_item = api.workq.create(\n                    title=\"Reschedule request: \" + patient_name,\n                    scope=\"org\",\n                    description=description,\n                    priority=\"normal\",\n                    assignee_ids=[reviewer] if reviewer else None,\n                    labels=[\"healthcare-practice-management\", \"reschedule\"],\n                )\n                workq_id = workq_item[\"id\"]\n                api.workq.attach_form(todo_id=workq_id, form_id=params[\"approval_form\"])\n\n                # Reuses the no-show pair's existing draft-file folder and shape on purpose: Apply no-show\n                # follow-up decision reads a hardcoded PracticeManager/NoShowDrafts/<todo_id>.json path, and\n                # changing that path would mean editing tested code we don't own. The folder name is now stale\n                # for this trigger - a known, accepted trade-off, not an oversight.\n                write_json(\"PracticeManager/NoShowDrafts/\" + workq_id + \".json\", {\n                    \"slug\": slug,\n                    \"appointment_id\": str(appt.get(\"id\") or \"\"),\n                    \"patient_id\": patient_id,\n                    \"patient_name\": patient_name,\n                    \"email\": sender_email,\n                    \"subject\": subject,\n                    \"body\": body,\n                })\n\n                seen_set.add(email_id)\n                write_json(seen_path, sorted(seen_set))\n                outcome = \"requested_approval\"\n",
+        "id": "classify_and_draft",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "requested_approval, not_a_reschedule_request, patient_not_resolved, no_upcoming_appointment, no_sender_email or skipped.",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "label": "Candidate email",
+            "name": "item",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "control": "hidden",
+            "label": "Approval form",
+            "name": "approval_form",
+            "required": true,
+            "type": "uuid",
+            "value": "f660cc88-e525-4b42-b3fb-a6f6537fb763"
+          }
+        ],
+        "summary": "Classifies the email, resolves the patient, proposes slots and raises a WorkQ item if it's a genuine reschedule request.",
+        "title": "Classify and draft"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_candidate_emails",
+      "foreach_candidate"
+    ],
+    "triggers": [
+      {
+        "cron": "*/30 * * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Detect reschedule request, draft offer",
+  "originKey": "8e2837b8-28df-4eff-ab50-2beb37355d52",
+  "tags": [
+    "healthcare-practice-management",
+    "reschedule",
+    "scheduling"
+  ]
+}
