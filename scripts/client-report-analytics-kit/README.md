@@ -15,8 +15,14 @@ This folder is the source of `plugins/client-report-analytics`: its report templ
   - Each config pulls these files in with `/* @include <path> */` lines. `build.js` expands them and compacts them with esbuild.
   - These four templates are never written by the agent (they're opened with Use this report, or copied with `artifact_from_template`), so the 35,000-token limit, whose reason is the agent writing a whole document in one turn, is raised for them. The caps are Xero 40,000, MYOB 47,000 and QuickBooks 46,000; the MYOB and QuickBooks kits go in whole, not pruned like the Xero kit.
 - **Time and estimates from the client's own file.**
-  - CRA-12 Actual Time reads MYOB timesheets and QuickBooks time activities. That's the client's staff time, not the practice's, and Xero's accounting API has no time records.
-  - CRA-13 Estimate Accuracy compares QuickBooks estimates with the invoices raised from them, in dollars.
+  - CRA-12 Actual Time reads Xero Projects time entries, MYOB timesheets and QuickBooks time activities. That's the client's staff time, not the practice's.
+  - CRA-13 Estimate Accuracy:
+    - on Xero, each Xero Projects task's time estimate against the time logged on it, and each project's estimate against its time and expenses;
+    - on QuickBooks, estimates against the invoices raised from them, in dollars.
+    - MYOB's API has no job budgets or quotes linked to invoices, so the MYOB box routes to the MYOB Reporting Studio's MYOB Budget Management (`ROUTE` in the catalogue).
+  - **The Xero versions bind a second connector, `xero-projects`** (the Xero Projects extension, OAuth scope `projects`). Its `list_time_entries` and `list_tasks` take one project per call. A report can only pass text, so each runs once per project after the projects load (`cfg.fan`, up to 40 projects). An internal `project` input is set per call.
+    - Time entries come back as UTC instants. Adding 13 hours puts each one on its own local date, from UTC−10 to UTC+13.
+    - A snapshot can't hold the per-project calls, so it says so.
   - CRA-15 has no template: the catalogue box routes to the platform's built-in Workspace Activity report, which covers the whole workspace.
 - **The agent never writes report code.** Skills tell it to call `artifact_from_template` (myHubV2 dev and qa; not uat or master on 6 Oct 2026) with `plugin: "client-report-analytics"`, the slug and the inputs the request changes. `gen-ext.js` writes each skill's input table from the real manifests.
 - **CRA-00 catalogue** (`catalogue/client-catalogue.js`) is a small standalone document: its only live data is the client list from the viewer's own connections. Boxes start from "Use this report" on a template or ask the agent (decision D5); there is no "latest saved instance" lookup, no sparkline and no client-portal toggle (Workspace has none).

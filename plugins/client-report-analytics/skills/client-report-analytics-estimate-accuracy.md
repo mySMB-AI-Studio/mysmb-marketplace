@@ -1,11 +1,11 @@
 ---
 name: client-report-analytics-estimate-accuracy
-description: CRA-13 Estimate Accuracy for one client (QuickBooks) as a live, validated report. Use when the user asks for the estimate accuracy of a client, estimate vs actual, how close estimates were to the invoices raised from them.
+description: CRA-13 Estimate Accuracy for one client (Xero or QuickBooks) as a live, validated report. Use when the user asks for the estimate accuracy of a client, estimate vs actual, how close task time estimates or estimates were to the time logged or the invoices raised.
 ---
 
 # CRA-13 Estimate Accuracy
 
-Use when the user asks for the Estimate Accuracy (CRA-13) of one client: each estimate against the invoices raised from it, with the variance in dollars (QuickBooks has no time estimates).
+Use when the user asks for the Estimate Accuracy (CRA-13) of one client: estimated against actual: on Xero, each Xero Projects task's time estimate against the time logged and each project's estimate against its time and expenses; on QuickBooks, each estimate against the invoices raised from it, in dollars.
 
 ## Rules for every client report
 
@@ -20,7 +20,16 @@ Use when the user asks for the Estimate Accuracy (CRA-13) of one client: each es
 
 | Platform | Template slug | Client input |
 |---|---|---|
+| Xero | `client-xero-estimate-accuracy` | the organisation id (`tenantId` from `list_connections`) |
 | QuickBooks | `client-quickbooks-estimate-accuracy` | none: QuickBooks is the one connected company |
+
+### Xero Estimate Accuracy (`client-xero-estimate-accuracy`)
+
+| Input | Label | Type | Default |
+|---|---|---|---|
+| `org` | Organisation | string | `` |
+| `project` | Project (set by the report, one per call: leave empty) | string | `` |
+| `display` | Display settings | string | `{"cents":1,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,…` |
 
 ### QuickBooks Estimate Accuracy (`client-quickbooks-estimate-accuracy`)
 
@@ -42,8 +51,10 @@ Use when the user asks for the Estimate Accuracy (CRA-13) of one client: each es
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Each estimate's variance = invoiced − estimated, and the totals add up.
-- Dollars, not time: QuickBooks has no time estimates. Not available on Xero (quotes aren't linked to invoices in its API) or MYOB yet.
+- Each variance = actual − estimated, and the totals add up.
+- Xero: each Xero Projects task's time estimate against the time logged on it, and each project's estimate against its time and expenses to date; the task time must add up to each project's time logged. Needs the Xero Projects extension connected.
+- QuickBooks: each estimate against the invoices raised from it, in dollars (QuickBooks has no time estimates).
+- MYOB has no job budgets or quotes linked to invoices in its API: for a MYOB client, open MYOB Budget Management from the MYOB Reporting Studio (the file's budgets against actual) and say that is what it measures.
 - Switching client refetches every source for the new client; nothing of the previous client stays on the page or in the Excel download.
 
 ## QA test (sandbox / demo organisations only)
