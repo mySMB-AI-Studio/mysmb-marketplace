@@ -22,7 +22,7 @@
     "name": "Cliniko Automations: Find freed slots to fill",
     "nodes": [
       {
-        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\nstate = {\"handled_slot_keys\": []}\nfreed_notes = []\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\nif not slug:\n    problem = \"No practice_slug configured for this automation.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug\n                           + \"'. Run Healthcare Practice Management: Start practice setup first.\")\n    else:\n        settings = found\n        state_data, _ = read_json(\"PracticeManager/State/\" + slug + \"-gap-filler.json\")\n        state = state_data or {\"handled_slot_keys\": []}\n        # Written by \"Apply patient's chosen reschedule time\" whenever it moves\n        # a booking -- Cliniko doesn't mark a moved booking cancelled, so the\n        # old time it frees can't be found by checking Cliniko alone.\n        notes, _ = read_json(\"PracticeManager/State/\" + slug + \"-freed-slots.json\")\n        freed_notes = notes if isinstance(notes, list) else []\n",
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\nstate = {\"handled_slot_keys\": []}\nfreed_notes = []\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\n# No slug set (the param ships blank and can't be edited in the app): use\n# the practice settings file, as long as there's exactly one.\nif not slug:\n    try:\n        practice_entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\") or []\n    except Exception:\n        practice_entries = []\n    practice_slugs = []\n    for e in practice_entries:\n        name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n        if name.endswith(\".json\"):\n            practice_slugs.append(name[: -len(\".json\")])\n    if len(practice_slugs) == 1:\n        slug = practice_slugs[0]\n\nif not slug:\n    problem = \"No practice_slug configured for this automation, and there isn't exactly one practice settings file in PracticeManager/Practices to fall back on.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug\n                           + \"'. Run Healthcare Practice Management: Start practice setup first.\")\n    else:\n        settings = found\n        state_data, _ = read_json(\"PracticeManager/State/\" + slug + \"-gap-filler.json\")\n        state = state_data or {\"handled_slot_keys\": []}\n        # Written by \"Apply patient's chosen reschedule time\" whenever it moves\n        # a booking -- Cliniko doesn't mark a moved booking cancelled, so the\n        # old time it frees can't be found by checking Cliniko alone.\n        notes, _ = read_json(\"PracticeManager/State/\" + slug + \"-freed-slots.json\")\n        freed_notes = notes if isinstance(notes, list) else []\n",
         "id": "load_context",
         "kind": "python",
         "outputs": [
@@ -381,7 +381,7 @@
     "params": [
       {
         "control": "text",
-        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json) — set this to the SAME slug on every Cliniko Automations automation in this extension; each automation keeps its own separate copy of this value, so leaving one blank makes that one automation silently do nothing.",
+        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json). Leave blank to use the only practice settings file there; only needed when more than one practice is set up.",
         "name": "practice_slug",
         "required": false,
         "type": "str",
@@ -412,5 +412,5 @@
     "scheduling",
     "gap-filler"
   ],
-  "contentHash": "211d947b40b52e2476900d15cb138ffedd2493712f5f715c530bf40b13ddecca"
+  "contentHash": "f692e9d9e61e26a88c43247416fafaf1b32509c8f391d3def8a9801de133ce25"
 }

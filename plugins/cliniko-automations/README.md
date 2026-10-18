@@ -35,8 +35,9 @@ recovery, new-enquiry-to-booked-patient, calendar guard) will be added here.
 - A practice settings file already created at `PracticeManager/Practices/<slug>.json` (via the
   `healthcare-practice-management` extension's **Start practice setup** / **Apply practice setup**
   automations) — these automations read `cancellation_window_hours` and `tone` from it.
-- The **Draft reschedule or cancellation reply** automation's `practice_slug` param set to that
-  practice's slug (Automations → this automation → Params).
+- Nothing else to configure for a single practice: each automation's `practice_slug` param can
+  stay blank, and it then uses the only settings file in `PracticeManager/Practices/`. Set the
+  param only when more than one practice is set up.
 
 ## Configuration
 
