@@ -1,0 +1,168 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "ai:generate",
+    "connectors:m365-mail-read",
+    "connectors:m365-mail-send",
+    "connectors:cliniko-scheduling"
+  ],
+  "dependencies": [],
+  "description": "Every 5 minutes, checks the inbox for replies to freed-slot offers sent by \"Send approved slot offers\". AI reads each reply (with the quoted offer trimmed off) and decides whether it's a YES. The first patient to say YES is booked into the slot in Cliniko, after checking nobody has taken it since: a patient already booked later has that booking moved into the slot, anyone else gets a new booking. They get a confirmation, everyone else who was offered the slot is told it's filled, and the WorkQ item is completed. A moved booking's old time is left for \"Find freed slots to fill\" to offer on. Unclear replies and Cliniko errors are commented on the WorkQ item for a human; if nobody says YES before the slot starts, the item is closed.",
+  "flowIr": {
+    "description": "Polls for replies to sent freed-slot offers, books the first YES in Cliniko, confirms, tells the others, and closes the WorkQ item.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Book the first YES for a freed slot",
+    "nodes": [
+      {
+        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\n# No slug set (the param ships blank and can't be edited in the app): use\n# the practice settings file, as long as there's exactly one.\nif not slug:\n    try:\n        practice_entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\") or []\n    except Exception:\n        practice_entries = []\n    practice_slugs = []\n    for e in practice_entries:\n        name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n        if name.endswith(\".json\"):\n            practice_slugs.append(name[: -len(\".json\")])\n    if len(practice_slugs) == 1:\n        slug = practice_slugs[0]\n\nif not slug:\n    problem = \"No practice_slug configured for this automation, and there isn't exactly one practice settings file in PracticeManager/Practices to fall back on.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug + \"'.\")\n    else:\n        settings = found\n",
+        "id": "load_context",
+        "kind": "python",
+        "outputs": [
+          {
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "name": "settings",
+            "type": "dict"
+          },
+          {
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.practice_slug }}",
+            "control": "hidden",
+            "label": "Practice slug",
+            "name": "practice_slug",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Load practice settings"
+      },
+      {
+        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"]",
+        "else": [],
+        "id": "gate_settings",
+        "kind": "if",
+        "then": [
+          "list_open_offers",
+          "foreach_offer"
+        ],
+        "title": "Settings loaded okay?"
+      },
+      {
+        "code": "import json\n\nslug = params[\"slug\"]\nprefix = slug + \"-gap-offers-\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\n# Written by \"Send approved slot offers\" once offers go out; only the ones\n# still waiting for a YES are checked.\nopen_offers = []\nfor e in entries:\n    name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n    if not (name.startswith(prefix) and name.endswith(\".json\")):\n        continue\n    try:\n        data = json.loads(api.files.read(file=\"PracticeManager/State/\" + name, scope=\"org\") or \"{}\") or {}\n    except Exception:\n        continue\n    if isinstance(data, dict) and data.get(\"status\") == \"awaiting_reply\":\n        data[\"_file_name\"] = name\n        open_offers.append(data)\n",
+        "id": "list_open_offers",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Each sent offer still waiting for a YES, plus its own file name.",
+            "name": "open_offers",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Find offers waiting for a reply"
+      },
+      {
+        "body": [
+          "book_first_yes"
+        ],
+        "id": "foreach_offer",
+        "itemVar": "offer_item",
+        "items": "{{ steps.list_open_offers.outputs.open_offers }}",
+        "kind": "foreach",
+        "maxIterations": 25,
+        "title": "Check each sent offer for a YES"
+      },
+      {
+        "code": "import json\nimport re\nimport html\nimport datetime\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-scheduling\", tool=tool, args=args) or {}\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\ndef parse(iso_str):\n    return datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\ndef read_json(path):\n    try:\n        return json.loads(api.files.read(file=path, scope=\"org\") or \"null\")\n    except Exception:\n        return None\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True), scope=\"org\")\n\ndef comment(body):\n    try:\n        api.workq.comment(todo_id=todo_id, body=body)\n    except Exception:\n        pass\n\ndef as_html(text):\n    # Graph treats reply/send bodies here as HTML: escape, then real <br>s.\n    return html.escape(text).replace(\"\\n\", \"<br>\")\n\ndef reply_to(message_id, text):\n    api.connectors.invoke(server=\"m365-mail-send\", tool=\"reply_to_email\",\n                          args={\"id\": message_id, \"comment\": as_html(text)})\n\nslug = str(params[\"slug\"] or \"\")\nsettings = params[\"settings\"] or {}\nrecord = dict(params[\"offer\"] or {})\nfile_name = str(record.pop(\"_file_name\", \"\") or \"\")\nstate_path = \"PracticeManager/State/\" + file_name\ntodo_id = str(record.get(\"todo_id\") or \"\")\nslot = record.get(\"slot\") or {}\nslot_label = str(record.get(\"slot_label\") or \"\")\nsubject = str(record.get(\"subject\") or \"\")\nsent_at = str(record.get(\"sent_at\") or \"\")\noffered = [o for o in (record.get(\"offered\") or []) if isinstance(o, dict)]\npractice_name = str(settings.get(\"name\") or \"\")\nsign_off = practice_name or \"Kind regards\"\nnow = datetime.datetime.now(datetime.timezone.utc)\n\nresult = \"no_reply_yet\"\nseen_ids = [str(i) for i in (record.get(\"seen_reply_ids\") or [])]\nreplies_log = [r for r in (record.get(\"replies\") or []) if isinstance(r, dict)]\n\ntry:\n    slot_start = parse(str(slot.get(\"starts_at\") or \"\"))\n    slot_end = parse(str(slot.get(\"ends_at\") or \"\")) if slot.get(\"ends_at\") else slot_start + datetime.timedelta(minutes=30)\nexcept Exception:\n    slot_start = None\n    slot_end = None\n\nif not slot_start or not slot_end or not todo_id or not offered:\n    result = \"incomplete_record\"\n    record[\"status\"] = \"incomplete\"\nelif slot_start <= now:\n    # Nobody said YES before the slot started -- stop watching.\n    result = \"expired\"\n    record[\"status\"] = \"expired\"\n    comment(\"No patient replied YES before \" + slot_label + \", so the slot wasn't filled.\")\n    try:\n        api.workq.complete(todo_id=todo_id)\n    except Exception:\n        pass\nelse:\n    # 1. New replies from the offered patients to this slot's offer email.\n    by_email = {str(o.get(\"email\") or \"\").strip().lower(): o for o in offered if o.get(\"email\")}\n    raw = api.connectors.invoke(server=\"m365-mail-read\", tool=\"list_emails\", args={\"folder\": \"inbox\", \"limit\": 50})\n    messages = raw if isinstance(raw, list) else ((raw or {}).get(\"value\") or [])\n    new_replies = []\n    for m in messages:\n        if not isinstance(m, dict):\n            continue\n        sender = str(((m.get(\"from\") or {}).get(\"emailAddress\") or {}).get(\"address\") or \"\").strip().lower()\n        received = str(m.get(\"receivedDateTime\") or \"\")\n        msg_id = str(m.get(\"id\") or \"\")\n        if (sender in by_email and msg_id and msg_id not in seen_ids and received > sent_at\n                and slot_label and slot_label in str(m.get(\"subject\") or \"\")):\n            new_replies.append(m)\n    new_replies.sort(key=lambda m: str(m.get(\"receivedDateTime\") or \"\"))\n\n    # 2. Read each reply properly and let AI decide YES / NO / unclear.\n    winner = None\n    winner_msg_id = \"\"\n    for m in new_replies:\n        msg_id = str(m.get(\"id\") or \"\")\n        sender = str(((m.get(\"from\") or {}).get(\"emailAddress\") or {}).get(\"address\") or \"\").strip().lower()\n        text = \"\"\n        try:\n            full = api.connectors.invoke(server=\"m365-mail-read\", tool=\"get_email\", args={\"id\": msg_id}) or {}\n            content = str((full.get(\"body\") or {}).get(\"content\") or \"\")\n            plain = re.sub(r\"(?i)<br\\s*/?>|</p>|</div>|</tr>\", \"\\n\", content)\n            plain = re.sub(r\"<[^>]+>\", \" \", plain)\n            plain = re.sub(r\"[ \\t]+\", \" \", html.unescape(plain))\n            # Cut the quoted offer off so its own \"reply YES\" never counts.\n            quote_start = re.search(r\"(?im)^\\s*(From:|Sent:|On .{0,80} wrote:|-+ ?Original Message)\", plain)\n            if quote_start:\n                plain = plain[: quote_start.start()]\n            text = re.sub(r\"\\s+\", \" \", plain).strip()\n        except Exception:\n            text = \"\"\n        if not text:\n            text = str(m.get(\"bodyPreview\") or \"\")\n        answer = \"unclear\"\n        try:\n            ai_raw = str(api.ai.generate(prompt=(\n                \"A patient was offered an earlier appointment on \" + slot_label\n                + \" and told to reply YES to take it. Their reply:\\n\\\"\" + text[:1500] + \"\\\"\\n\\n\"\n                \"Are they accepting this appointment? Reply with ONLY JSON, no markdown: \"\n                '{\"answer\": \"yes\" | \"no\" | \"unclear\"}'\n            )) or \"\")\n            cleaned = ai_raw.strip().strip(\"`\").strip()\n            if cleaned.lower().startswith(\"json\"):\n                cleaned = cleaned[4:]\n            answer = str((json.loads(cleaned.strip()) or {}).get(\"answer\") or \"unclear\").lower()\n        except Exception:\n            answer = \"yes\" if re.match(r\"^\\s*(yes|yep|yeah|sure|ok|okay)\\b\", text, re.I) else \"unclear\"\n        seen_ids.append(msg_id)\n        patient = by_email.get(sender) or {}\n        replies_log.append({\"from\": sender, \"name\": str(patient.get(\"name\") or \"\"), \"answer\": answer,\n                            \"received\": str(m.get(\"receivedDateTime\") or \"\"), \"text\": text[:300]})\n        if answer == \"yes\" and winner is None:\n            winner = patient\n            winner_msg_id = msg_id\n        elif answer == \"unclear\":\n            comment(\"Unclear reply from \" + str(patient.get(\"name\") or sender) + \" about this slot: \\\"\" + text[:300]\n                    + \"\\\". Not booked; please follow up with them.\")\n        elif answer == \"no\":\n            comment(str(patient.get(\"name\") or sender) + \" declined the offer.\")\n\n    if winner is not None:\n        # 3. Book the first YES, if the slot is still free.\n        own_appt_id = str(winner.get(\"appointment_id\") or \"\")\n        current = {}\n        length = slot_end - slot_start\n        if own_appt_id:\n            try:\n                current = cliniko(\"get_individual_appointment\", {\"id\": own_appt_id}) or {}\n                length = parse(str(current.get(\"ends_at\") or \"\")) - parse(str(current.get(\"starts_at\") or \"\"))\n            except Exception:\n                current = current or {}\n        new_end = slot_start + length\n        practitioner_id = str(slot.get(\"practitioner_id\") or \"\")\n        taken = False\n        try:\n            nearby = cliniko(\"list_individual_appointments\", {\n                \"q\": [\"starts_at:>=\" + zulu(slot_start - datetime.timedelta(hours=4)), \"starts_at:<\" + zulu(new_end),\n                      \"practitioner_id:=\" + practitioner_id],\n                \"per_page\": 100,\n            }).get(\"individual_appointments\") or []\n        except Exception:\n            nearby = []\n        for other in nearby:\n            if other.get(\"cancelled_at\") or other.get(\"archived_at\") or other.get(\"deleted_at\"):\n                continue\n            if str(other.get(\"id\") or \"\") == own_appt_id or link_id(other, \"practitioner\") != practitioner_id:\n                continue\n            try:\n                if parse(str(other.get(\"starts_at\") or \"\")) < new_end and parse(str(other.get(\"ends_at\") or \"\")) > slot_start:\n                    taken = True\n                    break\n            except Exception:\n                continue\n\n        first_name = str(winner.get(\"name\") or \"\").split(\" \")[0] or \"there\"\n        if taken:\n            result = \"taken\"\n            record[\"status\"] = \"taken\"\n            try:\n                reply_to(winner_msg_id, \"Hi \" + first_name + \",\\n\\nThank you for replying. Unfortunately the \"\n                         + slot_label + \" appointment has just been taken, so your current booking stays as it is.\\n\\n\" + sign_off)\n            except Exception:\n                pass\n            comment(str(winner.get(\"name\") or \"\") + \" said YES, but someone was booked into the slot in Cliniko first. They've been told their booking is unchanged.\")\n            try:\n                api.workq.complete(todo_id=todo_id)\n            except Exception:\n                pass\n        else:\n            book_error = \"\"\n            try:\n                if own_appt_id:\n                    # Already booked later: move that booking into the slot\n                    # (keeping its length) rather than double-booking them.\n                    cliniko(\"update_individual_appointment\", {\"id\": own_appt_id,\n                            \"patch\": {\"starts_at\": zulu(slot_start), \"ends_at\": zulu(new_end)}})\n                else:\n                    cliniko(\"create_individual_appointment\", {\"appointment\": {\n                        \"patient_id\": str(winner.get(\"patient_id\") or \"\"),\n                        \"practitioner_id\": practitioner_id,\n                        \"business_id\": str(slot.get(\"business_id\") or \"\"),\n                        \"appointment_type_id\": str(slot.get(\"appointment_type_id\") or \"\"),\n                        \"starts_at\": zulu(slot_start),\n                        \"ends_at\": zulu(new_end),\n                    }})\n            except Exception as exc:\n                book_error = str(exc)\n\n            if book_error:\n                result = \"booking_failed\"\n                record[\"status\"] = \"needs_human\"\n                comment(str(winner.get(\"name\") or \"\") + \" replied YES, but Cliniko rejected the booking: \" + book_error[:300]\n                        + \"\\n\\nPlease book them into \" + slot_label + \" manually and reply to them yourself.\")\n            else:\n                result = \"booked\"\n                record[\"status\"] = \"filled\"\n                record[\"filled_by\"] = {\"name\": winner.get(\"name\"), \"email\": winner.get(\"email\"), \"patient_id\": winner.get(\"patient_id\")}\n                moved_from = str(winner.get(\"current_label\") or \"\")\n                try:\n                    reply_to(winner_msg_id, \"Hi \" + first_name + \",\\n\\nYou're booked in for \" + slot_label\n                             + (\". Your \" + moved_from + \" appointment has been moved to this time\" if own_appt_id and moved_from else \"\")\n                             + \". See you then!\\n\\n\" + sign_off)\n                except Exception:\n                    comment(\"Booked, but the confirmation email to \" + str(winner.get(\"name\") or \"\") + \" failed to send; please let them know.\")\n                # Tell everyone else who was offered it that it's gone.\n                for o in offered:\n                    if str(o.get(\"email\") or \"\").strip().lower() == str(winner.get(\"email\") or \"\").strip().lower():\n                        continue\n                    try:\n                        api.connectors.invoke(server=\"m365-mail-send\", tool=\"send_email\", args={\n                            \"to\": [str(o.get(\"email\") or \"\")], \"subject\": \"RE: \" + subject, \"contentType\": \"Text\",\n                            \"body\": \"Hi \" + (str(o.get(\"name\") or \"\").split(\" \")[0] or \"there\") + \",\\n\\nThank you for your interest. The \"\n                                    + slot_label + \" appointment has now been filled\"\n                                    + (\", so your current booking stays as it is.\" if o.get(\"appointment_id\") else \".\")\n                                    + \"\\n\\n\" + sign_off,\n                        })\n                    except Exception:\n                        pass\n                # A moved booking frees its old time: leave it for \"Find freed\n                # slots to fill\", the same note the reschedule desk leaves.\n                if own_appt_id and current.get(\"starts_at\"):\n                    try:\n                        freed_path = \"PracticeManager/State/\" + slug + \"-freed-slots.json\"\n                        freed = read_json(freed_path)\n                        freed = freed if isinstance(freed, list) else []\n                        freed.append({\n                            \"appointment_id\": own_appt_id,\n                            \"patient_id\": link_id(current, \"patient\"),\n                            \"starts_at\": str(current.get(\"starts_at\") or \"\"),\n                            \"ends_at\": str(current.get(\"ends_at\") or \"\"),\n                            \"practitioner_id\": link_id(current, \"practitioner\"),\n                            \"business_id\": link_id(current, \"business\"),\n                            \"appointment_type_id\": link_id(current, \"appointment_type\"),\n                            \"freed_at\": zulu(now),\n                        })\n                        write_json(freed_path, freed[-200:])\n                    except Exception:\n                        pass\n                others = [str(o.get(\"name\") or \"\") for o in offered if o is not winner]\n                comment(\"✅ Filled: \" + str(winner.get(\"name\") or \"\") + \" replied YES and is booked into \" + slot_label\n                        + (\" (moved from \" + moved_from + \")\" if own_appt_id and moved_from else \"\") + \" in Cliniko. Confirmation sent.\"\n                        + (\" Told \" + \", \".join(others) + \" the slot is filled.\" if others else \"\"))\n                try:\n                    api.workq.complete(todo_id=todo_id)\n                except Exception:\n                    pass\n\n                # Audit trail (healthcare-practice-management-guardrail-audit format).\n                try:\n                    from zoneinfo import ZoneInfo\n                    today_str = now.astimezone(ZoneInfo(str(settings.get(\"timezone\") or \"UTC\"))).date().isoformat()\n                except Exception:\n                    today_str = now.date().isoformat()\n                audit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\n                try:\n                    existing_log = api.files.read(file=audit_path, scope=\"org\")\n                except Exception:\n                    existing_log = \"\"\n                try:\n                    api.files.put(file=audit_path, scope=\"org\", content=existing_log + json.dumps({\n                        \"ts\": zulu(now), \"practice_slug\": slug, \"actor\": \"agent\",\n                        \"source\": \"automation:Cliniko Automations: Book the first YES for a freed slot\",\n                        \"action\": \"booked\", \"target\": {\"kind\": \"appointment_slot\", \"id\": str(slot.get(\"key\") or \"\")},\n                        \"summary\": \"Freed slot \" + slot_label + \" filled by \" + str(winner.get(\"name\") or \"\"),\n                        \"guardrails\": [{\"rule\": \"diary_change_requires_approval\", \"result\": \"pass\",\n                                        \"detail\": \"offer approved in WorkQ; patient accepted by email\"}],\n                        \"workq_item_id\": todo_id,\n                    }, sort_keys=True) + \"\\n\")\n                except Exception:\n                    pass\n    elif new_replies:\n        result = \"replies_no_yes\"\n\nrecord[\"seen_reply_ids\"] = seen_ids[-200:]\nrecord[\"replies\"] = replies_log[-50:]\nrecord[\"checked_at\"] = zulu(now)\nif file_name:\n    write_json(state_path, record)\n",
+        "id": "book_first_yes",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "no_reply_yet | replies_no_yes | booked | taken | booking_failed | expired | incomplete_record",
+            "name": "result",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.load_context.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_context.outputs.settings }}",
+            "control": "hidden",
+            "label": "Settings",
+            "name": "settings",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "label": "Sent offer",
+            "name": "offer",
+            "required": true,
+            "type": "dict"
+          }
+        ],
+        "title": "Read replies, book the first YES and tell the others"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Practice slug (matches PracticeManager/Practices/<slug>.json). Leave blank to use the only practice settings file there; only needed when more than one practice is set up.",
+        "name": "practice_slug",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "load_context",
+      "gate_settings"
+    ],
+    "triggers": [
+      {
+        "cron": "*/5 * * * *",
+        "kind": "schedule",
+        "timezone": "UTC"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Book the first YES for a freed slot",
+  "originKey": "b295c808-421e-4bab-9369-a84a3fdc24cd",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "email"
+  ],
+  "contentHash": "0ae7bbb05f0ff6646d7349bd17fa6c63837d1b32c72f1f950af2392cfa138121"
+}
