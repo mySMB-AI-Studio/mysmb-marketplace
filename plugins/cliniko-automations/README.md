@@ -23,9 +23,12 @@ patient-facing or diary-changing through WorkQ before it happens.
     For each free slot it lists candidate patients: those booked later with the same practitioner,
     and overdue patients last seen 6–16 weeks ago with nothing booked. AI ranks them and drafts a
     personalised offer for each, and it creates one WorkQ item with the **Freed slot offer
-    approval** form attached. It sends nothing; sending the approved offers and booking the first
-    acceptance are the next steps. Override the window with `gap_filler.min_notice_hours` / `max_days_ahead` in
-    the practice settings file.
+    approval** form attached. It sends nothing itself. Override the window with
+    `gap_filler.min_notice_hours` / `max_days_ahead` in the practice settings file.
+  - *Send approved slot offers* (triggered by that form's submission): emails the drafted offer to
+    the chosen candidates (numbers entered, "all", or the recommended ones when left blank), after
+    checking the slot is still free. The WorkQ item stays open waiting for the first YES; booking
+    that patient is the next step.
 
 More automations from the practice's Top 10 shortlist (referral/care plan watchdog, no-show
 recovery, new-enquiry-to-booked-patient, calendar guard) will be added here.
