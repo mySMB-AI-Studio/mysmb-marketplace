@@ -1,0 +1,204 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:m365-mail-send",
+    "connectors:cliniko-scheduling"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "7150eb88-885d-4ea0-a008-6c1cf812a954",
+      "sourceId": "7150eb88-885d-4ea0-a008-6c1cf812a954"
+    }
+  ],
+  "description": "When a manager submits the Freed slot offer approval form, emails the drafted offer to the chosen candidates (the numbers entered, \"all\", or the recommended ones when left blank). It first checks the slot is still in the future and nobody has been booked into it, and never emails the same slot's patients twice. The WorkQ item stays open, waiting for the first patient to reply YES. Choosing \"Don't offer this slot\" closes the item without sending anything.",
+  "flowIr": {
+    "description": "Triggered by the Freed slot offer approval form: sends the approved offers by email and hands off to the reply checker.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Send approved slot offers",
+    "nodes": [
+      {
+        "code": "import json\n\ntodo_id = str(params[\"todo_id\"] or \"\")\nresponses = params.get(\"responses\") or {}\ndecision = str(responses.get(\"q_decision\") or \"\")\nsend_to = str(responses.get(\"q_send_to\") or \"\")\nnotes = str(responses.get(\"q_notes\") or \"\")\n\nslug = \"\"\ngap_slot = {}\nproblem = \"\"\n\n# \"Find freed slots to fill\" saves everything about the slot (candidates and\n# drafted offers) as <slug>-gap-slot-<todo_id>.json; the slug is taken from\n# that filename, so this automation needs no practice_slug param.\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\nsuffix = \"-gap-slot-\" + todo_id + \".json\"\nmatch_name = \"\"\nfor e in entries:\n    name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n    if name.endswith(suffix):\n        match_name = name\n        break\n\nif match_name:\n    slug = match_name[: -len(suffix)]\n    try:\n        gap_slot = json.loads(api.files.read(file=\"PracticeManager/State/\" + match_name, scope=\"org\") or \"{}\") or {}\n    except Exception:\n        gap_slot = {}\n\nif not todo_id:\n    problem = \"The form response didn't come from a WorkQ item.\"\nelif not gap_slot:\n    problem = \"No saved freed-slot record found for WorkQ item \" + todo_id + \".\"\nelif not decision:\n    problem = \"Form response had no decision answer.\"\n",
+        "id": "load_decision",
+        "kind": "python",
+        "outputs": [
+          {
+            "name": "todo_id",
+            "type": "str"
+          },
+          {
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "name": "gap_slot",
+            "type": "dict"
+          },
+          {
+            "name": "decision",
+            "type": "str"
+          },
+          {
+            "name": "send_to",
+            "type": "str"
+          },
+          {
+            "name": "notes",
+            "type": "str"
+          },
+          {
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "control": "form-picker",
+            "label": "Freed slot offer approval form",
+            "name": "offer_form",
+            "required": true,
+            "type": "uuid",
+            "value": "7150eb88-885d-4ea0-a008-6c1cf812a954"
+          }
+        ],
+        "title": "Load the manager's decision and the saved slot"
+      },
+      {
+        "cond": "not steps[\"load_decision\"][\"outputs\"][\"problem\"]",
+        "else": [
+          "log_problem"
+        ],
+        "id": "gate_found",
+        "kind": "if",
+        "then": [
+          "send_offers"
+        ],
+        "title": "Saved slot found?"
+      },
+      {
+        "code": "todo_id = params[\"todo_id\"] or \"\"\nproblem = params[\"problem\"] or \"Unknown error.\"\nif todo_id:\n    try:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't send the offers automatically: \" + problem)\n    except Exception:\n        pass\n",
+        "id": "log_problem",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_decision.outputs.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem",
+            "name": "problem",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Note the failure on the WorkQ item"
+      },
+      {
+        "code": "import json\nimport re\nimport datetime\n\ndef cliniko(tool, args):\n    return api.connectors.invoke(server=\"cliniko-scheduling\", tool=tool, args=args) or {}\n\ndef link_id(obj, key):\n    link = ((obj.get(key) or {}).get(\"links\") or {}).get(\"self\") or \"\"\n    return link.rstrip(\"/\").split(\"/\")[-1] if link else \"\"\n\ndef parse(iso_str):\n    return datetime.datetime.fromisoformat(iso_str.replace(\"Z\", \"+00:00\"))\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\ndef read_json(path):\n    try:\n        return json.loads(api.files.read(file=path, scope=\"org\") or \"null\")\n    except Exception:\n        return None\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True), scope=\"org\")\n\ndef comment(body):\n    try:\n        api.workq.comment(todo_id=todo_id, body=body)\n    except Exception:\n        pass\n\nslug = str(params[\"slug\"] or \"\")\ntodo_id = str(params[\"todo_id\"] or \"\")\ngap_slot = params[\"gap_slot\"] or {}\ndecision = str(params[\"decision\"] or \"\")\nsend_to = str(params.get(\"send_to\") or \"\").strip()\nnotes = str(params.get(\"notes\") or \"\").strip()\n\nslot = gap_slot.get(\"slot\") or {}\nslot_label = str(gap_slot.get(\"slot_label\") or \"\")\nend_label = str(gap_slot.get(\"end_label\") or \"\")\noffers = [o for o in (gap_slot.get(\"offers\") or []) if isinstance(o, dict) and o.get(\"email\")]\nrecommended = [str(n) for n in (gap_slot.get(\"recommended\") or [])]\nsettings = read_json(\"PracticeManager/Practices/\" + slug + \".json\") or {}\npractice_name = str(settings.get(\"name\") or \"\")\nnow = datetime.datetime.now(datetime.timezone.utc)\noffers_path = \"PracticeManager/State/\" + slug + \"-gap-offers-\" + todo_id + \".json\"\n\noutcome = \"\"\nsent = []\nfailed = []\nskipped_numbers = []\nnote = \"\"\n\nif decision == \"Don't offer this slot\":\n    outcome = \"rejected\"\n    try:\n        api.workq.complete(todo_id=todo_id)\n    except Exception:\n        pass\nelif read_json(offers_path):\n    # The form was submitted again for a slot whose offers already went out --\n    # never email the same patients twice.\n    outcome = \"already_sent\"\n    comment(\"Offers for this slot were already sent, so nothing was sent again.\")\nelse:\n    # Who gets it: blank = the recommended ones, \"all\" = everyone with a\n    # drafted offer, otherwise the candidate numbers typed in.\n    by_n = {str(o.get(\"n\")): o for o in offers}\n    if not send_to:\n        chosen_ns = [n for n in recommended if n in by_n] or [str(o.get(\"n\")) for o in offers[:1]]\n    elif send_to.lower() == \"all\":\n        chosen_ns = [str(o.get(\"n\")) for o in offers]\n    else:\n        chosen_ns = []\n        for n in re.findall(r\"\\d+\", send_to):\n            if n in by_n:\n                if n not in chosen_ns:\n                    chosen_ns.append(n)\n            else:\n                skipped_numbers.append(n)\n    chosen = [by_n[n] for n in chosen_ns]\n\n    # Still worth offering? The slot must be in the future and nobody can have\n    # been booked into it since the item was raised.\n    taken = False\n    too_late = False\n    try:\n        start = parse(str(slot.get(\"starts_at\") or \"\"))\n        end = parse(str(slot.get(\"ends_at\") or \"\")) if slot.get(\"ends_at\") else start + datetime.timedelta(minutes=30)\n        too_late = start <= now\n    except Exception:\n        start = None\n        end = None\n    practitioner_id = str(slot.get(\"practitioner_id\") or \"\")\n    if start and end and practitioner_id and not too_late:\n        try:\n            nearby = cliniko(\"list_individual_appointments\", {\n                \"q\": [\"starts_at:>=\" + zulu(start - datetime.timedelta(hours=4)), \"starts_at:<\" + zulu(end),\n                      \"practitioner_id:=\" + practitioner_id],\n                \"per_page\": 100,\n            }).get(\"individual_appointments\") or []\n        except Exception:\n            nearby = []\n        for other in nearby:\n            if other.get(\"cancelled_at\") or other.get(\"archived_at\") or other.get(\"deleted_at\"):\n                continue\n            if link_id(other, \"practitioner\") != practitioner_id:\n                continue\n            try:\n                if parse(str(other.get(\"starts_at\") or \"\")) < end and parse(str(other.get(\"ends_at\") or \"\")) > start:\n                    taken = True\n                    break\n            except Exception:\n                continue\n\n    if too_late or not start:\n        outcome = \"too_late\"\n        comment(\"Nothing was sent: this slot has already started or passed.\")\n    elif taken:\n        outcome = \"taken\"\n        comment(\"Nothing was sent: someone has already been booked into this slot in Cliniko.\")\n    elif not chosen:\n        outcome = \"nobody\"\n        comment(\"Nothing was sent: no candidate matched \\\"\" + send_to + \"\\\". Enter numbers from the candidate list, \\\"all\\\", or leave it blank for the recommended ones, then submit the form again.\")\n    else:\n        # One shared subject so the reply checker can match the patients'\n        # replies (\"RE: ...\") back to this slot.\n        subject = \"Appointment available: \" + slot_label + (\" - \" + practice_name if practice_name else \"\")\n        for o in chosen:\n            email_addr = str(o.get(\"email\") or \"\")\n            try:\n                api.connectors.invoke(\n                    server=\"m365-mail-send\", tool=\"send_email\",\n                    args={\"to\": [email_addr], \"subject\": subject,\n                          \"body\": str(o.get(\"offer_text\") or \"\"), \"contentType\": \"Text\"},\n                )\n                sent.append(o)\n            except Exception as exc:\n                failed.append({\"name\": str(o.get(\"name\") or \"\"), \"email\": email_addr, \"error\": str(exc)[:200]})\n        outcome = \"sent\" if sent else \"send_failed\"\n\n        if sent:\n            # Handoff to the reply checker: who was offered the slot, and where\n            # each one is booked now (a \"later\" patient is moved, not double-booked).\n            write_json(offers_path, {\n                \"slug\": slug,\n                \"todo_id\": todo_id,\n                \"status\": \"awaiting_reply\",\n                \"subject\": subject,\n                \"sent_at\": zulu(now),\n                \"slot\": slot,\n                \"slot_label\": slot_label,\n                \"end_label\": end_label,\n                \"appointment_type_name\": str(gap_slot.get(\"appointment_type_name\") or \"\"),\n                \"offered\": [{\n                    \"n\": o.get(\"n\"), \"kind\": o.get(\"kind\"), \"name\": o.get(\"name\"), \"email\": o.get(\"email\"),\n                    \"patient_id\": o.get(\"patient_id\"), \"appointment_id\": o.get(\"appointment_id\") or \"\",\n                    \"current_starts_at\": o.get(\"current_starts_at\") or \"\", \"current_label\": o.get(\"current_label\") or \"\",\n                } for o in sent],\n                \"notes\": notes,\n            })\n\n        lines = [\"Offer sent to: \" + \", \".join(str(o.get(\"n\")) + \". \" + str(o.get(\"name\") or \"\") + \" (\" + str(o.get(\"email\") or \"\") + \")\" for o in sent)] if sent else []\n        if failed:\n            lines.append(\"Couldn't send to: \" + \", \".join(f[\"name\"] + \" (\" + f[\"email\"] + \"): \" + f[\"error\"] for f in failed))\n        if skipped_numbers:\n            lines.append(\"Ignored number(s) not in the candidate list: \" + \", \".join(skipped_numbers))\n        if sent:\n            lines.append(\"Waiting for the first patient to reply YES. This item stays open until the slot is filled.\")\n        comment(\"\\n\\n\".join(lines))\n\n# Audit trail (healthcare-practice-management-guardrail-audit format).\ntz_name = str(settings.get(\"timezone\") or \"UTC\")\ntry:\n    from zoneinfo import ZoneInfo\n    today_str = now.astimezone(ZoneInfo(tz_name)).date().isoformat()\nexcept Exception:\n    today_str = now.date().isoformat()\naudit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\ntry:\n    existing_log = api.files.read(file=audit_path, scope=\"org\")\nexcept Exception:\n    existing_log = \"\"\naudit_line = json.dumps({\n    \"ts\": zulu(now),\n    \"practice_slug\": slug,\n    \"actor\": \"agent\",\n    \"source\": \"automation:Cliniko Automations: Send approved slot offers\",\n    \"action\": \"sent\" if outcome == \"sent\" else (\"rejected\" if outcome == \"rejected\" else \"blocked\"),\n    \"target\": {\"kind\": \"appointment_slot\", \"id\": str(slot.get(\"key\") or \"\")},\n    \"summary\": \"Freed slot \" + slot_label + \": \" + outcome + (\"; offered to \" + \", \".join(str(o.get(\"name\") or \"\") for o in sent) if sent else \"\"),\n    \"guardrails\": [{\"rule\": \"patient_facing_requires_approval\", \"result\": \"pass\", \"detail\": \"sent only after the manager's form approval\"}],\n    \"workq_item_id\": todo_id,\n}, sort_keys=True)\ntry:\n    api.files.put(file=audit_path, content=existing_log + audit_line + \"\\n\", scope=\"org\")\nexcept Exception:\n    pass\n",
+        "id": "send_offers",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_decision.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.gap_slot }}",
+            "control": "hidden",
+            "label": "Saved slot",
+            "name": "gap_slot",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.decision }}",
+            "control": "hidden",
+            "label": "Decision",
+            "name": "decision",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.send_to }}",
+            "control": "hidden",
+            "label": "Send to",
+            "name": "send_to",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.notes }}",
+            "control": "hidden",
+            "label": "Notes",
+            "name": "notes",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Check the slot is still free and email the offers"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "load_decision",
+      "gate_found"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "7150eb88-885d-4ea0-a008-6c1cf812a954"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Send approved slot offers",
+  "originKey": "06325414-9b69-4919-87d8-feeb29e67bbb",
+  "tags": [
+    "cliniko",
+    "scheduling",
+    "email"
+  ],
+  "contentHash": "fb282087d164d60fcf0effc6733d6aec1f626e9b9d15ac7c3f457a7e794fa187"
+}
