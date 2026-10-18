@@ -1,0 +1,191 @@
+{
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:m365-mail-send"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "02db3452-ad75-4d59-9848-7780467981b0",
+      "sourceId": "02db3452-ad75-4d59-9848-7780467981b0"
+    }
+  ],
+  "description": "When a manager submits the Referral request approval form, emails the drafted (or edited) request for a new referral to the patient or the GP, as chosen. The WorkQ item stays open until \"Follow up referral requests\" sees the new referral in Cliniko. Never sends the same request twice. \"Don't send\" closes the item.",
+  "flowIr": {
+    "description": "Triggered by the Referral request approval form: sends the approved request to the patient or GP and hands off to the follow-up check.",
+    "irVersion": 1,
+    "name": "Cliniko Automations: Send approved referral request",
+    "nodes": [
+      {
+        "code": "import json\n\ntodo_id = str(params[\"todo_id\"] or \"\")\nresponses = params.get(\"responses\") or {}\ndecision = str(responses.get(\"q_decision\") or \"\")\nedited_message = str(responses.get(\"q_edited_message\") or \"\")\n\nslug = \"\"\nrequest = {}\nproblem = \"\"\n\n# \"Find referrals running out\" saves the referral and both drafts as\n# <slug>-referral-req-<todo_id>.json; the slug comes from that filename.\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\nsuffix = \"-referral-req-\" + todo_id + \".json\"\nmatch_name = \"\"\nfor e in entries:\n    name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n    if name.endswith(suffix):\n        match_name = name\n        break\n\nif match_name:\n    slug = match_name[: -len(suffix)]\n    try:\n        request = json.loads(api.files.read(file=\"PracticeManager/State/\" + match_name, scope=\"org\") or \"{}\") or {}\n    except Exception:\n        request = {}\n\nif not todo_id:\n    problem = \"The form response didn't come from a WorkQ item.\"\nelif not request:\n    problem = \"No saved referral request found for WorkQ item \" + todo_id + \".\"\nelif not decision:\n    problem = \"Form response had no decision answer.\"\n",
+        "id": "load_decision",
+        "kind": "python",
+        "outputs": [
+          {
+            "name": "todo_id",
+            "type": "str"
+          },
+          {
+            "name": "slug",
+            "type": "str"
+          },
+          {
+            "name": "request",
+            "type": "dict"
+          },
+          {
+            "name": "decision",
+            "type": "str"
+          },
+          {
+            "name": "edited_message",
+            "type": "str"
+          },
+          {
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "control": "form-picker",
+            "label": "Referral request approval form",
+            "name": "request_form",
+            "required": true,
+            "type": "uuid",
+            "value": "02db3452-ad75-4d59-9848-7780467981b0"
+          }
+        ],
+        "title": "Load the manager's decision and the saved request"
+      },
+      {
+        "cond": "not steps[\"load_decision\"][\"outputs\"][\"problem\"]",
+        "else": [
+          "log_problem"
+        ],
+        "id": "gate_found",
+        "kind": "if",
+        "then": [
+          "send_request"
+        ],
+        "title": "Saved request found?"
+      },
+      {
+        "code": "todo_id = params[\"todo_id\"] or \"\"\nproblem = params[\"problem\"] or \"Unknown error.\"\nif todo_id:\n    try:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't send the referral request automatically: \" + problem)\n    except Exception:\n        pass\n",
+        "id": "log_problem",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_decision.outputs.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem",
+            "name": "problem",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "title": "Note the failure on the WorkQ item"
+      },
+      {
+        "code": "import json\nimport datetime\n\ndef zulu(dt):\n    return dt.astimezone(datetime.timezone.utc).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n\ndef read_json(path):\n    try:\n        return json.loads(api.files.read(file=path, scope=\"org\") or \"null\")\n    except Exception:\n        return None\n\ndef comment(body):\n    try:\n        api.workq.comment(todo_id=todo_id, body=body)\n    except Exception:\n        pass\n\nslug = str(params[\"slug\"] or \"\")\ntodo_id = str(params[\"todo_id\"] or \"\")\nrequest = params[\"request\"] or {}\ndecision = str(params[\"decision\"] or \"\")\nedited_message = str(params.get(\"edited_message\") or \"\").strip()\n\nreferral = request.get(\"referral\") or {}\ndrafts = request.get(\"drafts\") or {}\npatient_name = str(request.get(\"patient_name\") or \"\")\nsettings = read_json(\"PracticeManager/Practices/\" + slug + \".json\") or {}\npractice_name = str(settings.get(\"name\") or \"\")\ncfg = settings.get(\"referral_watchdog\") or {}\nremind_after_days = int(cfg.get(\"follow_up_days\", 5))\nnow = datetime.datetime.now(datetime.timezone.utc)\nfollowup_path = \"PracticeManager/State/\" + slug + \"-referral-followup-\" + todo_id + \".json\"\n\noutcome = \"\"\nrecipient = \"\"\nif decision == \"Don't send\":\n    outcome = \"rejected\"\n    try:\n        api.workq.complete(todo_id=todo_id)\n    except Exception:\n        pass\nelif read_json(followup_path):\n    outcome = \"already_sent\"\n    comment(\"This referral request was already sent, so nothing was sent again.\")\nelse:\n    to_gp = decision == \"Send to GP\"\n    recipient = str((request.get(\"gp_email\") if to_gp else request.get(\"patient_email\")) or \"\")\n    text = edited_message or str(drafts.get(\"gp\" if to_gp else \"patient\") or \"\")\n    if not recipient:\n        outcome = \"no_email\"\n        comment(\"Nothing was sent: there's no email on file for the \" + (\"GP\" if to_gp else \"patient\")\n                + \". Add it in Cliniko and submit the form again, or contact them another way.\")\n    elif not text:\n        outcome = \"no_text\"\n        comment(\"Nothing was sent: there was no message text.\")\n    else:\n        subject = (\"Referral request for \" + patient_name if to_gp else \"Your \" + str(referral.get(\"referral_type\") or \"\") + \" referral\").strip()\n        subject = subject + (\" - \" + practice_name if practice_name else \"\")\n        try:\n            api.connectors.invoke(server=\"m365-mail-send\", tool=\"send_email\",\n                                  args={\"to\": [recipient], \"subject\": subject, \"body\": text, \"contentType\": \"Text\"})\n            outcome = \"sent\"\n        except Exception as exc:\n            outcome = \"send_failed\"\n            comment(\"The email to \" + recipient + \" failed to send: \" + str(exc)[:300])\n\n    if outcome == \"sent\":\n        # Handoff to \"Follow up referral requests\": watches Cliniko for the new\n        # referral and reminds the manager if it hasn't arrived in time.\n        api.files.put(file=followup_path, scope=\"org\", content=json.dumps({\n            \"slug\": slug, \"todo_id\": todo_id, \"status\": \"waiting\",\n            \"patient_id\": str(referral.get(\"patient_id\") or \"\"), \"patient_name\": patient_name,\n            \"case_id\": str(referral.get(\"case_id\") or \"\"), \"expiry_date\": str(referral.get(\"expiry_date\") or \"\"),\n            \"max_sessions\": referral.get(\"max_sessions\"), \"referral_type\": str(referral.get(\"referral_type\") or \"\"),\n            \"sent_to\": \"gp\" if to_gp else \"patient\", \"recipient\": recipient,\n            \"sent_at\": zulu(now), \"remind_at\": zulu(now + datetime.timedelta(days=remind_after_days)),\n        }, indent=2, sort_keys=True))\n        comment(\"Referral request sent to the \" + (\"GP\" if to_gp else \"patient\") + \" (\" + recipient + \"). \"\n                + \"This item stays open until a new referral appears in Cliniko; you'll get a reminder here if it hasn't after \"\n                + str(remind_after_days) + \" days.\")\n        try:\n            api.workq.set_status(todo_id=todo_id, status=\"in_progress\")\n        except Exception:\n            pass\n\n# Audit trail (healthcare-practice-management-guardrail-audit format).\ntz_name = str(settings.get(\"timezone\") or \"UTC\")\ntry:\n    from zoneinfo import ZoneInfo\n    today_str = now.astimezone(ZoneInfo(tz_name)).date().isoformat()\nexcept Exception:\n    today_str = now.date().isoformat()\naudit_path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today_str + \".jsonl\"\ntry:\n    existing_log = api.files.read(file=audit_path, scope=\"org\")\nexcept Exception:\n    existing_log = \"\"\ntry:\n    api.files.put(file=audit_path, scope=\"org\", content=existing_log + json.dumps({\n        \"ts\": zulu(now), \"practice_slug\": slug, \"actor\": \"agent\",\n        \"source\": \"automation:Cliniko Automations: Send approved referral request\",\n        \"action\": \"sent\" if outcome == \"sent\" else (\"rejected\" if outcome == \"rejected\" else \"blocked\"),\n        \"target\": {\"kind\": \"patient_case\", \"id\": str(referral.get(\"case_id\") or \"\")},\n        \"summary\": \"Referral request for \" + patient_name + \": \" + outcome + (\" to \" + recipient if recipient else \"\"),\n        \"guardrails\": [{\"rule\": \"patient_facing_requires_approval\", \"result\": \"pass\", \"detail\": \"sent only after the manager's form approval\"}],\n        \"workq_item_id\": todo_id,\n    }, sort_keys=True) + \"\\n\")\nexcept Exception:\n    pass\n",
+        "id": "send_request",
+        "kind": "python",
+        "outputs": [],
+        "params": [
+          {
+            "binding": "{{ steps.load_decision.outputs.slug }}",
+            "control": "hidden",
+            "label": "Slug",
+            "name": "slug",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.todo_id }}",
+            "control": "hidden",
+            "label": "Review item",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.request }}",
+            "control": "hidden",
+            "label": "Saved request",
+            "name": "request",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.decision }}",
+            "control": "hidden",
+            "label": "Decision",
+            "name": "decision",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.load_decision.outputs.edited_message }}",
+            "control": "hidden",
+            "label": "Edited message",
+            "name": "edited_message",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "title": "Send the request to the patient or GP"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "load_decision",
+      "gate_found"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "02db3452-ad75-4d59-9848-7780467981b0"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Cliniko Automations: Send approved referral request",
+  "originKey": "35efe918-30cf-4b62-b599-d5f08a5f6054",
+  "tags": [
+    "cliniko",
+    "referrals",
+    "email"
+  ],
+  "contentHash": "69bc2136b434e343cca9c9b62696f3fa549e0eb2ddda59ffcab4ed7027626976"
+}
