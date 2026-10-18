@@ -9,7 +9,7 @@
     "connectors:cliniko-scheduling"
   ],
   "dependencies": [],
-  "description": "Every 5 minutes, checks the inbox for replies to freed-slot offers sent by \"Send approved slot offers\". AI reads each reply (with the quoted offer trimmed off) and decides whether it's a YES. The first patient to say YES is booked into the slot in Cliniko, after checking nobody has taken it since: a patient already booked later has that booking moved into the slot, anyone else gets a new booking. They get a confirmation, everyone else who was offered the slot is told it's filled, and the WorkQ item is completed. A moved booking's old time is left for \"Find freed slots to fill\" to offer on. Unclear replies and Cliniko errors are commented on the WorkQ item for a human; if nobody says YES before the slot starts, the item is closed.",
+  "description": "Every 15 minutes from 7 AM to 9 PM (Kuala Lumpur time), checks the inbox for replies to freed-slot offers sent by \"Send approved slot offers\". AI reads each reply (with the quoted offer trimmed off) and decides whether it's a YES. The first patient to say YES is booked into the slot in Cliniko, after checking nobody has taken it since: a patient already booked later has that booking moved into the slot, anyone else gets a new booking. They get a confirmation, everyone else who was offered the slot is told it's filled, and the WorkQ item is completed. A moved booking's old time is left for \"Find freed slots to fill\" to offer on. Unclear replies and Cliniko errors are commented on the WorkQ item for a human; if nobody says YES before the slot starts, the item is closed.",
   "flowIr": {
     "description": "Polls for replies to sent freed-slot offers, books the first YES in Cliniko, confirms, tells the others, and closes the WorkQ item.",
     "irVersion": 1,
@@ -146,7 +146,7 @@
     ],
     "triggers": [
       {
-        "cron": "*/5 * * * *",
+        "cron": "*/15 0-12,23 * * *",
         "kind": "schedule",
         "timezone": "UTC"
       },
@@ -164,5 +164,5 @@
     "scheduling",
     "email"
   ],
-  "contentHash": "0ae7bbb05f0ff6646d7349bd17fa6c63837d1b32c72f1f950af2392cfa138121"
+  "contentHash": "641d50b2ae006f3dacc1595d76253773ffe9e5723daa8e20fb6f5d87f541b102"
 }
