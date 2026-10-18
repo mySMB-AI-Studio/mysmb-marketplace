@@ -1,0 +1,250 @@
+{
+  "title": "QuickBooks Client Queries",
+  "description": "Client Report Analytics CRA-08 for one QuickBooks client: the transactions the client has to explain or send something for (missing receipts, missing ABNs, uncoded and unexplained lines), listed with what is needed and drafted ready to send. Live and validated on every open; mySMB branding by default.",
+  "tags": [
+    "client-report-analytics",
+    "CRA-08",
+    "quickbooks",
+    "client-queries"
+  ],
+  "fileName": "client-quickbooks-client-queries.html",
+  "dataBindings": {
+    "inputs": [
+      {
+        "name": "start_date",
+        "label": "From",
+        "type": "date",
+        "default": "2026-07-01"
+      },
+      {
+        "name": "end_date",
+        "label": "To",
+        "type": "date",
+        "default": "2026-09-30"
+      },
+      {
+        "name": "txn_where",
+        "label": "Transaction filter",
+        "type": "string",
+        "maxLength": 120,
+        "default": "TxnDate >= '2026-07-01' AND TxnDate <= '2026-09-30'"
+      },
+      {
+        "name": "persona",
+        "label": "View as",
+        "type": "enum",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "default": "Practitioner"
+      },
+      {
+        "name": "display",
+        "label": "Display settings",
+        "type": "string",
+        "maxLength": 300,
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
+      }
+    ],
+    "bindings": [
+      {
+        "id": "invoices",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_invoice"
+        },
+        "params": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "bills",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_bill"
+        },
+        "params": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "purchases",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_purchase"
+        },
+        "params": {
+          "where": {
+            "kind": "input",
+            "input": "txn_where"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "open_invoices",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_invoice"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Balance > '0'"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "open_bills",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_bill"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Balance > '0'"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "vendors",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_vendor"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "accounts",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_account"
+        },
+        "params": {
+          "where": {
+            "kind": "static",
+            "value": "Active = true"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "tax_codes",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_tax_code"
+        },
+        "params": {
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "attachables",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_attachable"
+        },
+        "params": {
+          "orderBy": {
+            "kind": "static",
+            "value": "MetaData.LastUpdatedTime DESC"
+          },
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          }
+        }
+      },
+      {
+        "id": "pnl",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        },
+        "params": {
+          "start_date": {
+            "kind": "input",
+            "input": "start_date"
+          },
+          "end_date": {
+            "kind": "input",
+            "input": "end_date"
+          },
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Total"
+          }
+        }
+      },
+      {
+        "id": "company_info",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        },
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        }
+      },
+      {
+        "id": "prefs",
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        },
+        "params": {}
+      }
+    ]
+  }
+}

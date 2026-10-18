@@ -75,7 +75,10 @@ const xlsxText = async (t) => { const b = t.downloads.filter((d) => d.blob).pop(
 const rowText = (sheet, r) => ((sheet.match(new RegExp('<row r="' + r + '">([\\s\\S]*?)</row>')) || [])[1] || '').replace(/<[^>]+>/g, '');
 const report = (doc) => ['#xk-head', '#xk-banner', '#xk-body', '#xk-foot', '#xk-sources'].map((q) => text(doc, q)).join(' ');
 const onlyT2 = (fx) => { const g = {}; Object.keys(fx).forEach((k) => { g[k] = fx[k] === L.connections ? () => Object.assign(L.connections(), { activeTenantId: L.T2 }) : (q) => fx[k](Object.assign({}, q, { xero_tenant_id: L.T2 })); }); return g; };
-async function conformance(id, ok) {
+// maxTokens: 35,000 unless a report is never written by the agent (live-checks: opened from the template or copied with
+// artifact_from_template), where the limit's reason — the agent writing the whole document in one turn — does not apply.
+async function conformance(id, ok, maxTokens) {
+  maxTokens = maxTokens || 35000;
   const ref = 'xero/' + id, m = man(id), t = await run(ref, m, fixtures(m)); await wait(150);
   const page1 = report(t.doc);
   t.doc.getElementById('xk-xlsx').click(); await t.settle();
@@ -103,7 +106,7 @@ async function conformance(id, ok) {
   { const d = await run(ref, m, fixtures(m), { htmlPatch: (h) => { const i = h.indexOf('isFinite('); return h.slice(0, i) + 'isfinite(' + h.slice(i + 9); } }); await wait(60);
     ok(id + ': a copy with one character changed is flagged as damaged', d.w.__xkIntegrity && d.w.__xkIntegrity.ok === false && /This copy of the report is damaged/.test(text(d.doc, 'body > .xk-banner.fail'))); }
   const sz = sizes(id);
-  ok(id + ': size limits — document + dataBindings ≤ 35,000 tokens, no line over 1,500 characters', sz.tokens != null && sz.tokens <= 35000 && sz.longest <= 1500, sz);
+  ok(id + ': size limits — document + dataBindings ≤ ' + maxTokens.toLocaleString('en-AU') + ' tokens, no line over 1,500 characters', sz.tokens != null && sz.tokens <= maxTokens && sz.longest <= 1500, sz);
   return sz;
 }
 module.exports = { L, E: L.expect, run, man, fixtures, contactsFromLedger, FAKE_REGISTER, text, wait, banner, body, green, red, fmt, set, retryFast, busy, tamper, cellOf, xlsxOf, endless, conformance, sizes };

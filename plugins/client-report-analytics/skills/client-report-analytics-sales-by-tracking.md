@@ -58,7 +58,7 @@ Use when the user asks for the Sales by Tracking Category (CRA-03) of one client
 
 1. Confirm the inputs (rules above). Keep the template defaults for anything the user did not ask to change.
 2. Make the discovery call for the client's platform and pick the client's id.
-3. Call `artifact_from_template` with `plugin: "client-report-analytics"`, the platform's slug, and `inputs` holding the client input, the period dates and the basis the user chose, using the input names in that platform's table.
+3. Call `artifact_from_template` with `plugin: "client-report-analytics"`, the platform's slug, and `inputs` holding the client input, the period dates (and the basis where the template has one) the user chose, using the input names in that platform's table.
 4. Reply as the rules say. If the user wants a different period or basis later, tell them to change it in the report's controls (it refetches) rather than creating another copy.
 
 ## Validation (shown in the report, recomputed on every open)
