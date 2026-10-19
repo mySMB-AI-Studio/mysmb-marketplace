@@ -1,7 +1,7 @@
 {
   "id": "hotmail-contacts",
   "title": "Hotmail Contacts",
-  "description": "Contacts from a personal Hotmail/Outlook.com/Live.com account, alphabetical by display name.",
+  "description": "Contacts from a personal Hotmail/Outlook.com/Live.com account, alphabetical by display name. Click a name to open Outlook.com's People page in a new tab - Microsoft Graph has no deep-link field for an individual contact (unlike email, which has webLink), so this opens the People list, not that specific contact.",
   "category": "productivity",
   "tags": [
     "hotmail",
@@ -105,12 +105,54 @@
         "visible": { "$state": "/_loading/hotmail-people.list_contacts", "not": true }
       },
       "row": {
-        "type": "ListItem",
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["avatar", "labels", "phoneCaption"]
+      },
+      "avatar": {
+        "type": "Avatar",
         "props": {
-          "title": { "$item": "displayName" },
-          "subtitle": { "$item": "emailAddresses/0/address" },
-          "value": { "$item": "mobilePhone" }
+          "size": "sm",
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "displayName" } }
+          },
+          "tone": {
+            "$computed": "microsoft-365_sender_tone",
+            "args": { "value": { "$item": "displayName" } }
+          }
         }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["nameLink", "emailCaption"]
+      },
+      "nameLink": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "displayName" },
+          "size": "md",
+          "weight": "medium",
+          "tone": "accent"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://outlook.live.com/people/0/"
+            }
+          }
+        }
+      },
+      "emailCaption": {
+        "type": "Caption",
+        "props": { "text": { "$item": "emailAddresses/0/address" }, "tone": "muted" }
+      },
+      "phoneCaption": {
+        "type": "Caption",
+        "props": { "text": { "$item": "mobilePhone" }, "tone": "muted" }
       }
     }
   }
