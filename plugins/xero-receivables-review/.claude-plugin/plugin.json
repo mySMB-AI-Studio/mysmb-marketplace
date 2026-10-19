@@ -36,9 +36,16 @@
         "Saved internal report with human acceptance and revision",
         "Explicit needs-attention result when source evidence is incomplete"
       ],
-      "processes": [],
-      "requiredCapabilities": [],
-      "role": "Accounts receivable reviewer"
+      "processes": [
+        "receivables-review"
+      ],
+      "requiredCapabilities": [
+        "xero.organisation.read",
+        "xero.receivables.list",
+        "xero.invoice.read"
+      ],
+      "role": "Accounts receivable reviewer",
+      "setupEffort": "minutes"
     },
     "highlights": [
       "Read-only Xero invoice evidence",
@@ -49,5 +56,11 @@
     "longDescription": "## What it does\r\nReviews current authorised sales invoices with a remaining balance in the selected Xero company. It records invoice IDs, remaining amounts, currencies and due-date classifications in an internal review report.\r\n\r\n## Review and decisions\r\nA human reviewer can accept the internal review, request changes and a fresh read, or close without acceptance. Missing balances, incomplete pagination, the wrong company or an expired connection stop the review from being presented for acceptance. Acceptance records the decision only.\r\n\r\n## Start in QA\r\nConnect a Xero demo or trial company in the Developer Instance. Assign an installation manager and reviewer. Start Review current Xero receivables with the exact Xero company name and today's date in that company's timezone.\r\n\r\n## Scope\r\nRead-only invoice review. The agent does not send customer messages, edit invoices, create payments or combine balances across currencies. Reports are point-in-time internal drafts; the job decision history records the human decision.\r\n\r\n## Testing\r\nThe package includes separate coordinator-control and model-quality evaluation suites using synthetic invoice observations. A live Xero demo-company run is required to verify the connector and saved report end to end."
   },
   "name": "xero-receivables-review",
-  "version": "0.0.0"
+  "version": "0.0.0",
+  "dependencies": [
+    {
+      "plugin": "xero-accounting",
+      "version": "^0.1.0"
+    }
+  ]
 }
