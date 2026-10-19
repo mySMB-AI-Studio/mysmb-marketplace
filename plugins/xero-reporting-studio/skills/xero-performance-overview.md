@@ -750,7 +750,7 @@ near,plParts,runningTies,sum,walk};})();</script>
     var margin = function (a, b) { return a == null || !b ? null : a / b; };
     var M = { npm: [margin(T.np[0], T.inc[0]), margin(T.np[1], T.inc[1])], gpm: [margin(T.gp[0], T.trd[0]), margin(T.gp[1], T.trd[1])] };
     var bsw = c.data.bs ? XK.walk(c.data.bs) : null, b0 = bsw ? XK.bsParts(bsw, 0) : null, b1 = bsw && bsw.columns.length > 1 ? XK.bsParts(bsw, 1) : null;
-    var days = function (bal, flow) { return bal == null || !flow ? null : bal / flow * 365; };
+    var days = function (bal, flow) { return bal == null || !(flow > 0) ? null : bal / flow * 365; };
     var cogs = function (i) { return exp.cur && T.exp[i] != null ? T.exp[i] : null; };
     var DD = [days(b0 && b0.ar, T.inc[0]), days(b1 && b1.ar, T.inc[1])], CD = [days(b0 && b0.ap, T.exp[0]), days(b1 && b1.ap, T.exp[1])];
     var lbl = function (ks) { return 'Total ' + XK.monthLabel(ks[0]) + ' to ' + XK.monthLabel(ks[11]); };
@@ -780,7 +780,7 @@ near,plParts,runningTies,sum,walk};})();</script>
     XK.donut(document.getElementById('pf-opex'), { title: 'Operating expenses', items: opexRows, centre: money(XK.sum(opexRows.map(function (x) { return x.value; }))) }, c);
     if (b0) XK.donut(document.getElementById('pf-bank'), { title: 'Bank accounts', items: b0.bankRows.map(function (r) { return { label: r.label, value: r.value }; }), centre: money(b0.bank) }, c);
     // monthly days: the month-end balance ÷ that month's income (or expenses) × days in the month
-    var mdays = function (id, ks, flowArr, part) { var v = c.data[id] && !c.errors[id] ? XK.walk(c.data[id]) : null, m = v ? XK.monthCols(v) : null; return ks.map(function (k, i) { var j = m && m.idx[k], f = flowArr[i]; if (j == null || !f) return null; var b = XK.bsParts(v, j)[part]; return b == null ? null : b / f * XK.eom(+k.slice(0, 4), +k.slice(5, 7)).getUTCDate(); }); };
+    var mdays = function (id, ks, flowArr, part) { var v = c.data[id] && !c.errors[id] ? XK.walk(c.data[id]) : null, m = v ? XK.monthCols(v) : null; return ks.map(function (k, i) { var j = m && m.idx[k], f = flowArr[i]; if (j == null || !(f > 0)) return null; var b = XK.bsParts(v, j)[part]; return b == null ? null : b / f * XK.eom(+k.slice(0, 4), +k.slice(5, 7)).getUTCDate(); }); };
     var dl = function (id, part, flow) { var cur = mdays('bs_12', keys, flow.cur, part), pri = mdays('bs_p12', pkeys, flow.pri, part); XK.line(document.getElementById(id), { title: id, labels: labs, fmt: function (v) { return Math.round(v) + ' days'; }, series: [{ name: 'Current', values: cur }, { name: 'Prior year', values: pri }] }, c); return cur; };
     var ddm = dl('pf-dd', 'ar', inc), cdm = dl('pf-cd', 'ap', exp);
 
@@ -808,7 +808,7 @@ near,plParts,runningTies,sum,walk};})();</script>
     return [{ name: 'Performance overview', rows: rows, widths: [26, 16, 16, 16, 20] }];
   }
 });</script>
-<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="9a7ef3c9"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
+<script data-xk-check>(function(){var s=document.scripts,k="",f="",i,t;for(i=0;i<s.length;i++){t=s[i].text;if(s[i].type||s[i].hasAttribute("data-xk-check"))continue;if(!k&&t.indexOf("window.XK")>=0)k=t;else if(t.indexOf("XK.app(")>=0)f=t}var r=f.indexOf("render: function"),x=(k+(r<0?f:f.slice(r))).replace(/\s+/g,""),h=2166136261;for(i=0;i<x.length;i++)h=Math.imul(h^x.charCodeAt(i),16777619)>>>0;window.__xkIntegrity={ok:h.toString(16)=="b96879df"};if(!window.__xkIntegrity.ok){var d=document.createElement("div");d.className="xk-banner fail";d.setAttribute("role","alert");d.textContent="This copy of the report is damaged (its code differs from the tested version), so its figures can't be trusted. Ask the agent to create it again.";document.body.prepend(d)}})()</script>
 </body>
 </html>
 ```

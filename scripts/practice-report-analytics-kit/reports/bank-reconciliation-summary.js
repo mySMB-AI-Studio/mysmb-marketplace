@@ -15,6 +15,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice Bank Reconciliation Summary',
     slug: 'practice-bank-reconciliation-summary',
+    tool: 'get_practice_bank_reconciliation_summary', // named in the footer and the Excel Parameters sheet
     chips: ['Needs attention'],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection, and QuickBooks has no bank-feed/unreconciled data in its API — see the Client agent for what is available.',

@@ -9,6 +9,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice Client Summary Metrics',
     slug: 'practice-client-summary',
+    tool: 'get_practice_client_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection — see its Client Summary in the Client Report Analytics agent.',

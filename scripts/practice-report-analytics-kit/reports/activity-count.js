@@ -25,6 +25,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice Activity Count',
     slug: 'practice-activity-count',
+    tool: 'get_practice_activity_count', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection — ask the Client Report Analytics agent for this client’s activity instead.',

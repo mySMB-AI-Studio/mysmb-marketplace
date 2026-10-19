@@ -267,6 +267,12 @@ const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, in
       ok('hs: Off leaves a metric out of the scorecard and the score', !rowOf('Creditor days') && /of 12 targets/.test(body(ht)), body(ht).slice(0, 160));
       const sec = ht.doc.getElementById('xk-opt-sec'); sec.value = 'Liquidity'; sec.dispatchEvent(new ht.w.Event('change')); await ht.settle(); await wait(20);
       ok('hs: Section filter shows only that section (score unchanged)', !!rowOf('Current ratio') && !rowOf('Net profit') && /of 12 targets/.test(body(ht)), body(ht).slice(0, 160)); }
+    // A month whose income is negative (credit notes larger than sales): debtor days would be a negative number of days,
+    // which means nothing, so it reads N/A (as for a month with no income).
+    { const negIncome = (q) => { const r = JSON.parse(JSON.stringify(L.pnl(q))); ((r.Reports || [r])[0].Rows || []).filter((s) => s.Title === 'Income').forEach((s) => s.Rows.forEach((x) => x.Cells.slice(1).forEach((c) => { if (c.Value !== '' && isFinite(+c.Value)) c.Value = String(-Math.abs(+c.Value)); }))); return r; };
+      const hn = await run('hs', man('hs'), HS({ pnl: negIncome })); await wait(30);
+      const dd = [...hn.doc.querySelectorAll('.xk-grid tbody tr')].find((tr) => tr.children[0] && tr.children[0].textContent === 'Debtor days');
+      ok('hs: a month with negative income → Debtor days reads N/A, never a negative number of days', dd && !/-\d|\(\d/.test(dd.children[3].textContent) && /N\/A/.test(dd.children[3].textContent) && hn.errs.length === 0, dd && dd.textContent); }
     { const hc = await run('hs', man('hs'), HS()); await wait(30); { const a = hc.doc.querySelector('input[name="xk-basis"][value="Cash"]'); a.checked = true; a.dispatchEvent(new hc.w.Event('change')); await hc.settle(); await wait(30); }
       ok('hs: Accounting method Cash → the cash-basis month; the Balance Sheet tie becomes information (accrual only); still green', hc.calls.some((x) => x.id === 'pnl_cash' && x.params.paymentsOnly === true) && /ℹ Net profit vs the movement in Current Year Earnings \(information\)/.test(banner(hc)) && green(hc) && /Cash basis/.test(text(hc.doc, '#xk-foot')), banner(hc).slice(0, 300)); }
     const h = await run('hs', man('hs'), HS());

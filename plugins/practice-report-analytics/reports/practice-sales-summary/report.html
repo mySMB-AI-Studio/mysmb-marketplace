@@ -40,7 +40,7 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
 <table id="table"><thead></thead><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
 <footer id="foot"></footer>
 <script>(function () {
-  var C = {"title":"Practice Sales Summary Metrics","slug":"practice-sales-summary","chips":["Overdue only"],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection — see its Sales by Tracking Category / Financial Overview in the Client agent.","fieldAliases":{"xero":{"outstanding":"outstandingAmount","outstanding_count":"outstandingCount","overdue":"overdueAmount","overdue_count":"overdueCount","receipts":"receiptsViaBank","avg_invoice":"averageInvoiceValue"},"myob":{"outstanding":"outstandingAmount","outstanding_count":"outstandingCount","overdue":"overdueAmount","overdue_count":"overdueCount","receipts":"receiptsViaBank","avg_invoice":"averageInvoiceValue"}},"columns":[{"key":"outstanding","label":"Outstanding","money":true},{"key":"outstanding_count","label":"Outstanding #"},{"key":"overdue","label":"Overdue","money":true,"rag":"high"},{"key":"overdue_count","label":"Overdue #"},{"key":"dso","label":"DSO (days)"},{"key":"receipts","label":"Receipts (bank)","money":true},{"key":"avg_invoice","label":"Avg invoice","money":true}],"totals":["outstanding","outstanding_count","overdue","overdue_count","receipts"]};
+  var C = {"title":"Practice Sales Summary Metrics","slug":"practice-sales-summary","tool":"get_practice_sales_summary","chips":["Overdue only"],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection — see its Sales by Tracking Category / Financial Overview in the Client agent.","fieldAliases":{"xero":{"outstanding":"outstandingAmount","outstanding_count":"outstandingCount","overdue":"overdueAmount","overdue_count":"overdueCount","receipts":"receiptsViaBank","avg_invoice":"averageInvoiceValue"},"myob":{"outstanding":"outstandingAmount","outstanding_count":"outstandingCount","overdue":"overdueAmount","overdue_count":"overdueCount","receipts":"receiptsViaBank","avg_invoice":"averageInvoiceValue"}},"columns":[{"key":"outstanding","label":"Outstanding","money":true},{"key":"outstanding_count","label":"Outstanding #"},{"key":"overdue","label":"Overdue","money":true,"rag":"high"},{"key":"overdue_count","label":"Overdue #"},{"key":"dso","label":"DSO (days)"},{"key":"receipts","label":"Receipts (bank)","money":true},{"key":"avg_invoice","label":"Avg invoice","money":true}],"totals":["outstanding","outstanding_count","overdue","overdue_count","receipts"]};
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
@@ -53,15 +53,21 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
     if (col.rag === 'low') return n < 0 ? 'red' : 'green';
     return null;
   };
-  var state = { rows: [], chip: 'All', q: '', sortKey: null, sortDir: 1, fetchedAt: null, truncated: {}, notices: [] };
+  var state = { rows: [], chip: 'All', q: '', sortKey: null, sortDir: 1, fetchedAt: null, truncated: {}, notices: [], src: {}, requested: null };
 
   function load(b) {
-    state.rows = []; state.notices = []; state.truncated = {}; state.fetchedAt = b.fetchedAt || null;
+    state.rows = []; state.notices = []; state.truncated = {}; state.src = {}; state.fetchedAt = b.fetchedAt || null;
+    // The client selection the bundle ran at (the platform sends the resolved inputs with every bundle): a comma-separated id
+    // list, or empty for every client the connection exposes. Used by the leakage check below.
+    state.requested = b.inputs && b.inputs.clients ? String(b.inputs.clients).split(',').map(function (s) { return s.trim(); }).filter(Boolean) : null;
+    state.inputs = b.inputs || null;
     Object.keys(C.sources).forEach(function (platform) {
       var id = C.sources[platform], err = b.errors && b.errors[id];
       if (!id) return;
       if (err) { state.notices.push(cap(platform) + (err.code === 'needs_connection' ? ': connect ' + platform + ' (Settings → Connections)' : ': ' + err.message)); return; }
       var v = b.data && b.data[id]; if (!v) return;
+      // The connector's own totals (summed server-side over the same clients): the independent side of the totals check.
+      state.src[platform] = { rows: (v.clients || []).length, totals: v.totals || {} };
       var alias = (C.fieldAliases && C.fieldAliases[platform]) || {};
       (v.clients || []).forEach(function (c) {
         var row = { _platform: platform, id: c.id, name: c.name };
@@ -178,28 +184,128 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
     var failed = ck.filter(function (k) { return k.pass === false; }).length;
     $('banner').className = 'banner' + (failed ? ' fail' : '');
     $('banner').innerHTML = '<b>' + (failed ? failed + ' check failed' : 'Checks passed') + '</b> — ' + ck.filter(function (k) { return k.pass === true; }).length + ' passed · ' + ck.filter(function (k) { return k.pass === null; }).length + ' for information<ul>' + ck.map(function (k) { return '<li>' + (k.pass === true ? '✓' : k.pass === false ? '✗' : 'ℹ') + ' ' + esc(k.name) + ' — ' + esc(k.detail) + '</li>'; }).join('') + '</ul>';
-    $('foot').textContent = 'Practice Report Analytics · Data as of ' + (state.fetchedAt ? new Date(state.fetchedAt).toLocaleString('en-AU') : '—') + ' · ' + Object.keys(C.sources).filter(function (p) { return C.sources[p]; }).map(cap).join(', ');
+    var cx = context();
+    $('foot').textContent = 'Practice Report Analytics · Data as of ' + cx.asOf + ' · ' + cx.period + (cx.basis ? ' · ' + cx.basis : '') + ' · Sources: ' + cx.sources;
+  }
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // What the bundle ran at (the platform sends the resolved inputs with every bundle): for the banner, the footer and the
+  // Parameters sheet of the Excel download.
+  function context() {
+    var i = state.inputs || {}, d = function (s) { var p = String(s || '').split('-'); return p.length === 3 ? (+p[2]) + ' ' + MON[+p[1] - 1] + ' ' + p[0] : String(s || ''); };
+    var period = i.as_at ? 'As at ' + d(i.as_at) : i.from_date || i.to_date ? d(i.from_date) + ' – ' + d(i.to_date) : 'Period not reported by the platform';
+    var plats = Object.keys(C.sources).filter(function (p) { return C.sources[p]; });
+    return { period: period, basis: i.basis ? i.basis + ' basis' : '', ranged: !!(i.from_date || i.to_date),
+      params: [].concat(i.as_at ? [['As at', i.as_at]] : [], i.from_date ? [['From', i.from_date]] : [], i.to_date ? [['To', i.to_date]] : [], i.basis ? [['Basis', i.basis]] : []),
+      asOf: state.fetchedAt ? new Date(state.fetchedAt).toLocaleString('en-AU') : '—',
+      selection: state.requested ? state.requested.length + ' selected: ' + state.requested.join(', ') : 'Every client the connections expose',
+      sources: plats.map(function (p) { return cap(p) + (C.tool ? ' ' + C.tool : ''); }).join(', ') };
+  }
+  // Practice total = Σ clients, against the connectors' own totals (not the rows this page just summed). Compared on the
+  // unfiltered view only, and only for columns every platform with rows reported a total for.
+  function totalsCheck(rows) {
+    var keys = C.totals || [];
+    if (!keys.length) return { pass: null, detail: 'This report has no summed column' };
+    if (state.q || state.chip !== 'All') return { pass: null, detail: 'Filtered view: the total covers the ' + rows.length + ' client row(s) shown (compare on All, with no search)' };
+    var tot = totalsRow(rows), withRows = Object.keys(state.src).filter(function (p) { return state.src[p].rows; }), compared = 0, bad = [];
+    keys.forEach(function (k) {
+      var exp = 0, all = withRows.length > 0;
+      withRows.forEach(function (p) { var up = ((C.fieldAliases || {})[p] || {})[k] || k, v = state.src[p].totals[up]; if (typeof v === 'number') exp += v; else all = false; });
+      if (!all) return;
+      compared++;
+      if (Math.abs((tot[k] || 0) - exp) > 0.011) bad.push(((C.columns.filter(function (c) { return c.key === k; })[0] || {}).label || k) + ': ' + (tot[k] || 0) + ' shown, ' + Math.round(exp * 100) / 100 + ' from the connectors');
+    });
+    if (!compared) return { pass: null, detail: 'The connectors returned no totals to compare with' };
+    return { pass: !bad.length, detail: bad.length ? bad.join('; ') : compared + ' column total(s) match the connectors\' own totals' };
+  }
+  // No cross-client data leakage: every row is one client, once, with the platform and id it came from, and (when the report
+  // ran for a client selection) one of the selected clients.
+  function leakageCheck() {
+    var seen = {}, dup = [], bare = [], outside = [];
+    state.rows.forEach(function (r) {
+      var nm = r.name || r.id || '?', key = r._platform + '|' + r.id;
+      if (!r._platform || r.id == null || r.id === '') { bare.push(nm); return; }
+      if (seen[key]) dup.push(nm); else seen[key] = 1;
+      if (state.requested && state.requested.indexOf(String(r.id)) < 0) outside.push(nm);
+    });
+    var bad = [].concat(dup.length ? ['listed twice: ' + dup.join(', ')] : [], bare.length ? ['no platform or client id: ' + bare.join(', ')] : [], outside.length ? ['not in the selected clients: ' + outside.join(', ')] : []);
+    return { pass: !bad.length, detail: bad.length ? bad.join('; ') : state.requested ? 'Every row is one of the ' + state.requested.length + ' selected client(s), once, with its platform and id' : 'Every row is a distinct client its connection returned, with its platform and id' };
   }
   function checks(rows) {
-    var out = [
-      { name: 'Practice total = Σ clients', pass: (C.totals || []).length ? true : null, detail: (C.totals || []).length ? 'Recomputed from the ' + rows.length + ' client row(s) shown, every render' : 'This report has no summed column' }
-    ];
+    var t = totalsCheck(rows), out = [{ name: 'Practice total = Σ clients (the connectors\' own totals)', pass: t.pass, detail: t.detail }];
     Object.keys(C.sources).forEach(function (p) {
       if (!C.sources[p]) return;
       var failed = state.notices.some(function (n) { return n.indexOf(cap(p)) === 0; });
       out.push({ name: cap(p) + ' clients loaded', pass: failed ? false : rows.some(function (r) { return r._platform === p; }) ? true : null, detail: failed ? 'See the notice above' : rows.some(function (r) { return r._platform === p; }) ? rows.filter(function (r) { return r._platform === p; }).length + ' client(s)' : 'Not connected, or no clients on this platform' });
     });
-    out.push({ name: 'No cross-client data leakage', pass: true, detail: 'Every row carries the platform and client id it came from; switching chips/sort never changes a row\'s source' });
+    var lk = leakageCheck(), cx = context();
+    out.push({ name: 'No cross-client data leakage', pass: lk.pass, detail: lk.detail });
+    out.push({ name: 'Period, basis and currency', pass: null, detail: cx.period + (cx.basis ? ', ' + cx.basis : '') + ". Amounts are in each client's own currency, as its ledger reports them: the practice tools return no currency, so a total across clients in different currencies is not converted." + (cx.ranged ? " The same dates apply to every client, not each client's financial year." : '') });
     return out;
   }
+  // ---------- Excel (.xlsx) writer, no external library (the same format as the Xero kit's writer) ----------
+  var CRC = (function () { var t = [], c, n, k; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zip(files) {
+    var enc = new TextEncoder(), parts = [], central = [], off = 0;
+    var u16 = function (v) { return [v & 255, (v >>> 8) & 255]; }, u32 = function (v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; };
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = enc.encode(f.data), crc = crc32(data);
+      var head = [0x50, 0x4b, 0x03, 0x04].concat(u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+      parts.push(new Uint8Array(head), name, data);
+      central.push(new Uint8Array([0x50, 0x4b, 0x01, 0x02].concat(u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), name);
+      off += head.length + name.length + data.length;
+    });
+    var csize = central.reduce(function (s, p) { return s + p.length; }, 0);
+    var all = parts.concat(central, [new Uint8Array([0x50, 0x4b, 0x05, 0x06].concat(u16(0), u16(0), u16(files.length), u16(files.length), u32(csize), u32(off), u16(0)))]);
+    var out = new Uint8Array(all.reduce(function (s, p) { return s + p.length; }, 0)), pos = 0; all.forEach(function (p) { out.set(p, pos); pos += p.length; });
+    return out;
+  }
+  function colName(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+  // sheets: [{ name, widths, rows: [[cell]] }]; cell = string | number | null | { v, s: 'bold' | 'money' | 'pct' | 'title' | 'moneyBold' }
+  function xlsx(sheets) {
+    var STY = { none: 0, bold: 1, money: 2, pct: 3, title: 4, moneyBold: 5 }, P = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', NS = 'http://schemas.openxmlformats.org/', wb = '', rels = '', ct = '', files = [];
+    sheets.forEach(function (sh, si) {
+      var n = si + 1, rows = sh.rows.map(function (r, ri) {
+        return '<row r="' + (ri + 1) + '">' + r.map(function (c, ci) {
+          if (c == null || c === '') return '';
+          var o = typeof c === 'object' ? c : { v: c }, ref = colName(ci) + (ri + 1), s = STY[o.s || 'none'] || 0;
+          return typeof o.v === 'number' && isFinite(o.v) ? '<c r="' + ref + '" s="' + s + '"><v>' + o.v + '</v></c>' : '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' + esc(o.v) + '</t></is></c>';
+        }).join('') + '</row>';
+      }).join('');
+      files.push({ name: 'xl/worksheets/sheet' + n + '.xml', data: P + '<worksheet xmlns="' + NS + 'spreadsheetml/2006/main"><cols>' + sh.widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('') + '</cols><sheetData>' + rows + '</sheetData></worksheet>' });
+      wb += '<sheet name="' + esc(sh.name) + '" sheetId="' + n + '" r:id="rId' + n + '"/>';
+      rels += '<Relationship Id="rId' + n + '" Type="' + NS + 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>';
+      ct += '<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+    });
+    rels += '<Relationship Id="rId' + (sheets.length + 1) + '" Type="' + NS + 'officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+    var styles = P + '<styleSheet xmlns="' + NS + 'spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00;(#,##0.00)"/></numFmts>' +
+      '<fonts count="3"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="12"/><name val="Arial"/></font></fonts>' +
+      '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+      '<xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    files.unshift(
+      { name: '[Content_Types].xml', data: P + '<Types xmlns="' + NS + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + ct + '</Types>' },
+      { name: '_rels/.rels', data: P + '<Relationships xmlns="' + NS + 'package/2006/relationships"><Relationship Id="rId1" Type="' + NS + 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name: 'xl/workbook.xml', data: P + '<workbook xmlns="' + NS + 'spreadsheetml/2006/main" xmlns:r="' + NS + 'officeDocument/2006/relationships"><sheets>' + wb + '</sheets></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', data: P + '<Relationships xmlns="' + NS + 'package/2006/relationships">' + rels + '</Relationships>' },
+      { name: 'xl/styles.xml', data: styles });
+    return zip(files);
+  }
+  // Download Excel: the table as shown (filters and sort applied, numbers as numbers), its checks, and what it ran at.
   function excel() {
-    var rows = sorted(state.rows.filter(match));
-    var head = ['Platform', 'Client'].concat(C.columns.map(function (c) { return c.label; }));
-    var body = rows.map(function (r) { return [cap(r._platform), r.name].concat(C.columns.map(function (c) { return r[c.key] == null ? '' : r[c.key]; })); });
-    var x = '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Practice"><Table>' +
-      [[C.title], []].concat([head]).concat(body).map(function (r) { return '<Row>' + r.map(function (v) { return '<Cell><Data ss:Type="String">' + esc(v) + '</Data></Cell>'; }).join('') + '</Row>'; }).join('') + '</Table></Worksheet></Workbook>';
-    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([x], { type: 'application/vnd.ms-excel' }));
-    a.download = C.slug + '.xls'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    var rows = sorted(state.rows.filter(match)), ck = checks(rows), tot = totalsRow(rows), cx = context();
+    var val = function (c, v) { return v == null ? '' : c.money ? { v: Number(v), s: 'money' } : c.pct ? { v: Number(v), s: 'pct' } : typeof v === 'number' ? v : String(v); };
+    var head = ['Platform', 'Client'].concat(C.columns.map(function (c) { return c.label; })).map(function (t) { return { v: t, s: 'bold' }; });
+    var body = rows.map(function (r) { return [cap(r._platform), r.name].concat(C.columns.map(function (c) { return r[c.key + '_na'] ? 'N/A: ' + r[c.key + '_na'] : val(c, r[c.key]); })); });
+    var foot = (C.totals || []).length ? [[{ v: 'Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')', s: 'bold' }, ''].concat(C.columns.map(function (c) { var v = (C.totals || []).indexOf(c.key) >= 0 ? tot[c.key] : null; return v == null ? '' : { v: v, s: c.money ? 'moneyBold' : 'bold' }; }))] : [];
+    var practice = [[{ v: C.title, s: 'title' }], [cx.period + (cx.basis ? ' · ' + cx.basis : '')], [], head].concat(body, foot);
+    var validation = [[{ v: 'Check', s: 'bold' }, { v: 'Result', s: 'bold' }, { v: 'Detail', s: 'bold' }]].concat(ck.map(function (k) { return [k.name, k.pass === true ? 'Pass' : k.pass === false ? 'Fail' : 'Information', k.detail]; }));
+    var params = [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }], ['Report', C.title], ['Data as of', cx.asOf]].concat(cx.params, [['Clients', cx.selection], ['Sources', cx.sources], ['View', state.chip + (state.q ? ' · search: ' + state.q : '')]], state.notices.map(function (n) { return ['Notice', n]; }));
+    var bytes = xlsx([{ name: 'Practice', widths: [12, 34].concat(C.columns.map(function () { return 16; })), rows: practice }, { name: 'Validation', widths: [48, 14, 90], rows: validation }, { name: 'Parameters', widths: [18, 90], rows: params }]);
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = C.slug + '.xlsx'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
   }
   $('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-chip]'); if (b) { state.chip = b.getAttribute('data-chip'); render(); } });
   $('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); render(); });

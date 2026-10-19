@@ -81,3 +81,4 @@ Use when the user asks a plain-English question about their QuickBooks figures, 
 1. Ask five questions covering profit, a supplier, who owes the most, the bank balance and GST. Each answer states the figure, the exact period, the basis and the source line, and matches the same QuickBooks report.
 2. Example: 'What was net profit in August?' → Net Earnings −A$175,286.75 (Profit and Loss, August 2026, accrual).
 3. Ask an ambiguous question ("how did we do?") — the agent asks one short clarifying question or picks a stated default period.
+4. Cross-client isolation (LIB-002): every answer comes from the one company this QuickBooks connection is authorised for, and names it. For another company, the user connects that company first.

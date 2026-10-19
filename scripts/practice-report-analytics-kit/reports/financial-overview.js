@@ -7,6 +7,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice Financial Overview',
     slug: 'practice-financial-overview',
+    tool: 'get_practice_financial_overview', // named in the footer and the Excel Parameters sheet
     chips: ['Needs attention'],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection — see its Financial Overview in the Client Report Analytics agent.',

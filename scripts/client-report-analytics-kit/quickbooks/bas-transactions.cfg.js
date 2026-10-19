@@ -1,7 +1,7 @@
 // CRA-07 BAS Related Transactions and GST — QuickBooks Online. The client is the connected QuickBooks company (one company per
 // connection). Every GST-coded transaction line in the period by tax type, contact, source and account, from the transaction
 // entities' tax lines, tied to QuickBooks' Tax Summary for the agency (1A / 1B / 9).
-// >>> TX (shared with bas-transactions.cfg.js; a test keeps the two copies identical)
+// >>> TX (shared by bas-transactions, tax-by-type and contacts-bas; a test keeps the three copies identical)
 var TX = (function () {
   // [binding id, QBO entity, source label, sign, side S = sales / P = purchases]; journals are read per line
   var ENT = [['invoices', 'Invoice', 'Invoice', 1, 'S'], ['sales_receipts', 'SalesReceipt', 'Sales receipt', 1, 'S'], ['credit_memos', 'CreditMemo', 'Credit note', -1, 'S'],

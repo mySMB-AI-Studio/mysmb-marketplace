@@ -25,6 +25,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice User Activity',
     slug: 'practice-user-activity',
+    tool: 'get_practice_client_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection — QuickBooks’ own Audit Log is per-company; ask the Client Report Analytics agent.',

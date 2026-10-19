@@ -5,7 +5,7 @@
 // file never sees a platform payload. Check ids, names, severities, thresholds and wording follow checks.py, so a finding
 // here and the overnight engine's agree. Checks that need what only the engine keeps between runs (bank-detail changes, when
 // a supplier first appeared, the last lock date, 12 months of movement) or the Australian Business Register are listed as
-// "runs overnight", never as passed.
+// "runs overnight" on a platform that has an overnight engine (OVERNIGHT, below) and "not run on <platform>" elsewhere, never as passed.
 //
 // Neutral ledger (a null field = the platform doesn't expose it, so the check reads N/A instead of passing):
 //   { platform, today, from, to,
@@ -86,6 +86,9 @@ var LC = (function () {
     'CHK-135': 'remembers the lock date from the last run',
     'CHK-138': 'reads 12 months of movement for every account'
   };
+  // The platforms whose clients the overnight engine and its Register lookups cover (Bookkeeping for Xero). Elsewhere those
+  // checks don't run at all, so they read "not run on <platform>" rather than "runs overnight".
+  var OVERNIGHT = { Xero: true };
   var LIMIT = 82.5, DUP_DAYS = 7, LONELY_DAYS = 30, GST_TURNOVER = 75000, LOCK_MONTHS = 6, MAX_PAIRS = 100;
   var NON_CLAIMABLE = /\b(wages?|salar(y|ies)|superannuation|super|payg|bank (fees?|charges?)|interest|depreciation|amortis\w*|asic|stamp duty|fines?|penalt\w*|donations?|land tax|income tax|fbt|drawings|dividends?)\b/i;
   var SUSPENSE = /\b(suspense|clearing|uncoded|unallocated|holding|uncategori[sz]ed|ask my accountant)\b/i;
@@ -303,13 +306,15 @@ var LC = (function () {
     return { findings: out, ran: ran, na: na, period: { from: L.from, to: L.to }, platform: L.platform };
   }
 
-  // One row per check in a set: ran (clear, or N findings), N/A on this platform (why), or runs overnight (why, where).
+  // One row per check in a set: ran (clear, or N findings), N/A on this platform (why), runs overnight (why, where), or
+  // engine: needs the overnight engine, which doesn't cover this platform (why).
   function scope(r, ids) {
     return ids.map(function (id) {
-      var c = CAT[id], f = r.findings.filter(function (x) { return x.check === id; });
-      var st = r.ran[id] ? (f.length ? 'findings' : 'clear') : REGISTER.indexOf(id) >= 0 || ENGINE[id] ? 'overnight' : 'na';
-      var why = st === 'na' ? r.na[id] || 'not in source' : st === 'overnight' ? (REGISTER.indexOf(id) >= 0 ? 'checks the Australian Business Register (Register lookups, nightly)' : 'the overnight engine ' + ENGINE[id]) : '';
-      return { check: id, category: c[0], name: c[1], severity: c[2], status: st, count: f.length, amount: sum(f, 'amount'), why: why, heuristic: HEURISTIC.indexOf(id) >= 0 };
+      var c = CAT[id], f = r.findings.filter(function (x) { return x.check === id; }), reg = REGISTER.indexOf(id) >= 0;
+      var st = r.ran[id] ? (f.length ? 'findings' : 'clear') : reg || ENGINE[id] ? (OVERNIGHT[r.platform] ? 'overnight' : 'engine') : 'na';
+      var why = st === 'na' ? r.na[id] || 'not in source' : st === 'overnight' ? (reg ? 'checks the Australian Business Register (Register lookups, nightly)' : 'the overnight engine ' + ENGINE[id])
+        : st === 'engine' ? (reg ? 'it needs the Australian Business Register lookups' : 'only the overnight engine ' + ENGINE[id]) + ', and those run for Xero clients only (Bookkeeping for Xero)' : '';
+      return { check: id, category: c[0], name: c[1], severity: c[2], status: st, count: f.length, amount: sum(f, 'amount'), why: why, heuristic: HEURISTIC.indexOf(id) >= 0, platform: r.platform };
     });
   }
   function totals(fs) {

@@ -7,7 +7,11 @@ const SLUG = 'quickbooks-reporting-studio', P = path.join(ROOT, 'plugins', SLUG)
 const { families: FAM, deferredFamilies } = require('./release-families.js');
 const rd = (f) => fs.readFileSync(path.join(K, f), 'utf8').replace(/\r\n/g, '\n');
 const w = (rel, s) => { const f = path.join(P, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s.replace(/\r\n/g, '\n')); };
-const kitCompact = rd('qb-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n').split('\n').map((l) => l.replace(/^\s+/, '')).filter((l) => l && !/^\/\//.test(l)).join('\n');
+// The kit as it goes into the foundation skill and every document: minified for whitespace and syntax with names kept, in lines
+// of about 300 characters (as the Xero kit's kit-prune.js does). On the copy path the agent writes the whole document in one
+// artifact_save call, so the kit's size counts against the 35,000-token document limit that roundtrip.js checks.
+const kitCompact = require('esbuild').transformSync(rd('qb-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n'),
+  { minifyWhitespace: true, minifySyntax: true, lineLimit: 300, legalComments: 'none', target: 'es2017' }).code.trim();
 new Function(kitCompact); // parses
 const css = rd('qb.css').trim(), skeleton = rd('skeleton.html').trim();
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
@@ -204,6 +208,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 1. Export the Audit Log for a week from the golden-set company and attach it. Confirm every row appears once and the counts by type add up.
 2. Filter by user, event type and date; search a document number. Compare with QuickBooks: ${f.golden}
 3. Include an event whose text contains \`<\` or \`</script>\` and confirm the page still renders.
+4. Cross-client isolation (LIB-002): the page holds only the company in the attached export. Another company needs its own export and page.
 
 ## Page
 
@@ -266,6 +271,7 @@ ${routes}
 1. Ask five questions covering profit, a supplier, who owes the most, the bank balance and GST. Each answer states the figure, the exact period, the basis and the source line, and matches the same QuickBooks report.
 2. Example: ${f.golden}
 3. Ask an ambiguous question ("how did we do?") — the agent asks one short clarifying question or picks a stated default period.
+4. Cross-client isolation (LIB-002): every answer comes from the one company this QuickBooks connection is authorised for, and names it. For another company, the user connects that company first.
 `);
 });
 FAM.filter((f) => f.static === 'doc').forEach((f) => {
@@ -297,6 +303,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 1. Ask for the request this guide covers (see *Use when*). Confirm the agent builds or saves the right family report and says what is N/A.
 2. Confirm the saved report validates and its Download Excel file opens with the Validation and Parameters sheets.
 3. Compare with QuickBooks: ${f.golden}
+4. Cross-client isolation (LIB-002): the saved report and every export carry only this connection's company and its figures. For another company, the user connects that company first.
 `);
 });
 FAM.filter((f) => !f.static).forEach((f) => {
