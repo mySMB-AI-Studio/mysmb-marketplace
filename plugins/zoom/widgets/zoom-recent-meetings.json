@@ -1,0 +1,325 @@
+{
+  "category": "communications",
+  "connectorsUsed": [
+    "zoom"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoom",
+    "params": {
+      "page_size": 30,
+      "type": "previous_meetings"
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Meetings that already happened on the connected Zoom account's calendar - topic, when it was, and how long it ran. Complements Zoom Meetings (upcoming) and Zoom Recordings (cloud recordings).",
+  "id": "zoom-recent-meetings",
+  "keywords": [
+    "recent meetings",
+    "meeting history",
+    "past meetings",
+    "zoom history"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 18
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 9
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "errorBanner",
+          "emptyState",
+          "meetingList"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider1",
+          "body",
+          "divider2",
+          "footer"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "dateBadge": {
+        "props": {
+          "text": {
+            "$computed": "zoom_format_datetime",
+            "args": {
+              "value": {
+                "$item": "start_time"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Badge"
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider2": {
+        "props": {},
+        "type": "Divider"
+      },
+      "durationCaption": {
+        "props": {
+          "text": {
+            "$computed": "zoom_format_duration",
+            "args": {
+              "minutes": {
+                "$item": "duration"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "emptyIcon": {
+        "props": {
+          "name": "History",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "emptyState": {
+        "children": [
+          "emptyIcon",
+          "emptyText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoom.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/zoom/list_meetings/meetings/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "emptyText": {
+        "props": {
+          "text": "No meetings in your recent history yet.",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "errorBanner": {
+        "props": {
+          "text": {
+            "$template": "Couldn't load meeting history: ${/_errors/zoom.list_meetings}"
+          },
+          "tone": "destructive"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/_errors/zoom.list_meetings"
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/zoom/list_meetings/meetings"
+                  }
+                }
+              },
+              "pattern": "Zoom · {n} recent"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "footer": {
+        "children": [
+          "openZoomBtn"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "meetingInfo": {
+        "children": [
+          "meetingTopic",
+          "meetingMetaRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "meetingList": {
+        "children": [
+          "meetingRow"
+        ],
+        "props": {
+          "gap": "sm",
+          "maxHeight": 480
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/zoom/list_meetings/meetings"
+        },
+        "type": "Stack"
+      },
+      "meetingMetaRow": {
+        "children": [
+          "dateBadge",
+          "durationCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "meetingRow": {
+        "children": [
+          "topicAvatar",
+          "meetingInfo"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "auto minmax(0, 1fr)"
+        },
+        "type": "Row"
+      },
+      "topicAvatar": {
+        "props": {
+          "size": "sm",
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "topic"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "zoom_topic_tone",
+            "args": {
+              "value": {
+                "$item": "topic"
+              }
+            }
+          }
+        },
+        "type": "Avatar"
+      },
+      "meetingTopic": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "topic"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "openZoomBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://zoom.us/meeting#/previous"
+            }
+          }
+        },
+        "props": {
+          "label": "View meeting history",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Recent Zoom Meetings"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "History",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "zoom",
+    "meetings",
+    "history",
+    "video-conferencing"
+  ],
+  "title": "Recent Zoom Meetings"
+}
