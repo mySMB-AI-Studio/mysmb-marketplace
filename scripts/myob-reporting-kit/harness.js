@@ -39,6 +39,7 @@ async function run(name, manifest, fx, opts) {
     runScripts: 'dangerously', pretendToBeVisual: true,
     beforeParse(w) {
       w.TextEncoder = require('util').TextEncoder; w.Blob = require('buffer').Blob;
+      if (opts.fallbackMs) w.MK_FALLBACK_MS = opts.fallbackMs; // the kit's wait before it loads each source on its own
       // The fixtures are dated around 28 Sep 2026: pin the report's clock there, so rolling presets give the same dates on any day.
       const RD = w.Date, NOW = new RD(2026, 8, 28, 10, 52).getTime();
       w.Date = class extends RD { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } };
@@ -68,7 +69,7 @@ async function run(name, manifest, fx, opts) {
   const bundle = opts.bundle || hydrate(manifest, fx, opts.snapshotInputs || {}, calls, opts.fail);
   // myHubV2 says which input values a whole bundle ran at (bundle.inputs): a template copy's manifest defaults, a snapshot's inputs.
   if (opts.bundleInputs) bundle.inputs = resolve(manifest, opts.snapshotInputs || {});
-  w.MyHubReport._deliver(bundle);
+  if (!opts.noBundle) w.MyHubReport._deliver(bundle); // noBundle: the opening bundle never arrives (the platform's request failed)
   await new Promise((r) => setTimeout(r, 30));
   return { w, doc: w.document, calls, setInputsLog, downloads, errs, settle: () => new Promise((r) => setTimeout(r, 30)) };
 }

@@ -66,7 +66,8 @@ var MK = (function () {
     layout.forEach(function (s) {
       if (s.cls) {
         var mem = used.filter(function (r) { return r.cls === s.cls; });
-        if (s.hideEmpty && !mem.some(function (r) { return r.values.some(function (v) { return Math.abs(v) >= 0.005; }); })) return; // no accounts, or all zero
+        // no accounts, or all zero
+        if (s.hideEmpty && !mem.some(function (r) { return r.values.some(function (v) { return Math.abs(v) >= 0.005; }); })) return;
         lines.push({ kind: 'header', depth: 0, label: s.label, group: s.cls, path: [], values: [] });
         mem.forEach(function (r) { lines.push({ kind: 'row', depth: 1, label: r.name, code: r.code, id: r.uid, group: s.cls, type: r.type, path: [s.label], values: r.values.slice() }); });
         lines.push({ kind: 'total', depth: 0, label: 'Total ' + s.label, fixed: true, group: s.cls, path: [], values: tot[s.cls].slice() });
@@ -285,7 +286,8 @@ var MK = (function () {
     }
     return s.getUTCDate() + ' ' + MON[s.getUTCMonth()] + ' ' + sy + ' - ' + e.getUTCDate() + ' ' + MON[e.getUTCMonth()] + ' ' + ey;
   }
-  function asOfLine(d) { var x = parse(d); return 'As at ' + x.getUTCDate() + ' ' + MON[x.getUTCMonth()] + ' ' + x.getUTCFullYear(); } // MYOB AU wording: 'As at 28 September 2026'
+  // MYOB AU wording: 'As at 28 September 2026'
+  function asOfLine(d) { var x = parse(d); return 'As at ' + x.getUTCDate() + ' ' + MON[x.getUTCMonth()] + ' ' + x.getUTCFullYear(); }
   // Footer: 'Accrual basis | Thursday, 10 September, 2026 10:52 AM GMT+08:00'
   function footerStamp(basis, fetchedAt) {
     var t = fetchedAt ? new Date(fetchedAt) : new Date();
@@ -489,7 +491,8 @@ var MK = (function () {
     if (items.length > 6) { var rest = items.slice(5); items = items.slice(0, 5).concat([{ label: '+' + rest.length + ' more', value: sum(rest.map(function (r) { return r.value; })) }]); }
     var tot = sum(items.map(function (i) { return i.value; })), a0 = -Math.PI / 2, R = 80, r = 50, cx = 100, cy = 100, svg = '<svg viewBox="0 0 200 200" role="img" aria-label="' + h(o.title || 'Donut chart') + '">';
     items.forEach(function (it, i) {
-      if (it.value / tot > 0.9999) { // one slice: a full-circle arc starts and ends at the same point and draws nothing — draw a ring
+      // one slice: a full-circle arc starts and ends at the same point and draws nothing — draw a ring
+      if (it.value / tot > 0.9999) {
         svg += '<path fill-rule="evenodd" d="M' + cx + ' ' + (cy - R) + ' A' + R + ' ' + R + ' 0 1 1 ' + cx + ' ' + (cy + R) + ' A' + R + ' ' + R + ' 0 1 1 ' + cx + ' ' + (cy - R) + 'Z M' + cx + ' ' + (cy - r) + ' A' + r + ' ' + r + ' 0 1 0 ' + cx + ' ' + (cy + r) + ' A' + r + ' ' + r + ' 0 1 0 ' + cx + ' ' + (cy - r) + 'Z" fill="var(--d' + (i + 1) + ')"><title>' + h(it.label + ': ' + money(it.value, ctx.currency, ctx.display)) + '</title></path>'; return;
       }
       var a1 = a0 + (it.value / tot) * Math.PI * 2 - 1e-6, lg = a1 - a0 > Math.PI ? 1 : 0;
@@ -517,7 +520,8 @@ var MK = (function () {
       { title: '$ Change', value: function (l) { return l.cmp == null ? null : Math.round((val(l) - l.cmp) * 100) / 100; } },
       { title: '% Change', fmt: 'pct', value: function (l) { return l.cmp ? (val(l) - l.cmp) / Math.abs(l.cmp) : null; } }];
   }
-  function kpis(items, ctx) { // [{label, value, delta:number|null (fraction), money:true|false, text}]
+  // [{label, value, delta:number|null (fraction), money:true|false, text}]
+  function kpis(items, ctx) {
     return '<div class="mk-kpis">' + items.map(function (k) {
       var v = k.text != null ? h(k.text) : k.money === false ? h(k.value == null ? 'N/A' : k.value) : (k.value == null ? 'N/A — not in source' : money(k.value, ctx.currency, ctx.display));
       var chip = k.delta == null || !isFinite(k.delta) ? '' : '<span class="chip ' + (k.delta >= 0 ? 'up' : 'down') + '">' + (k.delta >= 0 ? '▲ ' : '▼ ') + pct(Math.abs(k.delta), 0) + '</span>';
@@ -530,6 +534,7 @@ var MK = (function () {
   //       uses:{bindingId:[declared input names]}, primary:'bindingId', files:'company_files' (list_company_files binding), fyMonth, tools:{bindingId:'tool name'},
   //       columnsBy:[[value,label]], compare:true, enums:[{input,label,options:[[v,l]]}], views:[[key,label]], optional:[bindingId] (a failed optional source is not a
 //       failed check: the report says what it used instead), render(ctx)->{checks,na,notes,title,period}, excel(ctx)->[sheets]}. ctx.rerun() refetches every source.
+  //       Every binding must be a key of uses (company_files: [] included): a source missing there is never loaded when the opening bundle fails.
   var FRIENDLY = { needs_connection: 'Connect MYOB (Settings → Connections) to see this data.', connection_unavailable: 'MYOB is temporarily unavailable — press Refresh to try again.', tool_not_found: 'This MYOB report is not available on the connected connector.', tool_error: 'MYOB returned an error for this section.', invalid_inputs: 'One of the report controls has an invalid value.' };
   var MECHANISM = 'myob-accounting connector — mySMB custom MCP on the MYOB Business (AccountRight) API v2 (AGT-002)';
   function app(cfg) {
@@ -545,15 +550,21 @@ var MK = (function () {
     function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
     function announce() { if (MH && live) MH.setInputs(Object.assign({}, S.inputs)); }
     function status(t) { var el = $('mk-status'); if (el) el.textContent = t || ''; }
+    // Sources load 4 at a time, each in its own request with its own time limit: a large MYOB file answers slowly when every source
+    // asks at once (QA, 19 Oct 2026). Each source's token is taken up front, so a slower, older reload never overwrites a newer one,
+    // and a source a newer reload already asks for is skipped.
     function requery(changed) {
-      if (!MH || !live) { render(); return Promise.resolve(); } // snapshot: display-only inputs still redraw
+      // snapshot: display-only inputs still redraw
+      if (!MH || !live) { render(); return Promise.resolve(); }
       var ids = Object.keys(cfg.uses || {}).filter(function (id) { return !changed || (cfg.uses[id] || []).some(function (n) { return changed.indexOf(n) >= 0; }); });
       if (!ids.length) { render(); return Promise.resolve(); }
-      S.busy++; status('Loading…'); var inputs = Object.assign({}, S.inputs); S.req = S.req || {};
-      return Promise.all(ids.map(function (id) {
-        var tok = S.req[id] = (S.req[id] || 0) + 1, latest = function () { return S.req[id] === tok; }; // a slower, older reload never overwrites a newer one
-        return MH.getData(id, inputs).then(function (v) { if (latest()) absorb(id, v); }, function (e) { if (latest()) S.errors[id] = { code: (e && e.code) || 'tool_error', message: (e && e.message) || String(e) }; });
-      })).then(function () { S.fetchedAt = new Date().toISOString(); S.busy--; status(''); render(); });
+      S.busy++; status('Loading…'); var inputs = Object.assign({}, S.inputs), q = ids.slice(), tok = {}; S.req = S.req || {};
+      ids.forEach(function (id) { tok[id] = S.req[id] = (S.req[id] || 0) + 1; });
+      function lane() {
+        var id = q.shift(), latest = function () { return S.req[id] === tok[id]; };
+        return id && (latest() ? MH.getData(id, inputs).then(function (v) { if (latest()) absorb(id, v); }, function (e) { if (latest()) S.errors[id] = { code: (e && e.code) || 'tool_error', message: (e && e.message) || String(e) }; }).then(lane) : lane());
+      }
+      return Promise.all(ids.slice(0, 4).map(lane)).then(function () { S.fetchedAt = new Date().toISOString(); S.busy--; status(''); render(); });
     }
     function change(patch, dispPatch) {
       var changed = [], k;
@@ -561,7 +572,8 @@ var MK = (function () {
       if (dispPatch) setDisp(dispPatch);
       if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp()) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
       var d = disp();
-      if (cfg.compare && d.c !== 'none') { // keep the comparison window aligned with the main window
+      // keep the comparison window aligned with the main window
+      if (cfg.compare && d.c !== 'none') {
         if (I.cmpStart && I.start) { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
         if (I.cmpAsAt && I.asAt) { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
       }
@@ -576,7 +588,8 @@ var MK = (function () {
       if (I.start && d.p && d.p !== 'custom') { var r = preset(d.p, f); if (r && (r.start !== S.inputs[I.start] || r.end !== S.inputs[I.end])) { p[I.start] = r.start; p[I.end] = r.end; } }
       if (I.asAt && d.a && d.a !== 'custom') { var a = asAt(d.a, f); if (a && a !== S.inputs[I.asAt]) p[I.asAt] = a; }
       if (cfg.roll) { var cr = cfg.roll(Object.assign({}, S.inputs), f, d) || {}, k2; for (k2 in cr) if (cr[k2] !== S.inputs[k2]) p[k2] = cr[k2]; }
-      if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs, p), f, d) || {}, k3; for (k3 in dv) if (dv[k3] !== S.inputs[k3]) p[k3] = dv[k3]; } // derived inputs (e.g. fy_start) are right on first open, not only after a change
+      // derived inputs (e.g. fy_start) are right on first open, not only after a change
+      if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs, p), f, d) || {}, k3; for (k3 in dv) if (dv[k3] !== S.inputs[k3]) p[k3] = dv[k3]; }
       return Object.keys(p).length ? p : null;
     }
     // In snapshot mode the embedded data carries its own period: read it from the primary MYOB report.
@@ -656,7 +669,8 @@ var MK = (function () {
       if (nc && c.body && c.body.textContent.indexOf(FRIENDLY.needs_connection) < 0) { var dv = document.createElement('div'); dv.className = 'mk-banner fail'; dv.textContent = FRIENDLY.needs_connection; c.body.insertBefore(dv, c.body.firstChild); }
       // A failed data source is never silent: it turns the banner red even when the report's own checks still pass.
       Object.keys(S.errors).forEach(function (id) {
-        if (id === cfg.files || (cfg.optional || []).indexOf(id) >= 0) return; // the company-file list is optional (newer MYOB keys return none); so are a report's declared optional sources (it says what it fell back to)
+        // the company-file list is optional (newer MYOB keys return none); so are a report's declared optional sources (it says what it fell back to)
+        if (id === cfg.files || (cfg.optional || []).indexOf(id) >= 0) return;
         var msg = err(id);
         if (last.checks.some(function (k) { return k.pass === false && k.detail === msg; })) return;
         last.checks.unshift({ name: 'Data loaded: ' + ((cfg.tools || {})[id] || id), pass: false, detail: msg });
@@ -669,7 +683,8 @@ var MK = (function () {
     function banner(c) {
       var el = $('mk-banner'); if (!el) return; var ch = last.checks, isInfo = function (k) { return !!k.info; }, fails = ch.filter(function (k) { return k.pass === false; }), done = ch.filter(function (k) { return k.pass === true; });
       var nInfo = ch.filter(isInfo).length, nNA = ch.filter(function (k) { return k.pass == null && !isInfo(k); }).length, real = ch.length - nInfo;
-      var none = !fails.length && !done.length && ch.length > 0; // nothing could be checked: say so, never a green tick
+      // nothing could be checked: say so, never a green tick
+      var none = !fails.length && !done.length && ch.length > 0;
       // information lines and N/A checks are listed but not counted in 'x/y passed', so a clean report never reads as a failure
       var extra = (nNA ? ' · ' + nNA + ' N/A' : '') + (nInfo ? ' · ' + nInfo + ' for information' : '');
       el.className = 'mk-banner ' + (fails.length ? 'fail' : none ? 'na' : 'pass');
@@ -688,6 +703,7 @@ var MK = (function () {
         '<li>Basis: ' + h(I.basis ? S.inputs[I.basis] : 'n/a') + ' · Currency: ' + h(c.currency) + ' · Client: ' + h(c.company || 'N/A — not in source') + ' (one MYOB company file per report)</li>' +
         (/^assumed/.test(c.fy.source) ? '<li>Financial year: ' + h(c.fy.source) + ' (starts ' + h(MONTHS[c.fy.month - 1]) + '). Adjust the dates if this file uses a different year.</li>' : '') +
         last.notes.map(function (n) { return '<li>' + h(n) + '</li>'; }).join('') +
+        (S.fallback ? '<li>Loaded section by section (the full load timed out).</li>' : '') +
         (na.length ? '<li>N/A — not in source: ' + na.map(h).join('; ') + '</li>' : '') + '<li>Decision support only — not audit, tax or legal advice.</li></ul>';
     }
     function exportXlsx() {
@@ -700,6 +716,8 @@ var MK = (function () {
       download(xlsx(sheets, c.currency), name + '.xlsx');
     }
     function boot(bundle) {
+      // A bundle that lands after the fallback started takes over as a first open; the fallback's requests still out are dropped.
+      clearTimeout(S.wait); if (S.fallback) { S.fallback = 0; S.first = true; for (var r in S.req) S.req[r]++; }
       // The platform says which input values this bundle ran at (a template copy whose manifest defaults differ from this
       // config's, a snapshot captured at the reader's inputs): take them, so the controls, header and company file match the figures.
       var bi = bundle.inputs, k0; if (bi && typeof bi === 'object') for (k0 in bi) if (Object.prototype.hasOwnProperty.call(S.inputs, k0)) S.inputs[k0] = bi[k0];
@@ -711,6 +729,13 @@ var MK = (function () {
     }
     if (!MH) { status('Open this report in mySMB to load MYOB data.'); return { state: S }; }
     MyHubReport.onData(boot);
+    // The platform loads every source in one request as a report opens. On QA (19 Oct 2026) a large MYOB file passed the 30-second
+    // gateway limit: that request failed, the viewer showed only a toast, and no data ever reached the report. So with no data after
+    // 32 s, load each source on its own (requery: each request has its own time limit), at this report's own starting values rolled
+    // to today as a first open does, so the controls and header always match the figures. A copy saved with another company file or
+    // period opens on the connection's default file and today's period instead; Sources & limitations says the report was loaded
+    // section by section. Every binding must be a key of uses for this. window.MK_FALLBACK_MS is for tests only.
+    if (live) S.wait = setTimeout(function () { if (S.first) { S.first = false; S.fallback = 1; var r = rollPresets(), k; for (k in r) S.inputs[k] = r[k]; announce(); requery(null); } }, window.MK_FALLBACK_MS || 32000);
     if (MH.onRefresh) MH.onRefresh(function () { status('Refreshing…'); });
     if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
     return { state: S, change: change, render: render, exportXlsx: exportXlsx, ctx: ctx };

@@ -44,6 +44,7 @@ async function run(ref, manifest, fx, opts) {
     runScripts: 'dangerously', pretendToBeVisual: true,
     beforeParse(w) {
       w.TextEncoder = require('util').TextEncoder; w.Blob = require('buffer').Blob;
+      if (opts.fallbackMs) w.MK_FALLBACK_MS = opts.fallbackMs; // the MYOB kit's wait before it loads each source on its own
       const RD = w.Date, NOW = new RD(...eng.clock).getTime();
       w.Date = class extends RD { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } };
       let cb = null;
@@ -72,7 +73,7 @@ async function run(ref, manifest, fx, opts) {
   const errs = []; w.addEventListener('error', (e) => errs.push(e.message));
   const bundle = opts.bundle || hydrate(manifest, fx, opts.snapshotInputs || {}, calls, opts.fail, today);
   if (opts.bundleInputs) bundle.inputs = resolve(manifest, opts.snapshotInputs || {}, today);
-  w.MyHubReport._deliver(bundle);
+  if (!opts.noBundle) w.MyHubReport._deliver(bundle); // noBundle: the opening bundle never arrives (the platform's request failed)
   await new Promise((r) => setTimeout(r, 30));
   return { w, doc: w.document, calls, setInputsLog, downloads, errs, settle: (ms) => new Promise((r) => setTimeout(r, ms || 30)) };
 }
