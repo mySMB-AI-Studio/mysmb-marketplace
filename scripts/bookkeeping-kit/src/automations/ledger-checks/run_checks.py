@@ -65,7 +65,8 @@ else:
                 snap["seeded"] = False
             intake = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-intake.json") or {}
             register = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-abr.json") if weekly else None
-            found, evaluated = ck_run(ledger, client, snap, today, secret, intake.get("captured"), register, intake.get("abns"))
+            assets = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-assets.json") if weekly else None
+            found, evaluated = ck_run(ledger, client, snap, today, secret, intake.get("captured"), register, intake.get("abns"), assets)
             item = ck_find_item(state, client)
             ticked = ck_ticked((item or {}).get("description")) if ck_item_open(item) else set()
             new, resolved = ck_reconcile(state, found, evaluated, ticked, today)

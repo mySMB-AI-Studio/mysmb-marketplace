@@ -43,6 +43,14 @@ CK_CATALOGUE = {
     "CHK-135": ("Bookkeeping", "Lock Date Change", "Medium"),
     "CHK-136": ("Bookkeeping", "GST Registration Required", "Medium"),
     "CHK-138": ("Bookkeeping", "Inactive Account", "Low"),
+    "CHK-016": ("Banking", "Batch Payment Contains Unsupported Characters", "Low"),
+    "CHK-040": ("Sales", "Quotes in Draft Status", "Low"),
+    "CHK-078": ("Purchases", "Bills in Draft or Awaiting Approval", "Low"),
+    "CHK-093": ("Purchases", "Purchase Orders in Draft or Awaiting Approval", "Low"),
+    "CHK-137": ("Bookkeeping", "Non-GST Account Has GST Against It", "Medium"),
+    # Fixed asset checks: need what Asset lookups (Xero Assets) saved.
+    "CHK-139": ("Bookkeeping", "Draft Fixed Asset", "Low"),
+    "CHK-140": ("Bookkeeping", "Unmapped Fixed Asset Account With Balance", "Low"),
     # Register checks: need what Register lookups (ABR) saved.
     "CHK-002": ("Contacts", "Bill Attachment With a Cancelled ABN", "High"),
     "CHK-003": ("Contacts", "Business Has Incorrect GST Status", "Medium"),
@@ -64,15 +72,25 @@ CK_CATALOGUE = {
 CK_DAILY = ("CHK-006", "CHK-017", "CHK-018", "CHK-028", "CHK-035", "CHK-055", "CHK-056", "CHK-057", "CHK-079",
             "CHK-080", "CHK-087")
 CK_WEEKLY = ("CHK-007", "CHK-008", "CHK-021", "CHK-022", "CHK-024", "CHK-031", "CHK-033", "CHK-058", "CHK-059",
-             "CHK-086", "CHK-125", "CHK-129", "CHK-132", "CHK-133", "CHK-134", "CHK-135", "CHK-136", "CHK-138")
+             "CHK-086", "CHK-125", "CHK-129", "CHK-132", "CHK-133", "CHK-134", "CHK-135", "CHK-136", "CHK-138",
+             "CHK-016", "CHK-040", "CHK-078", "CHK-093", "CHK-137")
+# The weekly checks that read a list only they need (batch payments, quotes, purchase orders): when that list can't be
+# read, the check isn't evaluated, so its open findings stay as they are instead of closing.
+CK_SOURCE_CHECKS = {"batch_payments": "CHK-016", "quotes": "CHK-040", "purchase_orders": "CHK-093"}
+# Weekly, and only when Asset lookups (Xero Assets) has saved results in the last fortnight.
+CK_ASSETS = ("CHK-139", "CHK-140")
+CK_ASSETS_DAYS = 14
 # Weekly, and only when Register lookups (ABR) has saved results in the last fortnight.
 CK_REGISTER = ("CHK-002", "CHK-003", "CHK-004", "CHK-005", "CHK-009", "CHK-030", "CHK-039", "CHK-068", "CHK-069",
                "CHK-071", "CHK-072", "CHK-076", "CHK-077", "CHK-085", "CHK-088")
 CK_REGISTER_DAYS = 14
-CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-056", "CHK-129", "CHK-133")
+CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-016", "CHK-056", "CHK-129", "CHK-133")
 # The GST-related checks: the GST checks section of the weekly report (CRA-10 GST Check).
 CK_GST = ("CHK-003", "CHK-008", "CHK-031", "CHK-058", "CHK-059", "CHK-068", "CHK-069", "CHK-076", "CHK-077", "CHK-085",
-          "CHK-129", "CHK-136")
+          "CHK-129", "CHK-136", "CHK-137")
+# Catalogue checks a built check already covers (decision D9: merged, not built twice). A finding carries them in "also",
+# so the reports count it against both IDs. CHK-073 (bill from an unknown supplier) is the intake's New supplier warning.
+CK_ALSO = {"CHK-033": ("CHK-032",), "CHK-028": ("CHK-034",), "CHK-058": ("CHK-075",)}
 # Resolved findings are kept this long (enough for a financial year's comparison), so reports can show what got fixed.
 CK_RESOLVED_KEEP_DAYS = 400
 # Findings the client has to answer (receipts, ABNs, TPAR details): the Client Queries part of the weekly report.
@@ -97,6 +115,9 @@ CK_NON_CLAIMABLE = (r"(?i)\b(wages?|salar(y|ies)|superannuation|super|payg|bank 
                     r"income tax|fbt|drawings|dividends?)\b")
 CK_SUSPENSE = r"(?i)\b(suspense|clearing|uncoded|unallocated|holding)\b"
 CK_MONTHS = r"(?i)\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b"
+# CHK-016 (heuristic): the characters a bank's direct-entry (ABA) file takes in a batch payment's text fields: letters,
+# digits, spaces and & ' ( ) * + , - . / : ; ? @. Anything else (accents, curly quotes, #, $, %, _, emoji) is flagged.
+CK_ABA_BAD = r"[^A-Za-z0-9 &'()*+,\-./:;?@]"
 
 
 def ck_day(value):
@@ -127,7 +148,7 @@ def ck_finding(check, key, text, amount=None, link="", sig=None):
     full_key = check + ":" + key
     return {"check": check, "key": full_key, "category": category, "name": name, "severity": severity,
             "amount": round(amount, 2) if amount is not None else None, "text": text, "link": link,
-            "heuristic": check in CK_HEURISTIC,
+            "heuristic": check in CK_HEURISTIC, "also": list(CK_ALSO.get(check, ())),
             "fp": hashlib.sha256((full_key + "|" + (text if sig is None else str(sig))).encode("utf-8")).hexdigest()[:12]}
 
 
@@ -405,6 +426,33 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         out.append(ck_finding("CHK-033", "waiting", str(len(waiting)) + " sales invoice(s) are in draft or awaiting approval ("
                               + ck_names(waiting, "number") + ").", amount=sum(d["total"] for d in waiting),
                               link=waiting[0]["link"], sig="|".join(sorted(d["id"] for d in waiting))))
+    # CHK-078: bills still in draft or awaiting approval (bills waiting for a Bill review here are drafts too).
+    held = [d for d in docs if d["kind"] == "bill" and d["status"] in ("draft", "submitted")]
+    if held:
+        out.append(ck_finding("CHK-078", "held", str(len(held)) + " bill(s) are in draft or awaiting approval ("
+                              + ck_names(held, "contact") + "), so they aren't in the payables or the GST. Approve the ones "
+                              "that are right; bills still waiting for a Bill review here clear when it's approved.",
+                              amount=sum(d["total"] for d in held), link=held[0]["link"], sig="|".join(sorted(d["id"] for d in held))))
+    # CHK-040 / CHK-093: quotes still in draft, and purchase orders in draft or awaiting approval.
+    for check, rows, what in (("CHK-040", ledger.get("quotes") or [], "quote(s) are still in draft"),
+                              ("CHK-093", ledger.get("purchase_orders") or [], "purchase order(s) are in draft or awaiting approval")):
+        if rows:
+            out.append(ck_finding(check, "drafts", str(len(rows)) + " " + what + " (" + ck_names(rows, "number") + "). Send, approve "
+                                  "or delete them.", amount=sum(r["total"] for r in rows), link=rows[0].get("link") or "",
+                                  sig="|".join(sorted(r["id"] for r in rows))))
+    # CHK-016 (heuristic): batch payment text a bank's direct-entry (ABA) file can't take.
+    odd = []
+    for bp in ledger.get("batch_payments") or []:
+        bad = sorted({ch for t in bp["texts"] for ch in re.findall(CK_ABA_BAD, t)})
+        if bad:
+            odd.append((bp, bad))
+    if odd:
+        shown = ["batch of " + ck_date_text(bp["date"]) + " (" + " ".join(ch if ch.strip() else "a special space" for ch in bad) + ")"
+                 for bp, bad in odd[:5]]
+        out.append(ck_finding("CHK-016", "aba", str(len(odd)) + " batch payment(s) have text a bank's direct-entry file may reject: "
+                              + "; ".join(shown) + (" and " + str(len(odd) - 5) + " more" if len(odd) > 5 else "") + ". Use letters, "
+                              "numbers, spaces and & ' ( ) * + , - . / : ; ? @ only.", amount=sum(bp["total"] for bp, _b in odd),
+                              link=odd[0][0].get("link") or "", sig="|".join(sorted(bp["id"] for bp, _b in odd))))
 
     # CHK-031: GST on sales or credit notes when the business isn't registered (per its client settings).
     if not client.get("gst_registered"):
@@ -426,6 +474,20 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         out.append(ck_finding("CHK-058", code, ck_money(sum(taxes)) + " GST claimed on " + str(len(taxes)) + " line(s) coded to "
                               + code + " " + accounts[code]["name"] + ", which normally has no GST. Check the tax code.",
                               amount=sum(taxes), sig="%d|%.2f" % (len(taxes), sum(taxes))))
+
+    # CHK-137: GST on lines coded to an account whose own tax rate has none (CHK-058 already covers the accounts that never
+    # carry GST by their name, so those are left to it).
+    taxed_on = {}
+    for d in purchases + [d for d in docs if d["kind"] in ("invoice", "invoice_credit", "bill_credit") and ck_live(d)]:
+        for ln in d["lines"]:
+            a = accounts.get(ln["account"])
+            if (a and ln["tax"] > 0 and a.get("tax_type") and (rates.get(a["tax_type"]) or 0) == 0 and a["tax_type"] in rates
+                    and ln["account"] not in by_account):
+                taxed_on.setdefault(a["code"], []).append(ln["tax"])
+    for code, taxes in taxed_on.items():
+        out.append(ck_finding("CHK-137", code, ck_money(sum(taxes)) + " GST on " + str(len(taxes)) + " line(s) coded to " + code + " "
+                              + accounts[code]["name"] + ", whose tax rate (" + accounts[code]["tax_type"] + ") has no GST. Check the "
+                              "tax code on those lines, or the account's tax rate.", amount=sum(taxes), sig="%d|%.2f" % (len(taxes), sum(taxes))))
 
     # CHK-059: GST that isn't the rate's share of the line, and one supplier's account coded with GST and without.
     wrong = []
@@ -695,7 +757,34 @@ def ck_register_fresh(cache, today):
     return bool(day and (today - day).days <= CK_REGISTER_DAYS)
 
 
-def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_abns=None):
+# ── Fixed asset checks (weekly, from what Asset lookups saved: the Xero Assets register isn't in the accounting API) ──
+def ck_asset_rules(ledger, cache, today):
+    """cache: {refreshed, draft: [{id, name, number, price, date, link}], type_accounts: [account ids an asset type uses]}."""
+    out = []
+    draft = cache.get("draft") or []
+    if draft:
+        out.append(ck_finding("CHK-139", "draft", str(len(draft)) + " fixed asset(s) are still in draft in Xero (" + ck_names(draft)
+                              + "), so they aren't depreciating. Register them, or delete the ones that aren't assets.",
+                              amount=sum(a.get("price") or 0 for a in draft), link=draft[0].get("link") or "",
+                              sig="|".join(sorted(a["id"] for a in draft))))
+    used = set(cache.get("type_accounts") or [])
+    now = (ledger.get("balances") or {}).get("now") or {}
+    for a in ledger.get("accounts") or []:
+        bal = now.get(a["id"]) or 0
+        if a["type"] == "FIXED" and a["active"] and abs(bal) >= 0.01 and a["id"] not in used:
+            out.append(ck_finding("CHK-140", a["code"] or a["id"], "Fixed asset account " + (a["code"] + " " if a["code"] else "")
+                                  + a["name"] + " has a balance of " + ck_money(abs(bal)) + ", but no asset type in Xero's fixed asset "
+                                  "register uses it, so what's in it isn't registered or depreciated. Add it to an asset type, or "
+                                  "register the assets.", amount=abs(bal), sig="%.2f" % bal))
+    return out
+
+
+def ck_assets_fresh(cache, today):
+    day = ck_day((cache or {}).get("refreshed"))
+    return bool(day and (today - day).days <= CK_ASSETS_DAYS)
+
+
+def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_abns=None, assets=None):
     """Every check due on this run. Returns (findings, the check IDs evaluated)."""
     # What Register lookups needs for the next night: the client's ABNs, and suppliers with GST but no ABN.
     spenders = {}
@@ -726,6 +815,12 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
         if ck_register_fresh(register, today):
             found += ck_register_rules(ledger, client, register, intake_abns, today)
         evaluated |= set(CK_REGISTER)
+        # Fixed asset findings close the same way when Asset lookups stops (unpublished, or Xero Assets disconnected).
+        if ck_assets_fresh(assets, today):
+            found += ck_asset_rules(ledger, assets, today)
+        evaluated |= set(CK_ASSETS)
+        # A list that couldn't be read leaves its check's findings as they were.
+        evaluated -= {CK_SOURCE_CHECKS[s] for s in ledger.get("unread") or [] if s in CK_SOURCE_CHECKS}
     return found, evaluated
 
 

@@ -167,6 +167,8 @@ class Connectors:
             return self.world.deputy.call(tool, dict(args or {}))
         if server == "abr":
             return self.world.abr.call(tool, dict(args or {}))
+        if server == "xero-assets":
+            return self.world.assets.call(tool, dict(args or {}))
         if server in FakeMail.SERVERS:
             return self.world.mail.call(server, tool, dict(args or {}))
         if server != "xero-accounting":
@@ -310,6 +312,13 @@ class FakeXero:
             key = {"list_bank_transactions": "BankTransactions", "list_credit_notes": "CreditNotes",
                    "list_manual_journals": "ManualJournals"}[tool]
             return {key: [] if args.get("page", 1) > 1 else copy.deepcopy(org.get(key) or [])}
+        if tool in ("list_quotes", "list_purchase_orders", "list_batch_payments"):
+            # Quotes and purchase orders filter on status; a list set to None stands for one the connection can't read.
+            key = {"list_quotes": "Quotes", "list_purchase_orders": "PurchaseOrders", "list_batch_payments": "BatchPayments"}[tool]
+            if key in org and org[key] is None:
+                raise RuntimeError("tool_error: Xero API 403: the connection has no access to " + key)
+            rows = [r for r in org.get(key) or [] if not args.get("status") or r.get("Status") == args["status"]]
+            return {key: [] if args.get("page", 1) > 1 else copy.deepcopy(rows)}
         if tool == "get_trial_balance":
             # {date: {AccountID: balance}}; a missing date is an empty trial balance.
             rows = [{"RowType": "Row", "Cells": [{"Value": aid, "Attributes": [{"Id": "account", "Value": aid}]}, {"Value": ""},
@@ -614,6 +623,25 @@ class FakeAbr:
         raise RuntimeError("fake ABR has no tool " + tool)
 
 
+class FakeXeroAssets:
+    """The Xero Assets connector, shaped like the Xero Assets API: assets as {pagination, items}, asset types as a list."""
+
+    def __init__(self):
+        self.assets = {}  # tenant -> [asset dicts]
+        self.types = {}   # tenant -> [asset type dicts]
+        self.calls = []
+
+    def call(self, tool, args):
+        self.calls.append((tool, dict(args)))
+        tid = args.get("xero_tenant_id")
+        if tool == "list_assets":
+            rows = [a for a in self.assets.get(tid, []) if not args.get("status") or a.get("assetStatus") == args["status"]]
+            return {"pagination": {"page": 1, "pageSize": args.get("pageSize") or 10, "itemCount": len(rows)}, "items": copy.deepcopy(rows)}
+        if tool == "list_asset_types":
+            return copy.deepcopy(self.types.get(tid, []))
+        raise RuntimeError("fake Xero Assets has no tool " + tool)
+
+
 class World:
     def __init__(self):
         self.files, self.items, self.calls, self.events = {}, {}, [], []
@@ -625,6 +653,7 @@ class World:
         self.payroll = FakePayroll()
         self.deputy = FakeDeputy()
         self.abr = FakeAbr()
+        self.assets = FakeXeroAssets()
         self.ai_extract = lambda prompt, input: {}
         self.ai_generate = lambda prompt, input: "Hi there,\n\nCould you please confirm this bill?\n\nThanks,\nThe bookkeeping team"
         self.api = Api(self)

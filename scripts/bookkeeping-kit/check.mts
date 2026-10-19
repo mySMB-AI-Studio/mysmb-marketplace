@@ -83,6 +83,7 @@ for (const [section, kind] of [['automations', 'automation'], ['forms', 'form'],
           if (n.code.includes('XERO = "xero-accounting"')) servers.push('xero-accounting');
           if (n.code.includes('def pay_call(')) servers.push('xero-payroll-au');
           if (n.code.includes('ABR_SERVER = "abr"')) servers.push('abr');
+          if (n.code.includes('ASSETS_SERVER = "xero-assets"')) servers.push('xero-assets');
           // The Xero-only check carries the Deputy helper but its provider param means it never calls it.
           if (n.code.includes('def deputy_rows(') && (n.params.find((p: { name: string }) => p.name === 'provider') as { value?: string } | undefined)?.value !== 'xero') servers.push('deputy');
           const provider = n.params.find((p: { name: string }) => p.name === 'provider') as { value?: string } | undefined;
