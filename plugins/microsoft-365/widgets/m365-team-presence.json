@@ -1,0 +1,162 @@
+{
+  "id": "m365-team-presence",
+  "title": "Team Presence",
+  "description": "Live Teams/Microsoft 365 availability for your most frequent collaborators, ranked by Microsoft Graph's own relevance scoring. Requires a separate, admin-consented connection from the other Microsoft 365 tiles.",
+  "category": "productivity",
+  "tags": [
+    "m365",
+    "teams",
+    "presence",
+    "status",
+    "availability",
+    "colleagues"
+  ],
+  "keywords": [
+    "presence",
+    "availability",
+    "online",
+    "busy",
+    "away",
+    "status",
+    "who's online",
+    "team"
+  ],
+  "connectorsUsed": [
+    "m365-presence"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "m365-presence",
+    "tool": "list_colleague_presence",
+    "params": {
+      "limit": 10
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "divider", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Team Presence", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} shown",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/m365-presence/list_colleague_presence" } } }
+            }
+          }
+        }
+      },
+      "divider": { "type": "Divider", "props": {} },
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "loading", "empty", "list"] },
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load presence: ${/_errors/m365-presence.list_colleague_presence}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-presence.list_colleague_presence" }
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/m365-presence.list_colleague_presence" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No frequent collaborators found yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-presence.list_colleague_presence", "not": true },
+            { "$state": "/m365-presence/list_colleague_presence/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs", "maxHeight": 440 },
+        "children": ["row"],
+        "repeat": { "statePath": "/m365-presence/list_colleague_presence", "key": "id" },
+        "visible": { "$state": "/_loading/m365-presence.list_colleague_presence", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["presenceDot", "avatar", "labels"]
+      },
+      "presenceDot": {
+        "type": "Dot",
+        "props": {
+          "tone": { "$computed": "microsoft-365_presence_tone", "args": { "value": { "$item": "availability" } } },
+          "size": "sm"
+        }
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "initials": { "$computed": "initials", "args": { "value": { "$item": "displayName" } } }
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["nameText", "jobTitleCaption"]
+      },
+      "nameText": {
+        "type": "Text",
+        "props": { "text": { "$item": "displayName" }, "size": "md", "weight": "medium" }
+      },
+      "jobTitleCaption": {
+        "type": "Caption",
+        "props": { "text": { "$item": "jobTitle" }, "tone": "muted" },
+        "visible": { "$item": "jobTitle" }
+      },
+      "rowRight": {
+        "type": "Stack",
+        "props": { "gap": "none", "align": "end" },
+        "children": ["activityCaption", "oooCaption"]
+      },
+      "activityCaption": {
+        "type": "Caption",
+        "props": { "text": { "$item": "activity" }, "tone": "muted" }
+      },
+      "oooCaption": {
+        "type": "Caption",
+        "props": { "text": "Out of office", "tone": "warning" },
+        "visible": { "$item": "isOutOfOffice", "eq": true }
+      }
+    }
+  }
+}

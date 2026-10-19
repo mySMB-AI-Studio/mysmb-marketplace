@@ -1,6 +1,6 @@
 # Microsoft 365
 
-Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph — plus mail, calendar, and contacts for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar`/`hotmail-people` servers below.
+Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts, presence), and people through Microsoft Graph — plus mail, calendar, and contacts for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar`/`hotmail-people` servers below.
 
 ## Servers
 
@@ -13,6 +13,7 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
 | m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
+| m365-presence | Read Teams/M365 presence (availability, activity) for yourself and frequent collaborators | `People.Read`, `Presence.Read.All` | **Admin consent required** |
 | hotmail-mail | Read, search, and inspect emails in a **personal** Hotmail/Outlook.com/Live.com account | `Mail.Read` | **User self-consent OK** (no tenant/admin — personal accounts self-consent individually) |
 | hotmail-calendar | View, create, and manage events in a **personal** calendar | `Calendars.ReadWrite` | **User self-consent OK** |
 | hotmail-people | Read contacts in a **personal** account | `Contacts.Read` | **User self-consent OK** |
@@ -40,6 +41,16 @@ user-self-consentable. Bundling them into one authorization request would
 force every existing `m365-teams` connection through admin approval just to
 keep working.
 
+`m365-presence` is likewise a separate server from `m365-people`, not an
+extra tool bolted onto it: `Presence.Read.All` requires tenant admin consent,
+while `People.Read`/`User.Read` on `m365-people` are user-self-consentable.
+Bundling it in would force every existing `m365-people` connection through
+admin approval just to keep working. `m365-presence` still declares
+`People.Read` itself (in addition to `Presence.Read.All`) because
+`list_colleague_presence` needs it to resolve the caller's relevant
+colleagues before batching their presence — each server's connection only
+carries the scopes declared on its own route.
+
 ## Configuration
 
 No environment variables required. Each server uses OAuth — click Connect in
@@ -48,8 +59,9 @@ own scopes.
 
 ## Admin consent for high-risk scopes
 
-`m365-mail-send` and `m365-teams-transcripts` (and some optional scopes on calendar, files, teams) require
-**tenant admin consent** before any user can connect. Do this once:
+`m365-mail-send`, `m365-teams-transcripts`, and `m365-presence` (and some
+optional scopes on calendar, files, teams) require **tenant admin consent**
+before any user can connect. Do this once:
 
 1. Sign in to https://entra.microsoft.com as a Global Admin.
 2. **Identity → Applications → Enterprise applications**.
@@ -141,6 +153,14 @@ without another prompt.
 - `get_manager` — Get user's manager
 - `get_direct_reports` — Get direct reports
 
+### Presence (2 tools, `m365-presence`)
+- `get_my_presence` — Get the caller's own availability and activity
+- `list_colleague_presence` — Get presence for the people most relevant to
+  the caller (Graph's own relevance ranking via `/me/people`, no keyword
+  needed), filtered to organization users and batched through
+  `getPresencesByUserId` — groups and external contacts are skipped since
+  only organization users have presence
+
 ### Hotmail — Mail (5 tools, `hotmail-mail`, personal accounts only)
 - `list_emails` — List recent emails from inbox or a folder
 - `get_email` — Get a single email with full body
@@ -222,11 +242,18 @@ So each server needs **both** rows below registered against the Entra app regist
 | `m365-teams` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams/callback` |
 | `m365-teams-transcripts` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams-transcripts/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams-transcripts/callback` |
 | `m365-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-people/callback` |
+| `m365-presence` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-presence/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-presence/callback` |
 
 > Register these under the Entra app registration whose id is `ENTRA_CLIENT_ID`
 > on the gateway (Azure Portal → App registrations → Authentication → Web →
-> Redirect URIs). These seven servers share one app registration, differing
+> Redirect URIs). These eight servers share one app registration, differing
 > only by requested scopes.
+>
+> `m365-presence` also needs the **`Presence.Read.All`** delegated permission
+> (Microsoft Graph) added to this app registration, then admin consent
+> granted (see **[Admin consent](#admin-consent-for-high-risk-scopes)**
+> above) — `People.Read`/`User.Read` are already covered by the other
+> servers on this app.
 >
 > `m365-mail-send` is only reached when a user creates a draft, so an unregistered
 > URI there stays invisible until someone clicks "Open draft".
