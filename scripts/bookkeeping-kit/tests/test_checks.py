@@ -662,6 +662,88 @@ class Checks(unittest.TestCase):
         self.register_then_weekly()
         self.assertFalse(any(f["check"] == "CHK-003" for f in self.state().get("findings", {}).values()))
 
+    # ── drafts, batch payments and GST on non-GST accounts (decision D9: the buildable release-1 checks) ──
+    def drafts_and_batches(self):
+        who = {"ContactID": self.supplies["ContactID"], "Name": self.supplies["Name"]}
+        self.org["Quotes"] = [{"QuoteID": "q1", "QuoteNumber": "QU-0007", "Contact": who, "DateString": day(9) + "T00:00:00", "Total": 1100.0, "Status": "DRAFT"},
+                              {"QuoteID": "q2", "QuoteNumber": "QU-0008", "Contact": who, "DateString": day(9) + "T00:00:00", "Total": 500.0, "Status": "ACCEPTED"}]
+        self.org["PurchaseOrders"] = [{"PurchaseOrderID": "po1", "PurchaseOrderNumber": "PO-0003", "Contact": who, "DateString": day(4) + "T00:00:00", "Total": 770.0, "Status": "SUBMITTED"}]
+        self.org["BatchPayments"] = [{"BatchPaymentID": "bp1", "DateString": day(3) + "T00:00:00", "Reference": "Supplier run #12", "Details": "Café rent",
+                                      "TotalAmount": 1430.0, "Status": "AUTHORISED", "Payments": [{"Details": "rent_oct"}]},
+                                     {"BatchPaymentID": "bp2", "DateString": day(3) + "T00:00:00", "Reference": "Wages (Oct) 2/3", "TotalAmount": 900.0,
+                                      "Status": "AUTHORISED", "Payments": []}]
+        self.org["accounts"].append({"AccountID": "acc-485", "Code": "485", "Name": "Overseas Subscriptions", "Type": "EXPENSE", "Class": "EXPENSE",
+                                     "Status": "ACTIVE", "TaxType": "EXEMPTEXPENSES"})
+        self.org["profit_and_loss"]["expenses"]["acc-485"] = 1.0
+        self.org["invoices"] += [doc("b-draft", "D-1", self.supplies, day(3), 220.0, status="DRAFT"),
+                                 doc("b-gst", "OS-9", self.supplies, day(6), 110.0, account="485"),
+                                 doc("i-draft", "INV-300", self.supplies, day(2), 330.0, kind="ACCREC", status="DRAFT", account="200", tax_type="OUTPUT")]
+
+    def test_drafts_batch_payment_text_and_gst_on_a_non_gst_account(self):
+        self.drafts_and_batches()
+        steps = self.overnight()
+        self.assertEqual(steps["run_checks"]["outputs"]["summary"]["errors"], [])
+        desc = self.open_item()["description"]
+        line = lambda check: next(l for l in desc.split("\n") if check in l)
+        self.assertIn("1 quote(s) are still in draft (QU-0007)", line("CHK-040"))
+        self.assertIn("1 purchase order(s) are in draft or awaiting approval (PO-0003)", line("CHK-093"))
+        self.assertIn("1 bill(s) are in draft or awaiting approval (Plumbing Supplies Co)", line("CHK-078"))
+        self.assertIn("1 batch payment(s) have text a bank's direct-entry file may reject", line("CHK-016"))
+        for ch in ("#", "é", "_"):
+            self.assertIn(ch, line("CHK-016"))
+        self.assertIn("to be confirmed", line("CHK-016"))
+        self.assertIn("GST on 1 line(s) coded to 485 Overseas Subscriptions, whose tax rate (EXEMPTEXPENSES) has no GST", line("CHK-137"))
+        # A merged catalogue check rides on the finding that covers it.
+        findings = self.state()["findings"]
+        self.assertEqual(next(f for f in findings.values() if f["check"] == "CHK-033")["also"], ["CHK-032"])
+        self.assertEqual(next(f for f in findings.values() if f["check"] == "CHK-040")["also"], [])
+
+    def test_a_list_xero_wont_share_keeps_its_findings_until_it_can_be_read(self):
+        self.drafts_and_batches()
+        self.overnight()
+        self.assertIn("CHK-093", self.open_item()["description"])
+        self.org["PurchaseOrders"] = None  # the connection loses access to purchase orders
+        state = self.state()
+        state["last_weekly"] = day(8)
+        self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
+        steps = self.overnight()
+        self.assertEqual(steps["run_checks"]["outputs"]["summary"]["errors"], [])
+        po = next(f for f in self.state()["findings"].values() if f["check"] == "CHK-093")
+        self.assertEqual(po["status"], "open", "not read this week, so not resolved either")
+        self.assertIn("CHK-040", self.open_item()["description"])
+
+    # ── fixed asset checks (Asset lookups saves the Xero Assets register, Ledger checks reads it) ──
+    def assets_setup(self):
+        self.org["accounts"] += [{"AccountID": "acc-710", "Code": "710", "Name": "Office Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+                                 {"AccountID": "acc-720", "Code": "720", "Name": "Motor Vehicles", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+                                 {"AccountID": "acc-730", "Code": "730", "Name": "Furniture", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"}]
+        self.org["trial_balance"] = {str(TODAY): {"acc-710": 5000.0, "acc-720": 12000.0}}
+        self.w.assets.assets[T] = [{"assetId": "a1", "assetName": "Laptop", "assetNumber": "FA-0001", "assetStatus": "Draft",
+                                    "purchasePrice": 2200.0, "purchaseDate": day(20) + "T00:00:00"},
+                                   {"assetId": "a2", "assetName": "Van", "assetNumber": "FA-0002", "assetStatus": "Registered",
+                                    "purchasePrice": 30000.0, "purchaseDate": day(200) + "T00:00:00"}]
+        self.w.assets.types[T] = [{"assetTypeId": "t1", "assetTypeName": "Computers", "fixedAssetAccountId": "acc-710"}]
+
+    def test_asset_lookups_feed_the_fixed_asset_checks(self):
+        self.assets_setup()
+        lookups = run_flow(self.w, AUTOS["Bookkeeping: Asset lookups (Xero Assets)"], {"kind": "schedule"}, {"client_name": ""})
+        self.assertEqual(lookups["refresh_assets"]["outputs"]["summary"]["errors"], [])
+        saved = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-assets.json"])
+        self.assertEqual([a["name"] for a in saved["draft"]], ["Laptop"])
+        self.assertEqual(saved["type_accounts"], ["acc-710"])
+        self.assertTrue(all(c[1].get("xero_tenant_id") == T for c in self.w.assets.calls), "the client's own organisation")
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("1 fixed asset(s) are still in draft in Xero (Laptop)", desc)
+        self.assertIn("Fixed asset account 720 Motor Vehicles has a balance of $12,000.00, but no asset type", desc)
+        self.assertNotIn("710 Office Equipment", desc, "its asset type uses it")
+        self.assertNotIn("730 Furniture", desc, "no balance")
+
+    def test_no_asset_lookups_means_no_fixed_asset_checks(self):
+        self.assets_setup()
+        self.overnight()
+        self.assertEqual([f for f in (self.state().get("findings") or {}).values() if f["check"] in ("CHK-139", "CHK-140")], [])
+
     def test_checks_only_read_xero(self):
         self.duplicate_bills()
         self.overnight()
@@ -698,6 +780,9 @@ class IntakeChecks(Base):
         self.invoice.update(pay_bsb="062000", pay_account="55556666")
         self.drop()
         self.assertIn("[CHK-060]", self.review_item()["description"])
+        # A bill from a supplier Xero doesn't know is also the catalogue's CHK-073 (merged into this warning).
+        self.assertIn("isn't in Xero yet. The contact is created when you approve. [CHK-073]", self.review_item()["description"])
+        self.assertIn("CHK-073", self.record()["checks"])
 
     def test_abn_on_the_pdf_differs_from_the_contact(self):
         self.setup_practice()

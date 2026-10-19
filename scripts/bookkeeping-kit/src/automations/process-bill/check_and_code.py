@@ -124,7 +124,9 @@ if not problem:
             problem = ("Duplicate: bill " + str(inv.get("invoice_number")) + " from " + str((contact or {}).get("Name"))
                        + " is already in Xero (" + str(dups[0].get("Status")) + "). Nothing was posted.")
         if not contact:
-            warnings.append("New " + party + ": \"" + supplier + "\" isn't in Xero yet. The contact is created when you approve.")
+            # A bill from a supplier Xero doesn't know is the checks catalogue's CHK-073 (merged here, decision D9).
+            warnings.append("New " + party + ": \"" + supplier + "\" isn't in Xero yet. The contact is created when you approve."
+                            + ("" if sales else " [CHK-073]"))
 
         # ── Intake checks from the checks catalogue: warnings only, never blocks (the AI can misread a PDF) ──
         intake = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-intake.json") or {}

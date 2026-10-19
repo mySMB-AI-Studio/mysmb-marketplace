@@ -1,0 +1,78 @@
+{
+  "attachments": [],
+  "contentHash": "2b27b22182b4a15ad35152f70c6c725ace523fe08e5ebc7ae48d7f718540efd6",
+  "declaredScopes": [
+    "connectors:xero-assets",
+    "files:read",
+    "files:write"
+  ],
+  "dependencies": [],
+  "description": "Every Sunday night before the weekly ledger checks, reads each client’s fixed asset register in Xero (draft assets, and the fixed asset accounts its asset types use) and saves it, so Ledger checks can run the fixed asset checks: assets left in draft, and fixed asset accounts with a balance that no asset type uses. Needs the Xero Assets extension connected; publish it only if that’s installed. Reads only.",
+  "flowIr": {
+    "description": "Every Sunday night before the weekly ledger checks, reads each client’s fixed asset register in Xero (draft assets, and the fixed asset accounts its asset types use) and saves it, so Ledger checks can run the fixed asset checks: assets left in draft, and fixed asset accounts with a balance that no asset type uses. Needs the Xero Assets extension connected; publish it only if that’s installed. Reads only.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Asset lookups (Xero Assets)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nimport hashlib\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\nBK_CHECKS = \"Bookkeeping/Checks\"\n# One threshold for \"needs a tax invoice / an ABN / an attachment\": $75 excluding GST = $82.50 including GST.\nBK_GST_INVOICE_LIMIT = 82.5\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_money(value):\n    \"\"\"Parse 1234.5, \"1,234.50\", \"$12\" or \"A$ 12.00\" into a float; None when blank or not a number.\"\"\"\n    if value is None or isinstance(value, bool):\n        return None\n    if isinstance(value, (int, float)):\n        return float(value)\n    s = re.sub(r\"[^0-9.\\-]\", \"\", str(value))\n    if s in (\"\", \"-\", \".\", \"-.\"):\n        return None\n    try:\n        return float(s)\n    except ValueError:\n        return None\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_today(settings):\n    return datetime.datetime.now(bk_tz(settings)).date()\n\n\n# ── Read the fixed asset register ──\n\n\nimport time\n\nstarted = time.monotonic()\n# Stay well inside the 20-minute run limit; the next run carries on with whatever is left.\nBUDGET_SECONDS = 13 * 60\nASSETS_SERVER = \"xero-assets\"\nsettings = bk_read_json(BK_SETTINGS)\nwanted = bk_slug(params.get(\"client_name\")) if params.get(\"client_name\") else \"\"\nsummary = {\"clients\": [], \"left\": 0, \"errors\": []}\nproblem = \"\"\n\n\ndef _assets_call(tool, tenant_id, **args):\n    # A Xero Assets read for the client's own organisation (the fixed asset register isn't in the accounting API).\n    args[\"xero_tenant_id\"] = tenant_id\n    return api.connectors.invoke(server=ASSETS_SERVER, tool=tool, args=args)\n\n\ndef _assets_items(result):\n    # The Xero Assets API returns {\"pagination\": …, \"items\": [...]} for assets and a plain list for asset types.\n    if isinstance(result, dict):\n        return result.get(\"items\") or result.get(\"Items\") or []\n    return result if isinstance(result, list) else []\n\n\nif not settings:\n    problem = \"Bookkeeping isn't set up yet. Run **Bookkeeping: Start setup** and submit the Bookkeeping setup form.\"\nelse:\n    today = bk_today(settings)\n    for f in api.files.list(path=BK_CLIENTS):\n        client = bk_read_json(f[\"path\"]) if str(f.get(\"name\") or \"\").endswith(\".json\") else None\n        if not client or not client.get(\"xero_tenant_id\") or client.get(\"checks_enabled\", True) is False:\n            continue\n        slug = client.get(\"slug\") or \"\"\n        if wanted and wanted != slug and wanted != bk_slug(client.get(\"name\")):\n            continue\n        if time.monotonic() - started > BUDGET_SECONDS:\n            summary[\"left\"] += 1\n            continue\n        tenant = client[\"xero_tenant_id\"]\n        exc = None\n        try:\n            # Draft assets (CHK-139), and the fixed asset accounts the asset types use (CHK-140).\n            drafts = _assets_items(_assets_call(\"list_assets\", tenant, status=\"Draft\", pageSize=500))\n            types = _assets_items(_assets_call(\"list_asset_types\", tenant))\n            cache = {\"refreshed\": str(today),\n                     \"draft\": [{\"id\": str(a.get(\"assetId\") or \"\"), \"name\": str(a.get(\"assetName\") or \"(no name)\"),\n                                \"number\": str(a.get(\"assetNumber\") or \"\"), \"price\": bk_money(a.get(\"purchasePrice\")) or 0.0,\n                                \"date\": str(a.get(\"purchaseDate\") or \"\")[:10], \"link\": \"\"}\n                               for a in drafts if a.get(\"assetId\")],\n                     \"type_accounts\": sorted({str(t.get(\"fixedAssetAccountId\")) for t in types if t.get(\"fixedAssetAccountId\")})}\n            bk_write_json(BK_CHECKS + \"/\" + slug + \"-assets.json\", cache)\n            summary[\"clients\"].append({\"client\": client.get(\"name\"), \"draft\": len(cache[\"draft\"]),\n                                       \"asset_types\": len(types)})\n        except Exception as exc:\n            summary[\"errors\"].append(str(client.get(\"name\")) + \": \" + str(exc)[:300])\n    if not summary[\"clients\"] and not summary[\"errors\"]:\n        problem = (\"No client with ledger checks turned on\" + (\" matches \\\"\" + str(params.get(\"client_name\") or \"\") + \"\\\"\" if wanted else \"\")\n                   + \". Fixed asset checks run for the clients set up in Bookkeeping with ledger checks on.\")\n",
+        "id": "refresh_assets",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Clients read, draft assets and asset types",
+            "name": "summary",
+            "type": "dict"
+          },
+          {
+            "description": "Why nothing was read, or empty",
+            "name": "problem",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.client_name }}",
+            "control": "hidden",
+            "label": "Client",
+            "name": "client_name",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "For each client with ledger checks on: reads its draft fixed assets and the accounts its asset types use from Xero Assets, and saves them for Ledger checks.",
+        "title": "Read the fixed asset register"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Client business (manual runs only: reads it now)",
+        "name": "client_name",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "refresh_assets"
+    ],
+    "triggers": [
+      {
+        "cron": "0 23 * * 0",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Asset lookups (Xero Assets)",
+  "originKey": "9b251ad2-7ec4-4dd3-b46e-5b4154117603",
+  "tags": [
+    "bookkeeping"
+  ]
+}

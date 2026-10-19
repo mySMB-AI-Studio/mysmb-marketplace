@@ -516,6 +516,40 @@ def xero_cell_account(cell):
     return ""
 
 
+def xero_quotes(tenant_id):
+    """Quotes still in draft (CHK-040)."""
+    rows, _ = xero_pages("list_quotes", tenant_id, "Quotes", status="DRAFT")
+    return [{"id": str(q.get("QuoteID") or ""), "number": str(q.get("QuoteNumber") or (q.get("Contact") or {}).get("Name") or ""),
+             "contact": str((q.get("Contact") or {}).get("Name") or ""), "date": xero_date(q.get("DateString") or q.get("Date")),
+             "total": round(bk_money(q.get("Total")) or 0.0, 2), "link": ""} for q in rows if q.get("QuoteID")]
+
+
+def xero_purchase_orders(tenant_id):
+    """Purchase orders in draft or awaiting approval (CHK-093)."""
+    out = []
+    for status in ("DRAFT", "SUBMITTED"):
+        rows, _ = xero_pages("list_purchase_orders", tenant_id, "PurchaseOrders", status=status)
+        out += [{"id": str(p.get("PurchaseOrderID") or ""), "number": str(p.get("PurchaseOrderNumber") or (p.get("Contact") or {}).get("Name") or ""),
+                 "contact": str((p.get("Contact") or {}).get("Name") or ""), "date": xero_date(p.get("DateString") or p.get("Date")),
+                 "total": round(bk_money(p.get("Total")) or 0.0, 2), "link": ""} for p in rows if p.get("PurchaseOrderID")]
+    return out
+
+
+def xero_batch_payments(tenant_id, since):
+    """Batch payments since a day, with every text field a bank's direct-entry file carries (CHK-016)."""
+    rows, _ = xero_pages("list_batch_payments", tenant_id, "BatchPayments", where="Date>=" + xero_since(since))
+    out = []
+    for b in rows:
+        if not b.get("BatchPaymentID") or b.get("Status") == "DELETED":
+            continue
+        texts = [b.get(k) for k in ("Reference", "Particulars", "Code", "Details", "Narrative")]
+        for p in b.get("Payments") or []:
+            texts += [p.get(k) for k in ("Details", "Reference", "Particulars", "Code")]
+        out.append({"id": str(b["BatchPaymentID"]), "date": xero_date(b.get("DateString") or b.get("Date")),
+                    "total": round(bk_money(b.get("TotalAmount")) or 0.0, 2), "texts": [str(t) for t in texts if t], "link": ""})
+    return out
+
+
 def xero_balances(tenant_id, day):
     """Each account's balance on a day (debit positive), from the trial balance's year-to-date columns, by AccountID."""
     out = {}
@@ -586,6 +620,22 @@ def xero_ledger(tenant_id, today, since, weekly):
                            "narration": str(j.get("Narration") or ""),
                            "link": "https://go.xero.com/Journal/View.aspx?invoiceID=" + str(j.get("ManualJournalID") or "")}
                           for j in journals if j.get("Status") in ("POSTED", None)]
+    # Lists only one weekly check reads (CHK-016, CHK-040, CHK-093): one that can't be read (a scope the connection
+    # lacks, say) goes in "unread" and that check waits for next week, rather than the whole client failing.
+    ledger["unread"] = []
+    exc = None
+    try:
+        ledger["batch_payments"] = xero_batch_payments(tenant_id, since)
+    except Exception as exc:
+        ledger["unread"].append("batch_payments")
+    try:
+        ledger["quotes"] = xero_quotes(tenant_id)
+    except Exception as exc:
+        ledger["unread"].append("quotes")
+    try:
+        ledger["purchase_orders"] = xero_purchase_orders(tenant_id)
+    except Exception as exc:
+        ledger["unread"].append("purchase_orders")
     ledger["org"] = {"lock_date": xero_date(org.get("PeriodLockDate")), "eoy_lock_date": xero_date(org.get("EndOfYearLockDate")),
                      "settings_link": "https://go.xero.com/Setup/FinancialSettings.aspx"}
     ledger["balances"] = {"now": xero_balances(tenant_id, today),

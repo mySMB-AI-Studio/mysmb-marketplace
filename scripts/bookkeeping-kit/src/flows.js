@@ -368,6 +368,27 @@ export const AUTOMATIONS = [
     ],
     rootOrder: ['refresh_register'],
   },
+  {
+    key: 'asset-lookups',
+    name: 'Bookkeeping: Asset lookups (Xero Assets)',
+    description:
+      'Every Sunday night before the weekly ledger checks, reads each client’s fixed asset register in Xero (draft assets, ' +
+      'and the fixed asset accounts its asset types use) and saves it, so Ledger checks can run the fixed asset checks: ' +
+      'assets left in draft, and fixed asset accounts with a balance that no asset type uses. Needs the Xero Assets ' +
+      'extension connected; publish it only if that’s installed. Reads only.',
+    triggers: [{ kind: 'schedule', cron: '0 23 * * 0', timezone: 'Australia/Sydney' }, { kind: 'manual' }],
+    params: [
+      { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: reads it now)', required: false, value: '' },
+    ],
+    scopes: ['files:read', 'files:write', 'connectors:xero-assets'],
+    forms: [],
+    nodes: [
+      node('refresh_assets', 'Read the fixed asset register', 'For each client with ledger checks on: reads its draft fixed assets and the accounts its asset types use from Xero Assets, and saves them for Ledger checks.', ['util'],
+        [hidden('client_name', 'str', '{{ params.client_name }}', 'Client')],
+        [out('summary', 'dict', 'Clients read, draft assets and asset types'), out('problem', 'str', 'Why nothing was read, or empty')]),
+    ],
+    rootOrder: ['refresh_assets'],
+  },
 
 
   // ── Payroll (phase 1: check and prepare; nothing is written to Xero Payroll) ──
