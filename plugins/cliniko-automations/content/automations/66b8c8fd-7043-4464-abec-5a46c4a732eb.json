@@ -10,7 +10,7 @@
     "connectors:cliniko-scheduling"
   ],
   "dependencies": [],
-  "description": "Every 5 minutes, checks for patients who were offered reschedule times and watches the same email thread for their reply. Reads the full reply (not just Graph's short preview), trims the quoted original message off before matching, and uses AI to figure out which of the offered times was picked. If the patient instead proposed their own day/time, it validates that against the practitioner's actual configured working hours and checks for a booking conflict before accepting it. Once a time is confirmed, it moves the Cliniko booking (start and end, keeping the original length) and sends the patient a confirmation naming the new time. An unclear or rejected reply is flagged for a human instead of guessed — this never books a time it isn't confident about. After moving a booking it notes the old time so \"Find freed slots to fill\" can offer it to someone else.",
+  "description": "Every 15 minutes from 7 AM to 9 PM (Kuala Lumpur time), checks for patients who were offered reschedule times and watches the same email thread for their reply. Reads the full reply (not just Graph's short preview), trims the quoted original message off before matching, and uses AI to figure out which of the offered times was picked. If the patient instead proposed their own day/time, it validates that against the practitioner's actual configured working hours and checks for a booking conflict before accepting it. Once a time is confirmed, it moves the Cliniko booking (start and end, keeping the original length) and sends the patient a confirmation naming the new time. An unclear or rejected reply is flagged for a human instead of guessed — this never books a time it isn't confident about. After moving a booking it notes the old time so \"Find freed slots to fill\" can offer it to someone else.",
   "flowIr": {
     "description": "Polls for pending reschedule offers, matches a patient's full reply to one of the proposed times via AI, moves the Cliniko booking, and confirms — or flags for a human when the reply is unclear.",
     "irVersion": 1,
@@ -203,7 +203,7 @@
     ],
     "triggers": [
       {
-        "cron": "*/5 * * * *",
+        "cron": "*/15 0-12,23 * * *",
         "kind": "schedule",
         "timezone": "UTC"
       },
@@ -221,5 +221,5 @@
     "scheduling",
     "email"
   ],
-  "contentHash": "ad0b85990bf43a25f6f686fc5125d9b1a9535b9b4995aac3f4e1b10d3bcb9aa0"
+  "contentHash": "447a971551ca525637b11072d403524cd6832cfa995791ba2c414443bf8d3259"
 }
