@@ -73,7 +73,7 @@ The kit renders the control row from the config, so every report has the same gr
 
 - **Client selector (LIB-002).** It lists the companies this QuickBooks connection can access. The \`quickbooks-accounting\` connector is authorised for exactly one company (realm), so it shows that one company, taken from CompanyInfo. The report holds only that company's data. To switch client, connect another QuickBooks company under Settings → Connections. Never type or guess a client name. When CompanyInfo returns no name, the header says "N/A — not in source".
 - **Period controls.** A Report period preset (Today … Last financial year, Last 30 days, Since 60/90/365 days ago, Custom) sits next to editable From / To dates. Or As of with presets (Today, End of last month, End of last quarter, End of last financial year, Custom). Presets use the company's financial-year start (CompanyInfo, then Preferences; 1 July only as a flagged fallback). **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it is opened.
-- Accounting method (Cash | Accrual) where the report takes it; Display columns by; Compare to (previous period / previous year / year-to-date, with $ and % change); Report (the family members); View as (persona).
+- Accounting method (Cash | Accrual) where the report takes it; Display columns by; Compare to (previous period / previous year / year-to-date, with $ and % change); Report (the family members); Detail level (persona: Client or Executive = Summary, Bookkeeper or Practitioner = Detail).
 - **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts, negative style (-100 / (100) / 100-), Show in red, Header, Footer, Compact | 100% view, Style (**QuickBooks look** by default, or the **mySMB house style** toggle) and **Brand colour** (re-colours every accent; "Use QuickBooks branding" resets it). With no brand colour the report carries QuickBooks branding — green accents and "Prepared from QuickBooks Online" — because the data comes from the QuickBooks connector. These live in the one \`display\` input so downloads keep them.
 - **Delivery (Q39).** Download PDF (print stylesheet, A4), Download Excel (a real .xlsx: one sheet per table with a header block, A$ number format, bold totals, a Validation sheet and a Parameters sheet), Open in QuickBooks (a classic report deep link where the library gives a token). Host Download and Share produce a self-contained snapshot. Email is done from the workspace, not the report.
 - **Parameter contract (Q38).** The Parameters sheet and the deep link use QuickBooks' classic \`reportv2\` names: \`token\`, \`date_macro\`, \`low_date\`, \`high_date\`, \`cash_basis\`, \`divideby1000\`, \`hidecents\`, \`exceptzeros\`, \`negativenums\`, \`negativered\`, \`show_header_title\` / \`range\` / \`company\`. The deep link carries only \`token\` + \`date_macro\` (a named preset). The \`low_date\` / \`high_date\` date format is unconfirmed, so verify the round trip on first run.
@@ -93,7 +93,7 @@ The kit renders the control row from the config, so every report has the same gr
 
 | Library v1.1 element | Where it is implemented |
 |---|---|
-| (a) Purpose & intended users | Persona modes (View as); family skill trigger |
+| (a) Purpose & intended users | Detail level (Summary / Detail, from the persona); family skill trigger |
 | (b) Data, metrics, filters, calculations | Family \`dataBindings\` (tool mapping) and STEP 4 checks in the config |
 | (c) Interactivity & controls | Kit control row (above). Every data control refetches through \`MyHubReport.getData\` with the full declared input set |
 | (d) Layout, charts, appearance | Family config \`render\` + stylesheet (QuickBooks look; mySMB house-style toggle; light and dark themes) |
@@ -348,7 +348,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): ${f.golden}
 3. Compare the layout with the ${f.q} screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.

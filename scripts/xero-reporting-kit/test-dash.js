@@ -563,6 +563,21 @@ const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, in
     await set(m, 'xk-client', L.T2); await wait(30);
     ok('me: switching organisation refetches payroll and assets for it too (no mixing)', ['pay_runs', 'timesheets', 'assets', 'journals'].every((id) => m.calls.some((x) => x.requery && x.id === id && x.params.xero_tenant_id === L.T2)), m.calls.filter((x) => x.requery).map((x) => x.id + ':' + x.params.xero_tenant_id));
   }
+  if (!only || only === 'cmp') {
+    // Compare to → Custom dates (decision D15): the comparison period is typed in, refetched as typed, and labelled with its dates
+    const PX = { pnl: L.pnl, pnl_cash: L.pnl, pnl_compare: L.pnl, pnl_compare_cash: L.pnl, tb_end: L.trialBalance, pnl_tracking: L.pnl, pnl_tracking_cash: L.pnl, tracking_cats: L.listTrackingCategories, org: L.organisation, connections: L.connections };
+    const t = await run('pnl', man('pnl'), PX); await wait(40);
+    ok('cmp: Compare to offers Custom dates', [...t.doc.querySelectorAll('#xk-cmp option')].some((o) => o.value === 'custom' && o.textContent === 'Custom dates'));
+    await set(t, 'xk-cmp', 'custom'); await wait(30);
+    ok('cmp: Custom dates shows Compare from / to fields, filled with the current comparison', !!t.doc.getElementById('xk-cmp-from') && !!t.doc.getElementById('xk-cmp-to') && /^\d{4}-\d\d-\d\d$/.test(t.doc.getElementById('xk-cmp-from').value));
+    const before = t.calls.length; await set(t, 'xk-cmp-from', '2024-01-01'); await set(t, 'xk-cmp-to', '2024-03-31'); await wait(40);
+    const re = t.calls.slice(before).filter((x) => x.id === 'pnl_compare');
+    ok('cmp: typed dates are fetched as typed and kept (not recalculated from the report period)', re.some((x) => x.params.fromDate === '2024-01-01' && x.params.toDate === '2024-03-31') && t.setInputsLog[t.setInputsLog.length - 1].compare_from === '2024-01-01', re.map((x) => [x.params.fromDate, x.params.toDate]));
+    ok('cmp: the comparison column is labelled with the typed dates', /1 Jan 2024 – 31 Mar 2024/.test(text(t.doc, '#xk-body thead')) || /1 Jan 2024 – 31 Mar 2024/.test(body(t)), text(t.doc, '#xk-body').slice(0, 300));
+    const b = await run('bs', man('bs'), { bs: L.bs, bs_cash: L.bs, bs_compare: L.bs, bs_compare_cash: L.bs, pnl_ytd: L.pnl, org: L.organisation, connections: L.connections }); await wait(40);
+    await set(b, 'xk-cmp', 'custom'); await wait(30); const b0 = b.calls.length; await set(b, 'xk-cmp-asat', '2025-12-31'); await wait(40);
+    ok('cmp: Balance Sheet Custom dates compares with the typed date', !!b.doc.getElementById('xk-cmp-asat') && b.calls.slice(b0).some((x) => x.id === 'bs_compare' && x.params.date === '2025-12-31') && /31 Dec 2025/.test(body(b)), b.calls.slice(b0).map((x) => [x.id, x.params.date]));
+  }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);
 })();

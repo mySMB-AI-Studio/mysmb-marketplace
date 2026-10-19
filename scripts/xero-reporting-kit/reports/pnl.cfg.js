@@ -48,7 +48,7 @@ XK.app({
     var incK = none(inc) ? 0 : inc, opexK = none(opex) ? 0 : opex;
     var npCmp = wc ? (function () { var l = XK.find(wc.lines, null, /^net (profit|loss)$/i, 'total'); return l ? XK.val(l) : null; })() : null;
     var extra = multi ? wins.map(function (wn, i) { return { title: XK.rangeLabel(wn.inputs.compare_from, wn.inputs.compare_to), value: function (l) { return l.cmps ? l.cmps[i] : null; } }; })
-      : cmpOn ? XK.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
+      : cmpOn ? XK.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
     if (c.view === 'pct') extra.push({ title: '% of Trading Income', fmt: 'pct', value: function (l) { return inc ? XK.val(l) / inc : null; } });
     var empty = !w.lines.some(function (l) { return l.kind === 'row'; });
     var cats = (((c.data.tracking_cats || {}).TrackingCategories) || []).filter(function (t) { return t.Status !== 'ARCHIVED' && t.Status !== 'DELETED'; }), tsel = c.inputs.tracking || '', tid = cash ? 'pnl_tracking_cash' : 'pnl_tracking';

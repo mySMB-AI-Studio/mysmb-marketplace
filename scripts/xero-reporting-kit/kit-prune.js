@@ -41,8 +41,12 @@ function reportKit(cfgText) {
   const used = membersFor(cfgText);
   // Optional controller parts, kept only for the configs that use them: /* feed: */ … /* :feed */ (a feed paged by a cursor, which
   // may be searched — paged[id].cursor / .seek, as the General Ledger's journal feed).
-  const body = /\bcursor:\s*function|\bseek:\s*\{/.test(cfgText) ? BODY : BODY.replace(/\/\* feed: \*\/[\s\S]*?\/\* :feed \*\//g, '');
-  const mod = "'use strict';" + body + '\nwindow.XK = {' + used.map((u) => MEMBERS.get(u)).join(',\n') + '};\n';
+  const body0 = /\bcursor:\s*function|\bseek:\s*\{/.test(cfgText) ? BODY : BODY.replace(/\/\* feed: \*\/[\s\S]*?\/\* :feed \*\//g, '');
+  // /* cmp: */ … /* :cmp */: Custom comparison dates, kept only for the configs that compare (compare: true).
+  const body1 = /\bcompare:\s*true/.test(cfgText) ? body0 : body0.replace(/\/\* cmp: \*\/[\s\S]*?\/\* :cmp \*\//g, '');
+  // /* persona: */ … /* :persona */: the Detail level control, kept only for the configs with a persona input or personaDisplay.
+  const body = /\bpersona:\s*'|\bpersonaDisplay:\s*true/.test(cfgText) ? body1 : body1.replace(/\/\* persona: \*\/[\s\S]*?\/\* :persona \*\//g, '');
+  const mod = "'use strict';" + body +'\nwindow.XK = {' + used.map((u) => MEMBERS.get(u)).join(',\n') + '};\n';
   const code = esbuild.transformSync(mod, { minifyWhitespace: true, minifySyntax: true, treeShaking: true, format: 'iife', lineLimit: 300, legalComments: 'none', target: 'es2017' }).code.trim();
   new Function(code); // parses
   return code;

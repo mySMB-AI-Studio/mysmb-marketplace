@@ -6,6 +6,10 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const rd = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 const stripModule = (s) => s.replace(/\nif \(typeof module[^\n]*\n?$/, '\n').trim();
+// The MYOB and QuickBooks kits go in whole, minified for whitespace and syntax with names kept, in lines of about 300 characters:
+// the same kit text their own extensions ship (gen-myob.js, gen-ext.js), so the documents stay inside their token caps.
+const esbuild = require(path.join(ROOT, 'xero-reporting-kit', 'node_modules', 'esbuild'));
+const minKit = (s) => esbuild.transformSync(stripModule(s), { minifyWhitespace: true, minifySyntax: true, lineLimit: 300, legalComments: 'none', target: 'es2017' }).code.trim();
 
 // FNV-1a over the kit + the config from `render: function` on, whitespace removed: the same sum the Xero skeleton checks.
 function fnv(x) { let h = 2166136261; for (let j = 0; j < x.length; j++) { h ^= x.charCodeAt(j); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16); }
@@ -25,14 +29,14 @@ const ENGINES = {
     dir: path.join(ROOT, 'myob-reporting-kit'), prefix: 'mk', today: '2026-09-28', clock: [2026, 8, 28, 10, 52],
     assemble(cfg, title) {
       return rd(path.join(this.dir, 'skeleton.html')).replace('{{TITLE}}', title).replace('{{CSS}}', () => rd(path.join(this.dir, 'mk.css')).trim())
-        .replace('{{KIT}}', () => stripModule(rd(path.join(this.dir, 'mk-kit.js')))).replace('{{CFG}}', () => cfg);
+        .replace('{{KIT}}', () => minKit(rd(path.join(this.dir, 'mk-kit.js')))).replace('{{CFG}}', () => cfg);
     }
   },
   quickbooks: {
     dir: path.join(ROOT, 'quickbooks-reporting-kit'), prefix: 'qb', today: '2026-09-25', clock: [2026, 8, 25, 10, 52],
     assemble(cfg, title) {
       return rd(path.join(this.dir, 'skeleton.html')).replace('{{TITLE}}', title).replace('{{CSS}}', () => rd(path.join(this.dir, 'qb.css')).trim())
-        .replace('{{KIT}}', () => stripModule(rd(path.join(this.dir, 'qb-kit.js')))).replace('{{CFG}}', () => cfg);
+        .replace('{{KIT}}', () => minKit(rd(path.join(this.dir, 'qb-kit.js')))).replace('{{CFG}}', () => cfg);
     }
   }
 };

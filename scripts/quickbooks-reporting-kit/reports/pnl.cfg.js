@@ -24,7 +24,7 @@ QB.app({
     // Landscaping Services on the US sandbox
     var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return incHdr && l.path[0] === incHdr.label && (l.kind === 'row' || (l.kind === 'header' && l !== incHdr)); }), incSum = QB.sum(incRows.map(function (l) { return QB.val(l); }));
     var extra = [];
-    if (cmpOn) extra = QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);
+    if (cmpOn) extra = QB.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);
     if (c.view === 'pct') extra.push({ title: '% of Income', fmt: 'pct', value: function (l) { return inc ? QB.val(l) / inc : null; } });
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     var niCmp = cmpOn ? (QB.find(lines, 'NetIncome', /^net (income|earnings)$/i) || {}).cmp : null;

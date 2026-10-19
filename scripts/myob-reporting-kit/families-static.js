@@ -25,7 +25,7 @@ module.exports = [
 | Show cents, Divide by 1000, Show zero balances, Negatives in brackets, Show in red | \`display.cents\`, \`k\`, \`zeros\`, \`neg\`, \`red\` |
 | Header and footer, compact view | \`display.hdr\`, \`ftr\`, \`dens\` |
 | MYOB or mySMB branding, a brand colour | \`display.style\` (\`myob\` / \`mysmb\`), \`display.b\` (only when the user asks) |
-| View as (persona) | \`persona\` |
+| Detail level (persona) | \`persona\` |
 | Columns shown, hidden or reordered (Customise → columns) | N/A — the kit reports have MYOB's fixed columns; say so, and offer the closest view |
 | Filters on customer, supplier, job or account | N/A unless the report has that view; say so |
 

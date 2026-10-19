@@ -761,8 +761,8 @@ var XK = (function () {
       if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp()) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
       var d = disp();
       if (cfg.compare && d.c !== 'none' && d.c !== 'periods') { // keep the comparison window aligned with the main window ('periods' is the report's fan)
-        if (I.cmpStart && I.start) { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
-        if (I.cmpAsAt && I.asAt) { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
+        if (I.cmpStart && I.start/* cmp: */ && d.c !== 'custom'/* :cmp */) { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
+        if (I.cmpAsAt && I.asAt/* cmp: */ && d.c !== 'custom'/* :cmp */) { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
       }
       announce();
       if (changed.length) return requery(changed);
@@ -799,6 +799,9 @@ var XK = (function () {
     function optv(id) { var o = (cfg.options || []).filter(function (x) { return x.id === id; })[0], m = new RegExp('(?:^|;)' + id + '=([^;]*)').exec(disp().o || ''); return m ? m[1] : o ? o.def : null; }
     function setOpt(id, v) { var kv = {}; String(disp().o || '').split(';').forEach(function (p) { var i = p.indexOf('='); if (i > 0) kv[p.slice(0, i)] = p.slice(i + 1); }); kv[id] = v; return Object.keys(kv).map(function (k) { return k + '=' + kv[k]; }).join(';'); }
     function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
+    /* persona: */ function PV(p) { return p === 'Executive' ? 'Client' : p === 'Practitioner' ? 'Bookkeeper' : p; } /* :persona */
+    /* cmp: */ // the comparison column's label for Custom dates: the exact days typed in
+    function cmpLabel() { var dl = function (v) { var x = parse(v); return x.getUTCDate() + ' ' + MON[x.getUTCMonth()].slice(0, 3) + ' ' + x.getUTCFullYear(); }; return I.cmpStart ? dl(S.inputs[I.cmpStart]) + ' – ' + dl(S.inputs[I.cmpEnd]) : I.cmpAsAt ? dl(S.inputs[I.cmpAsAt]) : null; } /* :cmp */
     function controls() {
       var el = $('xk-controls'); if (!el) return; var d = disp(), c0 = co(), dis = live ? '' : ' disabled', x = '';
       if (I.org && c0.orgs.length > 1) x += '<label class="ctl">Organisation<select id="xk-client"' + dis + ' title="The Xero organisations this connection can access — one organisation per report.">' + opt(c0.orgs.map(function (f) { return [f.id, f.name || f.id]; }), S.inputs[I.org] || c0.active || '') + '</select></label>';
@@ -809,11 +812,16 @@ var XK = (function () {
       if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="xk-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
       var xfy = fiscalStart(c0.org, cfg.fyMonth), xend = ((xfy.month + 10) % 12) + 1;
       x += '<label class="ctl">Year end<select id="xk-fy"' + dis + ' title="The month the financial year ends — from the organisation\'s Xero settings unless you change it">' + opt([['', 'Xero (' + MONTHS[xend - 1] + ')']].concat(MONTHS.map(function (m, i) { return [String(i + 1), m]; })), d.fy || '') + '</select></label>';
-      if (cfg.compare) x += '<label class="ctl">Compare to<select id="xk-cmp"' + dis + '>' + opt(cfg.compareModes || (I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']]), d.c) + '</select></label>';
+      if (cfg.compare) x += '<label class="ctl">Compare to<select id="xk-cmp"' + dis + '>' + opt((cfg.compareModes || (I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']]))/* cmp: */.concat(I.cmpStart || I.cmpAsAt ? [['custom', 'Custom dates']] : [])/* :cmp */, d.c) + '</select></label>';
+      /* cmp: */ // Custom dates: the comparison period is typed in (decision D15), not derived from the report period
+      if (cfg.compare && d.c === 'custom') x += I.cmpStart ? '<label class="ctl">Compare from<input type="date" id="xk-cmp-from" value="' + h(S.inputs[I.cmpStart]) + '"' + dis + '></label><label class="ctl">to<input type="date" id="xk-cmp-to" value="' + h(S.inputs[I.cmpEnd]) + '"' + dis + '></label>'
+        : I.cmpAsAt ? '<label class="ctl">Compare with<input type="date" id="xk-cmp-asat" value="' + h(S.inputs[I.cmpAsAt]) + '"' + dis + '></label>' : ''; /* :cmp */
       (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="xk-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
       if (cfg.views) x += '<label class="ctl">Report<select id="xk-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
       (cfg.options || []).forEach(function (o) { if (o.when && !o.when(d)) return; x += '<label class="ctl">' + h(o.label) + '<select id="xk-opt-' + h(o.id) + '"' + (o.title ? ' title="' + h(o.title) + '"' : '') + '>' + opt(o.options, optv(o.id)) + '</select></label>'; });
-      if (I.persona || cfg.personaDisplay) x += '<label class="ctl">View as<select id="xk-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], I.persona ? S.inputs[I.persona] : d.pv || 'Bookkeeper') + '</select></label>';
+      /* persona: */ // Two views (Reporting Library decision D1): Summary for clients and executives, Detail for bookkeepers and practitioners.
+      // The stored value keeps the persona names (Executive shows as Summary, Practitioner as Detail).
+      if (I.persona || cfg.personaDisplay) x += '<label class="ctl">Detail level<select id="xk-persona">' + opt([['Client', 'Summary (client, executive)'], ['Bookkeeper', 'Detail (bookkeeper, practitioner)']], PV(I.persona ? S.inputs[I.persona] : d.pv || 'Bookkeeper')) + '</select></label>'; /* :persona */
       x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
         '<label><input type="checkbox" id="xk-cents"' + (d.cents ? ' checked' : '') + '> Show cents</label><label><input type="checkbox" id="xk-k"' + (d.k ? ' checked' : '') + '> Divide by 1000</label>' +
         '<label><input type="checkbox" id="xk-zeros"' + (d.zeros ? '' : ' checked') + '> Except zero amounts</label><label>Negative numbers<select id="xk-neg">' + opt([['minus', '-100'], ['paren', '(100)'], ['trail', '100-']], d.neg) + '</select></label>' +
@@ -835,11 +843,14 @@ var XK = (function () {
       document.querySelectorAll('input[name="xk-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
       on('xk-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
       on('xk-cmp', 'change', function () { change({}, { c: this.value }); });
+      /* cmp: */ on('xk-cmp-from', 'change', function () { var p = {}; p[I.cmpStart] = this.value; change(p); });
+      on('xk-cmp-to', 'change', function () { var p = {}; p[I.cmpEnd] = this.value; change(p); });
+      on('xk-cmp-asat', 'change', function () { var p = {}; p[I.cmpAsAt] = this.value; change(p); }); /* :cmp */
       on('xk-fy', 'change', function () { setDisp({ fy: this.value }); change(rollPresets() || {}, {}); }); // financial-year presets follow the new year end
       (cfg.enums || []).forEach(function (e, i) { on('xk-enum-' + i, 'change', function () { var p = {}; p[e.input] = this.value; change(p); }); });
       on('xk-view', 'change', function () { change({}, { v: this.value }); });
       (cfg.options || []).forEach(function (o) { on('xk-opt-' + o.id, 'change', function () { change({}, { o: setOpt(o.id, this.value) }); }); });
-      on('xk-persona', 'change', function () { if (!I.persona) return change({}, { pv: this.value }); var p = {}; p[I.persona] = this.value; change(p); });
+      /* persona: */ on('xk-persona', 'change', function () { if (!I.persona) return change({}, { pv: this.value }); var p = {}; p[I.persona] = this.value; change(p); }); /* :persona */
       [['xk-cents', 'cents'], ['xk-k', 'k'], ['xk-red', 'red'], ['xk-hdr', 'hdr'], ['xk-ftr', 'ftr']].forEach(function (c) { on(c[0], 'change', function () { var p = {}; p[c[1]] = this.checked ? 1 : 0; change({}, p); }); });
       on('xk-zeros', 'change', function () { change({}, { zeros: this.checked ? 0 : 1 }); });
       on('xk-neg', 'change', function () { change({}, { neg: this.value }); });
@@ -852,7 +863,7 @@ var XK = (function () {
     }
     function ctx() {
       var d = disp(), c0 = co(), f = fy();
-      return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
+      return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none', /* cmp: */compareLabel: cfg.compare && d.c === 'custom' ? cmpLabel() : null, /* :cmp */
         persona: I.persona ? S.inputs[I.persona] : cfg.personaDisplay ? d.pv || 'Bookkeeper' : 'Bookkeeper', company: c0.name, organisation: c0, fy: f, currency: homeCurrency(c0.org), live: live,
         fetchedAt: S.fetchedAt, source: srcOf, body: $('xk-body'), change: change, disp: disp, today: iso(today()), opt: optv, setOpt: function (id, v) { return change({}, { o: setOpt(id, v) }); }, rows: rows, truncated: truncated, fan: fan, pageError: function (id) { return (S.pageError || {})[id] || null; }/* feed: */, seekFrom: function (id) { return (S.seekFrom || {})[id] || 0; } /* :feed */ };
     }

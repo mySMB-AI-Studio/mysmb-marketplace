@@ -89,6 +89,28 @@ const E = L.expect, T = L.TODAY, FY = '2026-07-01';
     const tp = await go('gl', { pnl_period: (p) => { const r = L.profitAndLoss(p); r.AccountsBreakdown[0].AccountTotal += 10; return r; } });
     ok('gl: a P&L that differs from the journals → the income and expense tie fails', /✗ Income and expense categories/.test(banner(tp)) && red(tp), banner(tp).slice(0, 400));
   }
+  if (!only || only === 'fy') {
+    // Year end (decision D15): MYOB doesn't share the company file's year end, so the default is June (AU); the report's own
+    // Year end control overrides it and the financial-year presets follow.
+    const t = await go('pnl'), fy = t.doc.getElementById('mk-fy');
+    ok('fy: Year end control, default June (AU), with the twelve months', fy && fy.value === '' && /Default \(June\)/.test(fy.options[0].textContent) && fy.options.length === 13, fy && fy.options[0].textContent);
+    ok('fy: the banner says the June year end is the AU default', /AU default/.test(banner(t)), banner(t).slice(0, 500));
+    const before = t.calls.length; fy.value = '12'; fy.dispatchEvent(new t.w.Event('change')); await t.settle(); await wait(60);
+    const re = t.calls.slice(before).filter((x) => x.params && x.params.from_date);
+    ok('fy: December year end → This financial year to date runs from 1 January', re.some((x) => x.params.from_date === '2026-01-01' && x.params.to_date === T), re.map((x) => [x.id, x.params.from_date, x.params.to_date]));
+    ok('fy: the setting is saved with the report (display fy) and named in the banner', JSON.parse((t.setInputsLog[t.setInputsLog.length - 1] || {}).display || '{}').fy === '12' && /set in this report — year ends December/.test(banner(t)), banner(t).slice(0, 500));
+  }
+  if (!only || only === 'cmp') {
+    // Compare to → Custom dates (decision D15)
+    const t = await go('pnl'), sel = (id, v) => { const el = t.doc.getElementById(id); el.value = v; el.dispatchEvent(new t.w.Event('change')); };
+    ok('cmp: Compare to offers Custom dates', [...t.doc.querySelectorAll('#mk-cmp option')].some((o) => o.value === 'custom'));
+    sel('mk-cmp', 'custom'); await t.settle(); await wait(60);
+    ok('cmp: Custom dates shows Compare from / to fields', !!t.doc.getElementById('mk-cmp-from') && !!t.doc.getElementById('mk-cmp-to'));
+    const before = t.calls.length; sel('mk-cmp-from', '2025-01-01'); await t.settle(); await wait(60); sel('mk-cmp-to', '2025-03-31'); await t.settle(); await wait(60);
+    const re = t.calls.slice(before).filter((x) => x.id === 'pnl_compare');
+    ok('cmp: typed dates are fetched as typed', re.some((x) => x.params.from_date === '2025-01-01' && x.params.to_date === '2025-03-31'), re.map((x) => [x.params.from_date, x.params.to_date]));
+    ok('cmp: the comparison column is labelled with the typed dates', /1 Jan 2025 – 31 Mar 2025/.test(body(t)), body(t).slice(0, 300));
+  }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);
 })();

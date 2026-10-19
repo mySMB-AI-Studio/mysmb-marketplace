@@ -44,7 +44,7 @@ Preset `last_month`; compare = the same month last year (`c` = `prev_year`).
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Income A$72,532 · Expenses A$247,819 · A/R A$39,105.00 · A/P A$265,179.79.
 3. Compare the layout with the Q20 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
@@ -235,8 +235,8 @@ QB.app({
       '<div class="qb-card"><h3>WHO OWES ME</h3><div id="g1"></div></div><div class="qb-card"><h3>WHO I OWE</h3><div id="g2"></div></div>';
     QB.donut(document.getElementById('d1'), { title: 'My income', items: cur.inc, centre: '' }, c);
     QB.donut(document.getElementById('d2'), { title: 'My expenses', items: cur.exp, centre: '' }, c);
-    QB.bars(document.getElementById('b1'), { title: 'Income vs previous year', labels: [per, 'Previous year'], series: [{ name: 'Income', values: [cur.incTot, prev ? prev.incTot : null] }] }, c);
-    QB.bars(document.getElementById('b2'), { title: 'Expenses vs previous year', labels: [per, 'Previous year'], series: [{ name: 'Expenses', values: [cur.expTot, prev ? prev.expTot : null] }] }, c);
+    QB.bars(document.getElementById('b1'), { title: 'Income vs previous year', labels: [per, c.compareLabel || 'Previous year'], series: [{ name: 'Income', values: [cur.incTot, prev ? prev.incTot : null] }] }, c);
+    QB.bars(document.getElementById('b2'), { title: 'Expenses vs previous year', labels: [per, c.compareLabel || 'Previous year'], series: [{ name: 'Expenses', values: [cur.expTot, prev ? prev.expTot : null] }] }, c);
     [['g1', ar, 'aged_receivables', 'Customer'], ['g2', ap, 'aged_payables', 'Supplier']].forEach(function (x) {
       var el = document.getElementById(x[0]);
       if (c.errors[x[2]]) { el.innerHTML = '<p class="qb-err">' + QB.h(c.err(x[2])) + '</p>'; return; }

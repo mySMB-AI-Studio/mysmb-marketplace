@@ -30,7 +30,7 @@ MK.app({
     }
     var cyeLine = MK.currentYearEarnings(lines.length && c.view !== 'summary' ? lines : b.lines), cye = cyeLine ? MK.val(cyeLine) : null;
     var pl = c.data.pnl_ytd ? MK.breakdown([c.data.pnl_ytd], idx, MK.PL_LAYOUT) : null, np = pl ? pl.calc.NetProfit[0] : null;
-    var extra = cmpOn ? MK.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
+    var extra = cmpOn ? MK.compareCols(c.compareLabel || (c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end')) : [];
     body.innerHTML = MK.kpis([{ label: 'Total Assets', value: A }, { label: 'Total Liabilities', value: L }, { label: 'Net Assets', value: NA }, { label: 'Total Equity', value: E }], c) +
       '<div class="mk-scroll">' + MK.statement(lines, ['', MK.asOfLine(c.inputs.as_at).replace(/^As at /, '')], c, extra) + '</div>' +
       '<div class="mk-card detail-block" style="margin-top:16px"><h3>Assets vs liabilities + equity</h3><div id="ch1"></div></div>';

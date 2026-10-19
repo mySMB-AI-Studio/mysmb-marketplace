@@ -48,7 +48,7 @@ Preset `this_fy_td`: `start_date` = first day of the financial year (CompanyInfo
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): August 2026 (accrual): SaaS – Consulting Services A$7,000.00 · SaaS – Subscription Licence A$57,833.33 · Total for Income A$64,833.33 · Gross Profit A$78,608.34 · Total for Expenses A$261,712.88 · Net Earnings −A$175,286.75. Note: Gross Profit above Income means Cost of Sales is a net credit (−A$13,775.01) — the report flags this in Sources & limitations.
 3. Compare the layout with the Q17 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
@@ -237,7 +237,7 @@ QB.app({
     // Landscaping Services on the US sandbox
     var incHdr = QB.find(lines, 'Income', null, 'header'), incRows = lines.filter(function (l) { return incHdr && l.path[0] === incHdr.label && (l.kind === 'row' || (l.kind === 'header' && l !== incHdr)); }), incSum = QB.sum(incRows.map(function (l) { return QB.val(l); }));
     var extra = [];
-    if (cmpOn) extra = QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);
+    if (cmpOn) extra = QB.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]);
     if (c.view === 'pct') extra.push({ title: '% of Income', fmt: 'pct', value: function (l) { return inc ? QB.val(l) / inc : null; } });
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     var niCmp = cmpOn ? (QB.find(lines, 'NetIncome', /^net (income|earnings)$/i) || {}).cmp : null;

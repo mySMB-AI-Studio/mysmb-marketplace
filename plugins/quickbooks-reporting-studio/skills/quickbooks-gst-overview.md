@@ -41,7 +41,7 @@ Preset `this_quarter`; compare = previous quarter (`c` = `prev_period`).
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Jul–Sep 2026: GST refund $6,932 (collected $12,755, paid $19,687).
 3. Compare the layout with the Q15 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
@@ -273,7 +273,7 @@ QB.app({
       { label: 'GST collected', value: cur.a1 }, { label: 'GST paid', value: cur.b1 }, { label: 'GST liabilities (balance sheet)', value: liab }], c) +
       '<div class="qb-grid2"><div class="qb-card"><h3>Collected vs paid</h3><div id="ch1"></div></div><div class="qb-card"><h3>History</h3><div id="hist"></div></div></div>' +
       '<div class="qb-card detail-block"><h3>Run reports</h3><p>GST Summary (this period) — open the GST Summary report for the full BAS label layout. GST Details, GST Liability and PAYG run from QuickBooks (see Sources &amp; limitations).</p></div>';
-    QB.bars(document.getElementById('ch1'), { title: 'GST collected vs paid', labels: ['This period', 'Previous period'], series: [{ name: 'Collected (1A)', values: [cur.a1, prev && prev.a1] }, { name: 'Paid (1B)', values: [cur.b1, prev && prev.b1] }] }, c);
+    QB.bars(document.getElementById('ch1'), { title: 'GST collected vs paid', labels: ['This period', c.compareLabel || 'Previous period'], series: [{ name: 'Collected (1A)', values: [cur.a1, prev && prev.a1] }, { name: 'Paid (1B)', values: [cur.b1, prev && prev.b1] }] }, c);
     QB.grid(document.getElementById('hist'), { columns: [{ key: 'p', title: 'Period' }, { key: 'a', title: 'Collected', money: true }, { key: 'b', title: 'Paid', money: true }, { key: 'n', title: 'Net (1A − 1B)', money: true }],
       rows: [{ p: QB.periodLine(c.inputs.start_date, c.inputs.end_date), a: cur.a1, b: cur.b1, n: n }].concat(prev ? [{ p: QB.periodLine(c.inputs.compare_start, c.inputs.compare_end), a: prev.a1, b: prev.b1, n: net(prev) }] : []) }, c);
     var checks = cur.nil ? [{ name: 'GST activity this period (information)', pass: null, info: true, detail: 'None — nil period for ' + ag.name + ' (' + QB.periodLine(c.inputs.start_date, c.inputs.end_date) + ')' }] : [

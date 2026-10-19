@@ -39,7 +39,7 @@ Call `list_invoices` once with `status` = `All`, `from_date` / `to_date` = the p
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: mySMB.com 1 Jul – 9 Sep 2026: 12 invoices, all Open (INV00000011 01/07/2026 Daniel Lee 1,375.00 · INV00000012 20/07/2026 Michael Thompson 528.00 …) · Total 2,326.96 / 2,326.96.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+4. Change every control and confirm the report refetches and still validates; switch Detail level to Summary, then Detail; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.

@@ -36,8 +36,8 @@ const xlsxText = async (t) => { t.doc.getElementById('qb-xlsx').click(); await t
   ok('payroll: sources name the connector and the privacy rule', /employment-hero-payroll connector/.test(text(t.doc, '#qb-sources')) && /removes tax file numbers, bank details, dates of birth/.test(text(t.doc, '#qb-sources')));
   ok('payroll: N/A lists the members the connector cannot give', /Costing Report, Detailed Activity Report, Ordinary Time Earnings Report and Timesheets Report/.test(text(t.doc, '#qb-sources')));
   ok('payroll: every call passes the business and the period', t.calls.filter((c) => c.tool !== 'list_businesses').every((c) => c.params.business_id === '' && c.params.from_date === '2026-08-01' && c.params.to_date === '2026-08-31'), t.calls);
-  await set(t, 'qb-persona', 'Executive');
-  ok('payroll: Executive gets the summary columns', [...t.doc.querySelectorAll('#g1 thead th')].map((x) => x.textContent).join('|') === 'Employee|Gross earnings|Tax withheld|Net earnings|Super (SGC)');
+  await set(t, 'qb-persona', 'Client');
+  ok('payroll: Summary (client, executive) gets the summary columns', [...t.doc.querySelectorAll('#g1 thead th')].map((x) => x.textContent).join('|') === 'Employee|Gross earnings|Tax withheld|Net earnings|Super (SGC)');
   await set(t, 'qb-persona', 'Bookkeeper');
   let x = await xlsxText(t);
   ok('payroll: Excel has the report sheet with SUM totals, Validation and Parameters', /Gross to Net Report/.test(x) && /SUM\(C6:C7\)/.test(x) && /Validation/.test(x) && /Parameters/.test(x));

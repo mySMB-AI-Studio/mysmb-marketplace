@@ -616,8 +616,8 @@ var QB = (function () {
       if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp()) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
       var d = disp();
       if (cfg.compare && d.c !== 'none') { // keep the comparison window aligned with the main window
-        if (I.cmpStart && I.start) { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
-        if (I.cmpAsAt && I.asAt) { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
+        if (I.cmpStart && I.start && d.c !== 'custom') { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
+        if (I.cmpAsAt && I.asAt && d.c !== 'custom') { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
       }
       announce();
       if (changed.length) return requery(changed);
@@ -644,6 +644,9 @@ var QB = (function () {
       }
     }
     function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
+    function PV(p) { return p === 'Executive' ? 'Client' : p === 'Practitioner' ? 'Bookkeeper' : p; }
+    // the comparison column's label for Custom dates: the exact days typed in
+    function cmpLabel() { var dl = function (v) { var x = parse(v); return x.getUTCDate() + ' ' + MON[x.getUTCMonth()].slice(0, 3) + ' ' + x.getUTCFullYear(); }; return I.cmpStart ? dl(S.inputs[I.cmpStart]) + ' – ' + dl(S.inputs[I.cmpEnd]) : I.cmpAsAt ? dl(S.inputs[I.cmpAsAt]) : null; }
     function controls() {
       var el = $('qb-controls'); if (!el) return; var d = disp(), ci = client(), cl = clients(), dis = live ? '' : ' disabled', x = '';
       if (cl && cl.length) x += '<label class="ctl">Client<select id="qb-client" title="' + h(cfg.clientTitle || '') + '"' + (live && I.client && cl.length > 1 ? '' : ' disabled') + '>' + opt(cl, (I.client && S.inputs[I.client]) || cl[0][0]) + '</select></label>';
@@ -652,10 +655,15 @@ var QB = (function () {
       if (I.asAt) x += '<label class="ctl">As of<select id="qb-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="qb-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
       if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="qb-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
       if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="qb-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
-      if (cfg.compare) x += '<label class="ctl">Compare to<select id="qb-cmp"' + dis + '>' + opt(I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']], d.c) + '</select></label>';
+      if (cfg.compare) x += '<label class="ctl">Compare to<select id="qb-cmp"' + dis + '>' + opt((I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']]).concat(I.cmpStart || I.cmpAsAt ? [['custom', 'Custom dates']] : []), d.c) + '</select></label>';
+      // Custom dates: the comparison period is typed in (decision D15), not derived from the report period
+      if (cfg.compare && d.c === 'custom') x += I.cmpStart ? '<label class="ctl">Compare from<input type="date" id="qb-cmp-from" value="' + h(S.inputs[I.cmpStart]) + '"' + dis + '></label><label class="ctl">to<input type="date" id="qb-cmp-to" value="' + h(S.inputs[I.cmpEnd]) + '"' + dis + '></label>'
+        : I.cmpAsAt ? '<label class="ctl">Compare with<input type="date" id="qb-cmp-asat" value="' + h(S.inputs[I.cmpAsAt]) + '"' + dis + '></label>' : '';
       (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="qb-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(typeof e.options === 'function' ? e.options(S.inputs) : e.options, S.inputs[e.input]) + '</select></label>'; });
       if (cfg.views) x += '<label class="ctl">Report<select id="qb-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
-      if (I.persona) x += '<label class="ctl">View as<select id="qb-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], S.inputs[I.persona]) + '</select></label>';
+      // Two views (Reporting Library decision D1): Summary for clients and executives, Detail for bookkeepers and practitioners.
+      // The stored value keeps the persona names (Executive shows as Summary, Practitioner as Detail).
+      if (I.persona) x += '<label class="ctl">Detail level<select id="qb-persona">' + opt([['Client', 'Summary (client, executive)'], ['Bookkeeper', 'Detail (bookkeeper, practitioner)']], PV(S.inputs[I.persona])) + '</select></label>';
       x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
         '<label><input type="checkbox" id="qb-cents"' + (d.cents ? ' checked' : '') + '> Show cents</label><label><input type="checkbox" id="qb-k"' + (d.k ? ' checked' : '') + '> Divide by 1000</label>' +
         '<label><input type="checkbox" id="qb-zeros"' + (d.zeros ? '' : ' checked') + '> Except zero amounts</label><label>Negative numbers<select id="qb-neg">' + opt([['minus', '-100'], ['paren', '(100)'], ['trail', '100-']], d.neg) + '</select></label>' +
@@ -675,6 +683,9 @@ var QB = (function () {
       document.querySelectorAll('input[name="qb-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
       on('qb-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
       on('qb-cmp', 'change', function () { change({}, { c: this.value }); });
+      on('qb-cmp-from', 'change', function () { var p = {}; p[I.cmpStart] = this.value; change(p); });
+      on('qb-cmp-to', 'change', function () { var p = {}; p[I.cmpEnd] = this.value; change(p); });
+      on('qb-cmp-asat', 'change', function () { var p = {}; p[I.cmpAsAt] = this.value; change(p); });
       on('qb-client', 'change', function () { if (!I.client) return; var p = {}; p[I.client] = this.value; change(p, { x: '' }); }); // another client: its own employees
       (cfg.enums || []).forEach(function (e, i) { on('qb-enum-' + i, 'change', function () { var p = {}; p[e.input] = e.num ? Number(this.value) : this.value; change(p, e.disp); }); });
       on('qb-view', 'change', function () { change({}, { v: this.value }); });
@@ -691,7 +702,7 @@ var QB = (function () {
     }
     function ctx() {
       var d = disp(), ci = client(), f = fy();
-      return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
+      return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none', compareLabel: cfg.compare && d.c === 'custom' ? cmpLabel() : null,
         persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: ci && ci.name, country: ci && ci.country, fy: f, currency: homeCurrency(S.data[cfg.prefs], S.data[cfg.primary]), live: live,
         fetchedAt: S.fetchedAt, lines: function (id) { return walk(S.data[id]); }, body: $('qb-body'), change: change, disp: disp, today: iso(today()) };
     }

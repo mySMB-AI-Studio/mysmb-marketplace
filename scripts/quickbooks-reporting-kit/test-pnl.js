@@ -98,6 +98,17 @@ const text = (d, sel) => (d.querySelector(sel) || {}).textContent || '';
   // 11. company info missing -> N/A
   let na = await run('pnl', manifest, Object.assign({}, fx, { company_info: () => ({ QueryResponse: {} }) }));
   ok('company N/A', text(na.doc, '#qb-head .co') === 'N/A — not in source');
+  // Compare to → Custom dates (decision D15)
+  {
+    const c = await run('pnl', manifest, fx), sel = async (id, v) => { const el = c.doc.getElementById(id); el.value = v; el.dispatchEvent(new c.w.Event('change')); await c.settle(); await c.settle(); };
+    ok('cmp: Compare to offers Custom dates', [...c.doc.querySelectorAll('#qb-cmp option')].some((o) => o.value === 'custom'));
+    await sel('qb-cmp', 'custom');
+    ok('cmp: Custom dates shows Compare from / to fields', !!c.doc.getElementById('qb-cmp-from') && !!c.doc.getElementById('qb-cmp-to'));
+    const before = c.calls.length; await sel('qb-cmp-from', '2025-01-01'); await sel('qb-cmp-to', '2025-03-31');
+    const re = c.calls.slice(before).filter((x) => x.id === 'pnl_compare');
+    ok('cmp: typed dates are fetched as typed', re.some((x) => x.params.start_date === '2025-01-01' && x.params.end_date === '2025-03-31'), re.map((x) => [x.params.start_date, x.params.end_date]));
+    ok('cmp: the comparison column is labelled with the typed dates', /1 Jan 2025 – 31 Mar 2025/.test(text(c.doc, '#qb-body')), text(c.doc, '#qb-body').slice(0, 300));
+  }
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED');
   process.exit(fails ? 1 : 0);
 })();

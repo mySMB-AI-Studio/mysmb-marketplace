@@ -43,7 +43,7 @@ No manual dates: the transaction-volume window (last 30 days) is set on every op
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Banking: Wise-AUD A$145,221.70 in QuickBooks · ANZ A$99.00 · Doug's Amex A$16,708.64. Common issues: A/P ageing over 90 days −A$46,500.00 (10 transactions); negative asset/liability accounts 2.
 3. Compare the layout with the Q16 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
