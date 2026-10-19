@@ -1,0 +1,62 @@
+{
+  "contentHash": "9108fae8aa780695274c4b8c8fc093cc1582745437add0642b6d6b43d06eaca4",
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "connectors:cliniko-clinical",
+    "connectors:m365-mail-send"
+  ],
+  "dependencies": [],
+  "description": "Every day, checks the enquiry-thread state file written by New enquiry handling for bookings happening tomorrow whose intake form is still incomplete, and emails a reminder with the form link. Never chases the same patient twice.",
+  "flowIr": {
+    "description": "Every day, checks the enquiry-thread state file written by New enquiry handling for bookings happening tomorrow whose intake form is still incomplete, and emails a reminder with the form link. Never chases the same patient twice.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Form-chase reminder",
+    "nodes": [
+      {
+        "code": "import json\nimport datetime\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef audit(slug, action, target, summary, workq_item_id=None):\n    if not slug:\n        return\n    today = datetime.datetime.utcnow().strftime(\"%Y-%m-%d\")\n    path = \"PracticeManager/AuditLog/\" + slug + \"-\" + today + \".jsonl\"\n    try:\n        existing = api.files.read(file=path)\n    except Exception:\n        existing = \"\"\n    entry = {\n        \"ts\": datetime.datetime.utcnow().strftime(\"%Y-%m-%dT%H:%M:%SZ\"),\n        \"practice_slug\": slug,\n        \"actor\": \"agent\",\n        \"source\": \"automation:Form-chase reminder\",\n        \"action\": action,\n        \"target\": target,\n        \"summary\": summary,\n    }\n    if workq_item_id:\n        entry[\"workq_item_id\"] = workq_item_id\n    line = json.dumps(entry, sort_keys=True)\n    api.files.put(file=path, content=(existing + line + \"\\n\") if existing else (line + \"\\n\"))\n\n\ntomorrow = (datetime.datetime.utcnow() + datetime.timedelta(days=1)).strftime(\"%Y-%m-%d\")\n\nentries = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/EnquiryThreads\", scope=\"org\")\nexcept Exception:\n    entries = []\n\nchased = 0\nchecked = 0\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    if not fname or not str(fname).endswith(\".json\"):\n        continue\n    todo_id = str(fname)[:-5]\n    thread = read_json(\"PracticeManager/EnquiryThreads/\" + fname, {}) or {}\n    if not thread or thread.get(\"status\") != \"booked\":\n        continue\n    if thread.get(\"form_complete\") or thread.get(\"form_chased\"):\n        # Never chase the same patient twice, and never chase once the form is known complete.\n        continue\n    starts_at = str(thread.get(\"appointment_starts_at\") or \"\")\n    if not starts_at[:10] == tomorrow:\n        continue\n    patient_form_id = thread.get(\"patient_form_id\") or \"\"\n    if not patient_form_id:\n        continue\n\n    checked += 1\n    try:\n        pf = api.connectors.invoke(server=\"cliniko-clinical\", tool=\"get_patient_form\", args={\"id\": patient_form_id})\n    except Exception:\n        pf = None\n    pf = pf if isinstance(pf, dict) else {}\n    completed_at = pf.get(\"completed_at\")\n    form_url = str(pf.get(\"url\") or \"\")\n\n    if completed_at:\n        thread[\"form_complete\"] = True\n        write_json(\"PracticeManager/EnquiryThreads/\" + fname, thread)\n        continue\n\n    enquirer_email = thread.get(\"enquirer_email\") or \"\"\n    enquirer_name = thread.get(\"enquirer_name\") or \"there\"\n    if enquirer_email:\n        body = (\n            \"Hi \" + enquirer_name + \", just a reminder that your appointment is tomorrow (\" + starts_at + \"). \"\n            + (\"Please complete your intake form before your visit: \" + form_url if form_url else \"Please complete your intake form before your visit.\")\n        )\n        try:\n            api.connectors.invoke(\n                server=\"m365-mail-send\", tool=\"send_email\",\n                args={\"to\": [enquirer_email], \"subject\": \"Reminder: please complete your intake form\", \"body\": body, \"contentType\": \"Text\"},\n            )\n            thread[\"form_chased\"] = True\n            write_json(\"PracticeManager/EnquiryThreads/\" + fname, thread)\n            audit(thread.get(\"slug\") or \"\", \"sent\", {\"kind\": \"email\", \"id\": enquirer_email}, \"Chased \" + enquirer_name + \" for an incomplete intake form\", todo_id)\n            chased += 1\n        except Exception:\n            pass\n\nchecked_count = checked\nchased_count = chased\n",
+        "id": "chase_incomplete_forms",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "How many bookings tomorrow with an unfinished form were checked against Cliniko.",
+            "name": "checked_count",
+            "type": "int"
+          },
+          {
+            "description": "How many reminder emails were actually sent.",
+            "name": "chased_count",
+            "type": "int"
+          }
+        ],
+        "params": [],
+        "summary": "Finds tomorrow's bookings with an incomplete intake form and emails a one-time reminder.",
+        "title": "Chase incomplete forms"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "chase_incomplete_forms"
+    ],
+    "triggers": [
+      {
+        "cron": "0 7 * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Form-chase reminder",
+  "originKey": "ee19c078-9189-4a9b-9487-fe69b78b8d3e",
+  "tags": [
+    "healthcare-practice-management",
+    "new-enquiry",
+    "scheduling"
+  ]
+}
