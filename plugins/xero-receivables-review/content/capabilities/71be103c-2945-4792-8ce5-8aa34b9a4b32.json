@@ -1,0 +1,142 @@
+{
+  "contentHash": "863d7ef0e81d268fbc4b0c3795d6e00b3bef01c6a26e3c37b7b8f41e47c31a91",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "contactIDs": "contactIDs",
+          "createdByMyApp": "createdByMyApp",
+          "ids": "ids",
+          "includeArchived": "includeArchived",
+          "invoiceNumbers": "invoiceNumbers",
+          "order": "order",
+          "page": "page",
+          "searchTerm": "searchTerm",
+          "statuses": "statuses",
+          "summaryOnly": "summaryOnly",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "server": "xero-accounting",
+        "tool": "list_invoices"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "contactIDs": {
+          "type": "string"
+        },
+        "createdByMyApp": {
+          "type": "boolean"
+        },
+        "ids": {
+          "type": "string"
+        },
+        "includeArchived": {
+          "type": "boolean"
+        },
+        "invoiceNumbers": {
+          "type": "string"
+        },
+        "order": {
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "searchTerm": {
+          "type": "string"
+        },
+        "statuses": {
+          "type": "string"
+        },
+        "summaryOnly": {
+          "type": "boolean"
+        },
+        "where": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "key": "xero.receivables.list",
+    "kind": "capability",
+    "originKey": "71be103c-2945-4792-8ce5-8aa34b9a4b32",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "properties": {
+              "AmountDue": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "AmountPaid": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "CurrencyCode": {
+                "type": "string"
+              },
+              "DueDate": {
+                "type": "string"
+              },
+              "DueDateString": {
+                "type": "string"
+              },
+              "InvoiceID": {
+                "type": "string"
+              },
+              "InvoiceNumber": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "Total": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "Type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "InvoiceID",
+              "Type",
+              "Status"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Invoices"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "List current Xero sales invoices"
+  },
+  "kind": "capability",
+  "name": "List current Xero sales invoices",
+  "originKey": "71be103c-2945-4792-8ce5-8aa34b9a4b32"
+}

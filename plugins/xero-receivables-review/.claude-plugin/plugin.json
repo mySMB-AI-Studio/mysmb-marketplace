@@ -1,0 +1,53 @@
+{
+  "branding": {
+    "tagline": "Turn unpaid invoices into an evidence-backed review pack.",
+    "team": "Finance"
+  },
+  "category": "finance",
+  "content": {
+    "agents": [
+      "content/agents/f75c5c05-3b62-43ab-ace0-f998438b3fec.json"
+    ],
+    "automations": [],
+    "capabilities": [
+      "content/capabilities/71be103c-2945-4792-8ce5-8aa34b9a4b32.json",
+      "content/capabilities/0f181f32-3c87-49ba-a22c-0180d9306c5b.json",
+      "content/capabilities/2c063a17-0cab-473d-8320-57e3567c6afa.json"
+    ],
+    "evaluations": [
+      "content/evaluations/0244b988-c193-4f34-8b33-ef84b155f3af.json",
+      "content/evaluations/814b87c8-9d64-4f86-a291-3c1382ed1e07.json"
+    ],
+    "formTemplates": [],
+    "forms": [],
+    "processes": [
+      "content/processes/a9d00f97-238a-4bfc-975e-c0ef9c2944c4.json"
+    ],
+    "setups": [
+      "content/setups/c7542b60-e85f-43dc-af0a-c7be45ef86cc.json"
+    ],
+    "workqTemplates": []
+  },
+  "description": "Reviews unpaid Xero sales invoices, identifies overdue balances and data exceptions, and prepares a report for human approval. Uses a Xero trial or demo company in QA. No payments, invoice changes or customer messages.",
+  "listing": {
+    "agent": {
+      "outcomes": [
+        "Evidence-backed review of current unpaid invoices",
+        "Saved internal report with human acceptance and revision",
+        "Explicit needs-attention result when source evidence is incomplete"
+      ],
+      "processes": [],
+      "requiredCapabilities": [],
+      "role": "Accounts receivable reviewer"
+    },
+    "highlights": [
+      "Read-only Xero invoice evidence",
+      "Partial payments and currencies handled explicitly",
+      "Saved report with human review and revision",
+      "Synthetic evaluations and demo-company testing"
+    ],
+    "longDescription": "## What it does\r\nReviews current authorised sales invoices with a remaining balance in the selected Xero company. It records invoice IDs, remaining amounts, currencies and due-date classifications in an internal review report.\r\n\r\n## Review and decisions\r\nA human reviewer can accept the internal review, request changes and a fresh read, or close without acceptance. Missing balances, incomplete pagination, the wrong company or an expired connection stop the review from being presented for acceptance. Acceptance records the decision only.\r\n\r\n## Start in QA\r\nConnect a Xero demo or trial company in the Developer Instance. Assign an installation manager and reviewer. Start Review current Xero receivables with the exact Xero company name and today's date in that company's timezone.\r\n\r\n## Scope\r\nRead-only invoice review. The agent does not send customer messages, edit invoices, create payments or combine balances across currencies. Reports are point-in-time internal drafts; the job decision history records the human decision.\r\n\r\n## Testing\r\nThe package includes separate coordinator-control and model-quality evaluation suites using synthetic invoice observations. A live Xero demo-company run is required to verify the connector and saved report end to end."
+  },
+  "name": "xero-receivables-review",
+  "version": "0.0.0"
+}
