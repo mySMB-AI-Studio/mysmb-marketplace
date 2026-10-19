@@ -1,0 +1,448 @@
+{
+  "category": "communications",
+  "connectorsUsed": [
+    "zoom"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoom",
+    "params": {
+      "page_size": 30,
+      "type": "live"
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Meetings currently in progress on the connected Zoom account - topic, duration, and a one-click Join link. Complements Zoom Meetings (upcoming) and Recent Zoom Meetings (history).",
+  "id": "zoom-live-meetings",
+  "keywords": [
+    "live meetings",
+    "in progress",
+    "zoom now",
+    "join meeting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 18
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 8
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "errorBanner",
+          "emptyState",
+          "meetingList"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "divider1",
+          "body",
+          "infoOverlay"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "durationCaption": {
+        "props": {
+          "text": {
+            "$computed": "zoom_format_duration",
+            "args": {
+              "minutes": {
+                "$item": "duration"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "emptyIcon": {
+        "props": {
+          "name": "VideoOff",
+          "size": "md",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "emptyState": {
+        "children": [
+          "emptyIcon",
+          "emptyText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoom.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/zoom/list_meetings/meetings/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "emptyText": {
+        "props": {
+          "text": "No meetings in progress right now.",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "errorBanner": {
+        "props": {
+          "text": {
+            "$template": "Couldn't load live meetings: ${/_errors/zoom.list_meetings}"
+          },
+          "tone": "destructive"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/_errors/zoom.list_meetings"
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/zoom/list_meetings/meetings"
+                  }
+                }
+              },
+              "pattern": "Zoom · {n} live now"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "header": {
+        "children": [
+          "titleRow"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "infoBtn": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showInfo",
+              "value": true
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "About this tile",
+          "icon": "Info",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "IconButton"
+      },
+      "infoBody": {
+        "children": [
+          "infoWhatLabel",
+          "infoWhatText",
+          "infoHowLabel",
+          "infoHowText"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack"
+      },
+      "infoCard": {
+        "children": [
+          "infoCloseBtn",
+          "infoTitleRow",
+          "infoDivider",
+          "infoBody"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "infoCloseBtn": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showInfo",
+              "value": false
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close",
+          "floating": true,
+          "icon": "X",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "IconButton"
+      },
+      "infoDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "infoHowLabel": {
+        "props": {
+          "text": "How it works",
+          "tone": "muted",
+          "weight": "semibold"
+        },
+        "type": "Caption"
+      },
+      "infoHowText": {
+        "props": {
+          "size": "sm",
+          "text": "Click Join to open a meeting's join link in a new tab. This list refreshes alongside the dashboard's normal auto-refresh - it isn't a live push feed, so a meeting that just started or just ended may take a moment to appear or disappear."
+        },
+        "type": "Text"
+      },
+      "infoOverlay": {
+        "children": [
+          "infoCard"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showInfo",
+              "value": false
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "28rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/showInfo"
+        }
+      },
+      "infoTitleIcon": {
+        "props": {
+          "name": "Info",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "infoTitleRow": {
+        "children": [
+          "infoTitleIcon",
+          "infoTitleText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "infoTitleText": {
+        "props": {
+          "level": "h2",
+          "text": "About Live Zoom Meetings"
+        },
+        "type": "Heading"
+      },
+      "infoWhatLabel": {
+        "props": {
+          "text": "What this is",
+          "tone": "muted",
+          "weight": "semibold"
+        },
+        "type": "Caption"
+      },
+      "infoWhatText": {
+        "props": {
+          "size": "sm",
+          "text": "Meetings that are currently in progress on the connected Zoom account, pulled from Zoom's own meeting list filtered to live meetings only - distinct from the Zoom Meetings tile (upcoming) and Recent Zoom Meetings (history)."
+        },
+        "type": "Text"
+      },
+      "joinBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$bindItem": "join_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Join",
+          "leadingIcon": "Video",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "liveDot": {
+        "props": {
+          "size": "md",
+          "tone": "destructive"
+        },
+        "type": "Dot"
+      },
+      "meetingInfo": {
+        "children": [
+          "meetingTopic",
+          "durationCaption"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "meetingList": {
+        "children": [
+          "meetingRow"
+        ],
+        "props": {
+          "gap": "sm",
+          "maxHeight": 440
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/zoom/list_meetings/meetings"
+        },
+        "type": "Stack"
+      },
+      "meetingRow": {
+        "children": [
+          "liveDot",
+          "topicAvatar",
+          "meetingInfo",
+          "joinBtn"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "0.25rem auto minmax(0, 1fr) auto"
+        },
+        "type": "Row"
+      },
+      "topicAvatar": {
+        "props": {
+          "size": "sm",
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "topic"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "zoom_topic_tone",
+            "args": {
+              "value": {
+                "$item": "topic"
+              }
+            }
+          }
+        },
+        "type": "Avatar"
+      },
+      "meetingTopic": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "topic"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Live Zoom Meetings"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Radio",
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup",
+          "infoBtn"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "zoom",
+    "meetings",
+    "live",
+    "video-conferencing"
+  ],
+  "title": "Live Zoom Meetings"
+}
