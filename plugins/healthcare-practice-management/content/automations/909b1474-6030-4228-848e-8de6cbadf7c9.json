@@ -1,0 +1,58 @@
+{
+  "contentHash": "3d3807459ee5e716a73d4e3b873979cd7990abd71a3f75e2401f930f771afe0c",
+  "declaredScopes": [
+    "workq:write",
+    "files:read",
+    "connectors:cliniko-billing",
+    "connectors:cliniko-patients",
+    "connectors:xero-accounting"
+  ],
+  "dependencies": [],
+  "description": "Every morning, finds Cliniko invoices confirmed paid in Xero (even though Cliniko's own read-only record still shows them Open) and lists them as cleared to dispatch - gating test ordering and herb dispensing on payment having actually landed, per practice policy. Alert-only; never marks anything paid or dispatched itself.",
+  "flowIr": {
+    "description": "Every morning, finds Cliniko invoices confirmed paid in Xero (even though Cliniko's own read-only record still shows them Open) and lists them as cleared to dispatch - gating test ordering and herb dispensing on payment having actually landed, per practice policy. Alert-only; never marks anything paid or dispatched itself.",
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Paid and ready to dispatch",
+    "nodes": [
+      {
+        "code": "import json\nimport re\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\ndef money_close(a, b, tolerance=0.01):\n    try:\n        return abs(float(a) - float(b)) <= tolerance\n    except Exception:\n        return False\n\n\ndef extract_id(link):\n    if not isinstance(link, dict):\n        return \"\"\n    url = ((link.get(\"links\") or {}).get(\"self\")) or \"\"\n    m = re.search(r\"/(\\d+)(?:$|\\?)\", str(url))\n    return m.group(1) if m else \"\"\n\n\ndef patient_display_name(patient_id):\n    # Invoice.patient is link-only (no embedded name - confirmed against\n    # docs.api.cliniko.com/openapi/invoice), so the name needs its own lookup.\n    if not patient_id:\n        return \"\"\n    try:\n        p = api.connectors.invoke(server=\"cliniko-patients\", tool=\"get_patient\", args={\"id\": patient_id})\n        return (str(p.get(\"first_name\") or \"\") + \" \" + str(p.get(\"last_name\") or \"\")).strip()\n    except Exception:\n        return \"\"\n\n\n# Same detection as Payment reconciliation exceptions (Cliniko Invoice.status: 10 Open, 20 Paid,\n# 30 Closed, 40 Open credit - confirmed against docs.api.cliniko.com/openapi/invoice) - this\n# automation reuses the exact same match, just frames it as a green light rather than a problem.\nCLINIKO_STATUS_OPEN = 10\n\n\ndef find_open_invoices(business_id):\n    try:\n        result = api.connectors.invoke(\n            server=\"cliniko-billing\", tool=\"list_invoices\",\n            args={\"q\": [\"business_id:=\" + business_id, \"status:=\" + str(CLINIKO_STATUS_OPEN)], \"per_page\": 100},\n        )\n        return (result or {}).get(\"invoices\") or []\n    except Exception:\n        return []\n\n\ndef find_recent_xero_payments(tenant_id):\n    try:\n        result = api.connectors.invoke(\n            server=\"xero-accounting\", tool=\"list_payments\",\n            args={\"xero_tenant_id\": tenant_id, \"page\": 1},\n        )\n        return (result or {}).get(\"Payments\") or (result if isinstance(result, list) else [])\n    except Exception:\n        return []\n\n\npractices = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    if not fname or not str(fname).endswith(\".json\"):\n        continue\n    slug = str(fname)[:-5]\n    practice = read_json(\"PracticeManager/Practices/\" + fname, {}) or {}\n    if practice:\n        practices.append({\"slug\": slug, \"practice\": practice})\n\nready_by_practice = []\nfor p in practices:\n    business_id = str(p[\"practice\"].get(\"cliniko_business_id\") or \"\")\n    tenant_id = str(p[\"practice\"].get(\"xero_tenant_id\") or \"\")\n    if not business_id or not tenant_id:\n        continue\n\n    open_invoices = find_open_invoices(business_id)\n    payments = find_recent_xero_payments(tenant_id)\n\n    found = []\n    for inv in open_invoices:\n        inv_number = str(inv.get(\"number\") or \"\")\n        patient_id = extract_id(inv.get(\"patient\"))\n        patient_name = patient_display_name(patient_id)\n        amount = inv.get(\"total_amount\")\n\n        match = None\n        for pay in payments:\n            pay_invoice = (pay or {}).get(\"Invoice\") or {}\n            pay_number = str(pay_invoice.get(\"InvoiceNumber\") or \"\")\n            pay_contact = str(((pay_invoice.get(\"Contact\") or {}).get(\"Name\")) or \"\")\n            pay_amount = (pay or {}).get(\"Amount\")\n            if inv_number and pay_number and inv_number == pay_number:\n                match = pay\n                break\n            if patient_name and pay_contact and norm(patient_name) == norm(pay_contact) and money_close(amount, pay_amount):\n                match = pay\n                break\n\n        if match:\n            found.append({\n                \"invoice_number\": inv_number or str(inv.get(\"id\") or \"\"),\n                \"patient_name\": patient_name or \"Unknown patient\",\n                \"amount\": amount,\n            })\n\n    if found:\n        ready_by_practice.append({\n            \"slug\": p[\"slug\"], \"name\": p[\"practice\"].get(\"name\") or p[\"slug\"],\n            \"reviewer_id\": p[\"practice\"].get(\"reviewer_id\") or \"\", \"ready\": found,\n        })\n\nif not ready_by_practice:\n    outcome = \"none_ready\"\nelse:\n    for sec in ready_by_practice:\n        lines = \"\\n\".join(\n            \"- \" + r[\"patient_name\"] + \", invoice \" + r[\"invoice_number\"] + \", $\" + str(r[\"amount\"]) + \" - payment confirmed in Xero\"\n            for r in sec[\"ready\"]\n        )\n        api.workq.create(\n            title=\"Paid and ready to dispatch: \" + sec[\"name\"] + \" (\" + str(len(sec[\"ready\"])) + \")\",\n            scope=\"org\",\n            description=(\n                \"Payment has landed in Xero for these - cleared to order tests or dispense herbs. \"\n                \"Cliniko's invoice record is read-only and will keep showing Open until closed by hand:\\n\\n\" + lines\n            ),\n            priority=\"normal\",\n            assignee_ids=[sec[\"reviewer_id\"]] if sec[\"reviewer_id\"] else None,\n            labels=[\"healthcare-practice-management\", \"dispatch\"],\n        )\n    outcome = \"flagged\"\n",
+        "id": "find_ready_to_dispatch",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "flagged or none_ready.",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Lists Cliniko invoices confirmed paid in Xero as cleared to dispatch, per configured practice.",
+        "title": "Find paid and ready to dispatch"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_ready_to_dispatch"
+    ],
+    "triggers": [
+      {
+        "cron": "0 8 * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Healthcare Practice Management: Paid and ready to dispatch",
+  "originKey": "909b1474-6030-4228-848e-8de6cbadf7c9",
+  "tags": [
+    "healthcare-practice-management",
+    "dispatch",
+    "billing"
+  ]
+}
