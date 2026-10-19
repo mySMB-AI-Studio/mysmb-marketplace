@@ -1,6 +1,6 @@
 # Microsoft 365
 
-Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph — plus mail and calendar for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar` servers below.
+Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph — plus mail, calendar, and contacts for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar`/`hotmail-people` servers below.
 
 ## Servers
 
@@ -15,8 +15,9 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
 | hotmail-mail | Read, search, and inspect emails in a **personal** Hotmail/Outlook.com/Live.com account | `Mail.Read` | **User self-consent OK** (no tenant/admin — personal accounts self-consent individually) |
 | hotmail-calendar | View, create, and manage events in a **personal** calendar | `Calendars.ReadWrite` | **User self-consent OK** |
+| hotmail-people | Read contacts in a **personal** account | `Contacts.Read` | **User self-consent OK** |
 
-`hotmail-mail`/`hotmail-calendar` use a **separate Entra app registration**
+`hotmail-mail`/`hotmail-calendar`/`hotmail-people` use a **separate Entra app registration**
 (`HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET` on the gateway) from the other
 seven servers — see the callout in
 **[OAuth redirect URIs](#oauth-redirect-uris--register-these-before-a-server-can-be-connected)**
@@ -164,6 +165,16 @@ No `find_free_slots` — Graph's scheduling-assistant API
 (`/me/findMeetingTimes`) is a work-or-school (Exchange Online) feature and
 isn't available for personal Microsoft accounts.
 
+### Hotmail — Contacts (3 tools, `hotmail-people`, personal accounts only)
+- `list_contacts` — List contacts, alphabetical by display name
+- `get_contact` — Get a single contact by ID
+- `search_contacts_by_email` — Find contacts with a given exact email address
+
+Read-only. `search_contacts_by_email` is the only filter Microsoft Graph
+documents for the contacts resource (`emailAddresses/any(a:a/address eq
+...)`) — there's no general keyword search for contacts, unlike mail's
+`$search`. No write server exists yet for Hotmail contacts.
+
 ## Briefing email source
 
 `briefing-sources/email.json` (declared as `briefingEmailSources` in
@@ -233,6 +244,10 @@ happen to be set.
 |---|---|
 | `hotmail-mail` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-mail/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-mail/callback` |
 | `hotmail-calendar` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-calendar/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-calendar/callback` |
+| `hotmail-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-people/callback` |
+
+Also add the **`Contacts.Read`** delegated permission (Microsoft Graph) on
+the HOTMAIL app for `hotmail-people` to work.
 
 > As of this writing, `HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET` are only
 > wired into the staging deploy (`deploy-staging.yml`) — production's
