@@ -29,8 +29,8 @@ QB.app({
       '<div class="qb-card"><h3>WHO OWES ME</h3><div id="g1"></div></div><div class="qb-card"><h3>WHO I OWE</h3><div id="g2"></div></div>';
     QB.donut(document.getElementById('d1'), { title: 'My income', items: cur.inc, centre: '' }, c);
     QB.donut(document.getElementById('d2'), { title: 'My expenses', items: cur.exp, centre: '' }, c);
-    QB.bars(document.getElementById('b1'), { title: 'Income vs previous year', labels: [per, 'Previous year'], series: [{ name: 'Income', values: [cur.incTot, prev ? prev.incTot : null] }] }, c);
-    QB.bars(document.getElementById('b2'), { title: 'Expenses vs previous year', labels: [per, 'Previous year'], series: [{ name: 'Expenses', values: [cur.expTot, prev ? prev.expTot : null] }] }, c);
+    QB.bars(document.getElementById('b1'), { title: 'Income vs previous year', labels: [per, c.compareLabel || 'Previous year'], series: [{ name: 'Income', values: [cur.incTot, prev ? prev.incTot : null] }] }, c);
+    QB.bars(document.getElementById('b2'), { title: 'Expenses vs previous year', labels: [per, c.compareLabel || 'Previous year'], series: [{ name: 'Expenses', values: [cur.expTot, prev ? prev.expTot : null] }] }, c);
     [['g1', ar, 'aged_receivables', 'Customer'], ['g2', ap, 'aged_payables', 'Supplier']].forEach(function (x) {
       var el = document.getElementById(x[0]);
       if (c.errors[x[2]]) { el.innerHTML = '<p class="qb-err">' + QB.h(c.err(x[2])) + '</p>'; return; }

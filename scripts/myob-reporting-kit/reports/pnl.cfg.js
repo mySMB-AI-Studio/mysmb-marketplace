@@ -17,7 +17,7 @@ MK.app({
     var tot = function (k) { return b.totals[k] ? b.totals[k][0] : 0; }, calc = function (k) { return b.calc[k] ? b.calc[k][0] : null; };
     var inc = tot('Income'), cos = tot('CostOfSales'), exp = tot('Expense'), oi = tot('OtherIncome'), oe = tot('OtherExpense'), gp = calc('GrossProfit'), np = calc('NetProfit');
     var npCmp = cmpOn && b.calc.NetProfit ? b.calc.NetProfit[1] : null;
-    var extra = cmpOn ? MK.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
+    var extra = cmpOn ? MK.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
     if (c.view === 'pct') extra.push({ title: '% of Income', fmt: 'pct', value: function (l) { return inc ? MK.val(l) / inc : null; } });
     var empty = !b.rows.length;
     body.innerHTML = MK.kpis([{ label: 'Total Income', value: inc }, { label: 'Gross Profit', value: gp }, { label: 'Total Expenses', value: exp },

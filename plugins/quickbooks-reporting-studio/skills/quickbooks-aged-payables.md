@@ -45,7 +45,7 @@ No date inputs: QuickBooks ages as of today.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): A/P as of 10 Sep 2026: Total A$265,179.79 — current A$68,299.44 · 1-30 A$17,233.37 · 31-60 A$63,062.81 · 61-90 A$48,324.50 · 91+ A$68,259.67.
 3. Compare the layout with the Q26 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.

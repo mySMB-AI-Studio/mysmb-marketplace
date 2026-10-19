@@ -168,7 +168,7 @@ var MK = (function () {
   // ---------- display preferences (one declared string input "display") ----------
   // p = period preset key, a = as-at preset key, c = compare mode (none|prev_period|prev_year|ytd), v = report view / member
   // b = brand colour (#rrggbb) — empty means the connector's own branding (QuickBooks green)
-  var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'myob', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '', b: '' };
+  var DISPLAY_DEFAULT = { cents: 1, k: 0, zeros: 1, neg: 'minus', red: 0, hdr: 1, ftr: 1, style: 'myob', dens: '100', p: 'custom', a: 'custom', c: 'none', v: '', x: '', b: '', fy: '' }; // fy = financial year end month (1-12) set in the report; '' = the AU / NZ default
   var HEX = /^#[0-9a-f]{6}$/i;
   // Brand colour → accent palette (darker shade for buttons, lighter for dark theme), applied as CSS custom properties.
   function shade(hex, f) { var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; var t = function (c) { return Math.max(0, Math.min(255, Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f))); }; return '#' + [t(r), t(g), t(b)].map(function (x) { return x.toString(16).padStart(2, '0'); }).join(''); }
@@ -544,7 +544,8 @@ var MK = (function () {
     function disp() { return readDisplay(I.display ? S.inputs[I.display] : ''); }
     function setDisp(patch) { if (!I.display) return; var d = disp(), k; for (k in patch) d[k] = patch[k]; S.inputs[I.display] = writeDisplay(d); }
     function co() { return companyOf(S.data[cfg.files], I.companyFile ? S.inputs[I.companyFile] : ''); }
-    function fy() { return fiscalStart(co().country, cfg.fyMonth); }
+    // The MYOB API doesn't expose the company file's year end: the report's Year end control (display fy) overrides the AU / NZ default.
+    function fy() { var e = +disp().fy; if (e >= 1 && e <= 12) return { month: e % 12 + 1, source: 'set in this report — year ends ' + MONTHS[e - 1], set: true }; return fiscalStart(co().country, cfg.fyMonth); }
     // MYOB errors arrive as data ({__error}); move them to S.errors so every section and check treats them as failed sources.
     function absorb(id, v) { var e = errorOf(v); if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
     function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
@@ -574,8 +575,8 @@ var MK = (function () {
       var d = disp();
       // keep the comparison window aligned with the main window
       if (cfg.compare && d.c !== 'none') {
-        if (I.cmpStart && I.start) { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
-        if (I.cmpAsAt && I.asAt) { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
+        if (I.cmpStart && I.start && d.c !== 'custom') { var c = compare(S.inputs[I.start], S.inputs[I.end], d.c, fy().month); if (S.inputs[I.cmpStart] !== c.start || S.inputs[I.cmpEnd] !== c.end) { S.inputs[I.cmpStart] = c.start; S.inputs[I.cmpEnd] = c.end; changed.push(I.cmpStart, I.cmpEnd); } }
+        if (I.cmpAsAt && I.asAt && d.c !== 'custom') { var ca = compareAsAt(S.inputs[I.asAt], d.c); if (S.inputs[I.cmpAsAt] !== ca) { S.inputs[I.cmpAsAt] = ca; changed.push(I.cmpAsAt); } }
       }
       announce();
       if (changed.length) return requery(changed);
@@ -601,6 +602,9 @@ var MK = (function () {
       if (I.basis && (r.ReportingBasis === 'Cash' || r.ReportingBasis === 'Accrual')) S.inputs[I.basis] = r.ReportingBasis;
     }
     function opt(list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + h(o[1]) + '</option>'; }).join(''); }
+    function PV(p) { return p === 'Executive' ? 'Client' : p === 'Practitioner' ? 'Bookkeeper' : p; }
+    // the comparison column's label for Custom dates: the exact days typed in
+    function cmpLabel() { var dl = function (v) { var x = parse(v); return x.getUTCDate() + ' ' + MON[x.getUTCMonth()].slice(0, 3) + ' ' + x.getUTCFullYear(); }; return I.cmpStart ? dl(S.inputs[I.cmpStart]) + ' – ' + dl(S.inputs[I.cmpEnd]) : I.cmpAsAt ? dl(S.inputs[I.cmpAsAt]) : null; }
     function controls() {
       var el = $('mk-controls'); if (!el) return; var d = disp(), c0 = co(), dis = live ? '' : ' disabled', x = '';
       if (I.companyFile && c0.files.length > 1) x += '<label class="ctl">Client<select id="mk-client"' + dis + '>' + opt([['', 'Connection\'s default file']].concat(c0.files.map(function (f) { return [f.id, f.name || f.id]; })), S.inputs[I.companyFile] || '') + '</select></label>';
@@ -609,10 +613,17 @@ var MK = (function () {
       if (I.asAt) x += '<label class="ctl">As at<select id="mk-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="mk-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
       if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="mk-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
       if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="mk-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
-      if (cfg.compare) x += '<label class="ctl">Compare to<select id="mk-cmp"' + dis + '>' + opt(I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']], d.c) + '</select></label>';
+      if (I.start || I.asAt) { var mfy = fiscalStart(c0.country, cfg.fyMonth), mend = (mfy.month + 10) % 12 + 1;
+        x += '<label class="ctl">Year end<select id="mk-fy"' + dis + ' title="The month the financial year ends. MYOB does not share it, so the default is the Australian (June) or New Zealand (March) year end">' + opt([['', 'Default (' + MONTHS[mend - 1] + ')']].concat(MONTHS.map(function (m, i) { return [String(i + 1), m]; })), d.fy || '') + '</select></label>'; }
+      if (cfg.compare) x += '<label class="ctl">Compare to<select id="mk-cmp"' + dis + '>' + opt((I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']]).concat(I.cmpStart || I.cmpAsAt ? [['custom', 'Custom dates']] : []), d.c) + '</select></label>';
+      // Custom dates: the comparison period is typed in (decision D15), not derived from the report period
+      if (cfg.compare && d.c === 'custom') x += I.cmpStart ? '<label class="ctl">Compare from<input type="date" id="mk-cmp-from" value="' + h(S.inputs[I.cmpStart]) + '"' + dis + '></label><label class="ctl">to<input type="date" id="mk-cmp-to" value="' + h(S.inputs[I.cmpEnd]) + '"' + dis + '></label>'
+        : I.cmpAsAt ? '<label class="ctl">Compare with<input type="date" id="mk-cmp-asat" value="' + h(S.inputs[I.cmpAsAt]) + '"' + dis + '></label>' : '';
       (cfg.enums || []).forEach(function (e, i) { var rq = Object.keys(cfg.uses || {}).some(function (id) { return (cfg.uses[id] || []).indexOf(e.input) >= 0; }); x += '<label class="ctl">' + h(e.label) + '<select id="mk-enum-' + i + '"' + (rq ? dis : '') + '>' + opt(e.options, S.inputs[e.input]) + '</select></label>'; });
       if (cfg.views) x += '<label class="ctl">Report<select id="mk-view">' + opt(cfg.views, d.v || cfg.views[0][0]) + '</select></label>';
-      if (I.persona) x += '<label class="ctl">View as<select id="mk-persona">' + opt([['Client', 'Client'], ['Bookkeeper', 'Bookkeeper'], ['Practitioner', 'Practitioner'], ['Executive', 'Executive']], S.inputs[I.persona]) + '</select></label>';
+      // Two views (Reporting Library decision D1): Summary for clients and executives, Detail for bookkeepers and practitioners.
+      // The stored value keeps the persona names (Executive shows as Summary, Practitioner as Detail).
+      if (I.persona) x += '<label class="ctl">Detail level<select id="mk-persona">' + opt([['Client', 'Summary (client, executive)'], ['Bookkeeper', 'Detail (bookkeeper, practitioner)']], PV(S.inputs[I.persona])) + '</select></label>';
       x += '<details class="ctl customise"><summary>Customise</summary><div class="cz">' +
         '<label><input type="checkbox" id="mk-cents"' + (d.cents ? ' checked' : '') + '> Show cents</label><label><input type="checkbox" id="mk-k"' + (d.k ? ' checked' : '') + '> Divide by 1000</label>' +
         '<label><input type="checkbox" id="mk-zeros"' + (d.zeros ? '' : ' checked') + '> Except zero amounts</label><label>Negative numbers<select id="mk-neg">' + opt([['minus', '-100'], ['paren', '(100)'], ['trail', '100-']], d.neg) + '</select></label>' +
@@ -634,6 +645,10 @@ var MK = (function () {
       document.querySelectorAll('input[name="mk-basis"]').forEach(function (r) { r.addEventListener('change', function () { var p = {}; p[I.basis] = this.value; change(p); }); });
       on('mk-cols', 'change', function () { var p = {}; p[I.columnsBy] = this.value; change(p); });
       on('mk-cmp', 'change', function () { change({}, { c: this.value }); });
+      on('mk-cmp-from', 'change', function () { var p = {}; p[I.cmpStart] = this.value; change(p); });
+      on('mk-cmp-to', 'change', function () { var p = {}; p[I.cmpEnd] = this.value; change(p); });
+      on('mk-cmp-asat', 'change', function () { var p = {}; p[I.cmpAsAt] = this.value; change(p); });
+      on('mk-fy', 'change', function () { setDisp({ fy: this.value }); change(rollPresets() || {}, {}); }); // financial-year presets follow the new year end
       (cfg.enums || []).forEach(function (e, i) { on('mk-enum-' + i, 'change', function () { var p = {}; p[e.input] = this.value; change(p); }); });
       on('mk-view', 'change', function () { change({}, { v: this.value }); });
       on('mk-persona', 'change', function () { var p = {}; p[I.persona] = this.value; change(p); });
@@ -649,7 +664,7 @@ var MK = (function () {
     }
     function ctx() {
       var d = disp(), c0 = co(), f = fy();
-      return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none',
+      return { data: S.data, errors: S.errors, err: err, inputs: S.inputs, I: I, display: d, view: d.v || (cfg.views ? cfg.views[0][0] : ''), compareMode: cfg.compare ? d.c : 'none', compareLabel: cfg.compare && d.c === 'custom' ? cmpLabel() : null,
         persona: I.persona ? S.inputs[I.persona] : 'Bookkeeper', company: c0.name, companyFile: c0, fy: f, currency: homeCurrency(c0.country), live: live,
         fetchedAt: S.fetchedAt, body: $('mk-body'), change: change, disp: disp, today: iso(today()), rerun: function () { return requery(null); } };
     }

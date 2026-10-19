@@ -11,7 +11,11 @@ const SLUG = 'myob-reporting-studio', P = path.join(ROOT, 'plugins', SLUG), K = 
 const FAM = require('./families.js'), STATIC = require('./families-static.js');
 const rd =(f) => fs.readFileSync(path.join(K, f), 'utf8').replace(/\r\n/g, '\n');
 const w = (rel, s) => { const f = path.join(P, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, s.replace(/\r\n/g, '\n')); };
-const kitCompact = rd('mk-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n').split('\n').map((l) => l.replace(/^\s+/, '')).filter((l) => l && !/^\/\//.test(l)).join('\n');
+// The kit as it goes into the foundation skill and every document: minified for whitespace and syntax with names kept, in lines
+// of about 300 characters (as the Xero kit's kit-prune.js and the QuickBooks generator do). On the copy path the agent writes the
+// whole document in one artifact_save call, so the kit's size counts against the 35,000-token limit that roundtrip.js checks.
+const kitCompact = require('esbuild').transformSync(rd('mk-kit.js').replace(/\nif \(typeof module[^\n]*\n?$/, '\n'),
+  { minifyWhitespace: true, minifySyntax: true, lineLimit: 300, legalComments: 'none', target: 'es2017' }).code.trim();
 new Function(kitCompact); // parses
 const css = rd('mk.css').trim(), skeleton = rd('skeleton.html').trim(), prose = rd('foundation-prose.md').trim();
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
@@ -54,7 +58,7 @@ The user never has to choose an output format: every report is HTML with Downloa
 - **Client (LIB-002).** The company files this MYOB connection can access (\`list_company_files\`). With one file the box shows its name. With several it is a picker bound to \`company_file\`, which every binding sends as \`myob_company_file_id\` — switching refetches everything for that file only. Never type or guess a client name; when MYOB returns no file list the header says so.
 - **Period.** A preset (Today … Last financial year, Custom) next to editable From / To dates, or As at with presets. The **financial year is assumed to start 1 July** (NZ files: 1 April) because the MYOB API does not expose it; the banner says "assumed". **Relative presets roll forward**: a saved "This financial year to date" report is recomputed to today's window each time it opens.
 - **Branding** (under Customise; display only — never refetches): **MYOB** (default: purple accents and charts, MYOB badge, "Prepared from MYOB Business") or **mySMB** (the mySMB Reporting template: teal header band with a white title, white-on-teal table headers, light-teal alternating rows, teal / accent / purple / grey charts, mySMB badge, and the footer "Business | Report | Generated"). It is stored in the \`display\` input as \`style\`, so downloads and snapshots keep it.
-- Accounting method (Cash | Accrual) where MYOB offers it; Compare to (previous period / previous year / year to date, with $ and % change); Report (the members); View as (persona).
+- Accounting method (Cash | Accrual) where MYOB offers it; Compare to (previous period / previous year / year to date, with $ and % change); Report (the members); Detail level (persona: Client or Executive = Summary, Bookkeeper or Practitioner = Detail).
 - **Customise** (display only, never refetches): Show cents, Divide by 1000, Except zero amounts (on by default — zero rows and all-zero sections are hidden), negatives (-100 / **(100)** / 100-), Show in red, Header, Footer, Compact | 100%, and Brand colour for a client's own colour ("Use MYOB branding" resets it; not used under mySMB branding).
 - **Delivery.** Download PDF (print stylesheet), Download Excel (a real .xlsx: a sheet per table with a header block, number format, bold totals, a Validation sheet and a Parameters sheet). Host Download and Share produce a self-contained snapshot.
 - **Personas.** Client and Executive = summary mode (account lines hidden; totals, charts and validation kept). Bookkeeper and Practitioner = detail mode. A failed check is never hidden.
@@ -135,7 +139,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: ${f.golden}.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+4. Change every control and confirm the report refetches and still validates; switch Detail level to Summary, then Detail; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.
@@ -257,4 +261,6 @@ if (bp.rolePrompt.includes(STEP5_OLD) || missing.length || !bp.contentHash) {
   bp.contentHash = crypto.createHash('sha256').update(JSON.stringify(sortDeep(payload))).digest('hex');
   fs.writeFileSync(bpFile, JSON.stringify(sortDeep(bp), null, 2) + '\n');
 }
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'myob'); AS.ensureAgent(P, 'myob'); }
 console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes | kit reports + templates:', FAM.map((f) => f.skill).join(', '), '| guide and export skills:', STATIC.map((f) => f.skill).join(', '));

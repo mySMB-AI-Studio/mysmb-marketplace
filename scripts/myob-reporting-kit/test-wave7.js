@@ -18,6 +18,30 @@ const kpi = (t, l) => { const k = [...t.doc.querySelectorAll('.mk-kpi')].find((x
   // ---------------- Pay Item Transactions (M30)
   let t = await go('pyi');
   ok('pay item transactions: own title, checks pass (category-summary tie, pay items = every line)', t.errs.length === 0 && text(t.doc, 'header .ti') === 'Pay Item Transactions' && green(t) && /✓ Pay item totals = every paycheque line/.test(banner(t)) && /✓ Wages and PAYG on the paycheques = MYOB/.test(banner(t)), [t.errs, banner(t).slice(0, 400)]);
+  // ---------------- Payroll privacy (decision D2): the Summary view (Client, Executive) leaves each employee's pay out
+  {
+    const NAMES = /Alex Morgan|Sam Lee/;
+    const xl = async (r) => { r.doc.getElementById('mk-xlsx').click(); await r.settle(); const b = r.downloads.filter((d) => d.blob).pop(); return b ? Buffer.from(await b.blob.arrayBuffer()).toString('utf8') : ''; };
+    const reg = await go('pyr', {}, { persona: 'Client' });
+    ok('privacy: Payroll Register in Summary shows pay runs, no employee names, and says why', !NAMES.test(text(reg.doc, '#mk-body')) && /payroll privacy/.test(text(reg.doc, '#py-mask')) && /Gross pay/.test(text(reg.doc, '#py-grid')) && green(reg) && reg.errs.length === 0, text(reg.doc, '#mk-body').slice(0, 400));
+    const xr = await xl(reg);
+    ok('privacy: its Excel file has no employee names, and the Register sheet says why', xr.length > 0 && !NAMES.test(xr) && /payroll privacy/.test(xr));
+    const exe = await go('pyr', {}, { persona: 'Executive' });
+    ok('privacy: Executive is masked the same way (Summary)', !NAMES.test(text(exe.doc, '#mk-body')) && !!exe.doc.getElementById('py-mask'));
+    const det = await go('pyr', {}, { persona: 'Practitioner' });
+    ok('privacy: Detail (Practitioner) still shows each employee', NAMES.test(text(det.doc, '#py-grid')) && !det.doc.getElementById('py-mask'), text(det.doc, '#py-grid').slice(0, 300));
+    const it = await go('pyi', {}, { persona: 'Client' });
+    ok('privacy: Pay Item Transactions in Summary shows each pay item and its total, no employee rows', !NAMES.test(text(it.doc, '#py-grid')) && /Total for Base Salary/.test(text(it.doc, '#py-grid')) && it.doc.querySelectorAll('#py-grid tr.k-row').length === 0, text(it.doc, '#py-grid').slice(0, 300));
+    const fd = await go('pyf', {}, { persona: 'Client' });
+    ok('privacy: Accrual by Fund in Summary shows the funds only, no By employee table', !NAMES.test(text(fd.doc, '#mk-body')) && !fd.doc.getElementById('py-grid2') && !/By employee/.test(text(fd.doc, '#mk-body')));
+    const xf = await xl(fd);
+    ok('privacy: its Excel By fund sheet has fund totals and no employee names', xf.length > 0 && !NAMES.test(xf) && /Super accrued/.test(xf));
+    ok('privacy: the notes say that Download and Share copies hold the loaded data', /Download and Share copies hold the data the report loaded/.test(text(fd.doc, 'body')));
+    const sel = reg.doc.getElementById('mk-persona');
+    ok('Detail level offers two views, Summary and Detail, and shows Client as Summary', sel && sel.options.length === 2 && sel.value === 'Client' && /Summary/.test(sel.options[sel.selectedIndex].textContent) && /Detail/.test(sel.options[1].textContent), sel && [...sel.options].map((o) => o.textContent));
+    const exSel = exe.doc.getElementById('mk-persona');
+    ok('a stored Executive value shows as Summary', exSel && exSel.value === 'Client', exSel && exSel.value);
+  }
   const heads = [...t.doc.querySelectorAll('#py-grid tr.k-header')].map((r) => r.textContent);
   ok('pay item transactions: a section per pay item', heads.some((x) => /^Base Salary/.test(x)) && heads.some((x) => /^PAYG Withholding/.test(x)) && heads.some((x) => /^Superannuation Guarantee/.test(x)), heads);
   ok('pay item transactions: employees under each pay item, with totals', /Alex Morgan/.test(text(t.doc, '#py-grid')) && /Sam Lee/.test(text(t.doc, '#py-grid')) && /Total for Base Salary/.test(text(t.doc, '#py-grid')));

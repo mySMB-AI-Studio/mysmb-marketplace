@@ -21,7 +21,7 @@ QB.app({
     var niRow = P.ni, niBS = niRow ? (QB.val(niRow) == null ? 0 : QB.val(niRow)) : null, niLabel = niRow ? niRow.label : 'Net Earnings';
     m.lines.forEach(function (l) { if (l === niRow && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
     var pl = c.data.pnl_ytd, niPL = !pl ? null : QB.noData(pl) ? 0 : QB.val(QB.find(QB.walk(pl), 'NetIncome', QB.NI_RE)); // no transactions this year = A$0
-    var extra = cmpOn ? QB.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
+    var extra = cmpOn ? QB.compareCols(c.compareLabel || (c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end')) : [];
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     var html = QB.kpis([{ label: 'Total for Assets', value: A }, { label: 'Total for Liabilities', value: L }, { label: 'Total for Equity', value: E },
       { label: 'Working capital', value: CA != null && CL != null ? Math.round((CA - CL) * 100) / 100 : null, sub: 'Current assets − current liabilities' },

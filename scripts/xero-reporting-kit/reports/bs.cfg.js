@@ -28,7 +28,7 @@ XK.app({
     var tv = function (group, re) { var l = XK.find(w.lines, group, re, 'total'); return l ? XK.val(l) : null; };
     var A = tv('Assets', /^total assets$/i), L = tv('Liabilities', /^total liabilities$/i), E = tv('Equity', /^total equity$/i), NA = tv(null, /^net assets$/i);
     var bankSec = w.sections.filter(function (s) { return /^bank$/i.test(s.title); })[0];
-    var extra = cmpOn ? XK.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
+    var extra = cmpOn ? XK.compareCols(c.compareLabel || (c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end')) : [];
     body.innerHTML = XK.kpis([{ label: 'Total Assets', value: A }, { label: 'Total Liabilities', value: L }, { label: 'Net Assets', value: NA }, { label: 'Total Equity', value: E }], c) +
       '<div class="xk-scroll">' + XK.statement(lines, ['', w.columns[0] || XK.asOfLine(c.inputs.as_at).replace(/^As at /, '')], c, extra) + '</div>' +
       '<div class="xk-card detail-block" style="margin-top:16px"><h3>Assets vs liabilities + equity</h3><div id="ch1"></div></div>';

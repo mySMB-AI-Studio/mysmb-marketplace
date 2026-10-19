@@ -27,7 +27,7 @@ QB.app({
     body.innerHTML = '<div class="qb-grid2">' + card('c1', 'Expenses over time', money(tot(P, 'Expenses'))) + card('c2', 'Revenue over time', money(tot(P, 'Income'))) + card('c3', 'Gross profit over time', money(tot(P, 'GrossProfit'))) + card('c4', 'Net profit over time', money(tot(P, 'NetIncome'))) +
       card('c5', 'Cash flow', money(cfNet)) + card('c6', 'A/R by ageing periods', money(ar && ar.tot.length ? ar.tot[ar.tot.length - 1] : null)) + card('c7', 'A/P by ageing periods', money(ap && ap.tot.length ? ap.tot[ap.tot.length - 1] : null)) +
       card('c8', 'Current ratio by time', lastCR == null ? 'N/A — not in source' : lastCR.toFixed(2)) + card('c9', 'Quick ratio by time', lastQR == null ? 'N/A — not in source' : lastQR.toFixed(2)) + '</div>';
-    var L = P.labels, cmpSer = function (g) { return cmpOn && PC ? [{ name: 'Comparison', values: ser(PC, g).slice(0, L.length) }] : []; };
+    var L = P.labels, cmpSer = function (g) { return cmpOn && PC ? [{ name: c.compareLabel || 'Comparison', values: ser(PC, g).slice(0, L.length) }] : []; };
     QB.line(document.getElementById('c1'), { title: 'Expenses over time', labels: L, series: [{ name: 'Expenses', values: expS }].concat(cmpSer('Expenses')) }, c);
     QB.line(document.getElementById('c2'), { title: 'Revenue over time', labels: L, series: [{ name: 'Revenue', values: revS }].concat(cmpSer('Income')) }, c);
     QB.bars(document.getElementById('c3'), { title: 'Gross profit over time', labels: L, series: [{ name: 'Gross profit', values: gpS }].concat(cmpSer('GrossProfit')) }, c);

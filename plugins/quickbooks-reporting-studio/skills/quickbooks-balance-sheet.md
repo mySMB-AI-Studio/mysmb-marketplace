@@ -46,7 +46,7 @@ As-of preset `today` (`a` in `display`): `as_at` = `"today"` (config: today's da
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): As of 31 Aug 2026: Wise-AUD A$147,337.00 · ANZ A$99.00 · PHP A$2.69 · A/R A$91,905.00 · Prepaid expenses A$11,966.18 · Security Deposit A$28,800.00 · Intangibles – Trademarks A$18,294.11 · A/P A$175,222.57 · A/P – USD A$95,858.82 · Doug's Amex Card A$25,803.79 · Total for Liabilities and Shareholders' Equity A$298,398.60.
 3. Compare the layout with the Q18 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
@@ -242,7 +242,7 @@ QB.app({
     var niRow = P.ni, niBS = niRow ? (QB.val(niRow) == null ? 0 : QB.val(niRow)) : null, niLabel = niRow ? niRow.label : 'Net Earnings';
     m.lines.forEach(function (l) { if (l === niRow && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
     var pl = c.data.pnl_ytd, niPL = !pl ? null : QB.noData(pl) ? 0 : QB.val(QB.find(QB.walk(pl), 'NetIncome', QB.NI_RE)); // no transactions this year = A$0
-    var extra = cmpOn ? QB.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
+    var extra = cmpOn ? QB.compareCols(c.compareLabel || (c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end')) : [];
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     var html = QB.kpis([{ label: 'Total for Assets', value: A }, { label: 'Total for Liabilities', value: L }, { label: 'Total for Equity', value: E },
       { label: 'Working capital', value: CA != null && CL != null ? Math.round((CA - CL) * 100) / 100 : null, sub: 'Current assets − current liabilities' },

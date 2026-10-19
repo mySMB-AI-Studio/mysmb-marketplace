@@ -23,7 +23,7 @@ QB.app({
     }
     var ni = QB.val(QB.find(lines, null, QB.NI_RE, 'row')), adj = T('OperatingAdjustments', /^total adjustments/i) || 0;
     lines.forEach(function (l) { if (l.kind === 'row' && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
-    var extra = cmpOn ? QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]) : [];
+    var extra = cmpOn ? QB.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]) : [];
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     body.innerHTML = QB.kpis([{ label: 'Operating activities', value: op }, { label: 'Investing activities', value: inv }, { label: 'Financing activities', value: fin }, { label: 'Net cash increase', value: inc }, { label: 'Cash at end of period', value: end }], c) +
       '<div class="qb-scroll">' + QB.statement(lines, titles, c, extra) + '</div><div class="qb-card detail-block" style="margin-top:16px"><h3>Opening cash to closing cash</h3><div id="ch1"></div></div>';
