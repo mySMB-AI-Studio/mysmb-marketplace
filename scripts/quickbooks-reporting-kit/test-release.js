@@ -9,8 +9,9 @@ const templates = fs.readdirSync(path.join(plugin, 'reports'));
 assert.equal(templates.length, 30);
 assert(templates.includes('quickbooks-employees-and-time'), 'Q31 remains available');
 const agent = readJson(path.join(plugin, 'content/agents/a5cac7e0-9ba5-4a87-966c-ae85fcba1585.json'));
-assert.deepEqual(agent.connectors, ['quickbooks-accounting']);
-assert.deepEqual(agent.skills, ['quickbooks-report-foundation', ...families.map((f) => f.skill)].map((s) => 'quickbooks-reporting-studio:' + s));
+// workspace:workq and the report-to-WorkQ skill: Reporting Library LIB-006 (scripts/reporting-shared/agent-skills.cjs)
+assert.deepEqual(agent.connectors, ['quickbooks-accounting', 'workspace:workq']);
+assert.deepEqual(agent.skills, ['quickbooks-report-foundation', ...families.map((f) => f.skill), 'quickbooks-report-to-workq'].map((s) => 'quickbooks-reporting-studio:' + s));
 for (const f of deferredFamilies) {
   assert(!templates.includes(f.skill), f.skill + ' template must not be discoverable');
   assert(!fs.existsSync(path.join(plugin, 'skills', f.skill + '.md')), f.skill + ' skill must not be discoverable');

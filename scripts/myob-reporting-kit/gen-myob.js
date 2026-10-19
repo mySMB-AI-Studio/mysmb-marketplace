@@ -261,4 +261,6 @@ if (bp.rolePrompt.includes(STEP5_OLD) || missing.length || !bp.contentHash) {
   bp.contentHash = crypto.createHash('sha256').update(JSON.stringify(sortDeep(payload))).digest('hex');
   fs.writeFileSync(bpFile, JSON.stringify(sortDeep(bp), null, 2) + '\n');
 }
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'myob'); AS.ensureAgent(P, 'myob'); }
 console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes | kit reports + templates:', FAM.map((f) => f.skill).join(', '), '| guide and export skills:', STATIC.map((f) => f.skill).join(', '));

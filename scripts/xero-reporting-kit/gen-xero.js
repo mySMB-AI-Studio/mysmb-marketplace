@@ -170,4 +170,6 @@ ${fence('html', doc)}
 });
 // A template whose report is no longer a kit family would linger in Reports → Templates: remove it.
 for (const d of fs.existsSync(path.join(P, 'reports')) ? fs.readdirSync(path.join(P, 'reports')) : []) if (!FAM.some((f) => f.skill === d)) fs.rmSync(path.join(P, 'reports', d), { recursive: true, force: true });
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'xero'); AS.ensureAgent(P, 'xero'); }
 console.log('generated', SLUG, '| foundation', foundation.length, 'characters | kit reports + templates:', FAM.map((f) => f.skill).join(', '));

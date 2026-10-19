@@ -472,4 +472,6 @@ const i = mp.plugins.findIndex((p) => p.name === SLUG); if (i < 0) mp.plugins.pu
 // Except the report templates' folder, which Publish copies from this entry to the next tier: declare it on the existing entry.
 else if (mp.plugins[i].reports !== 'reports') mp.plugins[i].reports = 'reports';
 fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + (raw.endsWith('\n') ? '\n' : ''));
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'quickbooks'); AS.ensureAgent(P, 'quickbooks'); }
 console.log('generated', SLUG, '| originKey', originKey, '| contentHash', contentHash.slice(0, 12), '| role prompt', rolePrompt.length, 'chars | foundation', Buffer.byteLength(foundation), 'bytes');
