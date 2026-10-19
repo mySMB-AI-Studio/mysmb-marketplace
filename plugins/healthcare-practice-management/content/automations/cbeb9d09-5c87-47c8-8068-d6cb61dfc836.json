@@ -1,0 +1,80 @@
+{
+  "kind": "automation",
+  "originKey": "cbeb9d09-5c87-47c8-8068-d6cb61dfc836",
+  "name": "Healthcare Practice Management: Apply Practice Manager message decision",
+  "description": "Applies the reviewer's decision on a Practice Manager message approval form: sends the (possibly edited) message through Microsoft 365, or leaves the item open with instructions when the practice uses Gmail (no send tool yet) or the patient has no email. For a cancellation reschedule offer, keeps the item open and hands it to the reply reader, which books the time the patient picks.",
+  "level": "org",
+  "knowledgeFiles": [],
+  "tags": [
+    "healthcare-practice-management",
+    "approval",
+    "cancellation"
+  ],
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "connectors:m365-mail-read",
+    "connectors:m365-mail-send"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "1bc02844-6ee1-4ed1-b945-d6ed15084a3f",
+      "sourceId": "1bc02844-6ee1-4ed1-b945-d6ed15084a3f"
+    }
+  ],
+  "flowIr": {
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Apply Practice Manager message decision",
+    "description": "Applies the reviewer's decision on a Practice Manager message approval form: sends the (possibly edited) message through Microsoft 365, or leaves the item open with instructions when the practice uses Gmail (no send tool yet) or the patient has no email. For a cancellation reschedule offer, keeps the item open and hands it to the reply reader, which books the time the patient picks.",
+    "params": [],
+    "rootOrder": [
+      "apply_decision"
+    ],
+    "triggers": [
+      {
+        "kind": "event",
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "1bc02844-6ee1-4ed1-b945-d6ed15084a3f"
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "id": "apply_decision",
+        "kind": "python",
+        "title": "Apply message decision",
+        "summary": "Sends the approved message (or records why it wasn't sent) and, for reschedule offers, starts waiting for the patient's reply.",
+        "params": [
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Approval item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "outcome",
+            "type": "str",
+            "description": "sent, sent_awaiting_reply, needs_manual_send, send_failed, not_sent, no_email, draft_missing or ignored."
+          }
+        ],
+        "code": "import json\nimport datetime\nfrom zoneinfo import ZoneInfo\n\nSOURCE = \"automation:Apply Practice Manager message decision\"\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef delete_file(path):\n    try:\n        api.files.delete(file=path)\n    except Exception:\n        pass\n\n\ndef audit(slug, tz, action, target, summary, workq_item_id=\"\"):\n    # SK-13 format (healthcare-practice-management-foundation): one JSON line per action, practice-local ts.\n    now_local = datetime.datetime.now(tz)\n    path = \"PracticeManager/AuditLog/\" + slug + \"-\" + now_local.strftime(\"%Y-%m-%d\") + \".jsonl\"\n    line = {\n        \"ts\": now_local.isoformat(timespec=\"seconds\"), \"practice_slug\": slug, \"actor\": \"agent\",\n        \"source\": SOURCE, \"action\": action, \"target\": target, \"summary\": summary,\n    }\n    if workq_item_id:\n        line[\"workq_item_id\"] = workq_item_id\n    try:\n        try:\n            existing = api.files.read(file=path) or \"\"\n        except Exception:\n            existing = \"\"\n        if existing and not existing.endswith(\"\\n\"):\n            existing += \"\\n\"\n        api.files.put(file=path, content=existing + json.dumps(line, sort_keys=True) + \"\\n\")\n    except Exception:\n        pass\n\n\nresponses = params.get(\"responses\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\noutcome = \"ignored\"\n\nif responses and todo_id:\n    draft_path = \"PracticeManager/Drafts/\" + todo_id + \".json\"\n    draft = read_json(draft_path, None)\n    if not draft:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't find the drafted message for this item - nothing was sent.\")\n        outcome = \"draft_missing\"\n    else:\n        kind = draft.get(\"kind\") or \"message\"\n        slug = draft.get(\"slug\") or \"\"\n        practice = read_json(\"PracticeManager/Practices/\" + slug + \".json\", {}) or {}\n        try:\n            tz = ZoneInfo(practice.get(\"timezone\") or \"Australia/Sydney\")\n        except Exception:\n            tz = datetime.timezone.utc\n        decision = str(responses.get(\"q_decision\") or \"\")\n        edited = str(responses.get(\"q_edited_message\") or \"\").strip()\n        patient_name = draft.get(\"patient_name\") or \"the patient\"\n        target = {\"kind\": \"email\", \"id\": todo_id}\n\n        if decision == \"Don't send\":\n            api.workq.comment(todo_id=todo_id, body=\"Marked as don't send. No message was sent to \" + patient_name + \".\")\n            api.workq.complete(todo_id=todo_id)\n            audit(slug, tz, \"rejected\", target, \"Reviewer chose not to send the drafted message to \" + patient_name, todo_id)\n            delete_file(draft_path)\n            outcome = \"not_sent\"\n        else:\n            use_edit = decision == \"Edit and send\" and bool(edited)\n            body = edited if use_edit else (draft.get(\"body\") or \"\")\n            subject = draft.get(\"subject\") or \"A message from the practice\"\n            email = draft.get(\"email\") or \"\"\n            provider = str(practice.get(\"email_provider\") or \"outlook\")\n\n            if not email:\n                api.workq.comment(todo_id=todo_id, body=\"No email on file for \" + patient_name + \" - nothing was sent. Send it another way if needed.\")\n                outcome = \"no_email\"\n            elif provider != \"outlook\":\n                # Gmail has no send tool in this workspace - never claim it was sent.\n                note = (\n                    \"This practice's email provider is Gmail, which can't send from automations yet. \"\n                    \"Please send this yourself:\\n\\n**To:** \" + email + \"\\n**Subject:** \" + subject + \"\\n\\n\" + body\n                )\n                if kind == \"reschedule_offer\":\n                    note += \"\\n\\n_Their reply won't be read automatically for a Gmail practice - book the time they pick by hand in Cliniko._\"\n                api.workq.comment(todo_id=todo_id, body=note)\n                outcome = \"needs_manual_send\"\n            else:\n                sent_at = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=5)).strftime(\"%Y-%m-%dT%H:%M:%SZ\")\n                try:\n                    api.connectors.invoke(\n                        server=\"m365-mail-send\", tool=\"send_email\",\n                        args={\"to\": [email], \"subject\": subject, \"body\": body, \"contentType\": \"Text\"},\n                    )\n                    send_error = \"\"\n                except Exception as exc:\n                    send_error = str(exc)\n\n                if send_error:\n                    api.workq.comment(todo_id=todo_id, body=\"Sending to \" + email + \" failed, so nothing was sent: \" + send_error + \"\\n\\nResubmit the form to try again, or send it yourself.\")\n                    outcome = \"send_failed\"\n                else:\n                    if use_edit:\n                        audit(slug, tz, \"edited\", target, \"Reviewer edited the drafted message to \" + patient_name + \" before sending\", todo_id)\n                    audit(slug, tz, \"sent\", target, \"Sent the approved message to \" + patient_name, todo_id)\n                    delete_file(draft_path)\n\n                    if kind == \"reschedule_offer\":\n                        # send_email returns no message id - find the sent copy to learn its conversationId, so\n                        # the reply reader can match the patient's answer to this offer. Falls back to matching\n                        # by sender address when the sent copy can't be found.\n                        conversation_id = \"\"\n                        try:\n                            sent = api.connectors.invoke(\n                                server=\"m365-mail-read\", tool=\"list_emails\",\n                                args={\"folder\": \"sentitems\", \"limit\": 10, \"receivedAfter\": sent_at},\n                            )\n                            sent = sent if isinstance(sent, list) else ((sent or {}).get(\"value\") or [])\n                            for m in sent:\n                                to = [((r or {}).get(\"emailAddress\") or {}).get(\"address\", \"\").lower() for r in (m.get(\"toRecipients\") or [])]\n                                if email.lower() in to and (m.get(\"subject\") or \"\") == subject:\n                                    conversation_id = m.get(\"conversationId\") or \"\"\n                                    break\n                        except Exception:\n                            conversation_id = \"\"\n                        state = dict(draft)\n                        state.update({\"todo_id\": todo_id, \"body\": body, \"sent_at\": sent_at, \"conversation_id\": conversation_id})\n                        write_json(\"PracticeManager/AwaitingReply/\" + todo_id + \".json\", state)\n                        api.workq.comment(\n                            todo_id=todo_id,\n                            body=(\n                                \"Sent to \" + email + \". Waiting for their reply - the time they pick will be booked \"\n                                \"automatically (after re-checking it is still free) and this item closed. Unclear \"\n                                \"replies, or no reply within 7 days, come back here for you to handle.\"\n                            ),\n                        )\n                        outcome = \"sent_awaiting_reply\"\n                    else:\n                        api.workq.comment(todo_id=todo_id, body=\"Sent to \" + email + \".\")\n                        api.workq.complete(todo_id=todo_id)\n                        outcome = \"sent\"\n"
+      }
+    ]
+  },
+  "contentHash": "6c2596714050ce199e0802f85ff546c83154bd1740895f3a49dfaa34a1f6b331"
+}
