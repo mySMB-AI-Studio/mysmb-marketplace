@@ -6,6 +6,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice Banking Summary Metrics',
     slug: 'practice-banking-summary',
+    tool: 'get_practice_banking_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection, and bank-feed/unreconciled data is not in the QuickBooks Accounting API — see the Client agent.',

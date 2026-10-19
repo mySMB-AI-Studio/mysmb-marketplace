@@ -19,10 +19,10 @@ var LV_VIEW = function (ui, r) {
   var card = LV.card, table = LV.table, scopeTable = LV.scopeTable, findingsTable = LV.findingsTable, rowsTable = LV.rowsTable, catTable = LV.catTable, selfChecks = LV.selfChecks, sheetFindings = LV.sheetFindings, sheetScope = LV.sheetScope, NOTE_LIVE = LV.NOTE_LIVE;
   var sc = LC.scope(r, LC.GST), fs = r.findings.filter(function (f) { return f.gst; }), t = LC.totals(fs);
   var clear = sc.filter(function (s) { return s.status === 'clear'; }).length, open = sc.filter(function (s) { return s.status === 'findings'; }).length;
-  var html = ui.kpis([{ label: 'GST checks run live', value: clear + open, money: false }, { label: 'Clear', value: clear, money: false }, { label: 'With findings', value: open, money: false, red: open > 0 }, { label: 'GST at risk', value: t.amount }, { label: 'Overnight or N/A', value: sc.length - clear - open, money: false }]) +
+  var html = ui.kpis([{ label: 'GST checks run live', value: clear + open, money: false }, { label: 'Clear', value: clear, money: false }, { label: 'With findings', value: open, money: false, red: open > 0 }, { label: 'GST at risk', value: t.amount }, { label: 'Not run live', value: sc.length - clear - open, money: false }]) +
     '<div class="' + ui.p + '-banner ' + (open ? 'na' : 'pass') + '" style="margin:12px 0">' + (open ? open + ' GST check(s) have findings: ' + ui.money(t.amount) + ' of GST at risk.' : 'Every GST check that runs live is clear for this period.') + '</div>' +
     card(ui, 'Unresolved GST risk', findingsTable(ui, fs)) +
-    card(ui, 'Scope and method', scopeTable(ui, r, LC.GST), 'Resolved = the check runs and finds nothing in the period. The register checks need the Australian Business Register and run overnight in Bookkeeping for Xero.');
+    card(ui, 'Scope and method', scopeTable(ui, r, LC.GST), 'Resolved = the check runs and finds nothing in the period. The register checks need the Australian Business Register: they run overnight in Bookkeeping for Xero, for Xero clients only.');
   return { html: html, checks: selfChecks(r, LC.GST, t), notes: [NOTE_LIVE], na: [],
     sheets: [{ name: 'GST findings', rows: sheetFindings(fs), widths: [10, 10, 13, 34, 80, 14, 40] }, { name: 'Scope and method', rows: sheetScope(r, LC.GST), widths: [10, 40, 13, 10, 60, 50] }] };
 };

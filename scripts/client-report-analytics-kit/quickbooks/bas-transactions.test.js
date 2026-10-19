@@ -12,7 +12,7 @@ const has = (t, s) => li(t).some((l) => l.startsWith(s));
 const block = (f) => { const s = fs.readFileSync(path.join(__dirname, f), 'utf8'); return s.slice(s.indexOf('// >>> TX'), s.indexOf('// <<< TX')); };
 const row = (t, ref) => [...t.doc.querySelectorAll('#cra-tx tbody tr')].filter((r) => r.cells[2] && r.cells[2].textContent === ref).map((r) => [...r.cells].map((c) => c.textContent));
 (async () => {
-  ok('the TX block is identical in tax-by-type and bas-transactions', block('tax-by-type.cfg.js') === block('bas-transactions.cfg.js') && block('tax-by-type.cfg.js').length > 1000);
+  ok('the TX block is identical in tax-by-type, bas-transactions and contacts-bas', block('tax-by-type.cfg.js') === block('bas-transactions.cfg.js') && block('contacts-bas.cfg.js') === block('bas-transactions.cfg.js') && block('tax-by-type.cfg.js').length > 1000);
   let fx = L.fx(), t = await run(REF, manifest, fx); await t.settle(40);
   ok('no script errors', t.errs.length === 0, t.errs);
   ok('header: client, platform, BAS quarter, basis', text(t.doc, '#qb-head .co') === 'Enterprise AI Pty Ltd' && text(t.doc, '#qb-head .ti').includes('QuickBooks') && text(t.doc, '#qb-head .pe') === 'April - June, 2026 · Accrual basis · AUD');

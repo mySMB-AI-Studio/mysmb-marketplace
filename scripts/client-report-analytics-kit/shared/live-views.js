@@ -15,6 +15,7 @@ var LV = (function () {
     if (s.status === 'clear') return 'Clear';
     if (s.status === 'findings') return s.count + ' finding' + (s.count > 1 ? 's' : '');
     if (s.status === 'overnight') return 'Runs overnight: ' + s.why;
+    if (s.status === 'engine') return 'Not run on ' + s.platform + ': ' + s.why;
     return 'N/A: ' + s.why;
   }
   // The "What it looks for" column shows when the view defines LV_LOOKS (GST Check, Client Queries).
@@ -47,7 +48,7 @@ var LV = (function () {
     return [
       { name: 'Findings by category add up to the total', pass: cats === t.count, detail: t.count + ' finding(s)' },
       { name: '$ at risk by category adds up to the total', pass: Math.abs(amt - t.amount) < 0.011, detail: LC.money(t.amount) },
-      { name: 'Every check in scope is accounted for (run, N/A on this platform, or runs overnight)', pass: sc.length === ids.length && sc.every(function (s) { return s.status; }), detail: sc.filter(function (s) { return s.status === 'clear' || s.status === 'findings'; }).length + ' run live, ' + sc.filter(function (s) { return s.status === 'na'; }).length + ' N/A, ' + sc.filter(function (s) { return s.status === 'overnight'; }).length + ' overnight' }
+      { name: 'Every check in scope is accounted for (run, N/A on this platform, runs overnight, or not run on this platform)', pass: sc.length === ids.length && sc.every(function (s) { return s.status; }), detail: sc.filter(function (s) { return s.status === 'clear' || s.status === 'findings'; }).length + ' run live, ' + sc.filter(function (s) { return s.status === 'na'; }).length + ' N/A, ' + (sc.some(function (s) { return s.status === 'engine'; }) ? sc.filter(function (s) { return s.status === 'engine'; }).length + ' not run (Xero only)' : sc.filter(function (s) { return s.status === 'overnight'; }).length + ' overnight') }
     ];
   }
   var NOTE_LIVE = 'These checks run on the client\'s ledger every time the report opens, using the rules of the overnight checks engine (Bookkeeping for Xero). A finding fixed in the ledger is gone on the next open; findings dismissed in WorkQ are not read here.';

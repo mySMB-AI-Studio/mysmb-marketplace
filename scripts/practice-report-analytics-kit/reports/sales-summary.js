@@ -7,6 +7,7 @@ module.exports = function build() {
   return buildPracticeTable({
     title: 'Practice Sales Summary Metrics',
     slug: 'practice-sales-summary',
+    tool: 'get_practice_sales_summary', // named in the footer and the Excel Parameters sheet
     chips: ['Overdue only'],
     sources: { xero: 'xero', myob: 'myob' },
     qbNote: 'one company per connection — see its Sales by Tracking Category / Financial Overview in the Client agent.',

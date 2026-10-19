@@ -179,6 +179,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 1. Ask for the request this guide covers (see *Use when*). Confirm the agent saves the right kit report with the settings and says what is N/A.
 2. Reopen the saved report: it opens on the saved settings, refetches and validates; its Download Excel file has the Validation and Parameters sheets.
 3. ${f.golden}
+4. Cross-client isolation (LIB-002): the kit report the guide saves carries the Client picker. Switching it refetches only that company file's figures, and the saved report and every export carry only one company file.
 `);
 });
 STATIC.filter((f) => f.type === 'export').forEach((f) => {
@@ -216,6 +217,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 1. Attach an export from the golden-set file. Confirm every row appears once and the validation passes. ${f.golden}
 2. Use every filter, switch Branding to mySMB and back, and switch the workspace to the dark theme.
 3. Include text with \`<\` or \`</script>\` in a row and confirm the page still renders.
+4. Cross-client isolation (LIB-002): the page holds only the business in the attached export. Another business needs its own export and page.
 
 ## Page
 

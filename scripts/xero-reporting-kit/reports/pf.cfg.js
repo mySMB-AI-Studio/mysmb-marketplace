@@ -26,7 +26,7 @@ XK.app({
     var margin = function (a, b) { return a == null || !b ? null : a / b; };
     var M = { npm: [margin(T.np[0], T.inc[0]), margin(T.np[1], T.inc[1])], gpm: [margin(T.gp[0], T.trd[0]), margin(T.gp[1], T.trd[1])] };
     var bsw = c.data.bs ? XK.walk(c.data.bs) : null, b0 = bsw ? XK.bsParts(bsw, 0) : null, b1 = bsw && bsw.columns.length > 1 ? XK.bsParts(bsw, 1) : null;
-    var days = function (bal, flow) { return bal == null || !flow ? null : bal / flow * 365; };
+    var days = function (bal, flow) { return bal == null || !(flow > 0) ? null : bal / flow * 365; };
     var cogs = function (i) { return exp.cur && T.exp[i] != null ? T.exp[i] : null; };
     var DD = [days(b0 && b0.ar, T.inc[0]), days(b1 && b1.ar, T.inc[1])], CD = [days(b0 && b0.ap, T.exp[0]), days(b1 && b1.ap, T.exp[1])];
     var lbl = function (ks) { return 'Total ' + XK.monthLabel(ks[0]) + ' to ' + XK.monthLabel(ks[11]); };
@@ -56,7 +56,7 @@ XK.app({
     XK.donut(document.getElementById('pf-opex'), { title: 'Operating expenses', items: opexRows, centre: money(XK.sum(opexRows.map(function (x) { return x.value; }))) }, c);
     if (b0) XK.donut(document.getElementById('pf-bank'), { title: 'Bank accounts', items: b0.bankRows.map(function (r) { return { label: r.label, value: r.value }; }), centre: money(b0.bank) }, c);
     // monthly days: the month-end balance ÷ that month's income (or expenses) × days in the month
-    var mdays = function (id, ks, flowArr, part) { var v = c.data[id] && !c.errors[id] ? XK.walk(c.data[id]) : null, m = v ? XK.monthCols(v) : null; return ks.map(function (k, i) { var j = m && m.idx[k], f = flowArr[i]; if (j == null || !f) return null; var b = XK.bsParts(v, j)[part]; return b == null ? null : b / f * XK.eom(+k.slice(0, 4), +k.slice(5, 7)).getUTCDate(); }); };
+    var mdays = function (id, ks, flowArr, part) { var v = c.data[id] && !c.errors[id] ? XK.walk(c.data[id]) : null, m = v ? XK.monthCols(v) : null; return ks.map(function (k, i) { var j = m && m.idx[k], f = flowArr[i]; if (j == null || !(f > 0)) return null; var b = XK.bsParts(v, j)[part]; return b == null ? null : b / f * XK.eom(+k.slice(0, 4), +k.slice(5, 7)).getUTCDate(); }); };
     var dl = function (id, part, flow) { var cur = mdays('bs_12', keys, flow.cur, part), pri = mdays('bs_p12', pkeys, flow.pri, part); XK.line(document.getElementById(id), { title: id, labels: labs, fmt: function (v) { return Math.round(v) + ' days'; }, series: [{ name: 'Current', values: cur }, { name: 'Prior year', values: pri }] }, c); return cur; };
     var ddm = dl('pf-dd', 'ar', inc), cdm = dl('pf-cd', 'ap', exp);
 

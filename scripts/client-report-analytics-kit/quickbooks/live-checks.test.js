@@ -2,7 +2,7 @@
 // Purchase with tax lines and tax codes), plus planted problems so each rule has something to find: a duplicate bill, GST on
 // bank fees, a spend coded to Uncategorised Expense with no contact or note, an invoice never sent, duplicate suppliers, a
 // suspense balance, and bills and spend money with nothing attached. What QuickBooks can't answer (ABNs, reconciliation,
-// drafts) must read N/A with the reason, never Clear; register checks always read "Runs overnight".
+// drafts) must read N/A with the reason, never Clear; register and engine-only checks read "Not run on QuickBooks" (the overnight engine covers Xero only), never Clear or "Runs overnight".
 const U = require('./qb-test-util.js'), { run, suite, F, xlsxText, text, banner, red } = U;
 const TL = require('./qb-tax-ledger.js');
 const build = require('../build.js');
@@ -62,7 +62,9 @@ const open = async (id, over) => { const t = await run('quickbooks/' + id, man(i
   ok('ABN checks read N/A with the reason, never Clear', /CHK-008Large GST Activity for Contact Without ABN.*?N\/A: QuickBooks contacts carry no ABN field/.test(body(dq)) && /CHK-007TPAR Information Missing.*?N\/A: QuickBooks contacts carry no ABN field/.test(body(dq)));
   ok('reconciliation reads N/A with the reason (CHK-022)', /CHK-022Unreconciled Transactions.*?N\/A: QuickBooks doesn't say through its API whether a transaction is reconciled/.test(body(dq)));
   ok('drafts read N/A with the reason (CHK-033)', /CHK-033Invoices in Draft or Awaiting Approval.*?N\/A: QuickBooks has no draft or awaiting-approval invoices/.test(body(dq)));
-  ok('register checks read "Runs overnight", never Clear', /CHK-071Bill Raised With A Cancelled Supplier.*?Runs overnight: checks the Australian Business Register/.test(body(dq)));
+  ok('register checks read "Not run on QuickBooks" (Xero only), never Clear or "Runs overnight"', /CHK-071Bill Raised With A Cancelled Supplier.*?Not run on QuickBooks: it needs the Australian Business Register lookups, and those run for Xero clients only/.test(body(dq)) && !/Runs overnight/.test(body(dq)));
+  ok('engine-only checks say only the Xero engine can do it', /CHK-017Contact Bank Account Changed.*?Not run on QuickBooks: only the overnight engine compares each contact's bank details with the last run, and those run for Xero clients only/.test(body(dq)));
+  ok('the scope check counts them as not run (Xero only)', /not run \(Xero only\)/.test(banner(dq)), banner(dq).slice(0, 600));
   ok('no GST setting in the preferences = CHK-031 reads N/A with the reason', /CHK-031GST on Invoice and\/or Credit Note When Not Registered.*?N\/A: the business's GST registration is not in source/.test(body(dq)));
   ok('the duplicate-bill amounts carry GST from the tax line (no GST mismatch on clean books)', !/CHK-059.*isn't the tax rate's share/.test(body(dq)));
   const x1 = await xlsxText(dq);

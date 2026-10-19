@@ -36,6 +36,7 @@ MYOB location: Reporting → Reports → Payroll → Workers compensation (New) 
 1. Attach an export from the golden-set file. Confirm every row appears once and the validation passes. Captured empty in the sample file ("No estimation reports created yet") — create an estimation in the golden-set file, export it and confirm the state totals add up to MYOB's total.
 2. Use every filter, switch Branding to mySMB and back, and switch the workspace to the dark theme.
 3. Include text with `<` or `</script>` in a row and confirm the page still renders.
+4. Cross-client isolation (LIB-002): the page holds only the business in the attached export. Another business needs its own export and page.
 
 ## Page
 

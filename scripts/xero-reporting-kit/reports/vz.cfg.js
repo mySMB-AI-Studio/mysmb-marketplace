@@ -62,8 +62,8 @@ XK.app({
       if (names.length) after.push(function () { var s = ext[en] || {}; XK.line(document.getElementById('vz-ch'), { title: en, labels: labs, fmt: function (v) { return String(v); }, series: [{ name: en, values: keys.map(function (k) { return s[k] == null ? null : +s[k]; }) }] }, c);
         XK.bars(document.getElementById('vz-ch2'), { title: 'Income', labels: labs, series: [{ name: 'Total income', values: ser(function (p) { return p.income; }) }] }, c); });
     } else if (view === 'kpis' || view === 'benchmarks') {
-      var K = [['dd', 'Debtors days', 'Accounts receivable ÷ total income × days in month', function (b, p, d) { return p.income ? b.ar / p.income * d : null; }, function (v) { return Math.round(v) + ' days'; }],
-        ['cd', 'Creditors days', 'Accounts payable ÷ total expenses × days in month', function (b, p, d) { return p.expenses ? b.ap / p.expenses * d : null; }, function (v) { return Math.round(v) + ' days'; }],
+      var K = [['dd', 'Debtors days', 'Accounts receivable ÷ total income × days in month', function (b, p, d) { return p.income > 0 ? b.ar / p.income * d : null; }, function (v) { return Math.round(v) + ' days'; }],
+        ['cd', 'Creditors days', 'Accounts payable ÷ total expenses × days in month', function (b, p, d) { return p.expenses > 0 ? b.ap / p.expenses * d : null; }, function (v) { return Math.round(v) + ' days'; }],
         ['gpm', 'Gross profit margin', 'Gross profit ÷ trading income', function (b, p) { return div(gp(p), p.trading); }, function (v) { return (v * 100).toFixed(1) + '%'; }],
         ['npm', 'Net profit margin', 'Net profit ÷ total income', function (b, p) { return div(p.np, p.income); }, function (v) { return (v * 100).toFixed(1) + '%'; }],
         ['cr', 'Current ratio', 'Current assets ÷ current liabilities', function (b) { return div(b.currentAssets, b.currentLiabilities); }, function (v) { return v.toFixed(2); }],
@@ -71,7 +71,7 @@ XK.app({
         ['roa', 'Return on assets', 'Net profit for the month ÷ total assets', function (b, p) { return div(p.np, b.totalAssets); }, function (v) { return (v * 100).toFixed(2) + '%'; }],
         ['roe', 'Return on equity', 'Net profit for the month ÷ equity (net assets)', function (b, p) { return div(p.np, b.netAssets); }, function (v) { return (v * 100).toFixed(2) + '%'; }],
         ['debt', 'Debt ratio', 'Total liabilities ÷ total assets', function (b) { return div(b.totalLiabilities, b.totalAssets); }, function (v) { return (v * 100).toFixed(1) + '%'; }],
-        ['dcd', 'Debtors and creditors days', 'Debtors days and creditors days on one graph', function (b, p, d) { return p.income ? b.ar / p.income * d : null; }, function (v) { return Math.round(v) + ' days'; }]];
+        ['dcd', 'Debtors and creditors days', 'Debtors days and creditors days on one graph', function (b, p, d) { return p.income > 0 ? b.ar / p.income * d : null; }, function (v) { return Math.round(v) + ' days'; }]];
       var kid = view === 'kpis' ? opt('k', 'dd') : opt('bm', 'gpm'), kd = K.filter(function (x) { return x[0] === kid; })[0] || K[0], vals = bser(kd[3]);
       var bench = {}; try { bench = JSON.parse(c.inputs.bench || '{}') || {}; } catch (e) { bench = {}; } var bm = view === 'benchmarks' ? bench[kd[0]] : null;
       html = '<div class="xk-card"><h3>' + kd[1] + ending + '</h3><p class="muted">' + (view === 'kpis' ? 'Financial ratios for performance, return, efficiency and leverage. Ratio: ' + pick('k', K.map(function (x) { return [x[0], x[1]]; }), kd[0]) : 'Compare your performance with similar businesses. Metric: ' + pick('bm', K.map(function (x) { return [x[0], x[1]]; }), kd[0])) + '</p><p><strong>Formula:</strong> ' + XK.h(kd[1] + ' = ' + kd[2]) + '</p>' +

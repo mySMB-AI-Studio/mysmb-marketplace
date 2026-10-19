@@ -2,7 +2,7 @@
 // connection). QuickBooks' Tax Summary gives the BAS labels (1A / 1B / 9), not tax codes, and does not summarise by month, so the
 // tax-type × month grid is rebuilt from the GST-coded transactions (TxnTaxDetail tax lines) and tied back to the Tax Summary for the
 // agency and to the GST account on the balance sheet.
-// >>> TX (shared with bas-transactions.cfg.js; a test keeps the two copies identical)
+// >>> TX (shared by bas-transactions, tax-by-type and contacts-bas; a test keeps the three copies identical)
 var TX = (function () {
   // [binding id, QBO entity, source label, sign, side S = sales / P = purchases]; journals are read per line
   var ENT = [['invoices', 'Invoice', 'Invoice', 1, 'S'], ['sales_receipts', 'SalesReceipt', 'Sales receipt', 1, 'S'], ['credit_memos', 'CreditMemo', 'Credit note', -1, 'S'],

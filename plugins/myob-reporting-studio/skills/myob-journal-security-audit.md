@@ -36,6 +36,7 @@ MYOB location: Reporting → Reports → Business → Journal security audit. Li
 1. Attach an export from the golden-set file. Confirm every row appears once and the validation passes. Captured empty for the default period in the sample file — export a month with changes from the golden-set file and confirm every row appears once and the counts add up.
 2. Use every filter, switch Branding to mySMB and back, and switch the workspace to the dark theme.
 3. Include text with `<` or `</script>` in a row and confirm the page still renders.
+4. Cross-client isolation (LIB-002): the page holds only the business in the attached export. Another business needs its own export and page.
 
 ## Page
 

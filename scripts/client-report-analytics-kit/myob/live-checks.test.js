@@ -2,7 +2,7 @@
 // MYOB's data can answer has something to find (a duplicate bill, GST on wages, GST that isn't the rate's share, a
 // suspense-coded spend with no card or memo, a supplier with no ABN, duplicate supplier cards, an unsent open invoice). The
 // ledger's own journals leave bank lines unreconciled (CHK-022). A check MYOB can't answer (attachments, drafts, lock period,
-// GST registration) must read N/A with the reason, never Clear; register checks always read "Runs overnight".
+// GST registration) must read N/A with the reason, never Clear; register and engine-only checks read "Not run on MYOB" (the overnight engine covers Xero only), never Clear or "Runs overnight".
 // list_suppliers is not in lib.js's tool map, so this test answers every binding itself (same ledger answers as lib.js).
 const path = require('path');
 const { suite } = require('../harness.js');
@@ -50,11 +50,13 @@ const xlsxOf = async (t) => { t.doc.getElementById('mk-xlsx').click(); await t.s
   ok('unreconciled bank lines up to the end of last month are found from the journals (CHK-022)', /CHK-022.*bank transaction\(s\) dated up to 31 Aug 2026 aren't reconciled/.test(body(dq)));
   ok('GST from a supplier with no ABN is found (CHK-008)', /CHK-008.*supplier\(s\) with no ABN on file: Metro Wholesale/.test(body(dq)));
   ok('the suspense account balance is found (CHK-125)', /CHK-125.*Account 2-9990 Suspense has a balance of \$300\.00/.test(body(dq)));
-  ok('register checks read "Runs overnight", never Clear', /CHK-071Bill Raised With A Cancelled Supplier.*?Runs overnight: checks the Australian Business Register/.test(body(dq)));
+  ok('register checks read "Not run on MYOB" (Xero only), never Clear or "Runs overnight"', /CHK-071Bill Raised With A Cancelled Supplier.*?Not run on MYOB: it needs the Australian Business Register lookups, and those run for Xero clients only/.test(body(dq)) && !/Runs overnight/.test(body(dq)));
+  ok('engine-only checks say only the Xero engine can do it', /CHK-017Contact Bank Account Changed.*?Not run on MYOB: only the overnight engine compares each contact's bank details with the last run, and those run for Xero clients only/.test(body(dq)));
+  ok('the scope check counts them as not run (Xero only)', /not run \(Xero only\)/.test(banner(dq)), banner(dq).slice(0, 600));
   const NA = [['CHK-021', /N\/A: MYOB's API doesn't say whether a spend money transaction has an attachment/], ['CHK-086', /N\/A: MYOB's API doesn't say whether a bill has an attachment/], ['CHK-033', /N\/A: MYOB has no draft or awaiting-approval sales invoices/],
     ['CHK-031', /N\/A: MYOB's API doesn't say whether the business is registered for GST/], ['CHK-136', /N\/A: MYOB's API doesn't say whether the business is registered for GST/], ['CHK-134', /N\/A: MYOB's API doesn't return the company file's lock period/],
     ['CHK-024', /N\/A: MYOB didn't return the open invoices' delivery status/]];
-  const row = (t, id) => { const m = new RegExp(id + '[A-Z][^]*?(Clear|\\d+ findings?|N\\/A: [^]*?|Runs overnight: [^]*?)(?=CHK-\\d{3}[A-Z]|CQ-\\d\\d[A-Z]|$)').exec(body(t)); return m ? m[0] : ''; };
+  const row = (t, id) => { const m = new RegExp(id + '[A-Z][^]*?(Clear|\\d+ findings?|N\\/A: [^]*?|Runs overnight: [^]*?|Not run on [^]*?)(?=CHK-\\d{3}[A-Z]|CQ-\\d\\d[A-Z]|$)').exec(body(t)); return m ? m[0] : ''; };
   NA.forEach(([id, re]) => ok(id + ' reads N/A with the reason, never Clear', re.test(row(dq, id)) && !/Clear$/.test(row(dq, id)), row(dq, id).slice(0, 300)));
   const x1 = await xlsxOf(dq);
   ok('Data Quality Excel has the findings and what was checked', /DUP-1/.test(x1) && /What was checked/.test(x1) && /CHK-071/.test(x1), x1.length);
