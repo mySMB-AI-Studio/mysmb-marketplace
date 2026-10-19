@@ -15,7 +15,7 @@
       "sourceId": "7150eb88-885d-4ea0-a008-6c1cf812a954"
     }
   ],
-  "description": "Every 15 minutes, finds appointment slots that have come free in Cliniko over the next 7 days (starting at least 2 hours from now): bookings that were cancelled, plus old times freed when \"Apply patient's chosen reschedule time\" moved a booking. Skips any slot someone has since been booked into. For each free slot it lists patients who could take it (those booked later with the same practitioner, and overdue patients last seen 6–16 weeks ago with nothing booked), has AI rank them and draft a personalised offer for each, and creates one WorkQ item with an approval form for choosing who gets the offer. It never contacts a patient or changes a booking itself.",
+  "description": "Every 15 minutes from 7 AM to 9 PM (Kuala Lumpur time), finds appointment slots that have come free in Cliniko over the next 7 days (starting at least 2 hours from now): bookings that were cancelled, plus old times freed when \"Apply patient's chosen reschedule time\" moved a booking. Skips any slot someone has since been booked into. For each free slot it lists patients who could take it (those booked later with the same practitioner, and overdue patients last seen 6–16 weeks ago with nothing booked), has AI rank them and draft a personalised offer for each, and creates one WorkQ item with an approval form for choosing who gets the offer. It never contacts a patient or changes a booking itself.",
   "flowIr": {
     "description": "Polls Cliniko for freed slots (no booking-cancelled trigger exists), keeps those 2 hours to 7 days out that are still free, builds a candidate list per slot, has AI rank candidates and draft offers, and raises one WorkQ item each with an approval form. Offers are not sent yet.",
     "irVersion": 1,
@@ -394,7 +394,7 @@
     ],
     "triggers": [
       {
-        "cron": "*/15 * * * *",
+        "cron": "*/15 0-12,23 * * *",
         "kind": "schedule",
         "timezone": "UTC"
       },
@@ -412,5 +412,5 @@
     "scheduling",
     "gap-filler"
   ],
-  "contentHash": "abc32ec3d76c0f7019d20fc000730154395e26a4a1e1946980bcfbcde227bff3"
+  "contentHash": "f3e92d8f4166945587557ec40d2c4cc551003c8080d568d05b89d2a86e5ad2c7"
 }

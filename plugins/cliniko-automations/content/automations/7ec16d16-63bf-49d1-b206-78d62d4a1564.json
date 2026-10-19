@@ -16,7 +16,7 @@
       "sourceId": "b0b596aa-778f-4f43-85c2-367a920bf67f"
     }
   ],
-  "description": "Every 15 minutes, checks the practice inbox for reschedule/cancellation requests, matches the patient and the upcoming Cliniko appointment they mean (ignoring cancelled ones, and using the date they name when they have more than one), checks real availability over the next 6 days, cross-checks each candidate against the practitioner's actual configured working hours, and drafts a reply. Ignores later replies in a thread it has already handled, and skips a patient who already has an open review item rather than creating a duplicate. The draft goes to a WorkQ item with a review form attached for approval — it never sends an email or changes a booking itself (see Apply reschedule or cancellation reply).",
+  "description": "Every 15 minutes from 7 AM to 9 PM (Kuala Lumpur time), checks the practice inbox for reschedule/cancellation requests, matches the patient and the upcoming Cliniko appointment they mean (ignoring cancelled ones, and using the date they name when they have more than one), checks real availability over the next 6 days, cross-checks each candidate against the practitioner's actual configured working hours, and drafts a reply. Ignores later replies in a thread it has already handled, and skips a patient who already has an open review item rather than creating a duplicate. The draft goes to a WorkQ item with a review form attached for approval — it never sends an email or changes a booking itself (see Apply reschedule or cancellation reply).",
   "flowIr": {
     "description": "Polls the practice inbox for reschedule/cancellation requests (no email-received trigger exists), matches the patient via Cliniko, checks real availability against the practitioner's own Daily Availability, drafts a reply, and routes it to WorkQ for approval.",
     "irVersion": 1,
@@ -421,7 +421,7 @@
     ],
     "triggers": [
       {
-        "cron": "*/15 * * * *",
+        "cron": "*/15 0-12,23 * * *",
         "kind": "schedule",
         "timezone": "UTC"
       },
@@ -439,5 +439,5 @@
     "scheduling",
     "email"
   ],
-  "contentHash": "97bcdce7275570266ccc91c4a4c3f16eb84852a09a479e8fc5f26493aedddaa3"
+  "contentHash": "43eda90bf345cdba0e43f41802c2a6a3843acab6fe6cfba5950303efc942451f"
 }
