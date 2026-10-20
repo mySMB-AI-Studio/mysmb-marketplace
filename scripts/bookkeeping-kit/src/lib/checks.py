@@ -157,6 +157,17 @@ def ck_ref(key):
     return hashlib.sha256(str(key).encode("utf-8")).hexdigest()[:6].upper()
 
 
+def ck_where(ledger):
+    """The snapshot's ledger by name, for the finding texts ("Merge them in Xero")."""
+    return bk_ledger_info((ledger or {}).get("ledger"))[0]
+
+
+def ck_account_label(a):
+    """An account as a finding names it: its code and name, or its own label (a QuickBooks account with no number has
+    only its name; its code is QuickBooks' internal id)."""
+    return a.get("label") or (a["code"] + " " + a["name"])
+
+
 def ck_bank_hash(secret, digits):
     """A keyed hash of a bank account: bank numbers are short enough to reverse a plain hash."""
     if not digits:
@@ -218,7 +229,7 @@ def ck_contact_rules(ledger, snap, today, secret):
                 ids = sorted(r["id"] for r in rows)
                 out.append(ck_finding("CHK-006", how + ":" + "|".join(ids),
                                       str(len(rows)) + " active contacts have " + label + ": " + ck_names(rows)
-                                      + ". Merge them in Xero, or archive the one not used.", link=rows[0]["link"]))
+                                      + ". Merge them in " + ck_where(ledger) + ", or archive the one not used.", link=rows[0]["link"]))
     for rows in groups["bank"].values():
         if len(rows) > 1:
             ids = sorted(r["id"] for r in rows)
@@ -351,6 +362,7 @@ def ck_purchases(ledger):
 
 def ck_weekly_rules(ledger, client, snap, today, captured):
     out = []
+    where = ck_where(ledger)
     # Open sales invoices older than the window are fetched for the register checks only.
     docs = [d for d in ledger.get("docs") or [] if not d.get("older_open")]
     contacts = {c["id"]: c for c in ledger.get("contacts") or []}
@@ -373,7 +385,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         ranked = sorted(no_abn, key=lambda cid: (-gst_of[cid], contacts[cid]["name"]))
         listed = [contacts[cid]["name"] + " " + ck_money(gst_of[cid]) for cid in ranked[:8]]
         out.append(ck_finding("CHK-008", "no-abn", ck_money(sum(gst_of.values())) + " GST claimed on purchases over "
-                              + ck_money(BK_GST_INVOICE_LIMIT) + " from " + str(len(ranked)) + " supplier(s) with no ABN in Xero: "
+                              + ck_money(BK_GST_INVOICE_LIMIT) + " from " + str(len(ranked)) + " supplier(s) with no ABN in " + where + ": "
                               + ", ".join(listed) + (" and " + str(len(ranked) - 8) + " more" if len(ranked) > 8 else "")
                               + ". Get their ABNs or tax invoices, or the GST can't be claimed.", amount=sum(gst_of.values()),
                               link=contacts[ranked[0]]["link"], sig="|".join(sorted(no_abn))))
@@ -408,8 +420,9 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     loose = [s for s in ledger.get("bank") or [] if not s["reconciled"] and s["date"] <= str(lm_end)]
     if loose:
         out.append(ck_finding("CHK-022", "unreconciled", str(len(loose)) + " bank transaction(s) dated up to "
-                              + ck_date_text(lm_end) + " aren't reconciled. (Statement lines not yet coded aren't counted: "
-                              "Xero doesn't share them.)", amount=sum(abs(s["total"]) for s in loose),
+                              + ck_date_text(lm_end) + " aren't reconciled. ("
+                              + ("Statement lines not yet coded aren't counted: Xero doesn't share them.)" if where == "Xero"
+                                 else "Bank feed lines not yet coded aren't counted.)"), amount=sum(abs(s["total"]) for s in loose),
                               sig="|".join(sorted(s["id"] for s in loose))))
 
     # CHK-024 / CHK-033: sales invoices never sent, and ones still in draft or awaiting approval.
@@ -417,7 +430,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     sales = [d for d in docs if d["kind"] == "invoice" and d["id"] not in captured]
     unsent = [d for d in sales if d["status"] in ("authorised", "paid") and d.get("sent") is False]
     if unsent:
-        out.append(ck_finding("CHK-024", "unsent", str(len(unsent)) + " approved sales invoice(s) were never sent from Xero ("
+        out.append(ck_finding("CHK-024", "unsent", str(len(unsent)) + " approved sales invoice(s) were never sent from " + where + " ("
                               + ck_names(unsent, "number") + "). Send them, or mark them sent if they went another way.",
                               amount=sum(d["total"] for d in unsent), link=unsent[0]["link"],
                               sig="|".join(sorted(d["id"] for d in unsent))))
@@ -472,7 +485,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                 by_account.setdefault(a["code"], []).append(ln["tax"])
     for code, taxes in by_account.items():
         out.append(ck_finding("CHK-058", code, ck_money(sum(taxes)) + " GST claimed on " + str(len(taxes)) + " line(s) coded to "
-                              + code + " " + accounts[code]["name"] + ", which normally has no GST. Check the tax code.",
+                              + ck_account_label(accounts[code]) + ", which normally has no GST. Check the tax code.",
                               amount=sum(taxes), sig="%d|%.2f" % (len(taxes), sum(taxes))))
 
     # CHK-137: GST on lines coded to an account whose own tax rate has none (CHK-058 already covers the accounts that never
@@ -485,8 +498,8 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                     and ln["account"] not in by_account):
                 taxed_on.setdefault(a["code"], []).append(ln["tax"])
     for code, taxes in taxed_on.items():
-        out.append(ck_finding("CHK-137", code, ck_money(sum(taxes)) + " GST on " + str(len(taxes)) + " line(s) coded to " + code + " "
-                              + accounts[code]["name"] + ", whose tax rate (" + accounts[code]["tax_type"] + ") has no GST. Check the "
+        out.append(ck_finding("CHK-137", code, ck_money(sum(taxes)) + " GST on " + str(len(taxes)) + " line(s) coded to "
+                              + ck_account_label(accounts[code]) + ", whose tax rate (" + accounts[code]["tax_type"] + ") has no GST. Check the "
                               "tax code on those lines, or the account's tax rate.", amount=sum(taxes), sig="%d|%.2f" % (len(taxes), sum(taxes))))
 
     # CHK-059: GST that isn't the rate's share of the line, and one supplier's account coded with GST and without.
@@ -511,7 +524,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         without = {t for t in types if (rates.get(t) or 0) == 0}
         if len(types) >= 3 and with_gst and without and cid in contacts:
             out.append(ck_finding("CHK-059", "mix:" + cid + ":" + code, "Purchases from " + contacts[cid]["name"] + " coded to "
-                                  + code + ((" " + accounts[code]["name"]) if code in accounts else "") + " use tax codes with GST ("
+                                  + (ck_account_label(accounts[code]) if code in accounts else code) + " use tax codes with GST ("
                                   + ", ".join(sorted(with_gst)) + ") and without (" + ", ".join(sorted(without)) + "). Check which is right.",
                                   link=contacts[cid]["link"], sig="|".join(sorted(set(types)))))
 
@@ -524,7 +537,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         now = (balances.get("now") or {}).get(a["id"]) or 0
         before = (balances.get("month_ago") or {}).get(a["id"]) or 0
         if now and before:
-            out.append(ck_finding("CHK-125", a["code"] or a["id"], "Account " + (a["code"] + " " if a["code"] else "") + a["name"]
+            out.append(ck_finding("CHK-125", a["code"] or a["id"], "Account " + (ck_account_label(a) if a["code"] else a["name"])
                                   + " has had a balance for at least 30 days (" + ck_money(abs(now)) + " now). Clear it to the "
                                   "right accounts.", amount=abs(now), sig="%.2f" % now))
 
@@ -537,7 +550,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         a = accounts.get(code)
         zero = len([r for r in used if not r])
         if a and (rates.get(a["tax_type"]) or 0) > 0 and len(used) >= 5 and zero >= 0.8 * len(used):
-            out.append(ck_finding("CHK-129", code, "Account " + code + " " + a["name"] + " defaults to GST, but " + str(zero)
+            out.append(ck_finding("CHK-129", code, "Account " + ck_account_label(a) + " defaults to GST, but " + str(zero)
                                   + " of its " + str(len(used)) + " recent lines have none. Check the account's default tax "
                                   "rate, or the coding.", sig="%d/%d" % (zero, len(used))))
 
@@ -571,7 +584,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     org = ledger.get("org") or {}
     lock = max(org.get("lock_date") or "", org.get("eoy_lock_date") or "")
     if not lock:
-        out.append(ck_finding("CHK-134", "lock-date", "No lock date is set in Xero, so past periods can still be changed.",
+        out.append(ck_finding("CHK-134", "lock-date", "No lock date is set in " + where + ", so past periods can still be changed.",
                               link=org.get("settings_link") or "", sig=""))
     elif lock < str(today - datetime.timedelta(days=CK_LOCK_MONTHS * 30)):
         out.append(ck_finding("CHK-134", "lock-date", "The lock date is " + ck_date_text(lock) + ", more than " + str(CK_LOCK_MONTHS)
@@ -604,7 +617,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     if idle:
         idle.sort(key=lambda a: a["code"])
         out.append(ck_finding("CHK-138", "inactive", str(len(idle)) + " profit and loss account(s) haven't been used in 12 months: "
-                              + ", ".join(a["code"] + " " + a["name"] for a in idle[:8]) + (" and more" if len(idle) > 8 else "")
+                              + ", ".join(ck_account_label(a) for a in idle[:8]) + (" and more" if len(idle) > 8 else "")
                               + ". Archive the ones that aren't needed.", sig="|".join(a["code"] for a in idle)))
     return out
 
@@ -710,7 +723,7 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
             if mine and theirs and not mine & theirs:
                 wrong.append(c["name"] + " (" + c["tax_number"] + " is registered to " + str(r.get("entity_name") or "another business") + ")")
     if wrong:
-        out.append(ck_finding("CHK-004", "wrong-abn", str(len(wrong)) + " contact(s) have an ABN in Xero that looks wrong: "
+        out.append(ck_finding("CHK-004", "wrong-abn", str(len(wrong)) + " contact(s) have an ABN in " + ck_where(ledger) + " that looks wrong: "
                               + "; ".join(wrong[:6]) + (" and " + str(len(wrong) - 6) + " more" if len(wrong) > 6 else "")
                               + ". Correct the ABN on the contact.", sig="|".join(sorted(wrong))))
 
@@ -722,7 +735,7 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
     if matches:
         matches.sort(key=lambda m: str(m[0]))
         out.append(ck_finding("CHK-005", "matched-abn", "The register has a likely ABN for " + str(len(matches)) + " supplier(s) with "
-                              "none in Xero: " + "; ".join(str(n) + " → " + m["abn"] + " (" + str(m.get("name") or "") + ")"
+                              "none in " + ck_where(ledger) + ": " + "; ".join(str(n) + " → " + m["abn"] + " (" + str(m.get("name") or "") + ")"
                                                             for n, m in matches[:6])
                               + ". Confirm with the supplier, then add it to the contact.",
                               sig="|".join(sorted(m["abn"] for _n, m in matches))))
@@ -750,6 +763,11 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
                                   + ", which the register lists as cancelled. Check who's really invoicing.",
                                   link=contacts[key]["link"], sig="|".join(dead)))
     return out
+
+
+def ck_report_path(ledger):
+    """Where a pack records its last weekly report: one file per ledger pack, so each keeps its own week."""
+    return BK_CHECKS + ("/_report.json" if bk_ledger_info(ledger)[0] == "Xero" else "/_report-" + str(ledger) + ".json")
 
 
 def ck_register_fresh(cache, today):
@@ -821,7 +839,10 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
         evaluated |= set(CK_ASSETS)
         # A list that couldn't be read leaves its check's findings as they were.
         evaluated -= {CK_SOURCE_CHECKS[s] for s in ledger.get("unread") or [] if s in CK_SOURCE_CHECKS}
-    return found, evaluated
+    # Checks the ledger can't answer (the adapter's "na": check ID -> why, e.g. MYOB's API has no attachments) aren't
+    # run at all: no findings, and not evaluated, so they never read as clear.
+    na = ledger.get("na") or {}
+    return [f for f in found if f["check"] not in na], evaluated - set(na)
 
 
 # ── The findings file and the client's checklist ──
@@ -882,14 +903,14 @@ def ck_open(state):
     return rows
 
 
-def ck_line(f):
+def ck_line(f, where="Xero"):
     """One checklist line in the D7 format: severity, check, $ at risk, what to do, the link and its ref."""
     parts = ["**" + f["severity"] + "**", f["check"] + " " + f["name"]]
     if f.get("amount") is not None:
         parts.append(ck_money(f["amount"]))
     text = f["text"] + (" (a heuristic reading, to be confirmed)" if f.get("heuristic") else "")
     if f.get("link"):
-        text += " [Open in Xero](" + f["link"] + ")"
+        text += " [Open in " + where + "](" + f["link"] + ")"
     parts.append(text)
     return "- [ ] " + " — ".join(parts) + " · ref " + ck_ref(f["key"])
 
@@ -901,8 +922,9 @@ def ck_priority(rows):
 
 def ck_description(client, state, truncated=None):
     rows = ck_open(state)
-    out = ["Ledger checks for **" + str(client.get("name") or "") + "** (Xero: " + str(client.get("xero_org_name") or "") + "). "
-           "Fix each one in Xero; it drops off this list on the next check.", ""]
+    where, _key, _file, name_key = bk_ledger_info(client.get("ledger"))
+    out = ["Ledger checks for **" + str(client.get("name") or "") + "** (" + where + ": " + str(client.get(name_key) or "") + "). "
+           "Fix each one in " + where + "; it drops off this list on the next check.", ""]
     shown = 0
     for category in CK_CATEGORIES:
         mine = [f for f in rows if f["category"] == category]
@@ -913,7 +935,7 @@ def ck_description(client, state, truncated=None):
         for f in mine:
             if shown >= CK_MAX_LINES:
                 break
-            out.append(ck_line(f))
+            out.append(ck_line(f, where))
             shown += 1
         out.append("")
     if len(rows) > shown:
@@ -932,7 +954,12 @@ def ck_description(client, state, truncated=None):
                    "reached the register in the last fortnight.")
     if truncated:
         out.append("")
-        out.append("Some data was cut short (" + ", ".join(truncated) + "): the checks covered the first 2,000 of each.")
+        out.append("Some data was cut short (" + ", ".join(truncated) + "): the checks covered the first 2,000 of each."
+                   if where == "Xero" else "Some data couldn't all be read (" + ", ".join(truncated) + "): the checks covered what was.")
+    if state.get("na"):
+        out.append("")
+        out.append("Not checked, as " + where + ("'" if where.endswith("s") else "'s") + " API doesn't give what they need: " + ", ".join(state["na"])
+                   + ". The extension's README says why for each.")
     return "\n".join(out)
 
 

@@ -81,6 +81,8 @@ for (const [section, kind] of [['automations', 'automation'], ['forms', 'form'],
         if (/api\.connectors\.invoke\(/.test(n.code)) {
           const servers: string[] = [];
           if (n.code.includes('XERO = "xero-accounting"')) servers.push('xero-accounting');
+          if (n.code.includes('MYOB = "myob-accounting"')) servers.push('myob-accounting');
+          if (n.code.includes('QBO = "quickbooks-accounting"')) servers.push('quickbooks-accounting');
           if (n.code.includes('def pay_call(')) servers.push('xero-payroll-au');
           if (n.code.includes('ABR_SERVER = "abr"')) servers.push('abr');
           if (n.code.includes('ASSETS_SERVER = "xero-assets"')) servers.push('xero-assets');
@@ -119,16 +121,24 @@ else {
 const whole = marketplaceManifestSchema.safeParse(mp);
 if (!whole.success) fail('marketplace.json', whole.error.issues.slice(0, 5).map((i) => i.path.join('.') + ' ' + i.message).join('; '));
 
+// The checks packs (bookkeeping-myob, bookkeeping-quickbooks) have no agent.
 const agentFile = pluginJson.content.agents[0];
-const agentPayload = JSON.parse(fs.readFileSync(path.join(PLUGIN, agentFile), 'utf8'));
-// `<plugin>:<skill>` names another extension's skill; it resolves only when that extension is installed too.
-for (const s of agentPayload.skills) if (!s.includes(':') && !fs.existsSync(path.join(PLUGIN, 'skills', `${s}.md`))) fail('agent', `skill ${s} not bundled`);
 const mcp = JSON.parse(fs.readFileSync(path.join(PLUGIN, '.mcp.json'), 'utf8'));
-for (const c of agentPayload.connectors) if (!mcp.mcpServers[c]) fail('agent', `connector ${c} not in .mcp.json`);
+if (agentFile) {
+  const agentPayload = JSON.parse(fs.readFileSync(path.join(PLUGIN, agentFile), 'utf8'));
+  // `<plugin>:<skill>` names another extension's skill; it resolves only when that extension is installed too.
+  for (const s of agentPayload.skills) if (!s.includes(':') && !fs.existsSync(path.join(PLUGIN, 'skills', `${s}.md`))) fail('agent', `skill ${s} not bundled`);
+  for (const c of agentPayload.connectors) if (!mcp.mcpServers[c]) fail('agent', `connector ${c} not in .mcp.json`);
+}
+// The ledger connector the automations declare is in the bundle's .mcp.json.
+const declared = new Set((pluginJson.content.automations as string[]).flatMap((rel) => JSON.parse(fs.readFileSync(path.join(PLUGIN, rel), 'utf8')).declaredScopes as string[]));
+for (const server of ['xero-accounting', 'myob-accounting', 'quickbooks-accounting']) {
+  if (declared.has(`connectors:${server}`) && !mcp.mcpServers[server]) fail('.mcp.json', `automations use connectors:${server} but .mcp.json has no ${server} server`);
+}
 
 const rev = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '.myhub', 'REV'), 'utf8').trim();
 if (problems.length) {
   console.error(`check: ${problems.length} problem(s) (myHubV2 schemas @ ${rev})\n  ` + problems.join('\n  '));
   process.exit(1);
 }
-console.log(`check: OK — ${counts.automation} automations, ${counts.form} forms, ${counts.agent} agent (myHubV2 schemas @ ${rev})`);
+console.log(`check: OK — ${SLUG}: ${counts.automation} automations, ${counts.form} forms, ${counts.agent} agent (myHubV2 schemas @ ${rev})`);

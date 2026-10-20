@@ -1,0 +1,71 @@
+{
+  "contentHash": "b4186a6bb76a29cb2fffd654d8be8441679351ef6114113a674ee227ade8061f",
+  "kind": "form",
+  "originKey": "ffe23808-6aa7-44f3-9394-ceb606ddc687",
+  "schema": {
+    "description": "Ledger checks settings for one business kept in QuickBooks. Submit it once per business, and again whenever something changes. A QuickBooks connection reaches one company, so the automations’ owner connects QuickBooks to this business’s company.",
+    "sections": [
+      {
+        "id": "business",
+        "questions": [
+          {
+            "id": "q_client_name",
+            "label": "Business name",
+            "maxLength": 120,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_file",
+            "label": "QuickBooks company name (exactly as it appears in QuickBooks)",
+            "maxLength": 200,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_gst",
+            "label": "Is this business registered for GST?",
+            "required": true,
+            "type": "yes_no"
+          }
+        ],
+        "title": "The business"
+      },
+      {
+        "id": "checks",
+        "questions": [
+          {
+            "id": "q_checks",
+            "label": "Run the ledger checks on this business’s QuickBooks file?",
+            "options": [
+              "Yes",
+              "No"
+            ],
+            "type": "single_choice"
+          },
+          {
+            "entity": "user",
+            "id": "q_checks_owner",
+            "label": "Who follows up its findings? (leave blank to use the practice default)",
+            "type": "lookup"
+          },
+          {
+            "id": "q_tpar",
+            "label": "Does this business lodge a taxable payments annual report (TPAR)? (building and construction, cleaning, courier, road freight, IT, security and investigation services)",
+            "type": "yes_no"
+          },
+          {
+            "id": "q_suspense",
+            "label": "Suspense or clearing account codes to watch, separated by commas (optional; accounts named suspense, clearing or uncoded are watched anyway)",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "Ledger checks"
+      }
+    ],
+    "title": "Client checks settings (QuickBooks)",
+    "version": 1
+  },
+  "title": "Client checks settings (QuickBooks)"
+}

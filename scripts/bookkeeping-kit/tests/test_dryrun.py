@@ -6,6 +6,7 @@ import unittest
 
 from dryrun import dry_run
 from test_flows import PLUGIN
+from test_ledgers import PACKS
 
 
 class PracticeRun(unittest.TestCase):
@@ -17,6 +18,14 @@ class PracticeRun(unittest.TestCase):
                 payload = json.load(fh)
             with self.subTest(payload["name"]):
                 dry_run(payload)
+
+    def test_the_checks_packs_pass_the_publish_practice_run(self):
+        for slug, (autos, _forms) in PACKS.items():
+            for payload in autos.values():
+                with self.subTest(slug + ": " + payload["name"]):
+                    _, actions = dry_run(payload)
+                    if any(t.get("eventType") == "form.response_submitted" for t in payload["flowIr"]["triggers"]):
+                        self.assertEqual(actions, [])
 
     def test_empty_form_answers_change_nothing(self):
         for f in glob.glob(os.path.join(PLUGIN, "content", "automations", "*.json")):

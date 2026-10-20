@@ -7,12 +7,16 @@ WEEKLY_START_SECONDS = 8 * 60
 # A client whose Xero file fails this many times in a day (a disconnected organisation, say) isn't retried until tomorrow.
 FAIL_TRIES = 3
 only = params.get("only") or []
+# The ledger this pack checks (Xero when the node has no ledger param): its name and the client setting naming its file.
+where, id_key, file_word, name_key = bk_ledger_info(params.get("ledger"))
+start = "Bookkeeping: Start setup" if where == "Xero" else "Bookkeeping: Start checks setup (" + where + ")"
 settings = bk_read_json(BK_SETTINGS)
 summary = {"checked": [], "errors": [], "left": 0, "report_due": False}
 problem = ""
 
 if not settings:
-    problem = "Bookkeeping isn't set up yet. Run **Bookkeeping: Start setup** and submit the Bookkeeping setup form."
+    problem = ("Bookkeeping isn't set up yet. Run **" + start + "** and submit the Bookkeeping "
+               + ("" if where == "Xero" else "checks ") + "setup form.")
 else:
     today = bk_today(settings)
     clients = []
@@ -24,14 +28,14 @@ else:
 
     for f in api.files.list(path=BK_CLIENTS):
         c = bk_read_json(f["path"]) if str(f.get("name") or "").endswith(".json") else None
-        if c and c.get("xero_tenant_id") and c.get("checks_enabled", True) is not False:
+        if c and c.get(id_key) and c.get("checks_enabled", True) is not False:
             known.append(str(c.get("name") or c.get("slug") or ""))
-            if not only or any(_same(o, c.get(k)) for o in only for k in ("slug", "name", "xero_org_name")):
+            if not only or any(_same(o, c.get(k)) for o in only for k in ("slug", "name", name_key)):
                 clients.append(c)
     if not known:
-        problem = ("No client business has ledger checks on (none in " + BK_CLIENTS + " with a Xero organisation and ledger "
-                   "checks on). To add one, run **Bookkeeping: Start setup** with the business name and submit its Client bookkeeping "
-                   "settings form.")
+        problem = ("No client business has ledger checks on (none in " + BK_CLIENTS + " with a " + file_word + " and ledger "
+                   "checks on). To add one, run **" + start + "** with the business name and submit its Client "
+                   + ("bookkeeping" if where == "Xero" else "checks") + " settings form.")
     elif only and not clients:
         problem = ("No client with ledger checks turned on matches \"" + ", ".join(only) + "\". Use the business name from its "
                    "Client bookkeeping settings" + (": " + ", ".join(sorted(known)) if known else "") + ".")
@@ -56,7 +60,7 @@ else:
         try:
             since = (min(ck_fy_start(today), today - datetime.timedelta(days=90)) if weekly
                      else today - datetime.timedelta(days=CK_DAILY_DAYS))
-            ledger = xero_ledger(client["xero_tenant_id"], today, since, weekly)
+            ledger = bk_ledger(client, today, since, weekly)
             snap = state.setdefault("snapshot", {})
             if snap.get("key_id") != key_id:
                 # A new key: start the bank fingerprints again rather than report every account as changed.
@@ -74,6 +78,8 @@ else:
             if weekly:
                 state["last_weekly"] = str(today)
             state["truncated"] = ledger.get("truncated") or []
+            if ledger.get("na"):
+                state["na"] = sorted(ledger["na"])
             state.pop("failed", None)
             what = ck_sync_item(client, settings, state, item, new, resolved, params["findings_form"])
             bk_write_json(path, state)
@@ -92,5 +98,5 @@ else:
             except Exception:
                 pass
     # The weekly Data Quality report goes out once every client is checked and a week has passed since the last one.
-    last = ck_day((bk_read_json(BK_CHECKS + "/_report.json") or {}).get("on"))
+    last = ck_day((bk_read_json(ck_report_path(params.get("ledger"))) or {}).get("on"))
     summary["report_due"] = bool(not only and not summary["left"] and clients and (not last or (today - last).days >= 7))

@@ -652,6 +652,11 @@ def xero_ledger(tenant_id, today, since, weekly):
     return xero_org_links(ledger, org.get("ShortCode"))
 
 
+def bk_ledger(client, today, since, weekly):
+    """The ledger checks' snapshot of a client's file. Each ledger adapter (xero, myob, qbo) has its own."""
+    return xero_ledger(client["xero_tenant_id"], today, since, weekly)
+
+
 def xero_org_link(link, short_code):
     """A Xero link that switches to the client's organisation first. A plain go.xero.com link opens in whichever
     organisation the browser last used, so for any other client it shows the wrong file or an error."""
