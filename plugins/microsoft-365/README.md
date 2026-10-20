@@ -10,7 +10,7 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-mail-send | Compose, reply, forward, delete emails | `Mail.Send`, `Mail.ReadWrite` | **Admin consent required** |
 | m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
 | m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
-| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite`, `Files.ReadWrite` | Admin consent required |
 | m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
 | hotmail-mail | Read, search, and inspect emails in a **personal** Hotmail/Outlook.com/Live.com account | `Mail.Read` | **User self-consent OK** (no tenant/admin — personal accounts self-consent individually) |
@@ -39,6 +39,13 @@ requires tenant admin consent, while every `m365-teams` scope is
 user-self-consentable. Bundling them into one authorization request would
 force every existing `m365-teams` connection through admin approval just to
 keep working.
+
+`m365-teams` also requests `Channel.ReadBasic.All` — a fix, not a new
+feature. `Team.ReadBasic.All` only enumerates the teams a user belongs to
+(`/me/joinedTeams`); it does **not** cover `GET /teams/{id}/channels`
+(confirmed against Microsoft's own docs), so `list_channels` 403'd for
+every team, for every user, until this was added. Existing `m365-teams`
+connections need to reconnect once to pick up the wider scope.
 
 ## Configuration
 
