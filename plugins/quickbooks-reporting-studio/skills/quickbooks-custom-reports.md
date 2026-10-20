@@ -71,3 +71,4 @@ To change a saved report, rebuild it with the new settings and save it again wit
 1. Ask for the request this guide covers (see *Use when*). Confirm the agent builds or saves the right family report and says what is N/A.
 2. Confirm the saved report validates and its Download Excel file opens with the Validation and Parameters sheets.
 3. Compare with QuickBooks: Captured empty (no custom reports in the sample file).
+4. Cross-client isolation (LIB-002): the saved report and every export carry only this connection's company and its figures. For another company, the user connects that company first.

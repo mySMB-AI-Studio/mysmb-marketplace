@@ -42,7 +42,7 @@ Preset `this_fy_td`: `start_date` = FY start, `end_date` = `"today"`; compare da
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): August 2026: Net Earnings −A$175,286.75 with working-capital adjustments (Accounts Receivable, Prepaid expenses, Security Deposit, Accounts Payable, Doug's Amex Card, GST Liabilities Payable).
 3. Compare the layout with the Q19 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
@@ -235,7 +235,7 @@ QB.app({
     }
     var ni = QB.val(QB.find(lines, null, QB.NI_RE, 'row')), adj = T('OperatingAdjustments', /^total adjustments/i) || 0;
     lines.forEach(function (l) { if (l.kind === 'row' && /^net income$/i.test(l.label)) l.label = 'Net Earnings'; });
-    var extra = cmpOn ? QB.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]) : [];
+    var extra = cmpOn ? QB.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year-to-date' }[c.compareMode]) : [];
     var titles = [''].concat(cols.slice(1).map(function (x) { return x.title || 'Total'; }));
     body.innerHTML = QB.kpis([{ label: 'Operating activities', value: op }, { label: 'Investing activities', value: inv }, { label: 'Financing activities', value: fin }, { label: 'Net cash increase', value: inc }, { label: 'Cash at end of period', value: end }], c) +
       '<div class="qb-scroll">' + QB.statement(lines, titles, c, extra) + '</div><div class="qb-card detail-block" style="margin-top:16px"><h3>Opening cash to closing cash</h3><div id="ch1"></div></div>';

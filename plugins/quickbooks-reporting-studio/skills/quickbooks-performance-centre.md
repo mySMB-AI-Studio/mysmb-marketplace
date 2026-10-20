@@ -45,7 +45,7 @@ Preset `this_fy_td`; compare dates one year earlier.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): This year to date: Total expenses A$1,628,002.07 · Total revenue A$110,333.35 · Gross profit −A$18,498.38 · Net profit −A$1,637,546.28 · Net cash flow A$20,292.19 · A/R A$39,105.00 · A/P A$265,179.79 · Current ratio 1.00 · Quick ratio 1.00.
 3. Compare the layout with the Q06 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.
@@ -280,7 +280,7 @@ QB.app({
     body.innerHTML = '<div class="qb-grid2">' + card('c1', 'Expenses over time', money(tot(P, 'Expenses'))) + card('c2', 'Revenue over time', money(tot(P, 'Income'))) + card('c3', 'Gross profit over time', money(tot(P, 'GrossProfit'))) + card('c4', 'Net profit over time', money(tot(P, 'NetIncome'))) +
       card('c5', 'Cash flow', money(cfNet)) + card('c6', 'A/R by ageing periods', money(ar && ar.tot.length ? ar.tot[ar.tot.length - 1] : null)) + card('c7', 'A/P by ageing periods', money(ap && ap.tot.length ? ap.tot[ap.tot.length - 1] : null)) +
       card('c8', 'Current ratio by time', lastCR == null ? 'N/A — not in source' : lastCR.toFixed(2)) + card('c9', 'Quick ratio by time', lastQR == null ? 'N/A — not in source' : lastQR.toFixed(2)) + '</div>';
-    var L = P.labels, cmpSer = function (g) { return cmpOn && PC ? [{ name: 'Comparison', values: ser(PC, g).slice(0, L.length) }] : []; };
+    var L = P.labels, cmpSer = function (g) { return cmpOn && PC ? [{ name: c.compareLabel || 'Comparison', values: ser(PC, g).slice(0, L.length) }] : []; };
     QB.line(document.getElementById('c1'), { title: 'Expenses over time', labels: L, series: [{ name: 'Expenses', values: expS }].concat(cmpSer('Expenses')) }, c);
     QB.line(document.getElementById('c2'), { title: 'Revenue over time', labels: L, series: [{ name: 'Revenue', values: revS }].concat(cmpSer('Income')) }, c);
     QB.bars(document.getElementById('c3'), { title: 'Gross profit over time', labels: L, series: [{ name: 'Gross profit', values: gpS }].concat(cmpSer('GrossProfit')) }, c);
