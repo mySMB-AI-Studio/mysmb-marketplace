@@ -170,3 +170,11 @@ def bk_checks_owner(settings, client):
 
 def bk_exceptions_owner(settings, client):
     return (settings or {}).get("exceptions_owner_id") or bk_reviewer(settings, client)
+
+
+def bk_ledger_info(ledger):
+    """A ledger pack's (name, the client setting that holds the client's file in it, what that file is called, the
+    client setting with its name). Xero when unset: clients and nodes from before the MYOB and QuickBooks packs are Xero's."""
+    return {"myob": ("MYOB", "myob_company_file_id", "MYOB company file", "myob_file_name"),
+            "quickbooks": ("QuickBooks", "qbo_company_name", "QuickBooks company", "qbo_company_name")}.get(
+        str(ledger or ""), ("Xero", "xero_tenant_id", "Xero organisation", "xero_org_name"))

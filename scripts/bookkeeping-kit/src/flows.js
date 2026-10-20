@@ -560,3 +560,102 @@ export const AUTOMATIONS = [
       rootOrder: ['find_emails', 'triage_emails', 'file_bills'],
     })),
 ];
+
+// ── Bookkeeping checks for MYOB and QuickBooks (decision D18): the ledger checks with their own light setup ──
+// `node gen-ext.js <root> myob` (or quickbooks) builds a checks-only pack. Its components have their own originKeys, so
+// a workspace with Bookkeeping for Xero as well gets two separate sets; Knowledge (settings, clients, findings) is shared.
+export const LEDGERS = {
+  myob: { name: 'MYOB', server: 'myob-accounting', lib: 'myob', file: 'company file', register: true },
+  quickbooks: { name: 'QuickBooks', server: 'quickbooks-accounting', lib: 'qbo', file: 'company', register: false },
+};
+export const CHECKS_FORMS = ['checks-setup', 'checks-client', 'check-findings'];
+
+const withLedger = (n, ledger) => ({ ...n, params: [...n.params, fixed('ledger', 'str', ledger, 'Ledger')] });
+
+export function checksAutomations(ledger) {
+  const L = LEDGERS[ledger];
+  if (!L) throw new Error(`unknown ledger ${ledger}`);
+  const base = (key) => AUTOMATIONS.find((a) => a.key === key);
+  const checks = base('ledger-checks');
+  const what = ledger === 'myob'
+    ? 'fraud and duplicate checks daily (duplicate bills and invoices, spend money that matches a bill, new suppliers paid ' +
+      'fast), the rest weekly (GST, unreconciled and unsent items, suspense balances, journals, GST registration). Checks ' +
+      'MYOB’s API can’t answer (attachments, supplier bank details, the lock period) are listed on the item as not checked. '
+    : 'fraud and duplicate checks daily (duplicate bills and invoices, expenses that match a bill, new suppliers paid fast), ' +
+      'the rest weekly (GST, attachments over $82.50, unsent invoices, suspense balances, the closing date, journals, GST ' +
+      'registration). A QuickBooks connection reaches one company, so a client is checked while QuickBooks is connected to ' +
+      'its company. Checks QuickBooks’ API can’t answer (ABNs, supplier bank details, reconciliation) are listed on the ' +
+      'item as not checked. ';
+  const pack = [
+    {
+      key: 'checks-start',
+      name: `Bookkeeping: Start checks setup (${L.name})`,
+      description:
+        'Creates the WorkQ items that set up the ledger checks: the Bookkeeping checks setup form (first run only, and not ' +
+        `when Bookkeeping for Xero is set up already) and one Client checks settings (${L.name}) form per business you list. ` +
+        'Run it again any time to add businesses.',
+      triggers: [{ kind: 'manual' }],
+      params: [{ name: 'client_names', type: 'str', control: 'text', label: 'Client businesses to set up (one per line)',
+        description: 'Leave blank on the first run to create only the Bookkeeping checks setup item.', required: false, value: '' }],
+      scopes: ['workq:write', 'files:read'],
+      forms: ['checks-setup', 'checks-client'],
+      nodes: [withLedger(node('start_checks', 'Create setup items', 'Creates the Bookkeeping checks setup item if bookkeeping is not set up yet, and one client checks settings item per business listed, each with its form attached.', ['util'],
+        [formPicker('setup_form', 'checks-setup', 'Bookkeeping checks setup form'), formPicker('client_form', 'checks-client', `Client checks settings (${L.name}) form`),
+          hidden('client_names', 'str', '{{ params.client_names }}', 'Client names'), hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who ran it')],
+        [out('created_count', 'int', 'How many setup items were created'), out('summary', 'str', 'What happened')]), ledger)],
+      rootOrder: ['start_checks'],
+    },
+    {
+      key: 'checks-apply',
+      name: `Bookkeeping: Apply checks setup (${L.name})`,
+      description:
+        `When a Bookkeeping checks setup or Client checks settings (${L.name}) form is submitted, saves the answers to Knowledge ` +
+        '(Bookkeeping/settings.json, keeping anything Bookkeeping for Xero saved, and Bookkeeping/Clients/<client>.json) and ' +
+        `finds the client’s ${L.name} ${L.file}.`,
+      triggers: [
+        { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:checks-setup' } },
+        { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:checks-client' } },
+      ],
+      params: [],
+      scopes: ['workq:write', 'files:read', 'files:write', `connectors:${L.server}`],
+      forms: ['checks-setup', 'checks-client'],
+      nodes: [withLedger(node('apply_checks', 'Save the settings', `Saves the setup or client answers to Knowledge, matches the client to its ${L.name} ${L.file}, and comments on the setup item with the next steps.`, ['util', L.lib],
+        [hidden('responses', 'dict', '{{ trigger.event.payload.responses }}', 'Form answers'),
+          hidden('todo_id', 'str', '{{ trigger.event.subject.todo_id }}', 'Setup item'),
+          hidden('form_id', 'str', '{{ trigger.event.subject.form_id }}', 'Submitted form', true),
+          hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who submitted it'),
+          formPicker('setup_form', 'checks-setup', 'Bookkeeping checks setup form'), formPicker('client_form', 'checks-client', `Client checks settings (${L.name}) form`)],
+        [out('outcome', 'str', 'settings_saved, client_saved, file_not_found, other_ledger or ignored')]), ledger)],
+      rootOrder: ['apply_checks'],
+    },
+    {
+      ...checks,
+      codeKey: 'ledger-checks',
+      name: `Bookkeeping: Ledger checks (${L.name})`,
+      description:
+        `Overnight, checks each client’s ${L.name} ${L.file} against the mySMB checks catalogue, wherever the entries came ` +
+        `from: ${what}Keeps one Checks item per client in WorkQ, rewritten each run with what is open; tick a line or use the ` +
+        'Check findings form to dismiss or snooze one. Publishes a weekly data quality report. Reads only: nothing is changed ' +
+        `in ${L.name}. Run by hand with a client’s name to check it now.`,
+      scopes: [...checks.scopes.filter((s) => !s.startsWith('connectors:')), `connectors:${L.server}`],
+      nodes: checks.nodes.map((n) => {
+        if (n.id === 'run_checks') return withLedger({ ...n, summary: n.summary.replace('its Xero file', `its ${L.name} ${L.file}`), libs: ['util', L.lib, 'checks'] }, ledger);
+        if (n.id === 'publish_report') return withLedger(n, ledger);
+        return n;
+      }),
+    },
+  ];
+  if (L.register) {
+    const abr = base('abr-lookups');
+    pack.push({
+      ...abr,
+      codeKey: 'abr-lookups',
+      name: `Bookkeeping: Register lookups (ABR, ${L.name})`,
+      description: abr.description.replace('each client’s suppliers and customers', `each ${L.name} client’s suppliers and customers`),
+      // A quarter of an hour after Bookkeeping for Xero's, so a workspace with both doesn't send them to the register together.
+      triggers: [{ kind: 'schedule', cron: '45 23 * * *', timezone: 'Australia/Sydney' }, { kind: 'manual' }],
+      nodes: abr.nodes.map((n) => withLedger({ ...n, summary: n.summary.replace('(from Ledger checks and bill PDFs)', '(from Ledger checks)') }, ledger)),
+    });
+  }
+  return pack;
+}

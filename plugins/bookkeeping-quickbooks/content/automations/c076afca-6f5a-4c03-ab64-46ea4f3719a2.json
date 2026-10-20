@@ -1,0 +1,130 @@
+{
+  "attachments": [],
+  "contentHash": "0778168668182b59bbe974edadb850185e2ad161876cc41845171665cbe795ca",
+  "declaredScopes": [
+    "connectors:quickbooks-accounting",
+    "files:read",
+    "files:write",
+    "workq:write"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "f08865b0-dd3d-412a-b47b-9f8c0ba558ca",
+      "sourceId": "9d01730c-1334-47b1-9df9-619babf148f2"
+    },
+    {
+      "entityKind": "form",
+      "originKey": "ffe23808-6aa7-44f3-9394-ceb606ddc687",
+      "sourceId": "52415f0a-896f-4f83-aa81-e78c1f88aef4"
+    }
+  ],
+  "description": "When a Bookkeeping checks setup or Client checks settings (QuickBooks) form is submitted, saves the answers to Knowledge (Bookkeeping/settings.json, keeping anything Bookkeeping for Xero saved, and Bookkeeping/Clients/<client>.json) and finds the client’s QuickBooks company.",
+  "flowIr": {
+    "description": "When a Bookkeeping checks setup or Client checks settings (QuickBooks) form is submitted, saves the answers to Knowledge (Bookkeeping/settings.json, keeping anything Bookkeeping for Xero saved, and Bookkeeping/Clients/<client>.json) and finds the client’s QuickBooks company.",
+    "irVersion": 1,
+    "name": "Bookkeeping: Apply checks setup (QuickBooks)",
+    "nodes": [
+      {
+        "code": "# ── bookkeeping kit: shared helpers (inlined into each node by gen-ext.js) ──\nimport json\nimport re\nimport datetime\nimport hashlib\nfrom zoneinfo import ZoneInfo\n\n# Knowledge layout. Folders may nest at most 2 levels, so inbox folders are top-level.\nBK_SETTINGS = \"Bookkeeping/settings.json\"\nBK_CLIENTS = \"Bookkeeping/Clients\"\nBK_RULES = \"Bookkeeping/Rules\"\nBK_BILLS = \"Bookkeeping/Bills\"\nBK_INBOX = \"Bookkeeping Inbox\"\nBK_PROCESSED = \"Bookkeeping Processed\"\nBK_FAILED = \"Bookkeeping Failed\"\nBK_MAIL = \"Bookkeeping/Mail\"\nBK_REQUESTS = \"Bookkeeping Requests\"\nBK_CHECKS = \"Bookkeeping/Checks\"\n# One threshold for \"needs a tax invoice / an ABN / an attachment\": $75 excluding GST = $82.50 including GST.\nBK_GST_INVOICE_LIMIT = 82.5\n\n\ndef bk_slug(name):\n    s = re.sub(r\"[^a-z0-9]+\", \"-\", str(name or \"\").lower()).strip(\"-\")\n    return s[:40].strip(\"-\") or \"client\"\n\n\ndef bk_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef bk_write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef bk_tz(settings):\n    # The sandbox may lack the tz database; fall back to AEST (UTC+10) rather than failing the run.\n    try:\n        return ZoneInfo((settings or {}).get(\"timezone\") or \"Australia/Sydney\")\n    except Exception:\n        return datetime.timezone(datetime.timedelta(hours=10))\n\n\ndef bk_now_iso(settings):\n    return datetime.datetime.now(bk_tz(settings)).replace(microsecond=0).isoformat()\n\n\ndef bk_norm(name):\n    s = re.sub(r\"[^a-z0-9 ]+\", \" \", str(name or \"\").lower())\n    s = re.sub(r\"\\b(pty|ltd|limited|p/l|the|inc|co)\\b\", \" \", s)\n    return re.sub(r\"\\s+\", \" \", s).strip()\n\n\ndef bk_answer(responses, qid):\n    \"\"\"A form answer: str, bool, list, or a lookup {id, label}.\"\"\"\n    return (responses or {}).get(qid)\n\n\ndef bk_lookup_id(value):\n    if isinstance(value, dict):\n        return value.get(\"id\") or None\n    return None\n\n\ndef bk_lookup_label(value):\n    if isinstance(value, dict):\n        return value.get(\"label\") or \"\"\n    return \"\"\n\n\ndef bk_ledger_info(ledger):\n    \"\"\"A ledger pack's (name, the client setting that holds the client's file in it, what that file is called, the\n    client setting with its name). Xero when unset: clients and nodes from before the MYOB and QuickBooks packs are Xero's.\"\"\"\n    return {\"myob\": (\"MYOB\", \"myob_company_file_id\", \"MYOB company file\", \"myob_file_name\"),\n            \"quickbooks\": (\"QuickBooks\", \"qbo_company_name\", \"QuickBooks company\", \"qbo_company_name\")}.get(\n        str(ledger or \"\"), (\"Xero\", \"xero_tenant_id\", \"Xero organisation\", \"xero_org_name\"))\n\n\n# ── bookkeeping kit: QuickBooks Online ledger adapter (inlined into the Bookkeeping checks for QuickBooks nodes by gen-ext.js) ──\n# Reads only. A QuickBooks connection reaches one company (the realm is fixed when it's connected), so every read is\n# of the connected company and the client's checks run only while that is still the client's company. Ported from\n# the Client Report Analytics QuickBooks live checks (scripts/client-report-analytics-kit/quickbooks/live-checks.inc.js):\n# each line's GST is its share of the document's tax line for its tax code's rate; duplicate contacts are checked\n# among suppliers (QuickBooks keeps customers and suppliers apart, so one business in both is normal).\n\nQBO = \"quickbooks-accounting\"\nQBO_PAGE = 1000\nQBO_MAX_PAGES = 10\nQBO_APP = \"https://app.qbo.intuit.com/app/\"\nQBO_LINE_DETAILS = (\"SalesItemLineDetail\", \"AccountBasedExpenseLineDetail\", \"ItemBasedExpenseLineDetail\")\nQBO_NO_ABN = \"QuickBooks contacts carry no ABN field through its API\"\n# Checks the quickbooks-accounting connector can't answer: not run, and listed on the Checks item (never shown as clear).\nQBO_NA = {\n    \"CHK-007\": QBO_NO_ABN, \"CHK-008\": QBO_NO_ABN,\n    \"CHK-002\": QBO_NO_ABN, \"CHK-003\": QBO_NO_ABN, \"CHK-004\": QBO_NO_ABN, \"CHK-005\": QBO_NO_ABN, \"CHK-009\": QBO_NO_ABN,\n    \"CHK-030\": QBO_NO_ABN, \"CHK-039\": QBO_NO_ABN, \"CHK-068\": QBO_NO_ABN, \"CHK-069\": QBO_NO_ABN, \"CHK-071\": QBO_NO_ABN,\n    \"CHK-072\": QBO_NO_ABN, \"CHK-076\": QBO_NO_ABN, \"CHK-077\": QBO_NO_ABN, \"CHK-085\": QBO_NO_ABN, \"CHK-088\": QBO_NO_ABN,\n    \"CHK-016\": \"QuickBooks' API has no batch payments\",\n    \"CHK-017\": \"QuickBooks' API doesn't return supplier bank details\",\n    \"CHK-018\": \"QuickBooks' API doesn't return supplier bank details\",\n    \"CHK-057\": \"QuickBooks' API doesn't return supplier bank details\",\n    \"CHK-022\": \"QuickBooks doesn't say through its API whether a transaction is reconciled\",\n    \"CHK-033\": \"QuickBooks has no draft or awaiting-approval invoices\",\n    \"CHK-078\": \"QuickBooks has no draft or awaiting-approval bills\",\n    \"CHK-040\": \"QuickBooks has no draft estimates\",\n    \"CHK-093\": \"QuickBooks has no draft or awaiting-approval purchase orders\",\n    \"CHK-139\": \"the fixed asset checks read Xero Assets\",\n    \"CHK-140\": \"the fixed asset checks read Xero Assets\",\n}\n\n\ndef qbo_call(tool, **args):\n    # Bound first on purpose: the platform's Publish lint only counts plain assignments as a function's own names.\n    exc = None\n    try:\n        return api.connectors.invoke(server=QBO, tool=tool, args=args)\n    except Exception as exc:\n        raise RuntimeError(\"QuickBooks: \" + str(exc)[:600]) from None\n\n\ndef qbo_company():\n    \"\"\"The connected company: {name, id}.\"\"\"\n    result = qbo_call(\"get_company_info\")\n    info = result.get(\"CompanyInfo\") if isinstance(result, dict) and isinstance(result.get(\"CompanyInfo\"), dict) else result\n    info = info if isinstance(info, dict) else {}\n    return {\"name\": str(info.get(\"CompanyName\") or info.get(\"LegalName\") or \"\"), \"id\": str(info.get(\"Id\") or \"\")}\n\n\ndef bk_find_file(name):\n    \"\"\"The client's company by the name on its settings form: (the match or None, the names available). A connection\n    reaches one company, so the only candidate is the connected one.\"\"\"\n    company = qbo_company()\n    found = bool(company[\"name\"]) and (bk_norm(company[\"name\"]) == bk_norm(name)\n                                       or bool(bk_norm(name)) and bk_norm(name) in bk_norm(company[\"name\"]))\n    return ({\"id\": company[\"name\"], \"name\": company[\"name\"]} if found else None), [n for n in [company[\"name\"]] if n]\n\n\n# ── Save the settings ──\n\n\nresponses = params.get(\"responses\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\nform_id = params.get(\"form_id\") or \"\"\nactor = params.get(\"actor\") or \"\"\nledger = str(params.get(\"ledger\") or \"\")\nwhere, id_key, file_word, name_key = bk_ledger_info(ledger)\noutcome = \"ignored\"\n\n\ndef _note(body, done=True):\n    if not todo_id:\n        return\n    api.workq.comment(todo_id=todo_id, body=body)\n    if done:\n        api.workq.complete(todo_id=todo_id)\n\n\nif not responses:\n    # No answers: the Publish practice run sends a sample event with an empty payload.\n    outcome = \"ignored\"\nelif form_id == params[\"setup_form\"]:\n    # Merged into what Bookkeeping for Xero may have saved already: only the checks' own answers change.\n    settings = bk_read_json(BK_SETTINGS) or {\"version\": 1, \"mode\": \"practice\"}\n    owner = bk_answer(responses, \"q_checks_owner\")\n    settings[\"timezone\"] = str(bk_answer(responses, \"q_timezone\") or \"\").strip() or settings.get(\"timezone\") or \"Australia/Sydney\"\n    settings[\"checks_owner_id\"] = bk_lookup_id(owner)\n    settings[\"checks_owner_name\"] = bk_lookup_label(owner)\n    settings[\"updated_by\"] = actor\n    settings[\"updated_at\"] = bk_now_iso(settings)\n    bk_write_json(BK_SETTINGS, settings)\n    outcome = \"settings_saved\"\n    _note(\n        \"Bookkeeping checks settings saved to `\" + BK_SETTINGS + \"` (findings go to \" + (settings[\"checks_owner_name\"] or \"nobody yet\") + \").\\n\\n\"\n        \"**Next steps**\\n\\n\"\n        \"1. Publish *Ledger checks (\" + where + \")*\" + (\" and, if the ABR Lookup extension is installed, *Register lookups (ABR, MYOB)*\"\n                                                       if ledger == \"myob\" else \"\") + \".\\n\"\n        \"2. Run **Bookkeeping: Start checks setup (\" + where + \")** again with your client business names (one per line), and fill in \"\n        \"each client's settings form.\"\n    )\nelif form_id == params[\"client_form\"]:\n    settings = bk_read_json(BK_SETTINGS) or {}\n    name = str(bk_answer(responses, \"q_client_name\") or \"\").strip()\n    asked = str(bk_answer(responses, \"q_file\") or \"\").strip()\n    slug = bk_slug(name)\n    path = BK_CLIENTS + \"/\" + slug + \".json\"\n    existing = bk_read_json(path) or {}\n    other = str(existing.get(\"ledger\") or (\"xero\" if existing.get(\"xero_tenant_id\") else \"\"))\n    if other and other != ledger:\n        outcome = \"other_ledger\"\n        _note(\"**\" + (name or slug) + \"** is already set up as a \" + bk_ledger_info(other)[0] + \" client (`\" + path + \"`). A business is \"\n              \"checked in one ledger: use another name for it here, or, if it has moved to \" + where + \", delete that file and \"\n              \"submit this form again.\", done=False)\n    else:\n        match, available = bk_find_file(asked)\n        if not match and ledger == \"quickbooks\":\n            outcome = \"file_not_found\"\n            _note(\"The QuickBooks connection of this automation's owner reaches **\" + (\", \".join(available) or \"no company\") + \"**, not **\"\n                  + asked + \"**. A QuickBooks connection reaches one company: connect QuickBooks to this business's company (or \"\n                  \"correct the name), then run **Bookkeeping: Start checks setup (QuickBooks)** again for it.\", done=False)\n        elif not match:\n            outcome = \"file_not_found\"\n            _note(\"I couldn't find a \" + file_word + \" called **\" + asked + \"** in the \" + where + \" connection of this automation's \"\n                  \"owner.\\n\\nAvailable: \" + (\", \".join(available) or \"none\") + \".\\n\\nRun **Bookkeeping: Start checks setup (\" + where\n                  + \")** again for \" + (name or \"this business\") + \" and enter the name exactly as it appears in \" + where + \".\", done=False)\n        else:\n            client = dict(existing)\n            client.update({\n                \"version\": 1,\n                \"slug\": slug,\n                \"name\": name,\n                \"ledger\": ledger,\n                id_key: match[\"id\"],\n                name_key: match[\"name\"],\n                \"gst_registered\": bool(bk_answer(responses, \"q_gst\")),\n                # Ledger checks: on unless the form says No.\n                \"checks_enabled\": not str(bk_answer(responses, \"q_checks\") or \"\").lower().startswith(\"no\"),\n                \"checks_owner_id\": bk_lookup_id(bk_answer(responses, \"q_checks_owner\")),\n                \"checks_owner_name\": bk_lookup_label(bk_answer(responses, \"q_checks_owner\")),\n                \"tpar\": bool(bk_answer(responses, \"q_tpar\")),\n                \"suspense_codes\": [c.strip() for c in re.split(r\"[,;\\s]+\", str(bk_answer(responses, \"q_suspense\") or \"\")) if c.strip()],\n                \"updated_by\": actor,\n                \"updated_at\": bk_now_iso(settings),\n            })\n            bk_write_json(path, client)\n            outcome = \"client_saved\"\n            _note(\"Saved checks settings for **\" + name + \"** (\" + where + \": \" + match[\"name\"] + \"). The overnight *Ledger checks (\"\n                  + where + \")* start on it; run it by hand with the business name to check it now. Settings file: `\" + path + \"`.\")\n",
+        "id": "apply_checks",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "settings_saved, client_saved, file_not_found, other_ledger or ignored",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Setup item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.subject.form_id }}",
+            "control": "hidden",
+            "label": "Submitted form",
+            "name": "form_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "label": "Person who submitted it",
+            "name": "actor",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "control": "form-picker",
+            "label": "Bookkeeping checks setup form",
+            "name": "setup_form",
+            "required": true,
+            "type": "uuid",
+            "value": "9d01730c-1334-47b1-9df9-619babf148f2"
+          },
+          {
+            "control": "form-picker",
+            "label": "Client checks settings (QuickBooks) form",
+            "name": "client_form",
+            "required": true,
+            "type": "uuid",
+            "value": "52415f0a-896f-4f83-aa81-e78c1f88aef4"
+          },
+          {
+            "control": "hidden",
+            "label": "Ledger",
+            "name": "ledger",
+            "required": true,
+            "type": "str",
+            "value": "quickbooks"
+          }
+        ],
+        "summary": "Saves the setup or client answers to Knowledge, matches the client to its QuickBooks company, and comments on the setup item with the next steps.",
+        "title": "Save the settings"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "apply_checks"
+    ],
+    "triggers": [
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "9d01730c-1334-47b1-9df9-619babf148f2"
+        },
+        "kind": "event"
+      },
+      {
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "52415f0a-896f-4f83-aa81-e78c1f88aef4"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "knowledgeFiles": [],
+  "level": "org",
+  "name": "Bookkeeping: Apply checks setup (QuickBooks)",
+  "originKey": "c076afca-6f5a-4c03-ab64-46ea4f3719a2",
+  "tags": [
+    "bookkeeping"
+  ]
+}

@@ -14,7 +14,8 @@ else:
     today = bk_today(settings)
     for f in api.files.list(path=BK_CLIENTS):
         client = bk_read_json(f["path"]) if str(f.get("name") or "").endswith(".json") else None
-        if not client or not client.get("xero_tenant_id") or client.get("checks_enabled", True) is False:
+        # Only the clients of this pack's ledger (Xero when the node has no ledger param).
+        if not client or not client.get(bk_ledger_info(params.get("ledger"))[1]) or client.get("checks_enabled", True) is False:
             continue
         slug = client.get("slug") or ""
         if wanted and wanted != slug and wanted != bk_slug(client.get("name")):

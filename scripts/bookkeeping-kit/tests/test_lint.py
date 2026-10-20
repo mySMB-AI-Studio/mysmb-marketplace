@@ -9,6 +9,7 @@ import os
 import unittest
 
 from test_flows import PLUGIN
+from test_ledgers import PACKS
 
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINT = os.path.join(KIT, ".myhub", "apps", "web", "src", "lib", "automations", "runtime", "ast-lint.py")
@@ -37,6 +38,9 @@ class CodeSafety(unittest.TestCase):
         lint = lint_flow()
         files = sorted(glob.glob(os.path.join(PLUGIN, "content", "automations", "*.json")))
         self.assertTrue(files)
+        # The checks packs too (Bookkeeping checks for MYOB / QuickBooks).
+        for slug in PACKS:
+            files += sorted(glob.glob(os.path.join(os.path.dirname(PLUGIN), slug, "content", "automations", "*.json")))
         for f in files:
             with open(f, encoding="utf-8") as fh:
                 payload = json.load(fh)

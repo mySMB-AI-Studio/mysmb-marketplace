@@ -8,14 +8,17 @@ import unittest
 sys.path.insert(0, os.path.dirname(__file__))
 from harness import ALLOWED  # noqa: E402
 from test_flows import AUTOS  # noqa: E402
+from test_ledgers import PACKS  # noqa: E402
 
 
 class StaticTests(unittest.TestCase):
     def nodes(self):
-        for name, payload in AUTOS.items():
-            for n in payload["flowIr"]["nodes"]:
-                if n["kind"] == "python":
-                    yield name, n
+        packs = [AUTOS] + [autos for autos, _forms in PACKS.values()]
+        for autos in packs:
+            for name, payload in autos.items():
+                for n in payload["flowIr"]["nodes"]:
+                    if n["kind"] == "python":
+                        yield name, n
 
     def test_imports_are_allow_listed(self):
         for name, n in self.nodes():

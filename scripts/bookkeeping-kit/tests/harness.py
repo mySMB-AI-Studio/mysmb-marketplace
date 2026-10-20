@@ -15,6 +15,8 @@ import re
 import tempfile
 import uuid
 
+from fakes_ledgers import FakeMyob, FakeQbo
+
 ALLOWED = {
     "abc", "base64", "bisect", "calendar", "collections", "contextlib", "copy", "csv", "dataclasses", "datetime",
     "decimal", "difflib", "enum", "fractions", "functools", "hashlib", "heapq", "html", "io", "itertools", "json",
@@ -169,6 +171,10 @@ class Connectors:
             return self.world.abr.call(tool, dict(args or {}))
         if server == "xero-assets":
             return self.world.assets.call(tool, dict(args or {}))
+        if server == "myob-accounting":
+            return self.world.myob.call(tool, dict(args or {}))
+        if server == "quickbooks-accounting":
+            return self.world.qbo.call(tool, dict(args or {}))
         if server in FakeMail.SERVERS:
             return self.world.mail.call(server, tool, dict(args or {}))
         if server != "xero-accounting":
@@ -654,6 +660,8 @@ class World:
         self.deputy = FakeDeputy()
         self.abr = FakeAbr()
         self.assets = FakeXeroAssets()
+        self.myob = FakeMyob()
+        self.qbo = FakeQbo()
         self.ai_extract = lambda prompt, input: {}
         self.ai_generate = lambda prompt, input: "Hi there,\n\nCould you please confirm this bill?\n\nThanks,\nThe bookkeeping team"
         self.api = Api(self)

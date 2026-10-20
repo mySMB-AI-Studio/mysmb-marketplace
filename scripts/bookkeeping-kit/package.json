@@ -2,11 +2,11 @@
   "name": "bookkeeping-kit",
   "private": true,
   "type": "module",
-  "description": "Source + generator + tests for the Bookkeeping for <ledger> extensions (mysmb-marketplace).",
+  "description": "Source + generator + tests for Bookkeeping for Xero and the Bookkeeping checks for MYOB / QuickBooks extensions (mysmb-marketplace).",
   "scripts": {
-    "gen": "node gen-ext.js ../..",
-    "check": "tsx check.mts ../..",
-    "pycheck": "tsx pycheck.mts ../..",
+    "gen": "node gen-ext.js ../.. && node gen-ext.js ../.. myob && node gen-ext.js ../.. quickbooks",
+    "check": "tsx check.mts ../.. && tsx check.mts ../.. bookkeeping-myob && tsx check.mts ../.. bookkeeping-quickbooks",
+    "pycheck": "tsx pycheck.mts ../.. && tsx pycheck.mts ../.. bookkeeping-myob && tsx pycheck.mts ../.. bookkeeping-quickbooks",
     "test": "python -m unittest discover -s tests"
   },
   "devDependencies": {
