@@ -25,7 +25,7 @@ MYOB **custom reports** (Customise → Save as) are **not in the MYOB API**, so 
 | Show cents, Divide by 1000, Show zero balances, Negatives in brackets, Show in red | `display.cents`, `k`, `zeros`, `neg`, `red` |
 | Header and footer, compact view | `display.hdr`, `ftr`, `dens` |
 | MYOB or mySMB branding, a brand colour | `display.style` (`myob` / `mysmb`), `display.b` (only when the user asks) |
-| View as (persona) | `persona` |
+| Detail level (persona) | `persona` |
 | Columns shown, hidden or reordered (Customise → columns) | N/A — the kit reports have MYOB's fixed columns; say so, and offer the closest view |
 | Filters on customer, supplier, job or account | N/A unless the report has that view; say so |
 
@@ -64,3 +64,4 @@ Ask for its name and settings, or a screenshot or export of it, map them with th
 1. Ask for the request this guide covers (see *Use when*). Confirm the agent saves the right kit report with the settings and says what is N/A.
 2. Reopen the saved report: it opens on the saved settings, refetches and validates; its Download Excel file has the Validation and Parameters sheets.
 3. Captured empty (no custom reports in the sample file) — save Profit and Loss as "Monthly board P&L" on Last month, compare last year, and confirm it reopens on the new month next month.
+4. Cross-client isolation (LIB-002): the kit report the guide saves carries the Client picker. Switching it refetches only that company file's figures, and the saved report and every export carry only one company file.

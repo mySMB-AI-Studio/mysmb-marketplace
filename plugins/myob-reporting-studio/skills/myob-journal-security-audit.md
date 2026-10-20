@@ -36,6 +36,7 @@ MYOB location: Reporting → Reports → Business → Journal security audit. Li
 1. Attach an export from the golden-set file. Confirm every row appears once and the validation passes. Captured empty for the default period in the sample file — export a month with changes from the golden-set file and confirm every row appears once and the counts add up.
 2. Use every filter, switch Branding to mySMB and back, and switch the workspace to the dark theme.
 3. Include text with `<` or `</script>` in a row and confirm the page still renders.
+4. Cross-client isolation (LIB-002): the page holds only the business in the attached export. Another business needs its own export and page.
 
 ## Page
 
@@ -109,7 +110,7 @@ svg .donut-c{fill:var(--ink);font-size:15px;font-weight:700}
 .page{break-after:page}
 @media (max-width:720px){.btns{margin-left:0}.cz{grid-template-columns:1fr}}
 @media print{body{background:var(--card);padding:0}#mk-controls,#mk-status,.no-print,.mk-filter{display:none!important}.mk-card{border:0;padding:0 0 12px}th{position:static}@page{size:A4 portrait;margin:14mm}}
-/* QuickBooks branding accents (the accent follows the house-style toggle and the optional brand colour) */
+/* branding accents (follow the house style and the brand colour) */
 #mk-controls{border-top:3px solid var(--accent)}
 main.mk-card{border-top:4px solid var(--accent)}
 .mk-kpi{border-left:4px solid var(--accent)}
