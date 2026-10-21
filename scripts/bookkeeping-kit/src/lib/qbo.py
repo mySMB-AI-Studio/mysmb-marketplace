@@ -199,8 +199,16 @@ def qbo_ledger(today, since, weekly):
                 if isinstance(link, dict) and link.get("TxnType") == "Bill":
                     key = "bill:" + str(link.get("TxnId"))
                     paid[key] = max(paid.get(key, ""), str(p.get("TxnDate") or "")[:10])
+    # When a sales invoice was paid (weekly, for the overdue behaviour checks): the latest customer payment linked to it.
+    if weekly:
+        for p in pages("list_payment", "Payment", window, "customer payments"):
+            for ln in p.get("Line") or []:
+                for link in (ln.get("LinkedTxn") or []) if isinstance(ln, dict) else []:
+                    if isinstance(link, dict) and link.get("TxnType") == "Invoice":
+                        key = "invoice:" + str(link.get("TxnId"))
+                        paid[key] = max(paid.get(key, ""), str(p.get("TxnDate") or "")[:10])
     for d in docs:
-        if d["kind"] == "bill" and d["status"] == "paid":
+        if d["kind"] in ("bill", "invoice") and d["status"] == "paid":
             d["paid_on"] = paid.get(d["id"], "")
 
     bank = []

@@ -253,6 +253,23 @@ class Myob(PackBase):
 
 
 # ── QuickBooks ───────────────────────────────────────────────────────────────
+    def test_customer_payments_give_the_overdue_checks_their_history(self):
+        harbour = card("c-hl", "Harbourline Logistics Pty Ltd", kind="Customer")
+        self.file["cards"].append(harbour)
+        for k in range(3):
+            self.file["docs"].append(mdoc("hi%d" % k, "0000010%d" % k, harbour, day(30 + 20 * k), 3960.0, kind="invoice",
+                                          status="Closed", account="a-sales", delivery="Email"))
+            self.file["receipts"].append({"UID": "r%d" % k, "Date": day(10 + 20 * k) + "T00:00:00",
+                                          "Invoices": [{"UID": "hi%d" % k, "Number": "0000010%d" % k, "Type": "Invoice"}]})
+        late = mdoc("hi9", "00000099", harbour, day(274), 3960.0, kind="invoice", account="a-sales", delivery="Email")
+        late["Due"] = day(244)
+        self.file["docs"].append(late)
+        self.overnight()
+        line = self.lines(self.open_item(), "CHK-037")[0]
+        self.assertIn("Invoice 00000099 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
+        self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+
 def qvendor(vid, name, address=True):
     return {"Id": vid, "DisplayName": name, "Active": True, "BillAddr": {"Line1": "1 Main St"} if address else {}}
 
@@ -341,6 +358,22 @@ class QuickBooks(PackBase):
         self.assertTrue(errors and "reaches Beta Cafe, not Acme Plumbing Pty Ltd" in errors[0], errors)
         self.assertEqual(self.items(), [])
         self.assertEqual([t for t, _a in self.q.calls], ["get_company_info"])
+
+
+    def test_customer_payments_give_the_overdue_checks_their_history(self):
+        for k in range(3):
+            inv = qinvoice("3%d" % k, "20%d" % k, ("C9", "Harbourline Logistics Pty Ltd"), day(30 + 20 * k), 3600.0)
+            inv["Balance"] = 0
+            self.q.invoices.append(inv)
+            self.q.customer_payments.append({"Id": "p%d" % k, "TxnDate": day(10 + 20 * k),
+                                             "Line": [{"Amount": 3960.0, "LinkedTxn": [{"TxnId": "3%d" % k, "TxnType": "Invoice"}]}]})
+        late = qinvoice("39", "1003", ("C9", "Harbourline Logistics Pty Ltd"), day(274), 3600.0)
+        late["DueDate"] = day(244)
+        self.q.invoices.append(late)
+        self.overnight()
+        line = self.lines(self.open_item(), "CHK-037")[0]
+        self.assertIn("Invoice 1003 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
+        self.assertIn("usually paid within about 20 days (3 paid)", line)
 
 
 if __name__ == "__main__":

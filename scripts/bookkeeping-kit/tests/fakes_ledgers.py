@@ -19,7 +19,7 @@ class FakeMyob:
 
     def add_file(self, fid, name):
         self.files[fid] = {
-            "name": name, "cards": [], "suppliers": [], "docs": [], "spend": [], "payments": [], "journals": [],
+            "name": name, "cards": [], "suppliers": [], "docs": [], "spend": [], "payments": [], "receipts": [], "journals": [],
             "tax_codes": [{"UID": "tc-gst", "Code": "GST", "Rate": 10.0}, {"UID": "tc-fre", "Code": "FRE", "Rate": 0.0},
                           {"UID": "tc-nt", "Code": "N-T", "Rate": 0.0}],
             "accounts": [
@@ -90,6 +90,10 @@ class FakeMyob:
             size, page = args.get("page_size") or 100, args.get("page_index") or 0
             rows = [p for p in f["payments"] if frm <= p["Date"][:10] <= to][page * size:(page + 1) * size]
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}
+        if tool == "list_payments":
+            size, page = args.get("page_size") or 100, args.get("page_index") or 0
+            rows = [p for p in f["receipts"] if frm <= p["Date"][:10] <= to][page * size:(page + 1) * size]
+            return {"Count": len(rows), "Items": copy.deepcopy(rows)}
         if tool == "list_spend_money":
             rows = [s for s in f["spend"] if frm <= s["Date"][:10] <= to]
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}
@@ -117,6 +121,7 @@ class FakeQbo:
         self.name = name
         self.calls = []
         self.vendors, self.invoices, self.bills, self.purchases, self.payments = [], [], [], [], []
+        self.customer_payments = []
         self.attachables, self.journals = [], []
         self.close_date = ""
         self.tax_rates = [{"Id": "r-gst-p", "Name": "GST (purchases)", "RateValue": 10}, {"Id": "r-gst-s", "Name": "GST (sales)", "RateValue": 10},
@@ -179,6 +184,7 @@ class FakeQbo:
         entity, rows = {
             "list_vendor": ("Vendor", self.vendors), "list_invoice": ("Invoice", self.invoices), "list_bill": ("Bill", self.bills),
             "list_purchase": ("Purchase", self.purchases), "list_bill_payment": ("BillPayment", self.payments),
+            "list_payment": ("Payment", self.customer_payments),
             "list_attachable": ("Attachable", self.attachables), "list_journal_entry": ("JournalEntry", self.journals),
             "list_account": ("Account", self.accounts), "list_tax_code": ("TaxCode", self.tax_codes), "list_tax_rate": ("TaxRate", self.tax_rates),
         }.get(tool, (None, None))
