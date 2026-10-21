@@ -429,7 +429,8 @@ export const AUTOMATIONS = [
         (provider === 'deputy' ? 'Deputy hours with Xero Payroll per employee per day, ' : 'the timesheets in Xero Payroll, ') +
         'lists missing starters and salaried staff with timesheets, splits each casual’s shifts into penalty bands and checks ' +
         'the rates against the client’s pay guide, lists this period’s changes (junior birthdays, arrangements ending, 1 July) ' +
-        'and reimbursement differences, then posts a report and one drafted query email. Reads only. Publish one version.',
+        'and reimbursement differences, runs the checks catalogue’s payroll checks (employee records, payslips, pay items and ' +
+        'super owed), then posts a report and one drafted query email. Reads only. Publish one version.',
       triggers: [
         { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payrun' } },
         { kind: 'manual' },
@@ -437,7 +438,7 @@ export const AUTOMATIONS = [
       params: [
         { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only)', required: false, value: '' },
       ],
-      scopes: ['files:read', 'files:write', 'workq:write', 'ai:generate', 'artifacts:write', ...connectors],
+      scopes: ['files:read', 'files:write', 'workq:write', 'ai:generate', 'artifacts:write', ...connectors, 'connectors:xero-accounting'],
       forms: ['payrun'],
       nodes: [
         node('load_run', 'Find the pay run', 'Finds the pay run for the item (or the client’s open one), records the officer’s notes, and handles Cancel.', ['util', 'payroll'],
@@ -448,7 +449,7 @@ export const AUTOMATIONS = [
             out('problem', 'str', 'Why the checks won’t run, or empty')]),
         { id: 'gate', kind: 'if', title: 'Only when asked', summary: 'Continues only for Run the checks.',
           cond: 'steps["load_run"]["outputs"]["should_check"]', then: ['check', 'report'], else: [] },
-        node('check', 'Check the pay run', 'Reads the pay calendar’s employees, timesheets, pay items and draft pay run from Xero Payroll' + (provider === 'deputy' ? ', the period’s Deputy timesheets,' : '') + ' the pay guide and the reimbursement file, and works out what to fix.', ['util', 'payroll'],
+        node('check', 'Check the pay run', 'Reads the pay calendar’s employees, timesheets, pay items and draft pay run from Xero Payroll' + (provider === 'deputy' ? ', the period’s Deputy timesheets,' : '') + ' the pay guide and the reimbursement file, runs the catalogue’s payroll checks (with the super liability’s balance from Xero), and works out what to fix.', ['util', 'xero', 'payroll'],
           [fixed('provider', 'str', provider, 'Timesheet source'), hidden('ctx', 'dict', step('load_run', 'ctx'), 'Context', true),
             hidden('problem', 'str', step('load_run', 'problem'), 'Problem so far')],
           [out('findings', 'dict', 'What the check found'), out('problem', 'str', 'Why the check stopped, or empty')]),

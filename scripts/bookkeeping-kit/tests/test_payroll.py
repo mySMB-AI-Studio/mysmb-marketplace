@@ -1,6 +1,7 @@
 """Payroll phase 1: open the pay run, check it (Deputy vs Xero Payroll, rates, penalties, changes, reimbursements),
 build the review pack, internal review, client approval. Nothing is ever written to Xero Payroll."""
 import datetime
+import os
 import io
 import json
 import unittest
@@ -220,7 +221,9 @@ class PayrollTests(Base):
         self.assertAlmostEqual(bands["early"]["expected"], round(8 / 8.5, 2))
         self.assertEqual(f["rates"], [])  # Sam's flat rate is in effect until 28 Sep, inside this period
         changes = {r["name"]: r["text"] for r in f["changes"]}
-        self.assertIn("turns 18 on 2026-09-25", changes["Casey Casual"])
+        # CHK-163, without the birthday itself (it's the date of birth, which payroll findings never show).
+        self.assertIn("turns 18 during this pay period", changes["Casey Casual"])
+        self.assertNotIn("2026-09-25", json.dumps(f))
         self.assertIn("special arrangement ends 2026-09-28", changes["Sam Special"])
         self.assertEqual(f["reimbursements"], [{"name": "Casey Casual", "file": 45.5, "pay_run": 0}])
         self.assertEqual(f["totals"]["NetPay"], 2560.0)
@@ -349,6 +352,160 @@ class PayrollTests(Base):
         self.assertEqual(self.run_record()["status"], "changes")
         self.assertEqual(self.w.items[item["id"]]["status"], "in_progress")
         self.assertIn("Casey's Saturday", self.w.items[item["id"]]["comments"][-1])
+
+    # ── The checks catalogue's payroll checks ──
+    def complete(self, e, bank="062-000 1111 2222", tfn="123456789"):
+        """A full Xero Payroll record: tax declaration, super fund, bank account, address."""
+        e["TaxDeclaration"] = dict(e.get("TaxDeclaration") or {}, TaxFileNumber=tfn)
+        e["SuperMemberships"] = [{"SuperMembershipID": "SM-" + e["EmployeeID"], "SuperFundID": "F1", "EmployeeNumber": "1"}]
+        e["BankAccounts"] = [{"BSB": bank.split(" ")[0], "AccountNumber": "".join(bank.split(" ")[1:]), "Remainder": True}]
+        e["HomeAddress"] = {"AddressLine1": "1 High St", "City": "Sydney", "Region": "NSW", "PostalCode": "2000"}
+        e["StartDate"] = xero_ms_date(START - datetime.timedelta(days=400))
+        return e
+
+    def seed_catalogue(self):
+        o = self.w.payroll.org(T_ACME)
+        today = datetime.datetime.now(SYD).date()
+        o["leave_types"] = [{"LeaveTypeID": "AL", "Name": "Annual Leave", "LeaveCategoryCode": "ANNUALLEAVE"},
+                            {"LeaveTypeID": "PL", "Name": "Personal/Carer's Leave", "LeaveCategoryCode": "PERSONALSICKCARERSLEAVE"},
+                            {"LeaveTypeID": "LSL", "Name": "Long Service Leave", "LeaveCategoryCode": "LONGSERVICELEAVE"}]
+        for er in o["earnings"]:
+            er.update(EarningsType="ORDINARYTIMEEARNINGS", TypeOfUnits="Hours")
+        o["earnings"] += [{"EarningsRateID": "OT", "Name": "Overtime x1.5", "RatePerUnit": 45.0, "EarningsType": "ORDINARYTIMEEARNINGS",
+                           "TypeOfUnits": "Hours"},
+                          {"EarningsRateID": "TOOL", "Name": "Tool allowance", "RatePerUnit": 10.0, "EarningsType": "ALLOWANCE",
+                           "TypeOfUnits": "Hours"}]
+        casey, fran, sam = o["employees"]
+        for e in (casey, sam):
+            self.complete(e)
+        self.complete(fran, bank="062-000 1111 2222")  # the same account as Sam's (and Casey's: CHK-162)
+        casey["BankAccounts"] = [{"BSB": "062-001", "AccountNumber": "99990000"}]
+        # Casey (casual, 18): accrues annual leave, and has a tool allowance with no allowance type.
+        casey["PayTemplate"]["LeaveLines"] = [{"LeaveTypeID": "AL", "CalculationType": "FIXEDAMOUNTEACHPERIOD", "AnnualNumberOfUnits": 152}]
+        casey["PayTemplate"]["EarningsLines"].append({"EarningsRateID": "TOOL", "RatePerUnit": 10.0})
+        # Fran (full-time, adult): a salary under the minimum wage, 120 hours of annual leave a year, no long service leave,
+        # -8 hours of annual leave, a TFN applied for 60 days ago, no super fund.
+        fran["PayTemplate"] = {"EarningsLines": [{"EarningsRateID": "ORD", "AnnualSalary": 52000.0, "NumberOfUnitsPerWeek": 38}],
+                               "LeaveLines": [{"LeaveTypeID": "AL", "CalculationType": "FIXEDAMOUNTEACHPERIOD", "AnnualNumberOfUnits": 120},
+                                              {"LeaveTypeID": "PL", "CalculationType": "FIXEDAMOUNTEACHPERIOD", "AnnualNumberOfUnits": 76}]}
+        fran["LeaveBalances"] = [{"LeaveName": "Annual Leave", "LeaveTypeID": "AL", "NumberOfUnits": -8.0, "TypeOfUnits": "Hours"}]
+        fran["TaxDeclaration"] = {"EmploymentBasis": "FULLTIME", "TFNExemptionType": "PENDING"}
+        fran["StartDate"] = xero_ms_date(today - datetime.timedelta(days=60))
+        fran["SuperMemberships"] = []
+        # Sam (casual): overtime on a pay item set up as ordinary time.
+        sam["PayTemplate"]["EarningsLines"].append({"EarningsRateID": "OT", "RatePerUnit": 45.0})
+        # Terry: terminated before the period with no cessation reason, still on the draft. Nova: starts after the period,
+        # full-time with no leave at all, reimbursed more than paid.
+        terry = self.complete({"EmployeeID": "E4", "FirstName": "Terry", "LastName": "Gone", "Status": "TERMINATED",
+                               "PayrollCalendarID": "CAL1", "DateOfBirth": xero_ms_date(datetime.date(1980, 2, 2)),
+                               "TaxDeclaration": {"EmploymentBasis": "PARTTIME"}, "OrdinaryEarningsRateID": "ORD",
+                               "TerminationDate": xero_ms_date(START - datetime.timedelta(days=10))})
+        nova = self.complete({"EmployeeID": "E5", "FirstName": "Nova", "LastName": "Newstart", "Status": "ACTIVE",
+                              "PayrollCalendarID": "CAL1", "DateOfBirth": xero_ms_date(datetime.date(1995, 3, 3)),
+                              "TaxDeclaration": {"EmploymentBasis": "FULLTIME"}, "OrdinaryEarningsRateID": "ORD"},
+                             bank="062-000 5555 6666")
+        nova["StartDate"] = xero_ms_date(END + datetime.timedelta(days=5))
+        o["employees"] += [terry, nova]
+        run = o["pay_runs"][0]
+        for s in run["Payslips"]:
+            s["PayslipID"] = "PS-" + s["EmployeeID"]
+        run["Payslips"] += [{"EmployeeID": "E4", "PayslipID": "PS-E4", "FirstName": "Terry", "LastName": "Gone", "Wages": 500,
+                             "Tax": 50, "Super": 60, "Reimbursements": 0, "NetPay": 450},
+                            {"EmployeeID": "E5", "PayslipID": "PS-E5", "FirstName": "Nova", "LastName": "Newstart", "Wages": 300,
+                             "Tax": 0, "Super": 36, "Reimbursements": 400, "NetPay": 700}]
+        # Fran's payslip: $2,000 ordinary time, $200 super guarantee (12% is $240).
+        o["payslips"]["PS-E2"] = {"EmployeeID": "E2", "PayslipID": "PS-E2", "Wages": 2000, "Super": 200,
+                                  "EarningsLines": [{"EarningsRateID": "ORD", "RatePerUnit": 26.32, "NumberOfUnits": 76, "Amount": 2000.0}],
+                                  "SuperannuationLines": [{"ContributionType": "SGC", "CalculationType": "STATUTORY", "Amount": 200.0}]}
+        # Super owed: $1,500 on the liability account; $400 of it is from a pay run 3 days ago, not due yet.
+        o["accounts"] = [{"AccountID": "acc-826", "Type": "SUPERANNUATIONLIABILITY", "Code": "826", "Name": "Superannuation Payable"}]
+        o["pay_runs"].append({"PayRunID": "PR0", "PayrollCalendarID": "CAL1", "PayRunStatus": "POSTED",
+                              "PaymentDate": xero_ms_date(today - datetime.timedelta(days=3)), "Super": 400.0, "Payslips": []})
+        self.w.xero.orgs[T_ACME]["trial_balance"] = {str(today): {"acc-826": -1500.0}}
+        # Xero contacts: a supplier with Fran and Sam's account (CHK-019), and Casey's own contact for reimbursements (CHK-152).
+        self.w.xero.orgs[T_ACME]["contacts"] += [
+            {"ContactID": "c-sparkle", "Name": "Sparkle Supplies", "ContactStatus": "ACTIVE", "BankAccountDetails": "062000 11112222"},
+            {"ContactID": "c-casey", "Name": "Casey Casual", "ContactStatus": "ACTIVE", "BankAccountDetails": "062-001 9999 0000"}]
+
+    def test_the_catalogue_payroll_checks_find_each_problem(self):
+        self.seed_catalogue()
+        item = self.open_run()
+        steps = self.check(item)
+        self.assertEqual(steps["check"]["outputs"]["problem"], "")
+        found = {}
+        for r in steps["check"]["outputs"]["findings"]["catalogue"]:
+            found.setdefault(r["check"], []).append(r)
+        self.assertEqual(sorted(found), ["CHK-019", "CHK-147", "CHK-148", "CHK-149", "CHK-150", "CHK-151", "CHK-152", "CHK-153",
+                                         "CHK-155", "CHK-156", "CHK-157", "CHK-159", "CHK-161", "CHK-162", "CHK-164", "CHK-166",
+                                         "CHK-167", "CHK-168"])
+        one = {c: rows[0] for c, rows in found.items()}
+        self.assertEqual(one["CHK-157"]["amount"], 1100.0)
+        self.assertIn("$1,100.00 of super on 826 Superannuation Payable is past its due date", one["CHK-157"]["text"])
+        self.assertEqual((one["CHK-147"]["name"], one["CHK-155"]["name"], one["CHK-155"]["amount"]), ("Terry Gone", "Terry Gone", 500.0))
+        self.assertEqual((one["CHK-153"]["name"], one["CHK-151"]["name"]), ("Nova Newstart", "Nova Newstart"))
+        self.assertIn("is paid $26.32 an hour, below the national minimum wage of $26.44", one["CHK-156"]["text"])
+        self.assertEqual(one["CHK-156"]["amount"], round((26.44 - 52000 / 52 / 38) * 76, 2))
+        self.assertIn("$200.00 super guarantee on this pay run, but 12% of their ordinary time earnings ($2,000.00) is $240.00",
+                      one["CHK-164"]["text"])
+        self.assertIn("negative Annual Leave balance (-8.0 hours)", one["CHK-149"]["text"])
+        self.assertIn("still has no tax file number 60 days after starting", one["CHK-148"]["text"])
+        self.assertEqual(one["CHK-150"]["name"], "Casey Casual")
+        self.assertIn("accrues 120.0 hours of annual leave a year; 4 weeks at 38.0 hours a week is 152.0", one["CHK-166"]["text"])
+        self.assertEqual(sorted(r["name"] for r in found["CHK-167"]), ["Fran Fulltime", "Nova Newstart"])
+        self.assertEqual([r["name"] for r in found["CHK-161"]], ["Nova Newstart"])
+        self.assertEqual(one["CHK-162"]["name"], "Fran Fulltime, Sam Special")
+        self.assertEqual(sorted(r["name"] for r in found["CHK-019"]), ["Fran Fulltime", "Sam Special"])
+        self.assertIn("has the same bank account as the Xero contact Sparkle Supplies", one["CHK-019"]["text"])
+        self.assertEqual([r["name"] for r in found["CHK-152"]], ["Casey Casual"])
+        self.assertIn("Fran Fulltime: no super fund", "Fran Fulltime: " + one["CHK-159"]["text"].split("has ")[1])
+        self.assertEqual(sorted(r["text"].split(" ")[2] for r in found["CHK-168"]), ["Overtime", "Tool"])
+        # Severity order, the covered catalogue IDs and the heuristic flag ride along.
+        self.assertEqual(steps["check"]["outputs"]["findings"]["catalogue"][0]["severity"], "High")
+        self.assertEqual((one["CHK-149"]["also"], one["CHK-157"]["also"], one["CHK-164"]["also"]), (["CHK-160"], ["CHK-158"], ["CHK-165"]))
+        self.assertTrue(one["CHK-156"]["heuristic"])
+        # The report and the comment carry them; no tax file number, bank account or date of birth anywhere.
+        comment = self.w.items[item["id"]]["comments"][-1]
+        self.assertIn("Payroll checks: **" + str(sum(len(r) for r in found.values())) + "**. Fix them in Xero Payroll (6 High).", comment)
+        report = next(a for a in self.w.artifacts if a["title"].startswith("Payroll check: Acme Plumbing"))
+        self.assertIn("CHK-155 Terminated Employee Still Being Paid", report["content"])
+        everything = report["content"] + comment + json.dumps(steps["check"]["outputs"]) + json.dumps(self.w.files.get(
+            "Bookkeeping/PayRuns/acme-plumbing-2026-09-21.json"))
+        for secret in ("123456789", "11112222", "1111 2222", "062-000", "2008-09-25", "1985-01-01", "25 Sep 2008"):
+            self.assertNotIn(secret, everything, secret)
+
+    def test_super_owed_needs_the_payroll_settings_and_the_ledger(self):
+        f = self.check(self.open_run())["check"]["outputs"]["findings"]
+        self.assertTrue(any(n.startswith("Super owed wasn't checked") for n in f["notes"]), f["notes"])
+        self.assertNotIn("CHK-157", [r["check"] for r in f["catalogue"]])
+
+    def test_super_is_due_7_business_days_after_pay_day_from_july_2026(self):
+        lib = {}
+        for name in ("util", "payroll"):
+            with open(os.path.join(os.path.dirname(__file__), "..", "src", "lib", name + ".py"), encoding="utf-8") as fh:
+                exec(fh.read(), lib)
+        due = lib["pay_super_due"]
+        self.assertEqual(due(datetime.date(2026, 6, 15)), datetime.date(2026, 7, 28))   # old rule: 28 days after the quarter
+        # Payday Super: 7 business days (weekends and national public holidays skipped), plus a day for a state holiday.
+        self.assertEqual(due(datetime.date(2026, 12, 20)), datetime.date(2027, 1, 4))   # Christmas, Boxing Day (Mon 28), New Year
+        self.assertEqual(due(datetime.date(2026, 10, 6)), datetime.date(2026, 10, 16))
+        self.assertEqual(due(datetime.date(2027, 3, 24)), datetime.date(2027, 4, 7))    # Good Friday 26 Mar, Easter Monday 29 Mar
+        # 2027: Anzac Day falls on a Sunday (not moved nationally); Christmas and Boxing Day move to Mon 27 and Tue 28.
+        self.assertEqual(lib["pay_national_holidays"](2027), {datetime.date(2027, 1, 1), datetime.date(2027, 1, 26),
+                                                              datetime.date(2027, 3, 26), datetime.date(2027, 3, 29),
+                                                              datetime.date(2027, 4, 25), datetime.date(2027, 12, 27),
+                                                              datetime.date(2027, 12, 28)})
+        self.assertEqual(due(datetime.date(2026, 3, 31)), datetime.date(2026, 4, 28))
+        self.assertEqual(lib["pay_from"](lib["PAY_WAGE_FLOOR"], datetime.date(2026, 6, 30)), 24.95)
+        self.assertEqual(lib["pay_from"](lib["PAY_WAGE_FLOOR"], datetime.date(2026, 7, 1)), 26.44)
+
+    def test_payroll_items_are_visible_to_their_assignees_only(self):
+        item = self.open_run()
+        self.assertEqual(item["scope"], "me")
+        self.assertEqual(item["assigneeIds"], [OFFICER["id"]])
+        self.check(item)
+        self.submit(PACK, "Pay run", item["id"], {"q_action": "Ready for review: build the review pack"}, actor=OFFICER["id"])
+        review = next(i for i in self.w.items.values() if i["title"].startswith("Review pay run"))
+        self.assertEqual((review["scope"], review["assigneeIds"]), ("me", [SAM["id"]]))
 
 
 if __name__ == "__main__":

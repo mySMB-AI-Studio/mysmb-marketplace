@@ -75,7 +75,7 @@ if wanted and run:
         pack_url = str((saved or {}).get("url") or "")
         item = api.workq.create(
             title=("Review pay run: " + run["name"] + ", " + run["period_start"] + " to " + run["period_end"])[:200],
-            scope="org",
+            scope="me",
             description=("**" + run["name"] + "**, pay day **" + run["payment_date"] + "**: " + str(len(slips)) + " employees, "
                          "wages " + bk_fmt(totals["Wages"]) + ", net pay " + bk_fmt(totals["NetPay"]) + ".\n\n"
                          + ("The last check still had **" + str(check.get("open_items")) + " open item(s)**.\n\n" if check.get("open_items") else "")

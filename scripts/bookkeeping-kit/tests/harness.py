@@ -547,7 +547,8 @@ class FakePayroll:
         self.calls = []
 
     def org(self, tenant):
-        return self.orgs.setdefault(tenant, {"calendars": [], "employees": [], "earnings": [], "timesheets": [], "pay_runs": []})
+        return self.orgs.setdefault(tenant, {"calendars": [], "employees": [], "earnings": [], "leave_types": [], "timesheets": [],
+                                             "pay_runs": [], "payslips": {}, "accounts": None})
 
     def call(self, tool, args):
         self.calls.append((tool, dict(args)))
@@ -561,13 +562,14 @@ class FakePayroll:
         if tool == "list_employees":
             if args.get("page", 1) > 1:
                 return {"Employees": []}
-            rows = [e for e in o["employees"] if 'Status=="ACTIVE"' not in where or e.get("Status", "ACTIVE") == "ACTIVE"]
-            return {"Employees": [{k: e[k] for k in ("EmployeeID", "FirstName", "LastName", "Status", "PayrollCalendarID") if k in e}
-                                  for e in rows]}
+            m = re.search(r'Status=="(\w+)"', where)
+            rows = [e for e in o["employees"] if not m or e.get("Status", "ACTIVE") == m.group(1)]
+            return {"Employees": [{k: e[k] for k in ("EmployeeID", "FirstName", "LastName", "Status", "PayrollCalendarID", "TerminationDate")
+                                   if k in e} for e in rows]}
         if tool == "get_employee":
             return {"Employees": [copy.deepcopy(next(e for e in o["employees"] if e["EmployeeID"] == args["employeeId"]))]}
         if tool == "list_pay_items":
-            return {"PayItems": {"EarningsRates": copy.deepcopy(o["earnings"])}}
+            return {"PayItems": {"EarningsRates": copy.deepcopy(o["earnings"]), "LeaveTypes": copy.deepcopy(o["leave_types"])}}
         if tool == "list_timesheets":
             m = re.search(r"StartDate>=DateTime\((\d+),(\d+),(\d+)\) AND EndDate<=DateTime\((\d+),(\d+),(\d+)\)", where)
             assert m, where
@@ -578,11 +580,20 @@ class FakePayroll:
             return {"Timesheets": [copy.deepcopy(t) for t in o["timesheets"] if lo <= day(t["StartDate"]) and day(t["EndDate"]) <= hi]}
         if tool == "list_pay_runs":
             m = re.search(r'PayrollCalendarID==Guid\("([^"]+)"\)', where)
+            st = re.search(r'PayRunStatus=="(\w+)"', where)
             rows = [r for r in o["pay_runs"] if (not m or r["PayrollCalendarID"] == m.group(1))
-                    and ('PayRunStatus=="DRAFT"' not in where or r["PayRunStatus"] == "DRAFT")]
+                    and (not st or r["PayRunStatus"] == st.group(1))]
             return {"PayRuns": [{k: v for k, v in r.items() if k != "Payslips"} for r in rows]}
         if tool == "get_pay_run":
             return {"PayRuns": [copy.deepcopy(next(r for r in o["pay_runs"] if r["PayRunID"] == args["payRunId"]))]}
+        if tool == "get_payslip":
+            # The full payslip when one is set up (o["payslips"][PayslipID]), else the pay run's summary of it.
+            full = o["payslips"].get(args["payslipId"])
+            if full is None:
+                full = next(s for r in o["pay_runs"] for s in r.get("Payslips") or [] if s.get("PayslipID") == args["payslipId"])
+            return {"Payslip": copy.deepcopy(full)}
+        if tool == "get_payroll_settings" and o["accounts"] is not None:
+            return {"Settings": {"Accounts": copy.deepcopy(o["accounts"])}}
         raise RuntimeError("fake Xero Payroll has no tool " + tool)
 
 

@@ -31,7 +31,7 @@ if run:
                 "notes": notes}))
             item = api.workq.create(
                 title=("Client approval: " + run["name"] + " pay run, " + period)[:200],
-                scope="org",
+                scope="me",
                 description=("The internal review approved this pay run.\n\n1. Email " + (ps.get("approvers") or "the client's approvers")
                              + " using the draft below, with the [review pack](" + str(run.get("pack_url") or "") + ").\n"
                              "2. When they reply, fill in the **Client payroll approval** form on this item.\n\n"

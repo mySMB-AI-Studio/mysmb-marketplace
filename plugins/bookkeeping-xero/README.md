@@ -107,6 +107,22 @@ The same inbox, the same steps, the other side of the ledger:
 5. **Review pack:** choose *Ready for review* once the draft pay run is in Xero. The internal reviewer gets the pack and the **Payroll review** form.
 6. **Client approval:** an approved review creates the client approval item with a drafted email. Record the answer on the **Client payroll approval** form. If the client posts the pay run, the pay run item completes; if the practice posts it, the item stays open until you post and file STP.
 
+### Payroll checks from the checks catalogue
+
+*Check pay run* also runs the catalogue's payroll checks on the pay calendar's employees, the draft pay run's payslips and the pay items it uses. They're in the report's *Payroll checks* table, most severe first:
+
+- **High:** an employee's bank account on another Xero contact, such as a supplier (CHK-019); a terminated employee with no Single Touch Payroll cessation reason (CHK-147); a terminated employee on this pay run (CHK-155); an adult's ordinary rate below the national minimum wage, $26.44 an hour from 1 July 2026, or $33.05 for a casual with the 25% loading (CHK-156); super owed on the payroll's super liability account past its due date (CHK-157, covering CHK-158).
+- **Medium:** a tax file number still "applied for" more than 28 days after starting (CHK-148); someone on this pay run whose record has no tax file number declaration, super fund, bank account, home address or STP Phase 2 update (CHK-159); a full- or part-time employee with no annual or personal/carer's leave (CHK-161) or no long service leave (CHK-167) in their pay template.
+- **Low:** an employee's bank account on their own Xero contact, for reimbursements (CHK-152); a negative leave balance (CHK-149, covering CHK-160); a casual accruing annual leave (CHK-150); reimbursements over wages (CHK-151); paid on this pay run but starting after the period (CHK-153); two employees paid into one bank account (CHK-162); a junior's birthday this period, under *Changes this period* (CHK-163); super guarantee under 12% of the payslip's ordinary time earnings (CHK-164, covering CHK-165); annual leave set not to accrue, or a full-timer's not 4 or 5 weeks a year (CHK-166); a pay item whose name and STP earnings type disagree, or an allowance with no allowance type (CHK-168).
+
+CHK-156, CHK-164, CHK-166 and CHK-168 are heuristic readings until the content owner confirms them. CHK-156 skips employees under 21 (junior rates) and says apprentices, trainees and supported wages differ.
+
+**Super owed (CHK-157)** is the super liability account's balance in Xero (so *Check pay run* also uses the Xero accounting connection, which CHK-019 and CHK-152 read the contacts from too), less the super from posted pay runs that isn't due yet. From 1 July 2026 (Payday Super) super has to reach the fund within 7 business days of pay day; the check skips weekends and national public holidays and allows one more day for a state holiday. Before that, it was due 28 days after the quarter. When the payroll settings or the ledger can't be read, the report says super owed wasn't checked.
+
+**Privacy.** Payroll findings name the employee and show pay figures (hours, rates, amounts) only. Tax file numbers, bank details, dates of birth, addresses and contact details never appear: the checks about them state a fact ("no tax file number after 28 days", "paid into the same bank account as ..."), and bank accounts are compared in memory as hashes, never stored. Pay run, review and client approval items are visible only to the people they're assigned to and the automation's owner (a WorkQ item an automation creates is always visible to its owner).
+
+Each year on 1 July, add the new national minimum wage to `PAY_WAGE_FLOOR` in the kit's `payroll.py`.
+
 ## How the ledger checks work
 
 The checks are the mySMB checks catalogue's release 1 checks that need nothing but the ledger. They read Xero and change nothing in it.
