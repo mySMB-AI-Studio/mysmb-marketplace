@@ -20,11 +20,14 @@ if not problem:
             notes.append("There's no pay guide in `" + BK_PAYROLL_FILES + "/" + run["slug"] + "/pay-guide.xlsx`, so rates and "
                          "penalty bands weren't checked.")
         mapping = (guide or {}).get("pay_items") or {}
-        items = pay_items(tenant)["earnings"]
+        pay_types = pay_items(tenant)
+        items = pay_types["earnings"]
+        calendar_id = (run.get("calendar") or {}).get("id") or ""
 
         # ── Who is on this pay calendar ──
         people = {}
-        for e in pay_employees(tenant, (run.get("calendar") or {}).get("id") or ""):
+        roster = pay_employees(tenant, calendar_id)
+        for e in roster:
             name = pay_name(e)
             key = bk_norm(name)
             dob = pay_date(e.get("DateOfBirth"))
@@ -137,8 +140,9 @@ if not problem:
                     except ValueError:
                         bday = datetime.date(year, 3, 1)
                     if start <= bday <= end:
-                        changes.append({"name": p["name"], "text": "turns " + str(year - p["dob"].year) + " on " + str(bday)
-                                        + ": check the junior rate from that day"})
+                        # CHK-163. The birthday itself isn't shown (it's their date of birth); Xero Payroll has it.
+                        changes.append({"name": p["name"], "check": "CHK-163", "text": "turns " + str(year - p["dob"].year)
+                                        + " during this pay period: check the junior rate from their birthday"})
                         break
             if p["special_until"] and str(start) <= p["special_until"] <= str(end):
                 changes.append({"name": p["name"], "text": "special arrangement ends " + p["special_until"]
@@ -155,7 +159,7 @@ if not problem:
                 break
 
         # ── Draft pay run and reimbursements ──
-        draft = pay_draft_run(tenant, (run.get("calendar") or {}).get("id") or "", start)
+        draft = pay_draft_run(tenant, calendar_id, start)
         totals = {}
         slips = {}
         if draft:
@@ -184,11 +188,42 @@ if not problem:
                     reimburse.append({"name": who, "file": amount, "pay_run": paid or 0})
             notes.append("Reimbursements checked against `" + newest["path"] + "` (" + str(len(owed)) + " employees).")
 
+        # ── The checks catalogue's payroll checks: employee records, this pay run's payslips and the pay items ──
+        today = bk_today(settings)
+        payslips = {}
+        for s in (draft or {}).get("Payslips") or []:
+            if s.get("PayslipID") and s.get("EmployeeID"):
+                payslips[str(s["EmployeeID"])] = pay_payslip(tenant, s["PayslipID"])
+        catalogue = pay_catalogue_checks(roster, pay_terminated(tenant, calendar_id, today), items, pay_types["leave"], draft,
+                                         payslips, start, end, today)
+        # CHK-157 (covers CHK-158): super owed on the payroll's super liability account past its due date. The balance is
+        # the ledger's, so it reads the Xero accounting connection; without it, a note says super owed wasn't checked.
+        exc = None
+        try:
+            accounts = ((pay_call("get_payroll_settings", tenant) or {}).get("Settings") or {}).get("Accounts") or []
+            liability = next((a for a in accounts if str(a.get("Type") or "") == "SUPERANNUATIONLIABILITY" and a.get("AccountID")), None)
+            if liability:
+                owed = -(xero_balances(tenant, today).get(str(liability["AccountID"])) or 0.0)
+                posted = pay_rows(pay_call("list_pay_runs", tenant, where='PayRunStatus=="POSTED"'), "PayRuns")
+                overdue, pending = pay_super_overdue(owed, posted, today)
+                if overdue > 1:
+                    label = (str(liability.get("Code") or "") + " " + str(liability.get("Name") or "")).strip()
+                    catalogue.insert(0, pay_finding("CHK-157", "", pay_money(overdue) + " of super on " + label + " is past its due "
+                                                    "date (from 1 July 2026 super has to reach the fund within 7 business days of "
+                                                    "pay day; before that, 28 days after the quarter)"
+                                                    + (", besides " + pay_money(pending) + " from recent pay runs not due yet" if pending else "")
+                                                    + ". Pay it, or record the payment in Xero if it's been paid.", amount=overdue))
+            else:
+                notes.append("Super owed wasn't checked: Xero Payroll's settings name no super liability account.")
+        except Exception as exc:
+            notes.append("Super owed wasn't checked (" + str(exc)[:200] + ").")
+
         findings = {
             "period": run["period_start"] + " to " + run["period_end"], "employees": len(people), "deputy": deputy_on,
             "missing_starters": missing_starters, "salaried_timesheets": salaried, "hours": hours_diff,
             "bands": bands_diff, "rates": rates_diff, "unclassified": unclassified, "changes": changes,
             "reimbursements": reimburse, "totals": totals, "draft_pay_run": bool(draft), "notes": notes,
+            "catalogue": catalogue,
         }
     except Exception as exc:
         problem = "The checks couldn't finish: " + str(exc)[:500]

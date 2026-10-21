@@ -35,7 +35,14 @@ if problem:
     if run.get("item_id"):
         api.workq.comment(todo_id=run["item_id"], body=problem)
 elif run.get("item_id"):
+    catalogue = f.get("catalogue") or []
+    high = sum(1 for r in catalogue if r.get("severity") == "High")
     sections = [
+        ("Payroll checks", ["Severity", "Check", "Employee", "What to fix", "At risk"],
+         [[r["severity"], r["check"] + " " + r["title"], r.get("name") or "—",
+           r["text"] + (" (a heuristic reading, to be confirmed)" if r.get("heuristic") else ""),
+           bk_fmt(r["amount"]) if r.get("amount") is not None else ""] for r in catalogue],
+         "fix them in Xero Payroll" + (" (" + str(high) + " High)" if high else "")),
         ("Missing in Xero Payroll (hours in Deputy)", ["Employee"], [[n] for n in f.get("missing_starters") or []],
          "add them before the pay run"),
         ("Salaried staff with timesheets", ["Employee", "Hours"], [[r["name"], r["hours"]] for r in f.get("salaried_timesheets") or []],
@@ -52,7 +59,8 @@ elif run.get("item_id"):
          "add their award and classification so their rates can be checked"),
         ("Reimbursements that differ", ["Employee", "Reimbursement file", "Draft pay run"],
          [[r["name"], r["file"], r["pay_run"]] for r in f.get("reimbursements") or []], "fix the reimbursement lines"),
-        ("Changes this period", ["Employee", "Change"], [[r["name"], r["text"]] for r in f.get("changes") or []], "act on these"),
+        ("Changes this period", ["Employee", "Change"],
+         [[r["name"], r["text"] + (" (" + r["check"] + ")" if r.get("check") else "")] for r in f.get("changes") or []], "act on these"),
     ]
     open_items = sum(len(rows) for _, _, rows, _ in sections if rows) - len(f.get("changes") or [])
     t = f.get("totals") or {}

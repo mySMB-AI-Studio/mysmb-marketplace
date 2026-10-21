@@ -51,7 +51,7 @@ for f in (api.files.list(path=BK_PAYROLL) if settings else []):
             period = cal["start"] + " to " + cal["end"]
             item = api.workq.create(
                 title=("Pay run: " + name + ", " + period + ", pay day " + str(payment))[:200],
-                scope="org",
+                scope="me",
                 description=(
                     "**Pay run for " + name + "**: " + period + ", pay day **" + str(payment) + "** (" + str(cal["name"]) + ").\n\n"
                     "Hours: " + SOURCE_WORDS.get(ps.get("timesheets") or "none", "") + ".\n\n"
