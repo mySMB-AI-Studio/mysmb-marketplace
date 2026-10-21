@@ -217,6 +217,12 @@ if not problem:
                 notes.append("Super owed wasn't checked: Xero Payroll's settings name no super liability account.")
         except Exception as exc:
             notes.append("Super owed wasn't checked (" + str(exc)[:200] + ").")
+        # CHK-019 / CHK-152: the employees' bank accounts against the Xero contacts' bank details.
+        try:
+            contacts, _cut = xero_pages("list_contacts", tenant, "Contacts", where='ContactStatus=="ACTIVE"')
+            catalogue = pay_sorted(catalogue + pay_contact_bank_checks(roster, contacts))
+        except Exception as exc:
+            notes.append("Employees' bank accounts weren't compared with the Xero contacts (" + str(exc)[:200] + ").")
 
         findings = {
             "period": run["period_start"] + " to " + run["period_end"], "employees": len(people), "deputy": deputy_on,

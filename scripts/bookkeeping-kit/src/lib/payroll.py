@@ -376,6 +376,8 @@ def pay_link(todo_id, run):
 # accounts are compared in memory as hashes, never stored. Pay run items are visible to their creator (the automation
 # owner) and assignees only.
 PAY_CHECKS = {
+    "CHK-019": ("Contact Bank Account Is the Same as an Employee", "High"),
+    "CHK-152": ("Employee Bank Account Found on Contact Record", "Low"),
     "CHK-147": ("Terminated Employee Is Missing an STP Cessation Reason", "High"),
     "CHK-148": ("Employee Has No Tax File Number After 28 Days", "Medium"),
     "CHK-149": ("Employee Has a Negative Leave Balance", "Low"),
@@ -728,4 +730,39 @@ def pay_catalogue_checks(staff, terminated, earnings, leave_types, draft, paysli
         elif kind == "ALLOWANCE" and not er.get("AllowanceType"):
             out.append(pay_finding("CHK-168", "", "Pay item " + item + " is an allowance with no allowance type, which Single "
                                    "Touch Payroll needs. Set its type in Xero Payroll."))
-    return sorted(out, key=lambda f: (PAY_SEVERITY_RANK[f["severity"]], f["check"], f["name"]))
+    return pay_sorted(out)
+
+
+def pay_sorted(findings):
+    return sorted(findings, key=lambda f: (PAY_SEVERITY_RANK[f["severity"]], f["check"], f["name"]))
+
+
+def pay_bank_digits(bsb, account):
+    return re.sub(r"\D", "", str(bsb or "")) + re.sub(r"\D", "", str(account or ""))
+
+
+def pay_contact_bank_checks(staff, contacts):
+    """CHK-019 / CHK-152: an employee's bank account in a Xero contact's bank details. On a contact of their own (their
+    reimbursements, say) it's CHK-152; on any other contact, CHK-019: a supplier paid into a staff member's account.
+    Compared as digits in memory; neither the account nor the details are shown."""
+    mine = {}
+    for e in staff:
+        for a in e.get("BankAccounts") or []:
+            digits = pay_bank_digits(a.get("BSB"), a.get("AccountNumber"))
+            if len(digits) >= 9:
+                mine.setdefault(digits, []).append(e)
+    out = []
+    for c in contacts:
+        contact = str(c.get("Name") or "")
+        for e in mine.get(re.sub(r"\D", "", str(c.get("BankAccountDetails") or ""))) or []:
+            name = pay_name(e)
+            own = bk_norm(contact) == bk_norm(name) or all(
+                bk_norm(part) in bk_norm(contact) for part in (e.get("FirstName"), e.get("LastName")) if bk_norm(part))
+            if own:
+                out.append(pay_finding("CHK-152", name, "has their bank account on the Xero contact " + contact + ". That's fine for "
+                                       "their reimbursements: keep it in step with Xero Payroll when they change banks."))
+            else:
+                out.append(pay_finding("CHK-019", name, "has the same bank account as the Xero contact " + contact + ". Check the "
+                                       "contact's bank details with the business: a supplier paid into an employee's account is a "
+                                       "common fraud."))
+    return out

@@ -422,6 +422,10 @@ class PayrollTests(Base):
         o["pay_runs"].append({"PayRunID": "PR0", "PayrollCalendarID": "CAL1", "PayRunStatus": "POSTED",
                               "PaymentDate": xero_ms_date(today - datetime.timedelta(days=3)), "Super": 400.0, "Payslips": []})
         self.w.xero.orgs[T_ACME]["trial_balance"] = {str(today): {"acc-826": -1500.0}}
+        # Xero contacts: a supplier with Fran and Sam's account (CHK-019), and Casey's own contact for reimbursements (CHK-152).
+        self.w.xero.orgs[T_ACME]["contacts"] += [
+            {"ContactID": "c-sparkle", "Name": "Sparkle Supplies", "ContactStatus": "ACTIVE", "BankAccountDetails": "062000 11112222"},
+            {"ContactID": "c-casey", "Name": "Casey Casual", "ContactStatus": "ACTIVE", "BankAccountDetails": "062-001 9999 0000"}]
 
     def test_the_catalogue_payroll_checks_find_each_problem(self):
         self.seed_catalogue()
@@ -431,8 +435,9 @@ class PayrollTests(Base):
         found = {}
         for r in steps["check"]["outputs"]["findings"]["catalogue"]:
             found.setdefault(r["check"], []).append(r)
-        self.assertEqual(sorted(found), ["CHK-147", "CHK-148", "CHK-149", "CHK-150", "CHK-151", "CHK-153", "CHK-155", "CHK-156",
-                                         "CHK-157", "CHK-159", "CHK-161", "CHK-162", "CHK-164", "CHK-166", "CHK-167", "CHK-168"])
+        self.assertEqual(sorted(found), ["CHK-019", "CHK-147", "CHK-148", "CHK-149", "CHK-150", "CHK-151", "CHK-152", "CHK-153",
+                                         "CHK-155", "CHK-156", "CHK-157", "CHK-159", "CHK-161", "CHK-162", "CHK-164", "CHK-166",
+                                         "CHK-167", "CHK-168"])
         one = {c: rows[0] for c, rows in found.items()}
         self.assertEqual(one["CHK-157"]["amount"], 1100.0)
         self.assertIn("$1,100.00 of super on 826 Superannuation Payable is past its due date", one["CHK-157"]["text"])
@@ -449,6 +454,9 @@ class PayrollTests(Base):
         self.assertEqual(sorted(r["name"] for r in found["CHK-167"]), ["Fran Fulltime", "Nova Newstart"])
         self.assertEqual([r["name"] for r in found["CHK-161"]], ["Nova Newstart"])
         self.assertEqual(one["CHK-162"]["name"], "Fran Fulltime, Sam Special")
+        self.assertEqual(sorted(r["name"] for r in found["CHK-019"]), ["Fran Fulltime", "Sam Special"])
+        self.assertIn("has the same bank account as the Xero contact Sparkle Supplies", one["CHK-019"]["text"])
+        self.assertEqual([r["name"] for r in found["CHK-152"]], ["Casey Casual"])
         self.assertIn("Fran Fulltime: no super fund", "Fran Fulltime: " + one["CHK-159"]["text"].split("has ")[1])
         self.assertEqual(sorted(r["text"].split(" ")[2] for r in found["CHK-168"]), ["Overtime", "Tool"])
         # Severity order, the covered catalogue IDs and the heuristic flag ride along.
@@ -457,7 +465,7 @@ class PayrollTests(Base):
         self.assertTrue(one["CHK-156"]["heuristic"])
         # The report and the comment carry them; no tax file number, bank account or date of birth anywhere.
         comment = self.w.items[item["id"]]["comments"][-1]
-        self.assertIn("Payroll checks: **" + str(sum(len(r) for r in found.values())) + "**. Fix them in Xero Payroll (4 High).", comment)
+        self.assertIn("Payroll checks: **" + str(sum(len(r) for r in found.values())) + "**. Fix them in Xero Payroll (6 High).", comment)
         report = next(a for a in self.w.artifacts if a["title"].startswith("Payroll check: Acme Plumbing"))
         self.assertIn("CHK-155 Terminated Employee Still Being Paid", report["content"])
         everything = report["content"] + comment + json.dumps(steps["check"]["outputs"]) + json.dumps(self.w.files.get(
