@@ -56,6 +56,12 @@ CK_CATALOGUE = {
     "CHK-131": ("Bookkeeping", "Fuel Tax Credits May Be Unclaimed", "Medium"),
     "CHK-141": ("Bookkeeping", "Fixed Asset Account", "Low"),
     "CHK-170": ("Other", "ASIC Renewal Due or Not Paid", "High"),
+    "CHK-036": ("Sales", "Unusual Monthly Invoicing", "Low"),
+    "CHK-037": ("Sales", "Unusually Overdue Invoice Outside Normal Behaviour", "Low"),
+    "CHK-038": ("Sales", "Grouped Overdue Invoices Outside Normal Behaviour", "Low"),
+    "CHK-082": ("Purchases", "Unusual Monthly Billing", "Low"),
+    "CHK-083": ("Purchases", "Unusually Overdue Bill Outside Normal Behaviour", "Low"),
+    "CHK-084": ("Purchases", "Grouped Overdue Bill Outside Normal Behaviour", "Low"),
     # Fixed asset checks: need what Asset lookups (Xero Assets) saved.
     "CHK-139": ("Bookkeeping", "Draft Fixed Asset", "Low"),
     "CHK-140": ("Bookkeeping", "Unmapped Fixed Asset Account With Balance", "Low"),
@@ -82,7 +88,7 @@ CK_DAILY = ("CHK-006", "CHK-017", "CHK-018", "CHK-028", "CHK-035", "CHK-055", "C
 CK_WEEKLY = ("CHK-007", "CHK-008", "CHK-021", "CHK-022", "CHK-024", "CHK-031", "CHK-033", "CHK-058", "CHK-059",
              "CHK-086", "CHK-125", "CHK-129", "CHK-132", "CHK-133", "CHK-134", "CHK-135", "CHK-136", "CHK-138",
              "CHK-016", "CHK-040", "CHK-078", "CHK-093", "CHK-137", "CHK-041", "CHK-074", "CHK-094", "CHK-131",
-             "CHK-141", "CHK-170")
+             "CHK-141", "CHK-170", "CHK-036", "CHK-037", "CHK-038", "CHK-082", "CHK-083", "CHK-084")
 # The weekly checks that read a list only they need (batch payments, quotes, purchase orders): when that list can't be
 # read, the check isn't evaluated, so its open findings stay as they are instead of closing.
 CK_SOURCE_CHECKS = {"batch_payments": "CHK-016", "quotes": "CHK-040", "purchase_orders": "CHK-093"}
@@ -94,7 +100,7 @@ CK_REGISTER = ("CHK-002", "CHK-003", "CHK-004", "CHK-005", "CHK-009", "CHK-030",
                "CHK-071", "CHK-072", "CHK-076", "CHK-077", "CHK-085", "CHK-088")
 CK_REGISTER_DAYS = 14
 CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-016", "CHK-056", "CHK-129", "CHK-133", "CHK-041", "CHK-074",
-                "CHK-094", "CHK-131", "CHK-141")
+                "CHK-094", "CHK-131", "CHK-141", "CHK-036", "CHK-037", "CHK-038", "CHK-082", "CHK-083", "CHK-084")
 # The GST-related checks: the GST checks section of the weekly report (CRA-10 GST Check).
 CK_GST = ("CHK-003", "CHK-008", "CHK-031", "CHK-058", "CHK-059", "CHK-068", "CHK-069", "CHK-076", "CHK-077", "CHK-085",
           "CHK-129", "CHK-136", "CHK-137")
@@ -147,6 +153,19 @@ CK_ACCUM_WORDS = ("less", "accumulated", "accum", "depreciation", "dep", "on", "
 CK_NOT_DEPRECIATED = r"(?i)\bland\b|goodwill|work in progress|\bwip\b"
 # A manual run can look back further than the 35 days the daily checks cover (a test company's seeded history).
 CK_LOOK_BACK_MAX_MONTHS = 18
+# Behaviour checks (heuristic): a contact compared with its own history in what the run read.
+# CHK-036 / CHK-082: this month or the 3 before it, at least 2.5 times the contact's usual month (the median of 3+ earlier
+# months with any) and at least $500 more.
+CK_RECENT_MONTHS = 4
+CK_BASELINE_MONTHS = 3
+CK_UNUSUAL_RATIO = 2.5
+CK_UNUSUAL_MIN = 500.0
+# CHK-037 / CHK-038 / CHK-083 / CHK-084: a contact that's usually paid within about the same number of days of the
+# document date (75% of its paid documents within its median + 7 days), with one overdue document more than 30 days past
+# that, or two or more over a week past it.
+CK_ON_TIME_DAYS = 7
+CK_ON_TIME_SHARE = 0.75
+CK_OVERDUE_MIN_DAYS = 30
 
 
 def ck_day(value):
@@ -707,11 +726,12 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
     # CHK-041 / CHK-094 (heuristic): a contact's income or expense coded to another account than the one it nearly always uses.
     incomes = [d for d in docs if d["kind"] == "invoice" and ck_live(d)] + [s for s in ledger.get("bank") or [] if s["kind"] == "receive"]
     for check, rows, what in (("CHK-094", purchases, "expense"), ("CHK-041", incomes, "income")):
-        used = {}
+        used, named = {}, {}
         for r in rows:
             for ln in r["lines"]:
-                if r["contact_id"] in contacts and ln["account"]:
+                if r["contact_id"] and ln["account"]:
                     used.setdefault(r["contact_id"], []).append((r, ln["account"]))
+                    named[r["contact_id"]] = (contacts.get(r["contact_id"]) or {}).get("name") or r.get("contact") or r["contact_id"]
         for cid, pairs in used.items():
             counts = {}
             for _r, code in pairs:
@@ -726,7 +746,7 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                     odd.append((r, code))
             shown = ["%s %s → %s" % ("bill" if r.get("kind") == "bill" else "invoice" if r.get("kind") == "invoice" else "payment",
                                        r.get("number") or ck_date_text(r["date"]), ck_account_ref(accounts, code)) for r, code in odd[:5]]
-            out.append(ck_finding(check, cid, contacts[cid]["name"] + "'s " + what + " is nearly always coded to "
+            out.append(ck_finding(check, cid, named[cid] + "'s " + what + " is nearly always coded to "
                                   + ck_account_ref(accounts, usual)
                                   + " (" + str(counts[usual]) + " of " + str(len(pairs)) + " lines), but not here: " + "; ".join(shown)
                                   + ". Check the coding.", amount=sum(r["total"] for r, _c in odd), link=odd[0][0]["link"],
@@ -740,6 +760,104 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
         out.append(ck_finding("CHK-138", "inactive", str(len(idle)) + " profit and loss account(s) haven't been used in 12 months: "
                               + ", ".join(ck_account_label(a) for a in idle[:8]) + (" and more" if len(idle) > 8 else "")
                               + ". Archive the ones that aren't needed.", sig="|".join(a["code"] for a in idle)))
+    return out + ck_behaviour_rules(ledger, contacts, today)
+
+
+# ── Behaviour checks (weekly, heuristic): a contact's month, or its overdue documents, against its own history ──
+def ck_median(values):
+    v = sorted(values)
+    n = len(v)
+    if not n:
+        return 0.0
+    return v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2
+
+
+def ck_recent_months(today):
+    """This month and the CK_RECENT_MONTHS - 1 before it, as YYYY-MM."""
+    m = today.replace(day=1)
+    out = [str(m)[:7]]
+    for _ in range(CK_RECENT_MONTHS - 1):
+        m = (m - datetime.timedelta(days=1)).replace(day=1)
+        out.append(str(m)[:7])
+    return out
+
+
+def ck_age(d, today):
+    dated = ck_day(d["date"])
+    return (today - dated).days if dated else 0
+
+
+def ck_days_over(d, today):
+    due = ck_day(d["due"])
+    return (today - due).days if due else 0
+
+
+def ck_behaviour_rules(ledger, contacts, today):
+    out = []
+    docs = ledger.get("docs") or []
+    recent = ck_recent_months(today)
+    # A document's own contact name when the contact isn't listed (QuickBooks lists suppliers only, not customers).
+    names = {cid: c["name"] for cid, c in contacts.items()}
+    for d in docs:
+        if d["contact_id"] and d["contact_id"] not in names:
+            names[d["contact_id"]] = d["contact"] or d["contact_id"]
+    # CHK-036 / CHK-082: a month far above the contact's usual month.
+    for kind, check, verb in (("invoice", "CHK-036", "was invoiced"), ("bill", "CHK-082", "billed")):
+        months = {}
+        for d in docs:
+            # Open documents from before the window are read for what's owed only: they'd make partial months.
+            if d["kind"] == kind and ck_live(d) and d["contact_id"] and d["date"] and not d.get("older_open"):
+                months.setdefault(d["contact_id"], {}).setdefault(d["date"][:7], []).append(d)
+        for cid, by_month in months.items():
+            totals = {m: sum(x["total"] for x in rows) for m, rows in by_month.items()}
+            for month in recent:
+                total = totals.get(month) or 0
+                earlier = [t for m, t in totals.items() if m < month and t > 0]
+                usual = ck_median(earlier)
+                if (len(earlier) >= CK_BASELINE_MONTHS and total >= CK_UNUSUAL_RATIO * usual
+                        and total - usual >= CK_UNUSUAL_MIN):
+                    rows = sorted(by_month[month], key=lambda x: -x["total"])
+                    named = datetime.date.fromisoformat(month + "-01").strftime("%B %Y")
+                    out.append(ck_finding(check, cid + ":" + month, names[cid] + " " + verb + " " + ck_money(total) + " in "
+                                          + named + " (" + ck_names(rows, "number") + "), against a usual " + ck_money(usual)
+                                          + " a month (" + str(len(earlier)) + " earlier months). Check it's right.",
+                                          amount=total, link=rows[0]["link"], sig="%.2f" % total))
+    # CHK-037 / CHK-038 / CHK-083 / CHK-084: overdue, from a contact that's usually paid within about the same number of
+    # days of the document date (measured from the date, as only open documents carry their due dates on every ledger).
+    for kind, single, group, noun, who in (("invoice", "CHK-037", "CHK-038", "invoice", "customer"),
+                                           ("bill", "CHK-083", "CHK-084", "bill", "supplier")):
+        history, open_late = {}, {}
+        for d in docs:
+            dated, paid = ck_day(d["date"]), ck_day(d.get("paid_on"))
+            if d["kind"] != kind or not d["contact_id"] or not dated:
+                continue
+            if d["status"] == "paid" and paid and paid >= dated:
+                history.setdefault(d["contact_id"], []).append((paid - dated).days)
+            elif d["status"] == "authorised" and d["due_amount"] > 0 and ck_days_over(d, today) > 0:
+                open_late.setdefault(d["contact_id"], []).append(d)
+        for cid, rows in open_late.items():
+            past = history.get(cid) or []
+            usual = ck_median(past)
+            steady = [x for x in past if x <= usual + CK_ON_TIME_DAYS]
+            if not past or len(steady) < CK_ON_TIME_SHARE * len(past):
+                continue
+            late = sorted([x for x in rows if ck_age(x, today) > usual + CK_ON_TIME_DAYS], key=lambda x: (-ck_age(x, today), x["id"]))
+            habit = "usually paid within about " + str(int(round(usual))) + " days (" + str(len(past)) + " paid)"
+            to = "to " if kind == "invoice" else "from "
+            if len(late) >= 2:
+                owed = sum(x["due_amount"] for x in late)
+                listed = ", ".join((x["number"] or "(no number)") + " " + str(ck_days_over(x, today)) + " days" for x in late[:5])
+                out.append(ck_finding(group, cid, str(len(late)) + " " + noun + "s " + to + names[cid] + " ("
+                                      + ck_money(owed) + ") are overdue (" + listed + "), though its " + noun + "s are " + habit
+                                      + ". Check whether something has changed with this " + who + ".", amount=owed,
+                                      link=late[0]["link"], sig="|".join(sorted(x["id"] for x in late))))
+            elif late and ck_age(late[0], today) > usual + CK_OVERDUE_MIN_DAYS:
+                d = late[0]
+                out.append(ck_finding(single, d["id"], noun.capitalize() + " " + (d["number"] or "(no number)") + " " + to
+                                      + names[cid] + " (" + ck_money(d["due_amount"]) + ") is " + str(ck_days_over(d, today))
+                                      + " days overdue, though its " + noun + "s are " + habit + ". "
+                                      + ("Follow it up with the customer." if kind == "invoice" else "Check why it hasn't been paid."),
+                                      amount=d["due_amount"], link=d["link"], sig=d["id"]))
     return out
 
 

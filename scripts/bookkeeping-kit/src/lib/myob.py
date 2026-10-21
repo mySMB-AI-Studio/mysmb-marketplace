@@ -215,6 +215,17 @@ def myob_ledger(file_id, today, since, weekly):
             uid = myob_ref(ln.get("Purchase")) if isinstance(ln, dict) else ""
             if uid and when > paid.get(uid, ""):
                 paid[uid] = when
+    # When a sales invoice was paid (weekly, for the overdue behaviour checks): the latest customer payment applied to it.
+    # A customer payment lists its invoices under "Invoices" (each with the invoice's UID); "Lines" with a Sale is accepted
+    # too. Not yet seen on a real file: confirm on QA.
+    if weekly:
+        receipts, _cut = myob_pages("list_payments", file_id, from_date=str(since), to_date=str(today))
+        for p in receipts:
+            when = myob_date(p.get("Date"))
+            for ln in p.get("Invoices") or p.get("Lines") or []:
+                uid = (myob_ref(ln.get("Sale")) or myob_ref(ln.get("Invoice")) or str(ln.get("UID") or "")) if isinstance(ln, dict) else ""
+                if uid and when > paid.get(uid, ""):
+                    paid[uid] = when
     docs = []
     for doc_id in order:
         d = by_doc[doc_id]
@@ -226,7 +237,7 @@ def myob_ledger(file_id, today, since, weekly):
         d["tax"] = round(sum(x["tax"] for x in d["lines"]), 2)
         if not h:
             d["total"] = round(sum(x["amount"] + x["tax"] for x in d["lines"]), 2)
-        if d["kind"] == "bill" and d["status"] == "paid":
+        if d["kind"] in ("bill", "invoice") and d["status"] == "paid":
             d["paid_on"] = paid.get(doc_id, "")
         docs.append(d)
     for doc_id, h in heads.items():

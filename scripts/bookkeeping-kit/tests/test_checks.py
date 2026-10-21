@@ -22,6 +22,18 @@ def day(n):
     return str(TODAY - datetime.timedelta(days=n))
 
 
+def month_day(k, d=15):
+    """Day d of the month k months ago (k=0: this month), never later than today."""
+    m = TODAY.replace(day=1)
+    for _ in range(k):
+        m = (m - datetime.timedelta(days=1)).replace(day=1)
+    return str(min(m.replace(day=d), TODAY))
+
+
+def plus(date, n):
+    return str(datetime.date.fromisoformat(date) + datetime.timedelta(days=n))
+
+
 def last_month_day():
     return str((TODAY.replace(day=1) - datetime.timedelta(days=1)).replace(day=10))
 
@@ -584,7 +596,8 @@ class Checks(unittest.TestCase):
         self.org["invoices"] += [doc("t1", "TEL-0515", telstra, day(10), 330.0, status="PAID", paid_on=day(9)),
                                  doc("t2", "TEL-0515R", telstra, day(7), 330.0, status="PAID", paid_on=day(6)),
                                  # Different numbers that just share a start aren't duplicates.
-                                 doc("t3", "INV-100", telstra, day(30), 99.0), doc("t4", "INV-1001", telstra, day(12), 99.0)]
+                                 doc("t3", "INV-100", telstra, day(30), 99.0, due=day(-30)),
+                                 doc("t4", "INV-1001", telstra, day(12), 99.0, due=day(-30))]
         self.overnight()
         desc = self.open_item()["description"]
         self.assertIn("CHK-081 Duplicate Bill Raised Advanced", desc)
@@ -666,6 +679,80 @@ class Checks(unittest.TestCase):
         self.assertIn("CHK-080", self.open_item()["description"], "the next night still looks back, so it stays open")
         run_flow(self.w, AUTOS[AUTO], manual, {"client_name": "Acme Plumbing", "look_back_months": "0"})
         self.assertNotIn("look_back_months", self.state())
+
+    # ── behaviour checks: a contact's month or overdue documents against its own history ──
+    def sale(self, doc_id, number, who, date, total, paid_after=None, due=None):
+        """A sales invoice; paid_after: days after its date it was paid (None: still owed)."""
+        if paid_after is None:
+            return doc(doc_id, number, who, date, total, kind="ACCREC", account="200", tax_type="OUTPUT", sent=True,
+                       due=due or plus(date, 30))
+        return doc(doc_id, number, who, date, total, kind="ACCREC", account="200", tax_type="OUTPUT", sent=True,
+                   due=plus(date, 30), status="PAID", paid_on=plus(date, paid_after))
+
+    def test_a_month_far_above_a_customers_and_a_suppliers_usual(self):
+        harbour = self.add(contact("c-hl", "Harbourline Logistics Pty Ltd", "71938570839"))
+        ms = self.add(contact("c-ms", "Microsoft Australia Pty Ltd", "29002589460"))
+        for k in (3, 2, 1):
+            self.org["invoices"] += [self.sale("h%d" % k, "INV-10%d" % k, harbour, month_day(k), 4400.0, paid_after=15),
+                                     doc("m%d" % k, "MS-%d" % k, ms, month_day(k), 660.0, account="489", status="PAID",
+                                         paid_on=plus(month_day(k), 3))]
+        self.org["invoices"] += [self.sale("h0", "INV-1052", harbour, month_day(0, 1), 39050.0, due=day(-30)),
+                                 doc("m0", "MS-0", ms, month_day(0, 1), 1980.0, account="489", due=day(-30))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        line = next(l for l in desc.split("\n") if "CHK-036" in l)
+        self.assertIn("Harbourline Logistics Pty Ltd was invoiced $39,050.00 in", line)
+        self.assertIn("against a usual $4,400.00 a month (3 earlier months)", line)
+        self.assertIn("Microsoft Australia Pty Ltd billed $1,980.00 in", next(l for l in desc.split("\n") if "CHK-082" in l))
+
+    def test_an_overdue_invoice_from_a_customer_that_usually_pays_in_about_20_days(self):
+        harbour = self.add(contact("c-hl", "Harbourline Logistics Pty Ltd", "71938570839"))
+        self.org["invoices"] += [self.sale("h%d" % k, "INV-11%d" % k, harbour, day(60 + 30 * k), 3960.0, paid_after=20)
+                                 for k in range(3)]
+        self.org["invoices"].append(self.sale("h9", "INV-1003", harbour, day(274), 3960.0, due=day(244)))
+        self.overnight()
+        line = next(l for l in self.open_item()["description"].split("\n") if "CHK-037" in l)
+        self.assertIn("Invoice INV-1003 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
+        self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+    def test_several_overdue_invoices_after_a_steady_history_are_one_finding(self):
+        sunline = self.add(contact("c-ss", "Sunline Solar Pty Ltd", "27295289264"))
+        self.org["invoices"] += [self.sale("s%d" % k, "INV-20%d" % k, sunline, day(140 + 30 * k), 3300.0, paid_after=20)
+                                 for k in range(3)]
+        self.org["invoices"] += [self.sale("s7", "INV-1032", sunline, day(107), 3564.0, due=day(77)),
+                                 self.sale("s8", "INV-1037", sunline, day(77), 3960.0, due=day(47)),
+                                 self.sale("s9", "INV-1042", sunline, day(47), 2750.0, due=day(17))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        line = next(l for l in desc.split("\n") if "CHK-038" in l)
+        self.assertIn("3 invoices to Sunline Solar Pty Ltd ($10,274.00) are overdue (INV-1032 77 days, INV-1037 47 days, "
+                      "INV-1042 17 days)", line)
+        self.assertNotIn("CHK-037", desc, "grouped, not one finding each")
+
+    def test_overdue_bills_from_suppliers_usually_paid_promptly(self):
+        coastal = self.add(contact("c-cib", "Coastal Insurance Brokers Pty Ltd", "71014323325"))
+        granite = self.add(contact("c-gpg", "Granite Property Group Pty Ltd", "76676336067"))
+        self.org["invoices"].append(doc("c1", "CIB-2026-01", coastal, day(280), 3520.0, due=day(250), status="PAID", paid_on=day(265)))
+        self.org["invoices"].append(doc("c2", "CIB-2026-07", coastal, day(98), 3520.0, due=day(68)))
+        self.org["invoices"] += [doc("g%d" % k, "GPG-0%d" % k, granite, day(90 + 30 * k), 5500.0, due=day(83 + 30 * k),
+                                     status="PAID", paid_on=day(85 + 30 * k)) for k in range(3)]
+        self.org["invoices"] += [doc("g8", "GPG-08", granite, day(81), 5500.0, due=day(74)),
+                                 doc("g9", "GPG-09", granite, day(51), 5500.0, due=day(44)),
+                                 doc("g10", "GPG-10", granite, day(21), 5500.0, due=day(14))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("Bill CIB-2026-07 from Coastal Insurance Brokers Pty Ltd ($3,520.00) is 68 days overdue",
+                      next(l for l in desc.split("\n") if "CHK-083" in l))
+        self.assertIn("3 bills from Granite Property Group Pty Ltd ($16,500.00) are overdue",
+                      next(l for l in desc.split("\n") if "CHK-084" in l))
+
+    def test_a_customer_that_pays_at_all_sorts_of_times_isnt_unusual(self):
+        slow = self.add(contact("c-sl", "Slow Payers Pty Ltd", "33102417032"))
+        self.org["invoices"] += [self.sale("p%d" % k, "INV-30%d" % k, slow, day(200 + 20 * k), 990.0, paid_after=after)
+                                 for k, after in enumerate((15, 60, 90, 120))]
+        self.org["invoices"].append(self.sale("p9", "INV-309", slow, day(150), 990.0, due=day(120)))
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "CHK-037" in i["description"]])
 
     # ── the test register (a test company's made-up ABNs aren't on the register) ──
     def register_csv(self, cancelled_on):
