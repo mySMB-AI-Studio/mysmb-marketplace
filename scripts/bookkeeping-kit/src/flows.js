@@ -520,6 +520,10 @@ export const AUTOMATIONS = [
       'Needs the Microsoft 365 extension, with Outlook connected by the automation’s owner.'],
     ['outlook-shared', 'Outlook shared mailbox', 'm365-mail-shared', 'the shared Outlook mailbox named in Bookkeeping setup (e.g. accounts@…)',
       'Needs the Microsoft 365 shared mailbox connection (m365-mail-shared, part of this extension), connected by an owner who has access to that mailbox.'],
+    // Personal Microsoft accounts (Hotmail, Outlook.com, Live.com) can't sign in to the Microsoft 365 connection, which
+    // is work or school only; they have their own Hotmail connection with the same mail tools.
+    ['hotmail', 'Hotmail', 'hotmail-mail', 'the owner’s Hotmail or Outlook.com inbox',
+      'Needs the Microsoft 365 extension, with hotmail-mail connected by the automation’s owner, signed in with that personal Microsoft account (Hotmail, Outlook.com or Live.com).'],
     ['gmail', 'Gmail', 'google-workspace-gmail', 'the owner’s Gmail',
       'Needs the Google Workspace extension, with Gmail connected by the automation’s owner.'],
   ].map(

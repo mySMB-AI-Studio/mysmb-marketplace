@@ -6,12 +6,12 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 
 ## What's in the box
 
-- **Connectors:** `xero-accounting` (the mySMB Xero connector), and `m365-mail-shared` for reading a shared Outlook mailbox. Email intake otherwise uses `m365-mail-read` (Microsoft 365 extension) or `google-workspace-gmail` (Google Workspace extension).
+- **Connectors:** `xero-accounting` (the mySMB Xero connector), and `m365-mail-shared` for reading a shared Outlook mailbox. Email intake otherwise uses `m365-mail-read` or, for a personal Hotmail / Outlook.com inbox, `hotmail-mail` (both in the Microsoft 365 extension), or `google-workspace-gmail` (Google Workspace extension).
 <!-- >>> payroll -->
-- **Automations (18):**
+- **Automations (19):**
 <!-- <<< payroll -->
 <!-- >>> no-payroll -->
-- **Automations (13):**
+- **Automations (14):**
 <!-- <<< no-payroll -->
   - *Bookkeeping: Start setup* (run by hand): creates the setup items.
   - *Bookkeeping: Apply setup (Xero)*: saves the setup answers and matches each client to its Xero organisation.
@@ -44,7 +44,7 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
     - *Bookkeeping: Build payroll review pack (Xero Payroll)*: the draft pay run's totals and payslips, the last check, the changes and the notes, sent to the internal reviewer.
     - *Bookkeeping: Apply payroll review*: internal approval → client approval item with a drafted email → done (or "post it" when the practice posts).
 <!-- <<< payroll -->
-  - *Bookkeeping: Email intake (Outlook)*, *Email intake (Outlook shared mailbox)* and *Email intake (Gmail)*: every 15 minutes, read the new emails in the owner's mailbox (or the practice's shared Outlook mailbox), have AI pick out supplier bills, sales invoices, statements and invoice requests, work out which client each one belongs to, and save it into that client's `Bookkeeping Inbox/<client>/` folder. See *How email intake works*. Other emails are left untouched: nothing in the mailbox is changed. Publish the one(s) for the mailbox you use.
+  - *Bookkeeping: Email intake (Outlook)*, *Email intake (Outlook shared mailbox)*, *Email intake (Hotmail)* and *Email intake (Gmail)*: every 15 minutes, read the new emails in the owner's mailbox (or the practice's shared Outlook mailbox), have AI pick out supplier bills, sales invoices, statements and invoice requests, work out which client each one belongs to, and save it into that client's `Bookkeeping Inbox/<client>/` folder. See *How email intake works*. Other emails are left untouched: nothing in the mailbox is changed. Publish the one(s) for the mailbox you use.
 <!-- >>> payroll -->
 - **Forms (11):** Bookkeeping setup, Client bookkeeping settings, Bill review, Invoice review, Invoice to send, Client bill approval, Client payroll settings, Pay run, Payroll review, Client payroll approval, Check findings.
 <!-- <<< payroll -->
@@ -58,7 +58,7 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 
 No configuration variables are required. Settings are collected by the setup forms and stored in Knowledge (`Bookkeeping/settings.json`, `Bookkeeping/Clients/<client>.json`).
 
-**Requires** `myhub-mcp-servers` with `xero_tenant_id` support on write tools (PR #558). Without it, every bill is written to the connection's default Xero organisation. Email intake also needs the mail attachment tools (`list_email_attachments` / `get_email_attachment` for Outlook, `get_attachment` for Gmail). Folders by path, reading in order from the last run, shared mailboxes and HEIC conversion need the mail connector update (`list_mail_folders`, `receivedAfter`/`oldestFirst`, `mailbox`, Gmail `pageToken`, `heicToJpeg`, and the `m365-mail-shared` route). With an older connector, email intake still reads the Inbox, but only the newest 50 emails each run, and an iPhone photo becomes an item asking for a JPEG. Reading scanned PDFs and photos needs the myHubV2 version where `api.ai` accepts a file (myHubV2 #1769).
+**Requires** `myhub-mcp-servers` with `xero_tenant_id` support on write tools (PR #558). Without it, every bill is written to the connection's default Xero organisation. Email intake also needs the mail attachment tools (`list_email_attachments` / `get_email_attachment` for Outlook, `get_attachment` for Gmail). Folders by path, reading in order from the last run, shared mailboxes and HEIC conversion need the mail connector update (`list_mail_folders`, `receivedAfter`/`oldestFirst`, `mailbox`, Gmail `pageToken`, `heicToJpeg`, and the `m365-mail-shared` route; for Hotmail, `hotmail-mail` with myhub-mcp-servers #821). With an older connector, email intake still reads the Inbox, but only the newest 50 emails each run, and an iPhone photo becomes an item asking for a JPEG. Reading scanned PDFs and photos needs the myHubV2 version where `api.ai` accepts a file (myHubV2 #1769).
 
 ## After installing
 
@@ -74,7 +74,7 @@ No configuration variables are required. Settings are collected by the setup for
 5. **Run *Bookkeeping: Start setup*** and fill in the Bookkeeping setup form on the item it creates.
 6. **Run it again with your client business names** (one per line), and fill in each client's settings form. Enter the Xero organisation name exactly as it appears in Xero.
 7. **Publish** *Process bill or invoice*, *File split documents*, *Apply bill or invoice review*, *Weekly AP digest* and *Ledger checks*.
-8. **For bills by email:** install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, and publish *Email intake (Outlook)* or *Email intake (Gmail)*. For a shared Outlook mailbox (accounts@…), put its address in the Bookkeeping setup form, connect *m365-mail-shared* as someone with Full Access to it, and publish *Email intake (Outlook shared mailbox)*. List any other folders to read in the setup form, and each client's own folder (if it has one) in its client settings. Each folder's first run looks back 24 hours.
+8. **For bills by email:** install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, and publish *Email intake (Outlook)* or *Email intake (Gmail)*. For a shared Outlook mailbox (accounts@…), put its address in the Bookkeeping setup form, connect *m365-mail-shared* as someone with Full Access to it, and publish *Email intake (Outlook shared mailbox)*. For a personal Hotmail, Outlook.com or Live.com inbox (the Microsoft 365 Outlook connection takes work or school accounts only), connect *hotmail-mail* (Microsoft 365 extension) as the automations' owner, signing in with that Hotmail account, and publish *Email intake (Hotmail)*. List any other folders to read in the setup form, and each client's own folder (if it has one) in its client settings. Each folder's first run looks back 24 hours.
 9. **Try it:** email a supplier bill PDF to that inbox, or drop one into `Bookkeeping Inbox/<client>/` in Knowledge.
 
 After every extension update, publish the updated automation drafts again. Updates arrive as drafts, and the previous version keeps running until you do.
@@ -193,7 +193,7 @@ Never use it for a real client.
 - One Xero connection covers all clients. The connection owner's Xero login must include every client organisation. If an organisation is added later, reconnect Xero.
 - A PDF of more than 20 pages holding several invoices isn't split; it goes to exceptions. Credit notes and receipts are sent to exceptions.
 - An iPhone HEIC photo dropped straight into Knowledge can't be read (nothing in the automation sandbox decodes HEIC): email it in, or save it as JPEG. By email, photos are taken only from emails with no PDF, and only those over 30 KB, so logos and signature images are left alone.
-- A shared mailbox is Outlook only (Gmail has no shared mailboxes through its API).
+- A shared mailbox is work Outlook only (Gmail has no shared mailboxes through its API, and a personal Hotmail account has none). *Email intake (Hotmail)* reads the one Hotmail account its owner connected.
 - A scanned bank statement is read one page at a time from the image, and a scanned page holds about 40 transactions at most. When a page has more, the lines don't add up and the statement is flagged rather than imported.
 <!-- >>> payroll -->
 - Payroll checks read Xero Payroll AU and Deputy only; the officer makes every correction. Deputy is one connection per client business. Penalty rules beyond the day start/end, weekends, public holidays and a daily overtime threshold are not modelled yet.

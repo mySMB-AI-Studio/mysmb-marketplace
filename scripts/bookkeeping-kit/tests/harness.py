@@ -425,16 +425,17 @@ class FakeXero:
 
 
 class FakeMail:
-    """The owner's Outlook and Gmail mailboxes and a shared Outlook mailbox, shaped like m365-mail-read,
-    m365-mail-shared and google-workspace-gmail return them. Messages live in folders (Gmail: labels). With
-    old_connector, list_emails ignores receivedAfter/oldestFirst, list_messages ignores pageToken and heicToJpeg is
-    ignored: the connectors as they were before folders, cursors and HEIC (production until it is updated)."""
-    SERVERS = {"m365-mail-read": "outlook", "m365-mail-shared": "outlook-shared", "google-workspace-gmail": "gmail"}
+    """The owner's Outlook, Hotmail and Gmail mailboxes and a shared Outlook mailbox, shaped like m365-mail-read,
+    hotmail-mail, m365-mail-shared and google-workspace-gmail return them. Messages live in folders (Gmail: labels).
+    With old_connector, list_emails ignores receivedAfter/oldestFirst, list_messages ignores pageToken and heicToJpeg
+    is ignored: the connectors as they were before folders, cursors and HEIC (production until it is updated)."""
+    SERVERS = {"m365-mail-read": "outlook", "m365-mail-shared": "outlook-shared", "hotmail-mail": "hotmail",
+               "google-workspace-gmail": "gmail"}
     MAX = 15 * 1024 * 1024
     GMAIL_LABELS = {"Label_bills": "Bills", "Label_acme": "Clients/Acme"}
 
     def __init__(self):
-        self.boxes = {"outlook": [], "outlook-shared": [], "gmail": []}
+        self.boxes = {"outlook": [], "outlook-shared": [], "hotmail": [], "gmail": []}
         self.calls = []
         self.fail_download = 0
         self.old_connector = False
@@ -467,7 +468,10 @@ class FakeMail:
         box = self.boxes[provider]
         if provider == "outlook-shared":
             assert args.pop("mailbox", None) == self.shared_mailbox, "shared mailbox calls must name the mailbox"
-        if provider in ("outlook", "outlook-shared"):
+        if provider == "hotmail":
+            # hotmail-mail has no shared mailboxes, so it has no `mailbox` argument either.
+            assert "mailbox" not in args, "hotmail-mail has no mailbox argument"
+        if provider in ("outlook", "outlook-shared", "hotmail"):
             if tool == "list_emails":
                 folder = str(args.get("folder") or "").lower()
                 if folder and folder != "inbox" and not any(m["folder"].lower() == folder for m in box):
