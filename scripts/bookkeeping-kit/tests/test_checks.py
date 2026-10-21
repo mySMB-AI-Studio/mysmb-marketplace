@@ -565,6 +565,63 @@ class Checks(unittest.TestCase):
         self.overnight()
         self.assertFalse(any(f["check"] == "CHK-071" for f in self.state().get("findings", {}).values()))
 
+    # ── the test register (a test company's made-up ABNs aren't on the register) ──
+    def register_csv(self, cancelled_on):
+        """The seed packs' "Registry fixture" tab saved as CSV: title lines, then the header, then one row per contact."""
+        dmy = datetime.date.fromisoformat(cancelled_on).strftime("%d/%m/%Y")
+        return ("﻿Registry fixture — ABR mock for the demo (agent configuration C12)\n"
+                "Identical to the other packs\n"
+                "Contact,ABN on record,Registry entity name,ABN status,GST registration,DGR,Checks\n"
+                "Plumbing Supplies Co,51 824 753 556,Plumbing Supplies Co,Active,Registered,No,\n"
+                "Gone Electrical,53 004 085 616,Gone Electrical Pty Ltd,Cancelled (" + dmy + "),Not registered,No,CHK-071\n"
+                "Northbank Consulting,12 345 678 901,—,Not found (invalid checksum),—,No,CHK-004\n"
+                "Hilltop Cleaning,,Hilltop Cleaning (sole trader),Active — found by name,Not registered,No,\n")
+
+    def test_a_test_register_replaces_the_register_for_that_client_only(self):
+        gone = self.add(contact("c-gone", "Gone Electrical", "53004085616"))
+        self.add(contact("c-north", "Northbank Consulting", "12345678901"))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        # The real register knows neither ABN, as with the seed packs' made-up ones.
+        self.w.files["Bookkeeping/Test register/Acme Plumbing Pty Ltd.csv"] = self.register_csv(day(30))
+        self.register_then_weekly()
+        self.assertEqual(self.w.abr.calls, [], "a test company never reaches the register")
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertEqual(cache["test_register"], "Bookkeeping/Test register/Acme Plumbing Pty Ltd.csv")
+        self.assertEqual(cache["abns"]["53004085616"]["status_from"], day(30))
+        self.assertTrue(cache["abns"]["51824753556"]["gst_registered"])
+        desc = self.register_desc()
+        self.assertIn("**Test register:**", desc)
+        self.assertIn("Gone Electrical's ABN 53004085616 was cancelled on", desc)
+        self.assertIn("Northbank Consulting (12345678901 fails the ABN checksum)", desc)
+        for line in desc.split("\n"):
+            if "CHK-071" in line or "CHK-004" in line:
+                self.assertIn("(Test register, not the Australian Business Register.)", line)
+
+    def test_deleting_the_test_register_goes_back_to_the_register(self):
+        gone = self.add(contact("c-gone", "Gone Electrical", "53004085616"))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        path = "Bookkeeping/Test register/Acme Plumbing.csv"
+        self.w.files[path] = self.register_csv(day(30))
+        self.register_then_weekly()
+        self.assertIn("CHK-071", self.register_desc())
+        del self.w.files[path]
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        run_flow(self.w, AUTOS["Bookkeeping: Register lookups (ABR)"], {"kind": "schedule"}, {"client_name": ""})
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertNotIn("test_register", cache)
+        self.assertTrue(self.w.abr.calls, "the register is asked again")
+        self.assertFalse(cache["abns"]["53004085616"]["found"], "the file's cancelled record is forgotten")
+        self.assertEqual(cache["abns"]["51824753556"]["status"], "Active")
+
+    def test_another_clients_test_register_is_ignored(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        self.w.files["Bookkeeping/Test register/Other Business.csv"] = self.register_csv(day(30))
+        self.overnight()
+        run_flow(self.w, AUTOS["Bookkeeping: Register lookups (ABR)"], {"kind": "schedule"}, {"client_name": ""})
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertNotIn("test_register", cache)
+        self.assertTrue(self.w.abr.calls)
+
     def test_register_lookups_rechecks_weekly_and_never_stores_the_digits_it_doesnt_need(self):
         self.on_register("51824753556", "Plumbing Supplies Co")
         self.overnight()

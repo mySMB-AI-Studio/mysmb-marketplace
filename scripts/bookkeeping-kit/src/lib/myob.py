@@ -13,6 +13,7 @@ MYOB_STATUS = {"Open": "authorised", "Closed": "paid", "Credit": "authorised"}
 MYOB_PL = ("Income", "CostOfSales", "Expense", "OtherIncome", "OtherExpense")
 # Checks the myob-accounting connector can't answer: not run, and listed on the Checks item (never shown as clear).
 MYOB_NA = {
+    "CHK-002": "it reads the ABN on bill PDFs, which only Bookkeeping for Xero's bill intake reads",
     "CHK-016": "MYOB's API has no batch payment text",
     "CHK-017": "the MYOB connector doesn't return supplier bank details",
     "CHK-018": "the MYOB connector doesn't return supplier bank details",

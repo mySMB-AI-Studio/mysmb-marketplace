@@ -354,7 +354,9 @@ export const AUTOMATIONS = [
       'Register (ABN status, GST registration, DGR status) and saves the results, so Ledger checks can run the register ' +
       'checks: cancelled businesses still being billed or paid, GST charged by businesses that aren’t registered, ' +
       'donations to non-DGR bodies, ABNs that look wrong. Each business is re-checked weekly. Also searches the register ' +
-      'for a few suppliers with no ABN. Needs the ABR Lookup extension; publish it only if that’s installed. Reads only.',
+      'for a few suppliers with no ABN. Needs the ABR Lookup extension; publish it only if that’s installed. Reads only. ' +
+      'For a test company with made-up ABNs, a CSV in Bookkeeping/Test register named after the client is read instead ' +
+      'of the register (see the README).',
     triggers: [{ kind: 'schedule', cron: '30 23 * * *', timezone: 'Australia/Sydney' }, { kind: 'manual' }],
     params: [
       { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: looks it up now)', required: false, value: '' },
