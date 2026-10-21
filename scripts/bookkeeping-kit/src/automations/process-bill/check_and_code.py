@@ -16,7 +16,50 @@ CODE_HINT = '[{"index": 0, "account_code": "400", "tax_type": "INPUT", "reason":
 problem = params.get("problem") or ""
 ctx = params.get("ctx") or {}
 inv = params.get("invoice") or {}
+origin = params.get("origin") or {}
 proposal = {}
+# Set when the bill is addressed to another business: nothing goes to Xero until someone says which client it's for.
+needs_client = {}
+
+
+def _same_name(a, b):
+    """Normalised names that are the same business: equal, or one inside the other (Pty Ltd, trading as...)."""
+    return bool(a and b) and (a == b or (len(a) > 3 and len(b) > 3 and (a in b or b in a)))
+
+
+def _other_business(client, tenant, routing, bill_to, bill_to_abn, issuer):
+    """A bill addressed to a named business that isn't this client: (needs_client, warning). Another client, another
+    Xero organisation the connection can see, or anyone at all on a bill that was only filed here because this is the
+    only client means asking which client it's for before anything goes to Xero. A file someone put in this client's
+    folder by hand, addressed to a name nobody knows (the owner's own name, an old trading name), goes on with a warning."""
+    key = bk_norm(bill_to)
+    other = None
+    for c in route_clients():
+        if c.get("slug") != client.get("slug") and ((bill_to_abn and c.get("abn") == bill_to_abn)
+                                                    or any(_same_name(n, key) for n in route_names(c, routing))):
+            other = c
+            break
+    if other:
+        return {"kind": "client", "addressed_to": bill_to, "slug": other["slug"],
+                "name": str(other.get("name") or other["slug"]), "org_name": str(other.get("xero_org_name") or "")}, ""
+    org = None
+    exc = None  # the platform lint wants names bound before `except ... as`
+    try:
+        for o in xero_connections():
+            if o.get("tenantId") != tenant and _same_name(bk_norm(o.get("tenantName")), key):
+                org = o
+                break
+    except Exception as exc:
+        org = None
+    if org:
+        return {"kind": "org", "addressed_to": bill_to, "tenant_id": str(org.get("tenantId") or ""),
+                "org_name": str(org.get("tenantName") or bill_to)}, ""
+    if origin.get("how") == "only client":
+        return {"kind": "unknown", "addressed_to": bill_to}, ""
+    here = str(client.get("name") or "this client")
+    return {}, ("Addressed to " + bill_to + ": this document is from " + (issuer or "an unknown business") + " to "
+                + bill_to + ", and neither looks like " + here + ". It was treated as " + here + "'s bill because it was "
+                "put in its folder; reject it if it doesn't belong to them.")
 warnings = []
 blocking = []
 confidence = "low"
@@ -35,6 +78,9 @@ if not problem:
         ident = xero_org_identity(tenant)
         own_names = [n for n in (bk_norm(x) for x in [client.get("name"), client.get("xero_org_name")] + ident["names"]
                                  + list(client.get("aliases") or [])) if n]
+        # The names the practice taught (by choosing this client on a "Which client is this for?" item) count too.
+        routing = bk_read_json(BK_ROUTING) or {}
+        own_names += [n for n in route_names(client, routing) if n not in own_names]
         own_abn = ident["abn"]
         if client.get("slug") and ((own_abn and client.get("abn") != own_abn) or (ident["names"] and not client.get("org_names"))):
             # Clients saved before email intake matched on ABN: keep their ABN and Xero names on file for it.
@@ -48,11 +94,11 @@ if not problem:
             for n in own_names)
         doc_type = "ACCREC" if issued_by_client and not addressed_to_client else "ACCPAY"
         sales = doc_type == "ACCREC"
-        # Plenty of bills print no "Bill to"; only a named addressee that isn't the client is worth a warning.
+        # Plenty of bills print no "Bill to"; only a named addressee that isn't the client matters.
         if bill_to and not issued_by_client and not addressed_to_client:
-            warnings.append("This document is from " + (issuer or "an unknown business") + " to " + (bill_to or "an unknown "
-                            "business") + ", and neither looks like " + str(client.get("name") or "this client")
-                            + ". It was treated as a bill; reject it if it doesn't belong to this client.")
+            needs_client, mismatch = _other_business(client, tenant, routing, bill_to, bill_to_abn, issuer)
+            if mismatch:
+                warnings.insert(0, mismatch)
         # The counterparty: the supplier on a bill, the customer on a sales invoice.
         supplier = (bill_to if sales else issuer)
         abn = bill_to_abn if sales else issuer_abn

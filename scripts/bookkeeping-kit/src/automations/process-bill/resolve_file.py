@@ -11,6 +11,8 @@ client_folder = ""
 file_name = ""
 skip_reason = ""
 learned = ""
+# Where it came from: what Email intake noted, or how it was placed when it was dropped into the inbox itself.
+origin = {}
 
 
 def _photo_to_pdf(photo_path):
@@ -54,6 +56,7 @@ else:
         file_name = parts[2]
         # Filed here by hand after it couldn't be placed: remember who it was addressed to, for next time.
         learned = route_learn(file_name, client_folder)
+        origin = bk_origin(file_name) or {"how": "person"}
     else:
         # Dropped straight into Bookkeeping Inbox instead of a client's folder. It's read where it is: moving it into
         # the client's folder wouldn't start this automation again (an automation's own files don't re-trigger it).
@@ -67,6 +70,7 @@ else:
                 should_process = True
                 client_folder = slug
                 file_name = parts[1]
+                origin = dict(bk_origin(file_name), how="only client" if why == "the only client" else "matched", why=why)
             else:
                 dest = BK_FAILED + "/unmatched/" + parts[1]
                 try:
@@ -79,10 +83,16 @@ else:
                 api.workq.create(
                     title=("Which client is this for? " + parts[1])[:200],
                     scope="org",
-                    description=("`" + parts[1] + "` was dropped into `" + BK_INBOX + "` itself rather than a client's "
-                                 "folder, and " + why + ", so it wasn't processed.\n\n- File: `" + dest + "` in Knowledge\n\n"
-                                 "Move it into `" + BK_INBOX + "/<client>/` in Knowledge and it's processed from there; who it "
-                                 "was addressed to is remembered, so the next one is placed by itself. Then complete this item."),
+                    description=bk_card(
+                        "move the file below into `" + BK_INBOX + "/<client>/` in Knowledge (the client's folder), then "
+                        "complete this item. It's processed from there; nothing has gone to Xero yet.",
+                        [("Came from", "put into `" + BK_INBOX + "` itself rather than a client's folder"),
+                         ("Addressed to", names or "no business name could be read"),
+                         ("Why it wasn't processed", why),
+                         ("Clients set up", ", ".join(sorted(str(c.get("name") or c["slug"]) for c in clients))),
+                         ("File", "`" + dest + "` in Knowledge")],
+                        after="Who it was addressed to is remembered, so the next one is placed by itself. If it's for a "
+                              "business that isn't set up yet, run **Bookkeeping: Start setup** with its name first."),
                     priority="high",
                     due_date=str(bk_add_business_days(today, 1)),
                     assignee_ids=[owner] if owner else None,
