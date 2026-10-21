@@ -565,6 +565,108 @@ class Checks(unittest.TestCase):
         self.overnight()
         self.assertFalse(any(f["check"] == "CHK-071" for f in self.state().get("findings", {}).values()))
 
+    # ── the checks built from the seed packs (21 Oct) ──
+    def test_an_asic_fee_overdue_or_due_soon_is_high(self):
+        asic = self.add(contact("c-asic", "ASIC", "86768265615"))
+        self.org["invoices"] += [doc("a1", "ASIC-2026", asic, day(40), 321.0, due=day(30), tax=0),
+                                 doc("a2", "ASIC-LATE", asic, day(20), 96.0, due=day(-5), tax=0),
+                                 doc("a3", "ASIC-2025", asic, day(60), 310.0, due=day(50), status="PAID", paid_on=day(52), tax=0),
+                                 doc("a4", "ASIC-NEXT", asic, day(5), 321.0, due=day(-60), tax=0)]
+        self.overnight()
+        lines = [l for l in self.open_item()["description"].split("\n") if "CHK-170" in l]
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("**High**", lines[0])
+        self.assertTrue(any("ASIC-2026 of $321.00 was due on" in l and "is unpaid" in l for l in lines))
+        self.assertTrue(any("ASIC-LATE of $96.00 is due on" in l for l in lines))
+
+    def test_nearly_the_same_bill_number_is_an_advanced_duplicate(self):
+        telstra = self.add(contact("c-tel", "Telstra Corporation Ltd", "33051775556"))
+        self.org["invoices"] += [doc("t1", "TEL-0515", telstra, day(10), 330.0, status="PAID", paid_on=day(9)),
+                                 doc("t2", "TEL-0515R", telstra, day(7), 330.0, status="PAID", paid_on=day(6)),
+                                 # Different numbers that just share a start aren't duplicates.
+                                 doc("t3", "INV-100", telstra, day(30), 99.0), doc("t4", "INV-1001", telstra, day(12), 99.0)]
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-081 Duplicate Bill Raised Advanced", desc)
+        self.assertIn("TEL-0515", desc)
+        self.assertNotIn("CHK-080", desc, "one finding per pair: the advanced duplicate")
+        self.assertNotIn("INV-1001", desc)
+
+    def test_spend_money_to_a_supplier_that_is_billed(self):
+        ms = self.add(contact("c-ms", "Microsoft Australia Pty Ltd", "29002589460"))
+        self.org["invoices"] += [doc("m1", "MS-07", ms, day(60), 660.0, account="489", status="PAID", paid_on=day(55)),
+                                 doc("m2", "MS-08", ms, day(30), 660.0, account="489", status="PAID", paid_on=day(25))]
+        self.org["BankTransactions"] = [spend("e16", ms, day(12), 660.0, account="489")]
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-074", desc)
+        self.assertIn("1 spend money payment(s) to Microsoft Australia Pty Ltd", desc)
+        self.assertIn("which is normally billed (2 bills)", desc)
+
+    def test_fuel_bought_and_no_fuel_tax_credits(self):
+        bp = self.add(contact("c-bp", "BP Australia", "40337466735"))
+        self.org["BankTransactions"] = [spend("e21", bp, day(12), 1480.0, account="449")]
+        self.overnight()
+        self.assertIn("CHK-131", self.open_item()["description"])
+        self.assertIn("$1,480.00 of fuel bought (BP Australia)", self.open_item()["description"])
+
+    def test_no_fuel_tax_credit_finding_when_they_are_recorded(self):
+        bp = self.add(contact("c-bp", "BP Australia", "40337466735"))
+        self.org["BankTransactions"] = [spend("e21", bp, day(12), 1480.0, account="449")]
+        self.org["accounts"].append({"AccountID": "acc-275", "Code": "275", "Name": "Fuel Tax Credits", "Type": "OTHERINCOME",
+                                     "Class": "REVENUE", "Status": "ACTIVE"})
+        self.org["profit_and_loss"]["income"]["acc-275"] = 310.0
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "CHK-131" in i["description"]])
+
+    def test_a_suppliers_bill_coded_to_an_unusual_account(self):
+        jm = self.add(contact("c-jm", "Jacaranda Marketing", "25671877382"))
+        self.org["invoices"] += [doc("j%d" % i, "JM-1%02d" % i, jm, day(70 - 10 * i), 880.0, account="400", status="PAID",
+                                     paid_on=day(68 - 10 * i)) for i in range(4)]
+        self.org["invoices"].append(doc("j9", "JM-127", jm, day(8), 880.0, account="429"))
+        self.overnight()
+        line = next(l for l in self.open_item()["description"].split("\n") if "CHK-094" in l)
+        self.assertIn("Jacaranda Marketing's expense is nearly always coded to 400 Advertising (4 of 5 lines)", line)
+        self.assertIn("bill JM-127 → 429 General Expenses", line)
+        self.assertIn("heuristic", line)
+
+    def test_a_fixed_asset_account_with_no_depreciation_account(self):
+        self.org["accounts"] += [
+            {"AccountID": "acc-710", "Code": "710", "Name": "Office Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-720", "Code": "720", "Name": "Computer Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-721", "Code": "721", "Name": "Less Accumulated Depreciation on Computer Equipment", "Type": "FIXED",
+             "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-700", "Code": "700", "Name": "Land", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"}]
+        self.org["trial_balance"] = {str(TODAY): {"acc-710": 8000.0, "acc-720": 5000.0, "acc-721": -1000.0, "acc-700": 90000.0}}
+        self.overnight()
+        lines = [l for l in self.open_item()["description"].split("\n") if "CHK-141" in l]
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("Fixed asset account 710 Office Equipment has a balance of $8,000.00", lines[0])
+
+    def test_one_general_depreciation_account_means_no_fixed_asset_account_finding(self):
+        self.org["accounts"] += [
+            {"AccountID": "acc-710", "Code": "710", "Name": "Office Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-711", "Code": "711", "Name": "Accumulated Depreciation", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"}]
+        self.org["trial_balance"] = {str(TODAY): {"acc-710": 8000.0, "acc-711": -2000.0}}
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "CHK-141" in i["description"]])
+
+    def test_a_manual_look_back_finds_older_duplicates_and_stays_until_set_to_0(self):
+        bayside = self.add(contact("c-bos", "Bayside Office Supplies", "93107930949"))
+        self.org["invoices"] += [doc("b1", "BOS-0412", bayside, day(210), 462.0, status="PAID", paid_on=day(200)),
+                                 doc("b2", "BOS-0412", bayside, day(203), 462.0, status="PAID", paid_on=day(196))]
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "BOS-0412" in i["description"]], "older than the daily checks' 35 days")
+        manual = {"kind": "manual", "actor_user_id": OWNER}
+        run_flow(self.w, AUTOS[AUTO], manual, {"client_name": "Acme Plumbing", "look_back_months": "12"})
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-080", desc)
+        self.assertIn("**Looking back 12 months**", desc)
+        self.overnight()
+        self.assertIn("CHK-080", self.open_item()["description"], "the next night still looks back, so it stays open")
+        run_flow(self.w, AUTOS[AUTO], manual, {"client_name": "Acme Plumbing", "look_back_months": "0"})
+        self.assertNotIn("look_back_months", self.state())
+
     # ── the test register (a test company's made-up ABNs aren't on the register) ──
     def register_csv(self, cancelled_on):
         """The seed packs' "Registry fixture" tab saved as CSV: title lines, then the header, then one row per contact."""
