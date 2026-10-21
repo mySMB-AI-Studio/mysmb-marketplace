@@ -256,7 +256,8 @@ def ck_contact_rules(ledger, snap, today, secret):
     groups = {"abn": {}, "name": {}, "bank": {}}
     for c in ledger.get("contacts") or []:
         cid = c["id"]
-        h = ck_bank_hash(secret, c.get("bank"))
+        # A ledger whose connector fingerprints bank accounts itself (MYOB) gives bank_h; others give the digits.
+        h = c.get("bank_h") or ck_bank_hash(secret, c.get("bank"))
         prev = banks.get(cid)
         known_before = not seeding and cid in seen and seen[cid] != str(today)
         if h and prev is None and known_before:
@@ -517,8 +518,9 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                               "that are right; bills still waiting for a Bill review here clear when it's approved.",
                               amount=sum(d["total"] for d in held), link=held[0]["link"], sig="|".join(sorted(d["id"] for d in held))))
     # CHK-040 / CHK-093: quotes still in draft, and purchase orders in draft or awaiting approval.
-    for check, rows, what in (("CHK-040", ledger.get("quotes") or [], "quote(s) are still in draft"),
-                              ("CHK-093", ledger.get("purchase_orders") or [], "purchase order(s) are in draft or awaiting approval")):
+    for check, rows, what in (("CHK-040", ledger.get("quotes") or [], "quote(s) " + (ledger.get("quote_state") or "are still in draft")),
+                              ("CHK-093", ledger.get("purchase_orders") or [],
+                               "purchase order(s) " + (ledger.get("order_state") or "are in draft or awaiting approval"))):
         if rows:
             out.append(ck_finding(check, "drafts", str(len(rows)) + " " + what + " (" + ck_names(rows, "number") + "). Send, approve "
                                   "or delete them.", amount=sum(r["total"] for r in rows), link=rows[0].get("link") or "",

@@ -162,14 +162,21 @@ def myob_ledger(file_id, today, since, weekly):
     cards, cut = myob_pages("list_contacts", file_id, type="All")
     if cut:
         truncated.append("contact cards (first " + "{:,}".format(MYOB_PAGE * MYOB_MAX_PAGES) + ")")
-    abn = {myob_ref(s): re.sub(r"\D", "", str(s.get("ABN") or "")) for s in myob_items(myob_call("list_suppliers", file_id))}
+    # Bank details (CHK-017, CHK-018, CHK-057): the connector's keyed fingerprint of each supplier's account, never the
+    # details. A connector without it returns no BankFingerprint, and those checks stay not checked.
+    supplier_rows = myob_items(myob_call("list_suppliers", file_id, bank_fingerprint_key=ck_secret()))
+    abn = {myob_ref(s): re.sub(r"\D", "", str(s.get("ABN") or "")) for s in supplier_rows}
+    fingerprints = {myob_ref(s): str(s.get("BankFingerprint") or "") for s in supplier_rows if "BankFingerprint" in s}
+    if fingerprints:
+        for check in ("CHK-017", "CHK-018", "CHK-057"):
+            na.pop(check, None)
     people = []
     for x in cards:
         if x.get("Type") not in ("Customer", "Supplier") or x.get("IsActive") is False or not x.get("UID"):
             continue
         name = str(x.get("CompanyName") or " ".join(str(p) for p in (x.get("FirstName"), x.get("LastName")) if p))
         people.append({"id": str(x["UID"]), "type": x["Type"], "name": name, "tax_number": abn.get(str(x["UID"]), ""),
-                       "bank": "", "has_address": any(str(a.get("Street") or a.get("City") or "").strip()
+                       "bank": "", "bank_h": fingerprints.get(str(x["UID"]), ""), "has_address": any(str(a.get("Street") or a.get("City") or "").strip()
                                                       for a in x.get("Addresses") or [] if isinstance(a, dict)), "link": ""})
     suppliers = {bk_norm(p["name"]) for p in people if p["type"] == "Supplier"}
     contacts = [dict((k, v) for k, v in p.items() if k != "type") for p in people
@@ -296,7 +303,33 @@ def myob_ledger(file_id, today, since, weekly):
                          "total": round(sum((-1 if ln.get("IsCredit") else 1) * abs(bk_money(ln.get("Amount")) or 0.0) for ln in hits), 2),
                          "tax": 0.0, "attachments": None, "reconciled": reconciled, "lines": [], "link": ""})
     ledger["journals"] = journals
-    ledger["org"] = {"lock_date": "", "eoy_lock_date": "", "settings_link": ""}
+    # The lock period (CHK-134, CHK-135): MYOB locks entries dated before LockPeriodPriorTo, so the last locked day is
+    # the day before. Quotes and purchase orders (CHK-040, CHK-093): MYOB has no drafts, so the open ones are the nearest
+    # match (an accepted quote becomes an invoice, an order a bill). A connector without these tools leaves them not checked.
+    lock = ""
+    exc = None
+    try:
+        prior = ck_day(myob_date((myob_call("get_lock_period", file_id) or {}).get("LockPeriodPriorTo")))
+        lock = str(prior - datetime.timedelta(days=1)) if prior else ""
+        for check in ("CHK-134", "CHK-135"):
+            na.pop(check, None)
+    except Exception as exc:
+        lock = ""
+    ledger["org"] = {"lock_date": lock, "eoy_lock_date": "", "settings_link": ""}
+    try:
+        ledger["quotes"] = [myob_open_doc(q, "Customer") for q in myob_items(myob_call("list_quotes", file_id, from_date=str(since),
+                                                                                        to_date=str(today)))]
+        ledger["quote_state"] = "are still open, not turned into an invoice"
+        na.pop("CHK-040", None)
+    except Exception as exc:
+        ledger.pop("quotes", None)
+    try:
+        ledger["purchase_orders"] = [myob_open_doc(o, "Supplier") for o in myob_items(myob_call("list_purchase_orders", file_id,
+                                                                                                status="Open"))]
+        ledger["order_state"] = "are still open, not turned into a bill"
+        na.pop("CHK-093", None)
+    except Exception as exc:
+        ledger.pop("purchase_orders", None)
     ledger["balances"] = {"now": myob_breakdown(myob_call("get_balance_sheet", file_id, date=str(today))),
                           "month_ago": myob_breakdown(myob_call("get_balance_sheet", file_id, date=str(today - datetime.timedelta(days=30))))}
     pl = myob_breakdown(myob_call("get_profit_and_loss_3m", file_id, from_date=str(today - datetime.timedelta(days=364)),
@@ -305,6 +338,12 @@ def myob_ledger(file_id, today, since, weekly):
     ledger["pl_12m"] = {"income": round(sum(v for k, v in pl.items() if k in income), 2),
                         "moved": sorted(k for k, v in pl.items() if v)}
     return ledger
+
+
+def myob_open_doc(x, who):
+    """An open quote or purchase order, as the CHK-040 / CHK-093 rows."""
+    return {"id": str(x.get("UID") or ""), "number": str(x.get("Number") or ""), "date": myob_date(x.get("Date")),
+            "contact": myob_ref(x.get(who), "Name"), "total": round(bk_money(x.get("TotalAmount")) or 0.0, 2), "link": ""}
 
 
 def bk_ledger(client, today, since, weekly):

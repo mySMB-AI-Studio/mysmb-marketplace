@@ -43,6 +43,7 @@ After every extension update, publish the updated automation drafts again. Updat
 
 ### How MYOB's records are read
 
+- **Supplier bank details** (CHK-017, CHK-018, CHK-057) come as a keyed fingerprint of each supplier's account from the MYOB connector, never the details themselves. **Quotes and purchase orders** (CHK-040, CHK-093): MYOB has no drafts, so the open ones are listed (an accepted quote becomes an invoice, an order a bill). The **lock date** (CHK-134, CHK-135) is the company file's lock period. All of these need the MYOB connector's newer tools (myhub-mcp-servers #819); with an older connector they're listed on the Checks item as not checked.
 - Bills and sales invoices dated in the window come from the line lists (every layout: item, service, professional, time billing, miscellaneous); the open bills and invoices add the balance, due date and delivery status. A line's GST is its tax code's share of the line (MYOB returns no tax per line); where the document's total tax differs, the lines carry it pro rata.
 - ABNs come from the supplier cards. A customer card with the same name as a supplier card is the same business (MYOB needs one card per role), so it's left out of the duplicate-contact check.
 - A bill's paid date is the latest supplier payment applied to it.
@@ -55,11 +56,8 @@ These are listed on each Checks item as not checked, never shown as clear:
 | Check | Why |
 |---|---|
 | CHK-002 (a bill PDF showing a cancelled ABN) | It reads the ABN on bill PDFs, which only Bookkeeping for Xero's bill intake reads |
-| CHK-017, CHK-018, CHK-057 (supplier bank details changed or shared) | The MYOB connector doesn't return supplier bank details |
 | CHK-021, CHK-086 (spend money and bills with nothing attached) | MYOB's API doesn't say whether a transaction has an attachment |
 | CHK-033, CHK-078 (invoices and bills in draft) | MYOB has no draft or awaiting-approval invoices or bills (unfinished ones are quotes or orders) |
-| CHK-040, CHK-093 (quotes and purchase orders in draft) | The MYOB connector doesn't list quotes or purchase orders |
-| CHK-134, CHK-135 (lock date) | MYOB's API doesn't return the company file's lock period |
 | CHK-016 (batch payment text) | MYOB's API has no batch payment text |
 | CHK-139, CHK-140 (fixed assets) | These read Xero Assets |
 | CHK-024 (invoices never sent), on some files | Only when MYOB returns no delivery status for the open invoices |
