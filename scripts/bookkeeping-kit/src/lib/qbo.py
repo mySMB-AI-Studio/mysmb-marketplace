@@ -22,6 +22,7 @@ QBO_NA = {
     "CHK-018": "QuickBooks' API doesn't return supplier bank details",
     "CHK-057": "QuickBooks' API doesn't return supplier bank details",
     "CHK-022": "QuickBooks doesn't say through its API whether a transaction is reconciled",
+    "CHK-023": "QuickBooks' API doesn't return bank feed lines",
     "CHK-033": "QuickBooks has no draft or awaiting-approval invoices",
     "CHK-078": "QuickBooks has no draft or awaiting-approval bills",
     "CHK-040": "QuickBooks has no draft estimates",
