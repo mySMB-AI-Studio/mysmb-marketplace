@@ -178,6 +178,8 @@ def _split(count, what):
         return 0, fallback
     name = params["path"].split("/")[-1]
     base = name.rsplit(".", 1)[0]
+    # Each part came from the same email as the whole, so its review item can say so.
+    came_from = bk_origin(name)
     for i, (first, last, doc) in enumerate(ranges):
         writer = PdfWriter()
         for page in pdf.pages[first - 1:last]:
@@ -186,6 +188,8 @@ def _split(count, what):
         part = (base[:70] + " (part " + str(i + 1) + " of " + str(len(ranges)) + (", " + number if number else "") + ").pdf")
         out = api.files.scratch_path(part)
         writer.write(out)
+        if came_from:
+            bk_note_origin(part, dict(came_from, split_from=name))
         api.files.put(file=BK_SPLIT + "/" + folder + "/" + part, scratch_file=out)
     bk_move(params["path"], BK_PROCESSED + "/" + folder + "/" + name)
     return len(ranges), ""
