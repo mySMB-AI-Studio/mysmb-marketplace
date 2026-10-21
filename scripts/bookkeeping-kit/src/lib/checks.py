@@ -48,6 +48,14 @@ CK_CATALOGUE = {
     "CHK-078": ("Purchases", "Bills in Draft or Awaiting Approval", "Low"),
     "CHK-093": ("Purchases", "Purchase Orders in Draft or Awaiting Approval", "Low"),
     "CHK-137": ("Bookkeeping", "Non-GST Account Has GST Against It", "Medium"),
+    # Built 21 Oct 2026 from the library owner's demo seed packs (their scenarios are the definitions).
+    "CHK-041": ("Sales", "Different Account Name Detected for an Income Transaction", "Low"),
+    "CHK-074": ("Purchases", "Accounts Payable Process Not Followed", "Low"),
+    "CHK-081": ("Purchases", "Duplicate Bill Raised Advanced", "Medium"),
+    "CHK-094": ("Purchases", "Different account name detected for an expense transaction", "Low"),
+    "CHK-131": ("Bookkeeping", "Fuel Tax Credits May Be Unclaimed", "Medium"),
+    "CHK-141": ("Bookkeeping", "Fixed Asset Account", "Low"),
+    "CHK-170": ("Other", "ASIC Renewal Due or Not Paid", "High"),
     # Fixed asset checks: need what Asset lookups (Xero Assets) saved.
     "CHK-139": ("Bookkeeping", "Draft Fixed Asset", "Low"),
     "CHK-140": ("Bookkeeping", "Unmapped Fixed Asset Account With Balance", "Low"),
@@ -70,10 +78,11 @@ CK_CATALOGUE = {
 }
 # Cadence (extension owner, 14 Oct 2026): fraud and duplicate checks daily, the rest weekly.
 CK_DAILY = ("CHK-006", "CHK-017", "CHK-018", "CHK-028", "CHK-035", "CHK-055", "CHK-056", "CHK-057", "CHK-079",
-            "CHK-080", "CHK-087")
+            "CHK-080", "CHK-087", "CHK-081")
 CK_WEEKLY = ("CHK-007", "CHK-008", "CHK-021", "CHK-022", "CHK-024", "CHK-031", "CHK-033", "CHK-058", "CHK-059",
              "CHK-086", "CHK-125", "CHK-129", "CHK-132", "CHK-133", "CHK-134", "CHK-135", "CHK-136", "CHK-138",
-             "CHK-016", "CHK-040", "CHK-078", "CHK-093", "CHK-137")
+             "CHK-016", "CHK-040", "CHK-078", "CHK-093", "CHK-137", "CHK-041", "CHK-074", "CHK-094", "CHK-131",
+             "CHK-141", "CHK-170")
 # The weekly checks that read a list only they need (batch payments, quotes, purchase orders): when that list can't be
 # read, the check isn't evaluated, so its open findings stay as they are instead of closing.
 CK_SOURCE_CHECKS = {"batch_payments": "CHK-016", "quotes": "CHK-040", "purchase_orders": "CHK-093"}
@@ -84,7 +93,8 @@ CK_ASSETS_DAYS = 14
 CK_REGISTER = ("CHK-002", "CHK-003", "CHK-004", "CHK-005", "CHK-009", "CHK-030", "CHK-039", "CHK-068", "CHK-069",
                "CHK-071", "CHK-072", "CHK-076", "CHK-077", "CHK-085", "CHK-088")
 CK_REGISTER_DAYS = 14
-CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-016", "CHK-056", "CHK-129", "CHK-133")
+CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-016", "CHK-056", "CHK-129", "CHK-133", "CHK-041", "CHK-074",
+                "CHK-094", "CHK-131", "CHK-141")
 # The GST-related checks: the GST checks section of the weekly report (CRA-10 GST Check).
 CK_GST = ("CHK-003", "CHK-008", "CHK-031", "CHK-058", "CHK-059", "CHK-068", "CHK-069", "CHK-076", "CHK-077", "CHK-085",
           "CHK-129", "CHK-136", "CHK-137")
@@ -95,7 +105,7 @@ CK_ALSO = {"CHK-033": ("CHK-032",), "CHK-028": ("CHK-034",), "CHK-058": ("CHK-07
 CK_RESOLVED_KEEP_DAYS = 400
 # Findings the client has to answer (receipts, ABNs, TPAR details): the Client Queries part of the weekly report.
 CK_CLIENT_QUERY = ("CHK-007", "CHK-008", "CHK-021", "CHK-086")
-CK_CATEGORIES = ("Contacts", "Banking", "Sales", "Purchases", "Bookkeeping")
+CK_CATEGORIES = ("Contacts", "Banking", "Sales", "Purchases", "Bookkeeping", "Other")
 CK_SEVERITY_RANK = {"High": 0, "Medium": 1, "Low": 2}
 CK_PRIORITY = {"High": "high", "Medium": "medium", "Low": "low"}
 CK_DAILY_DAYS = 35
@@ -118,6 +128,25 @@ CK_MONTHS = r"(?i)\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*
 # CHK-016 (heuristic): the characters a bank's direct-entry (ABA) file takes in a batch payment's text fields: letters,
 # digits, spaces and & ' ( ) * + , - . / : ; ? @. Anything else (accents, curly quotes, #, $, %, _, emoji) is flagged.
 CK_ABA_BAD = r"[^A-Za-z0-9 &'()*+,\-./:;?@]"
+# CHK-081: bills whose numbers differ only by a short non-numeric ending (TEL-0515 and TEL-0515R), same amount, this close.
+CK_SIMILAR_DAYS = 60
+# CHK-170: ASIC, by the contact's name.
+CK_ASIC = r"(?i)\basic\b|australian securities (and|&) investments commission"
+# CHK-131 (heuristic): fuel suppliers and accounts, and the account fuel tax credits are usually recorded in.
+CK_FUEL = (r"(?i)\b(bp|shell|caltex|ampol|mobil|7-eleven|united petroleum|puma energy|liberty oil|metro petroleum|"
+           r"viva energy|on the run)\b")
+CK_FUEL_ACCOUNT = r"(?i)\b(fuel|petrol|diesel)\b"
+CK_FTC = r"(?i)fuel tax credit"
+CK_FUEL_MIN = 1000.0
+# CHK-041 / CHK-094 (heuristic): a contact with at least this many coded lines, this share of them on one account.
+CK_USUAL_MIN = 4
+CK_USUAL_SHARE = 0.75
+# CHK-141 (heuristic): accumulated depreciation accounts, the words that say so, and fixed assets that aren't depreciated.
+CK_ACCUM_DEP = r"(?i)accum|depreciation|\bdep\b"
+CK_ACCUM_WORDS = ("less", "accumulated", "accum", "depreciation", "dep", "on", "of", "for", "the", "and", "provision")
+CK_NOT_DEPRECIATED = r"(?i)\bland\b|goodwill|work in progress|\bwip\b"
+# A manual run can look back further than the 35 days the daily checks cover (a test company's seeded history).
+CK_LOOK_BACK_MAX_MONTHS = 18
 
 
 def ck_day(value):
@@ -166,6 +195,11 @@ def ck_account_label(a):
     """An account as a finding names it: its code and name, or its own label (a QuickBooks account with no number has
     only its name; its code is QuickBooks' internal id)."""
     return a.get("label") or (a["code"] + " " + a["name"])
+
+
+def ck_account_ref(accounts, code):
+    """An account code as "453 Office Expenses" when it's in the chart, else the code itself."""
+    return ck_account_label(accounts[code]) if code in accounts else str(code)
 
 
 def ck_bank_hash(secret, digits):
@@ -246,6 +280,17 @@ def ck_contact_rules(ledger, snap, today, secret):
 
 
 # ── Duplicates, payments and new suppliers (daily) ──
+def ck_similar_number(a, b):
+    """True when two document numbers differ only by a short ending that isn't a number: TEL-0515 and TEL-0515R, or
+    INV-7781 and INV-7781 copy, but not INV-100 and INV-1001."""
+    x, y = bk_norm(a).replace(" ", ""), bk_norm(b).replace(" ", "")
+    if not x or not y or x == y:
+        return False
+    if len(x) > len(y):
+        x, y = y, x
+    return len(x) >= 3 and y.startswith(x) and len(y) - len(x) <= 4 and not y[len(x)].isdigit()
+
+
 def ck_pairs(docs, kind, since):
     live = [d for d in docs if d["kind"] == kind and ck_live(d) and d["total"] > 0]
     by_contact = {}
@@ -261,30 +306,36 @@ def ck_pairs(docs, kind, since):
                 same_number = bool(a["number"]) and bk_norm(a["number"]) == bk_norm(b["number"])
                 da, db = ck_day(a["date"]), ck_day(b["date"])
                 gap = abs((db - da).days) if da and db else None
-                close = gap is not None and gap <= CK_DUP_DAYS and abs(a["total"] - b["total"]) < 0.01
-                if same_number or close:
-                    pairs.append((a, b, same_number, gap))
+                same_amount = abs(a["total"] - b["total"]) < 0.01
+                close = gap is not None and gap <= CK_DUP_DAYS and same_amount
+                similar = (not same_number and same_amount and gap is not None and gap <= CK_SIMILAR_DAYS
+                           and ck_similar_number(a["number"], b["number"]))
+                if same_number or close or similar:
+                    pairs.append((a, b, same_number, gap, similar))
     return pairs
 
 
 def ck_duplicate_rules(ledger, today, since):
     out = []
     docs = ledger.get("docs") or []
-    for a, b, same_number, gap in ck_pairs(docs, "bill", since):
+    for a, b, same_number, gap, similar in ck_pairs(docs, "bill", since):
         both_paid = a["status"] == "paid" and b["status"] == "paid"
-        check = "CHK-080" if both_paid else ("CHK-079" if same_number else "CHK-055")
-        why = "the same invoice number" if same_number else "the same amount " + str(gap) + " day(s) apart"
+        # Nearly the same number (a re-keyed or "R" copy) is the advanced duplicate, paid or not.
+        check = "CHK-081" if similar else ("CHK-080" if both_paid else ("CHK-079" if same_number else "CHK-055"))
+        why = ("nearly the same invoice number and the same amount" if similar else "the same invoice number" if same_number
+               else "the same amount " + str(gap) + " day(s) apart")
         out.append(ck_finding(check, a["id"] + "|" + b["id"],
                               "Bills " + (a["number"] or "(no number)") + " (" + ck_date_text(a["date"]) + ") and "
                               + (b["number"] or "(no number)") + " (" + ck_date_text(b["date"]) + ") from " + b["contact"]
                               + " have " + why + (". Both are paid: ask the supplier for a refund or credit."
                                                   if both_paid else ". Void one if it's the same bill."),
                               amount=b["total"], link=b["link"], sig=a["status"] + b["status"]))
-    for a, b, same_number, gap in ck_pairs(docs, "invoice", since):
+    for a, b, same_number, gap, similar in ck_pairs(docs, "invoice", since):
         both_paid = a["status"] == "paid" and b["status"] == "paid"
         out.append(ck_finding("CHK-035" if both_paid else "CHK-028", a["id"] + "|" + b["id"],
                               "Sales invoices " + (a["number"] or "(no number)") + " and " + (b["number"] or "(no number)")
                               + " to " + b["contact"] + (" have the same number" if same_number
+                                                         else " have nearly the same number and the same amount" if similar
                                                          else " are for the same amount " + str(gap) + " day(s) apart")
                               + (". Both are paid: check the customer wasn't charged twice." if both_paid
                                  else ". Void one if it's the same sale."),
@@ -611,6 +662,76 @@ def ck_weekly_rules(ledger, client, snap, today, captured):
                               + ck_money(CK_GST_TURNOVER) + " GST registration threshold, and the business isn't registered for "
                               "GST (per its client settings).", amount=income, sig="over the threshold"))
 
+    # CHK-170: an ASIC fee (the annual review, a late fee) that's overdue or due within a fortnight.
+    for d in docs:
+        due = ck_day(d["due"])
+        who = str((contacts.get(d["contact_id"]) or {}).get("name") or d["contact"] or "")
+        if (d["kind"] == "bill" and d["status"] == "authorised" and d["due_amount"] > 0 and due
+                and due <= today + datetime.timedelta(days=CK_DUE_SOON_DAYS) and re.search(CK_ASIC, who)):
+            late = due < today
+            out.append(ck_finding("CHK-170", d["id"], "ASIC fee " + (d["number"] or "(no number)") + " of " + ck_money(d["due_amount"])
+                                  + (" was due on " if late else " is due on ") + ck_date_text(d["due"]) + (" and is unpaid" if late else "")
+                                  + ". ASIC charges a late fee, and an unpaid annual review can lead to the company being "
+                                  "deregistered. Pay it, or record the payment if it was paid another way.",
+                                  amount=d["due_amount"], link=d["link"], sig="late" if late else "due"))
+
+    # CHK-074 (heuristic): spend money to a supplier that's normally billed, so the payment skipped the bill and its approval.
+    billed = {}
+    for d in docs:
+        if d["kind"] == "bill" and ck_live(d) and d["contact_id"]:
+            billed[d["contact_id"]] = billed.get(d["contact_id"], 0) + 1
+    skipped = {}
+    for s in ledger.get("bank") or []:
+        if (s["kind"] == "spend" and s["contact_id"] in contacts and billed.get(s["contact_id"], 0) >= 2
+                and s["total"] > BK_GST_INVOICE_LIMIT):
+            skipped.setdefault(s["contact_id"], []).append(s)
+    for cid, rows in skipped.items():
+        out.append(ck_finding("CHK-074", cid, str(len(rows)) + " spend money payment(s) to " + contacts[cid]["name"] + " ("
+                              + ", ".join(ck_date_text(r["date"]) for r in rows[:5]) + "), which is normally billed ("
+                              + str(billed[cid]) + " bills). Enter the bill and pay it from there, so it goes through approval.",
+                              amount=sum(r["total"] for r in rows), link=rows[0]["link"], sig="|".join(sorted(r["id"] for r in rows))))
+
+    # CHK-131 (heuristic): fuel bought, and no fuel tax credits recorded in 12 months.
+    fuel = [p for p in purchases
+            if re.search(CK_FUEL, str((contacts.get(p["contact_id"]) or {}).get("name") or p.get("contact") or ""))
+            or any(re.search(CK_FUEL_ACCOUNT, (accounts.get(ln["account"]) or {}).get("name") or "") for ln in p["lines"])]
+    moved_12m = set((ledger.get("pl_12m") or {}).get("moved") or [])
+    credited = any(re.search(CK_FTC, a["name"]) and a["id"] in moved_12m for a in ledger.get("accounts") or [])
+    spent = sum(p["total"] for p in fuel)
+    if spent >= CK_FUEL_MIN and not credited:
+        out.append(ck_finding("CHK-131", "fuel", ck_money(spent) + " of fuel bought (" + ck_names(fuel, "contact") + ") and no "
+                              "fuel tax credits recorded in the last 12 months. If the business uses fuel in heavy vehicles, in "
+                              "machinery or off-road, it may be able to claim fuel tax credits on its BAS.",
+                              amount=spent, sig="%d" % (spent // 1000)))
+
+    # CHK-041 / CHK-094 (heuristic): a contact's income or expense coded to another account than the one it nearly always uses.
+    incomes = [d for d in docs if d["kind"] == "invoice" and ck_live(d)] + [s for s in ledger.get("bank") or [] if s["kind"] == "receive"]
+    for check, rows, what in (("CHK-094", purchases, "expense"), ("CHK-041", incomes, "income")):
+        used = {}
+        for r in rows:
+            for ln in r["lines"]:
+                if r["contact_id"] in contacts and ln["account"]:
+                    used.setdefault(r["contact_id"], []).append((r, ln["account"]))
+        for cid, pairs in used.items():
+            counts = {}
+            for _r, code in pairs:
+                counts[code] = counts.get(code, 0) + 1
+            usual = max(sorted(counts), key=lambda c: counts[c])
+            if len(pairs) < CK_USUAL_MIN or counts[usual] < CK_USUAL_SHARE * len(pairs) or counts[usual] == len(pairs):
+                continue
+            odd, seen_ids = [], set()
+            for r, code in pairs:
+                if code != usual and r["id"] not in seen_ids:
+                    seen_ids.add(r["id"])
+                    odd.append((r, code))
+            shown = ["%s %s → %s" % ("bill" if r.get("kind") == "bill" else "invoice" if r.get("kind") == "invoice" else "payment",
+                                       r.get("number") or ck_date_text(r["date"]), ck_account_ref(accounts, code)) for r, code in odd[:5]]
+            out.append(ck_finding(check, cid, contacts[cid]["name"] + "'s " + what + " is nearly always coded to "
+                                  + ck_account_ref(accounts, usual)
+                                  + " (" + str(counts[usual]) + " of " + str(len(pairs)) + " lines), but not here: " + "; ".join(shown)
+                                  + ". Check the coding.", amount=sum(r["total"] for r, _c in odd), link=odd[0][0]["link"],
+                                  sig="|".join(sorted(r["id"] + ">" + code for r, code in odd))))
+
     # CHK-138: profit and loss accounts with no movement in 12 months.
     moved = set((ledger.get("pl_12m") or {}).get("moved") or [])
     idle = [a for a in ledger.get("accounts") or [] if a["active"] and a["pl"] and a["code"] and a["id"] not in moved]
@@ -801,13 +922,42 @@ def ck_asset_rules(ledger, cache, today):
     return out
 
 
+def ck_depreciation_rules(ledger, used, skip):
+    """CHK-141 (heuristic): fixed asset accounts with a balance and no accumulated depreciation account of their own, so
+    they don't look depreciated. used: accounts an asset type in Xero's fixed asset register uses (depreciated there);
+    skip: accounts CHK-140 already reported this run. A single general accumulated depreciation account could cover any
+    of them, so then nothing is reported."""
+    out = []
+    now = (ledger.get("balances") or {}).get("now") or {}
+    fixed = [a for a in ledger.get("accounts") or [] if "fixed" in str(a.get("type") or "").lower().replace(" ", "")]
+    covers = []
+    for a in fixed:
+        if re.search(CK_ACCUM_DEP, a["name"]):
+            words = set(bk_norm(a["name"]).split()) - set(CK_ACCUM_WORDS)
+            if not words:
+                return []
+            covers.append(words)
+    for a in fixed:
+        bal = now.get(a["id"]) or 0
+        words = set(bk_norm(a["name"]).split())
+        if (re.search(CK_ACCUM_DEP, a["name"]) or re.search(CK_NOT_DEPRECIATED, a["name"]) or not a["active"] or bal < 0.01
+                or a["id"] in used or (a["code"] or a["id"]) in skip or not words or any(words <= c for c in covers)):
+            continue
+        out.append(ck_finding("CHK-141", a["code"] or a["id"], "Fixed asset account " + (a["code"] + " " if a["code"] else "")
+                              + a["name"] + " has a balance of " + ck_money(bal) + " but no accumulated depreciation account of "
+                              "its own, so it doesn't look depreciated. Set up depreciation for it, or check it's in the "
+                              "fixed asset register.", amount=bal, sig="%.2f" % bal))
+    return out
+
+
 def ck_assets_fresh(cache, today):
     day = ck_day((cache or {}).get("refreshed"))
     return bool(day and (today - day).days <= CK_ASSETS_DAYS)
 
 
-def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_abns=None, assets=None):
-    """Every check due on this run. Returns (findings, the check IDs evaluated)."""
+def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_abns=None, assets=None, look_back_days=0):
+    """Every check due on this run. Returns (findings, the check IDs evaluated). look_back_days widens the daily checks'
+    35 days (a test company's seeded history, set on a manual run)."""
     # What Register lookups needs for the next night: the client's ABNs, and suppliers with GST but no ABN.
     spenders = {}
     by_id = {c["id"]: c for c in ledger.get("contacts") or []}
@@ -817,7 +967,7 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
             spenders[c["name"]] = spenders.get(c["name"], 0) + p["total"]
     snap["register"] = {"abns": sorted({c["tax_number"] for c in ledger.get("contacts") or [] if len(c.get("tax_number") or "") == 11}),
                         "no_abn": [n for n, _t in sorted(spenders.items(), key=lambda kv: -kv[1])][:20]}
-    since = today - datetime.timedelta(days=CK_DAILY_DAYS)
+    since = today - datetime.timedelta(days=max(CK_DAILY_DAYS, look_back_days or 0))
     # The daily checks see only what a daily run fetches (the last 35 days, plus approved bills still to pay), even
     # on a weekly run, so their findings don't come and go between daily and weekly runs.
     daily = dict(ledger)
@@ -839,9 +989,12 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
             found += ck_register_rules(ledger, client, register, intake_abns, today)
         evaluated |= set(CK_REGISTER)
         # Fixed asset findings close the same way when Asset lookups stops (unpublished, or Xero Assets disconnected).
-        if ck_assets_fresh(assets, today):
-            found += ck_asset_rules(ledger, assets, today)
+        fresh_assets = ck_assets_fresh(assets, today)
+        asset_found = ck_asset_rules(ledger, assets, today) if fresh_assets else []
+        found += asset_found
         evaluated |= set(CK_ASSETS)
+        found += ck_depreciation_rules(ledger, set((assets or {}).get("type_accounts") or []) if fresh_assets else set(),
+                                       {f["key"].split(":", 1)[1] for f in asset_found if f["check"] == "CHK-140"})
         # A list that couldn't be read leaves its check's findings as they were.
         evaluated -= {CK_SOURCE_CHECKS[s] for s in ledger.get("unread") or [] if s in CK_SOURCE_CHECKS}
     # Checks the ledger can't answer (the adapter's "na": check ID -> why, e.g. MYOB's API has no attachments) aren't
@@ -925,11 +1078,21 @@ def ck_priority(rows):
     return {0: "high", 1: "medium"}.get(best, "low")
 
 
+def ck_look_back_days(state):
+    """Days a manual run asked the checks to look back (0: the usual 35 days and this financial year)."""
+    months = int((state or {}).get("look_back_months") or 0)
+    return min(max(months, 0), CK_LOOK_BACK_MAX_MONTHS) * 31
+
+
 def ck_description(client, state, truncated=None):
     rows = ck_open(state)
     where, _key, _file, name_key = bk_ledger_info(client.get("ledger"))
     out = ["Ledger checks for **" + str(client.get("name") or "") + "** (" + where + ": " + str(client.get(name_key) or "") + "). "
            "Fix each one in " + where + "; it drops off this list on the next check.", ""]
+    if ck_look_back_days(state):
+        out += ["**Looking back " + str(state.get("look_back_months")) + " months** (set on a manual run, for a test company): "
+                "the daily checks cover that far back instead of 35 days, and the weekly ones read that much of the file. "
+                "Run Ledger checks by hand for this business with 0 to go back to normal.", ""]
     test = (state.get("snapshot") or {}).get("register_test")
     if test:
         out += ["**Test register:** this business's ABN results come from `" + str(test) + "`, not the Australian Business "

@@ -300,6 +300,7 @@ export const AUTOMATIONS = [
     ],
     params: [
       { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: checks it now)', required: false, value: '' },
+      { name: 'look_back_months', type: 'str', control: 'text', label: 'Look back this many months (manual runs with a client only, for a test company; 0 to stop)', required: false, value: '' },
     ],
     scopes: ['files:read', 'files:write', 'workq:read', 'workq:write', 'artifacts:write', 'notify:send', 'connectors:xero-accounting'],
     forms: ['check-findings'],
@@ -318,7 +319,8 @@ export const AUTOMATIONS = [
       { id: 'gate', kind: 'if', title: 'Check clients?', summary: 'Continues for the overnight schedule, a manual run, or a form asking to check again.',
         cond: 'steps["apply_findings"]["outputs"]["should_check"]', then: ['run_checks', 'publish_report'], else: [] },
       node('run_checks', 'Check the ledgers', 'For each client due a check (until the time budget runs out; the next run carries on): reads its Xero file, runs the daily or weekly checks, merges them with its findings file in Knowledge, and rewrites its Checks item in WorkQ.', ['util', 'xero', 'checks'],
-        [hidden('only', 'list[str]', step('apply_findings', 'only'), 'Clients to check'), formPicker('findings_form', 'check-findings', 'Check findings form')],
+        [hidden('only', 'list[str]', step('apply_findings', 'only'), 'Clients to check'), formPicker('findings_form', 'check-findings', 'Check findings form'),
+          hidden('look_back_months', 'str', '{{ params.look_back_months }}', 'Look back (months)')],
         [out('summary', 'dict', 'Clients checked, findings open, new and resolved, errors'), out('problem', 'str', 'Why nothing was checked, or empty')]),
       node('publish_report', 'Publish the weekly report', 'Once a week, after every client is checked: saves the data quality report (open findings by business, and the client queries) as an HTML artifact and notifies the checks owner.', ['util', 'checks'],
         [hidden('summary', 'dict', step('run_checks', 'summary'), 'Summary', true), hidden('problem', 'str', step('run_checks', 'problem'), 'Problem')],
