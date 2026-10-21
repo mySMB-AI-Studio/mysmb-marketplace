@@ -1,6 +1,9 @@
 # ── bookkeeping kit: Australian Business Register adapter (inlined into register nodes by gen-ext.js) ──
 # Talks to the ABR Lookup extension's `abr` connector. Only the Register lookups automation calls it, so practices
 # without ABR Lookup can publish everything else; the checks read what it saves in Knowledge.
+import csv
+import io
+
 ABR_SERVER = "abr"
 # Re-check a business on the register at most this often; search a name at most this often.
 ABR_RECHECK_DAYS = 7
@@ -10,6 +13,10 @@ ABR_SEARCHES_PER_RUN = 10
 ABR_MATCH_RULE = 3
 ABR_KEEP = ("found", "valid_checksum", "status", "status_from", "entity_name", "gst_registered", "gst_from", "gst_to",
             "dgr_endorsed", "acnc_registered", "error")
+# A test company's made-up ABNs aren't on the real register (the demo seed packs' are "No record found"), so its
+# register checks can't be tested. A CSV in this folder named after the client (e.g. "Irvine Jackson Pty Ltd.csv")
+# is read instead of the register, for that client only, and its checklist says so.
+ABR_TEST_FOLDER = "Bookkeeping/Test register"
 
 
 def abr_call(tool, **args):
@@ -35,6 +42,70 @@ def abr_lookup(abns):
         kept["names"] = [str(n) for n in (list(row.get("business_names") or []) + list(row.get("trading_names") or []))
                          if n][:6]
         out[abn] = kept
+    return out
+
+
+# The test register's columns (header names, lower case), as in the seed packs' "Registry fixture" tab.
+ABR_TEST_COLUMNS = {"abn": ("abn on record", "abn"), "status": ("abn status", "status"),
+                    "entity": ("registry entity name", "entity name", "registered name"), "gst": ("gst registration", "gst"),
+                    "dgr": ("dgr",)}
+
+
+def abr_test_register(client, name_key=""):
+    """(path, {abn: row}) from the client's test register file, or (None, {}) when it has none."""
+    wanted = {client.get("slug") or "", bk_slug(client.get("name")), bk_slug(client.get(name_key) if name_key else "")}
+    wanted.discard("client")  # bk_slug's answer for a blank name
+    exc = None
+    try:
+        files = api.files.list(path=ABR_TEST_FOLDER) or []
+    except Exception as exc:
+        return None, {}
+    for f in files:
+        name = str(f.get("name") or "")
+        if name.lower().endswith(".csv") and bk_slug(name[:-4]) in wanted:
+            return str(f["path"]), abr_parse_test_register(api.files.read(file=f["path"]))
+    return None, {}
+
+
+def abr_test_cell(cells, cols, key):
+    i = cols.get(key, -1)
+    return cells[i] if 0 <= i < len(cells) else ""
+
+
+def abr_parse_test_register(text):
+    """Register rows from a CSV saved from the seed packs' "Registry fixture" tab (title lines above the header are
+    fine): ABN on record, Registry entity name, ABN status ("Active", "Cancelled (30/11/2025)", "Not found …"),
+    GST registration ("Registered" / "Not registered") and DGR ("Yes" / "No"). Rows without an 11-digit ABN are
+    skipped: the register is looked up by ABN."""
+    cols = {}
+    out = {}
+    for cells in csv.reader(io.StringIO(str(text or "").lstrip("﻿"))):
+        cells = [str(c or "").strip() for c in cells]
+        if not cols:
+            low = [c.lower() for c in cells]
+            found_cols = {key: next((i for i, h in enumerate(low) if h in names), -1) for key, names in ABR_TEST_COLUMNS.items()}
+            if found_cols["abn"] >= 0 and found_cols["status"] >= 0:
+                cols = found_cols
+            continue
+        abn = re.sub(r"\D", "", abr_test_cell(cells, cols, "abn"))
+        if len(abn) != 11:
+            continue
+        status = abr_test_cell(cells, cols, "status").lower()
+        valid = bk_abn_valid(abn)
+        found = valid and (status.startswith("active") or status.startswith("cancel"))
+        dated = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", status)
+        entity = abr_test_cell(cells, cols, "entity")
+        gst = abr_test_cell(cells, cols, "gst").lower()
+        dgr = abr_test_cell(cells, cols, "dgr").lower()
+        out[abn] = {
+            "found": found, "valid_checksum": valid, "error": None if found else "No records found",
+            "status": ("Cancelled" if status.startswith("cancel") else "Active") if found else None,
+            "status_from": "%s-%02d-%02d" % (dated.group(3), int(dated.group(2)), int(dated.group(1))) if found and dated else None,
+            "entity_name": entity if found and entity not in ("", "-", "—") else None,
+            "gst_registered": found and gst.startswith("registered"),
+            # Registered with no date means registered throughout: GST began on 1 July 2000.
+            "gst_from": "2000-07-01" if found and gst.startswith("registered") else None, "gst_to": None,
+            "dgr_endorsed": found and dgr in ("yes", "y", "true"), "acnc_registered": None, "names": []}
     return out
 
 

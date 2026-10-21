@@ -762,6 +762,10 @@ def ck_register_rules(ledger, client, cache, intake_abns, today):
             out.append(ck_finding("CHK-002", "pdf:" + key, "A bill PDF from " + contacts[key]["name"] + " showed ABN " + ", ".join(dead)
                                   + ", which the register lists as cancelled. Check who's really invoicing.",
                                   link=contacts[key]["link"], sig="|".join(dead)))
+    if (cache or {}).get("test_register"):
+        # A test company's answers come from a file (Register lookups' test register): say so on every finding.
+        for f in out:
+            f["text"] += " (Test register, not the Australian Business Register.)"
     return out
 
 
@@ -830,6 +834,7 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
         # Register findings close when their data goes stale (Register lookups unpublished or failing for a
         # fortnight) rather than staying open for good; the checklist says the register checks are paused.
         snap["register_paused"] = bool(register) and not ck_register_fresh(register, today)
+        snap["register_test"] = str((register or {}).get("test_register") or "")
         if ck_register_fresh(register, today):
             found += ck_register_rules(ledger, client, register, intake_abns, today)
         evaluated |= set(CK_REGISTER)
@@ -925,6 +930,10 @@ def ck_description(client, state, truncated=None):
     where, _key, _file, name_key = bk_ledger_info(client.get("ledger"))
     out = ["Ledger checks for **" + str(client.get("name") or "") + "** (" + where + ": " + str(client.get(name_key) or "") + "). "
            "Fix each one in " + where + "; it drops off this list on the next check.", ""]
+    test = (state.get("snapshot") or {}).get("register_test")
+    if test:
+        out += ["**Test register:** this business's ABN results come from `" + str(test) + "`, not the Australian Business "
+                "Register. Only for a test company: delete the file to use the register again.", ""]
     shown = 0
     for category in CK_CATEGORIES:
         mine = [f for f in rows if f["category"] == category]

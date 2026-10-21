@@ -187,7 +187,8 @@ class Myob(PackBase):
         self.assertIn("(MYOB: Acme Plumbing Pty Ltd)", item["description"])
         self.assertIn("Fix each one in MYOB", item["description"])
         self.assertTrue(self.lines(item, "CHK-079"))
-        self.assertIn("Not checked, as MYOB's API doesn't give what they need: CHK-016, CHK-017", item["description"])
+        # CHK-002 reads bill PDFs, which only Bookkeeping for Xero's bill intake reads.
+        self.assertIn("Not checked, as MYOB's API doesn't give what they need: CHK-002, CHK-016, CHK-017", item["description"])
         # Bills carry no attachment flag in MYOB: never a "nothing attached" finding.
         self.assertFalse(self.lines(item, "CHK-086"))
         self.assertNotIn("Open in", item["description"])

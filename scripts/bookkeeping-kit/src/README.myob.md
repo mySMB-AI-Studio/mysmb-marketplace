@@ -38,7 +38,7 @@ After every extension update, publish the updated automation drafts again. Updat
 1. **Which clients:** every client set up with a MYOB company file, unless its settings say *No* to the ledger checks. Clients are checked one after another until a run has used about 13 minutes; the next run carries on.
 2. **Every night (fraud and duplicates):** contacts sharing an ABN or a name (CHK-006); duplicate bills (CHK-055, CHK-079) and duplicate bills paid (CHK-080); duplicate sales invoices (CHK-028) and both paid (CHK-035); spend money that looks like a bill (CHK-087); a new supplier paid a lot or fast (CHK-056). These look at the last 35 days, plus every open bill.
 3. **Once a week (the rest):** GST claimed from suppliers with no ABN (CHK-008); TPAR details missing (CHK-007, clients that lodge a TPAR); unreconciled bank transactions (CHK-022); sales invoices never sent (CHK-024); GST on sales when not registered (CHK-031); GST on accounts that normally have none (CHK-058) or that isn't the tax code's share, or mixed tax codes for one supplier and account (CHK-059); suspense balances 30 days old (CHK-125); GST accounts with mostly GST-free lines (CHK-129); nothing entered for 30 days (CHK-132); a monthly general journal missing (CHK-133); income over the GST registration threshold (CHK-136); unused profit and loss accounts (CHK-138); GST on lines coded to an account whose tax code has none (CHK-137).
-4. **Register checks** (weekly, when *Register lookups (ABR, MYOB)* is published): cancelled businesses still being billed, paid, invoiced or owing the client; GST from businesses not registered for GST; ABNs that look wrong; likely ABNs for suppliers with none; donations to a body that isn't a DGR (CHK-002 to CHK-005, CHK-009, CHK-030, CHK-039, CHK-068, CHK-069, CHK-071, CHK-072, CHK-076, CHK-077, CHK-085, CHK-088).
+4. **Register checks** (weekly, when *Register lookups (ABR, MYOB)* is published): cancelled businesses still being billed, paid, invoiced or owing the client; GST from businesses not registered for GST; ABNs that look wrong; likely ABNs for suppliers with none; donations to a body that isn't a DGR (CHK-003 to CHK-005, CHK-009, CHK-030, CHK-039, CHK-068, CHK-069, CHK-071, CHK-072, CHK-076, CHK-077, CHK-085, CHK-088). For a test company whose ABNs are made up, see *Test register* below.
 5. **The checklist, ticks, the Check findings form and the weekly report** work as in Bookkeeping for Xero: one *Checks: <client>* item per client, rewritten each run, ticked lines stay hidden until their details change, and a weekly *Ledger checks (MYOB)* report goes to the checks owner.
 
 ### How MYOB's records are read
@@ -54,6 +54,7 @@ These are listed on each Checks item as not checked, never shown as clear:
 
 | Check | Why |
 |---|---|
+| CHK-002 (a bill PDF showing a cancelled ABN) | It reads the ABN on bill PDFs, which only Bookkeeping for Xero's bill intake reads |
 | CHK-017, CHK-018, CHK-057 (supplier bank details changed or shared) | The MYOB connector doesn't return supplier bank details |
 | CHK-021, CHK-086 (spend money and bills with nothing attached) | MYOB's API doesn't say whether a transaction has an attachment |
 | CHK-033, CHK-078 (invoices and bills in draft) | MYOB has no draft or awaiting-approval invoices or bills (unfinished ones are quotes or orders) |
@@ -62,6 +63,17 @@ These are listed on each Checks item as not checked, never shown as clear:
 | CHK-016 (batch payment text) | MYOB's API has no batch payment text |
 | CHK-139, CHK-140 (fixed assets) | These read Xero Assets |
 | CHK-024 (invoices never sent), on some files | Only when MYOB returns no delivery status for the open invoices |
+
+### Test register (test companies only)
+
+A test company's ABNs are usually made up, so the register has no record of them and the register checks can't be tested on it. For such a company, save its register answers as a CSV in Knowledge at `Bookkeeping/Test register/<client>.csv`, named after the client (its name, or its MYOB company file name). *Register lookups (ABR, MYOB)* then reads that file instead of the register, for that client only:
+
+- **Columns:** **ABN on record**, **Registry entity name**, **ABN status** (`Active`, `Cancelled (30/11/2025)`, `Not found …`), **GST registration** (`Registered` / `Not registered`) and **DGR** (`Yes` / `No`). Title lines above the header are fine: the demo seed packs' *Registry fixture* tab, saved as CSV, works as it is.
+- Rows without an 11-digit ABN are skipped, and an ABN that fails the checksum reads as not on the register. No names are searched, so CHK-005 doesn't run for that client.
+- Every register finding for that client ends with *(Test register, not the Australian Business Register.)*, and its checklist says so at the top.
+- Delete the file to go back to the register: the next run forgets everything the file gave.
+
+Never use it for a real client.
 
 ## Limits
 

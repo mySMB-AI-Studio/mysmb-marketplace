@@ -141,6 +141,17 @@ The checks are the mySMB checks catalogue's release 1 checks that need nothing b
 
 Findings are kept in `Bookkeeping/Checks/<client>.json`. Supplier bank details are never stored: change detection keeps a keyed fingerprint of each account instead.
 
+### Test register (test companies only)
+
+A test company's ABNs are usually made up, so the register has no record of them and the register checks can't be tested on it. For such a company, save its register answers as a CSV in Knowledge at `Bookkeeping/Test register/<client>.csv`, named after the client (its name, or its Xero organisation name). *Register lookups* then reads that file instead of the register, for that client only:
+
+- **Columns:** **ABN on record**, **Registry entity name**, **ABN status** (`Active`, `Cancelled (30/11/2025)`, `Not found …`), **GST registration** (`Registered` / `Not registered`) and **DGR** (`Yes` / `No`). Title lines above the header are fine: the demo seed packs' *Registry fixture* tab, saved as CSV, works as it is.
+- Rows without an 11-digit ABN are skipped (the register is looked up by ABN), and an ABN that fails the checksum reads as not on the register. No names are searched, so CHK-005 doesn't run for that client.
+- Every register finding for that client ends with *(Test register, not the Australian Business Register.)*, and its checklist says so at the top.
+- Delete the file to go back to the register: the next run forgets everything the file gave. *Register lookups* still needs the ABR Lookup extension connected to be published.
+
+Never use it for a real client.
+
 ## How email intake works
 
 1. **What it reads:** the Inbox, the extra folders (Outlook folder paths such as `Inbox/Bills`, or Gmail labels) listed in the Bookkeeping setup form, and each client's own mail folder from its client settings. Each folder carries on from the last email it handled, oldest first, 20 emails a run, so none are missed however many arrive; the run summary says how many are waiting. An email that fails to download is read again next run (three tries, then an item).
