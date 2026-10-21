@@ -12,7 +12,7 @@ from test_ledgers import PACKS
 class PracticeRun(unittest.TestCase):
     def test_every_automation_passes_the_publish_practice_run(self):
         files = sorted(glob.glob(os.path.join(PLUGIN, "content", "automations", "*.json")))
-        self.assertEqual(len(files), 18)
+        self.assertEqual(len(files), 19)
         for f in files:
             with open(f, encoding="utf-8") as fh:
                 payload = json.load(fh)

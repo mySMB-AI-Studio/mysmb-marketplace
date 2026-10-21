@@ -13,6 +13,7 @@ from test_scans import photo
 
 OUTLOOK = "Bookkeeping: Email intake (Outlook)"
 SHARED = "Bookkeeping: Email intake (Outlook shared mailbox)"
+HOTMAIL = "Bookkeeping: Email intake (Hotmail)"
 GMAIL = "Bookkeeping: Email intake (Gmail)"
 PROCESS = "Bookkeeping: Process bill, invoice or statement (Xero)"
 APPLY = "Bookkeeping: Apply setup (Xero)"
@@ -168,6 +169,49 @@ class SharedMailboxTests(MailBase):
         self.w.mail.add("outlook-shared", "Invoice INV-1001", "accounts@sparky.example", when, [pdf()])
         self.run_intake()
         self.assertEqual(self.run_intake(SHARED)["find_emails"]["outputs"]["candidates"], [])
+        self.assertEqual(len(self.filed()), 1)
+
+
+class HotmailTests(MailBase):
+    """A personal Hotmail / Outlook.com inbox: Microsoft 365's connection is work or school only, so it's read through
+    hotmail-mail, which answers like m365-mail-read (the fake asserts it's never given a shared `mailbox`)."""
+
+    def test_bills_in_a_hotmail_inbox_are_filed_reading_on_from_the_last_run(self):
+        self.w.mail.add("hotmail", "Invoice INV-1001", "accounts@sparky.example", recent(), [pdf()])
+        steps = self.run_intake(HOTMAIL)
+        self.assertEqual(steps["file_bills"]["outputs"]["filed"], 1)
+        self.assertIn("Bookkeeping/Mail/hotmail.json", self.w.files)
+        self.assertEqual({c[0] for c in self.w.mail.calls}, {"hotmail"})
+        [listed] = [c[2] for c in self.w.mail.calls if c[1] == "list_emails"]
+        self.assertTrue(listed["oldestFirst"])
+        self.assertTrue(listed["receivedAfter"])
+        self.assertEqual(self.run_intake(HOTMAIL)["find_emails"]["outputs"]["candidates"], [])
+
+    def test_hotmail_folders_and_iphone_photos(self):
+        self.settings(folders=["Inbox/Bills"])
+        self.w.mail.add("hotmail", "Invoice INV-1001", "accounts@sparky.example", recent(), [pdf()], folder="Inbox/Bills")
+        heic = b"\x00\x00\x00\x18ftypheic" + bytes(40000)
+        self.w.mail.add("hotmail", "Fuel receipt", "tom@acme.example", recent(),
+                        [{"id": "p1", "name": "IMG_7.HEIC", "type": "image/heic", "bytes": heic, "heic": True,
+                          "jpeg": photo(noisy=True)}])
+        steps = self.run_intake(HOTMAIL)
+        self.assertEqual(steps["file_bills"]["outputs"]["filed"], 2)
+        self.assertTrue(any(p.endswith("IMG_7 (photo).pdf") for p in self.filed("acme-plumbing")))
+        self.assertTrue(any(c[1] == "get_email_attachment" and c[2].get("heicToJpeg") for c in self.w.mail.calls))
+
+    def test_the_hotmail_connector_before_its_update_still_files_new_bills(self):
+        # Production's hotmail-mail before myhub-mcp-servers #821: receivedAfter and oldestFirst are ignored.
+        self.w.mail.old_connector = True
+        self.w.mail.add("hotmail", "Invoice INV-1001", "accounts@sparky.example", recent(), [pdf()])
+        self.assertEqual(self.run_intake(HOTMAIL)["file_bills"]["outputs"]["filed"], 1)
+        self.assertEqual(self.run_intake(HOTMAIL)["find_emails"]["outputs"]["candidates"], [])
+
+    def test_the_same_bill_sent_to_hotmail_and_outlook_is_filed_once(self):
+        when = recent()
+        self.w.mail.add("hotmail", "Invoice INV-1001", "accounts@sparky.example", when, [pdf()])
+        self.w.mail.add("outlook", "Invoice INV-1001", "accounts@sparky.example", when, [pdf()])
+        self.run_intake(HOTMAIL)
+        self.assertEqual(self.run_intake()["find_emails"]["outputs"]["candidates"], [])
         self.assertEqual(len(self.filed()), 1)
 
 

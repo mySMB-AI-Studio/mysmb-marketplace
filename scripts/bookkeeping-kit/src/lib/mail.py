@@ -1,12 +1,13 @@
 # ── bookkeeping kit: mailbox adapter (inlined into email-intake nodes by gen-ext.js) ──
-# Reads the automation owner's own mailbox (Outlook through m365-mail-read, Gmail through google-workspace-gmail) or a
-# shared Outlook mailbox (m365-mail-shared). Read-only: nothing in the mailbox is changed, so emails that aren't bills
-# stay exactly as they were.
+# Reads the automation owner's own mailbox (Outlook through m365-mail-read, a personal Hotmail / Outlook.com account
+# through hotmail-mail, Gmail through google-workspace-gmail) or a shared Outlook mailbox (m365-mail-shared).
+# Read-only: nothing in the mailbox is changed, so emails that aren't bills stay exactly as they were.
 import base64
 import hashlib
 import html
 
-MAIL_SERVER = {"outlook": "m365-mail-read", "outlook-shared": "m365-mail-shared", "gmail": "google-workspace-gmail"}
+MAIL_SERVER = {"outlook": "m365-mail-read", "outlook-shared": "m365-mail-shared", "hotmail": "hotmail-mail",
+               "gmail": "google-workspace-gmail"}
 MAIL_FIRST_RUN_HOURS = 24
 # Emails handled per run (oldest first); the rest wait for the next run, which starts where this one stopped.
 MAIL_PER_RUN = 20
@@ -26,7 +27,9 @@ def mail_call(provider, tool, **args):
 
 
 def mail_is_outlook(provider):
-    return provider in ("outlook", "outlook-shared")
+    """Outlook-shaped (Microsoft Graph): a work Outlook mailbox, a shared one, or a personal Hotmail / Outlook.com one.
+    hotmail-mail has the same tools and answers as m365-mail-read, without shared mailboxes."""
+    return provider in ("outlook", "outlook-shared", "hotmail")
 
 
 def mail_addr(value):

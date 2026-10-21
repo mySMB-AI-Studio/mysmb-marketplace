@@ -15,7 +15,8 @@ cursors = dict(ledger.get("cursors") or {})
 cursors.update(params.get("cursors") or {})
 today = bk_today(settings)
 now = bk_now_iso(settings)
-mailbox = {"outlook": "Outlook", "outlook-shared": "Outlook (" + MAIL_MAILBOX["address"] + ")", "gmail": "Gmail"}[provider]
+mailbox = {"outlook": "Outlook", "outlook-shared": "Outlook (" + MAIL_MAILBOX["address"] + ")", "hotmail": "Hotmail",
+           "gmail": "Gmail"}[provider]
 filed = 0
 requested = 0
 unmatched = 0
