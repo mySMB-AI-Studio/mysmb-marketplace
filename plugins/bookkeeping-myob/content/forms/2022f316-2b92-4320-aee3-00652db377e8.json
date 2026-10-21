@@ -1,0 +1,71 @@
+{
+  "contentHash": "7925600fa24f3d13d74a47ce52bcce97c3215b8c66a736d6803f05c083c112f3",
+  "kind": "form",
+  "originKey": "2022f316-2b92-4320-aee3-00652db377e8",
+  "schema": {
+    "description": "Ledger checks settings for one business kept in MYOB. Submit it once per business, and again whenever something changes.",
+    "sections": [
+      {
+        "id": "business",
+        "questions": [
+          {
+            "id": "q_client_name",
+            "label": "Business name",
+            "maxLength": 120,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_file",
+            "label": "MYOB company file name (exactly as it appears in MYOB)",
+            "maxLength": 200,
+            "required": true,
+            "type": "short_text"
+          },
+          {
+            "id": "q_gst",
+            "label": "Is this business registered for GST?",
+            "required": true,
+            "type": "yes_no"
+          }
+        ],
+        "title": "The business"
+      },
+      {
+        "id": "checks",
+        "questions": [
+          {
+            "id": "q_checks",
+            "label": "Run the ledger checks on this business’s MYOB file?",
+            "options": [
+              "Yes",
+              "No"
+            ],
+            "type": "single_choice"
+          },
+          {
+            "entity": "user",
+            "id": "q_checks_owner",
+            "label": "Who follows up its findings? (leave blank to use the practice default)",
+            "type": "lookup"
+          },
+          {
+            "id": "q_tpar",
+            "label": "Does this business lodge a taxable payments annual report (TPAR)? (building and construction, cleaning, courier, road freight, IT, security and investigation services)",
+            "type": "yes_no"
+          },
+          {
+            "id": "q_suspense",
+            "label": "Suspense or clearing account codes to watch, separated by commas (optional; accounts named suspense, clearing or uncoded are watched anyway)",
+            "maxLength": 200,
+            "type": "short_text"
+          }
+        ],
+        "title": "Ledger checks"
+      }
+    ],
+    "title": "Client checks settings (MYOB)",
+    "version": 1
+  },
+  "title": "Client checks settings (MYOB)"
+}
