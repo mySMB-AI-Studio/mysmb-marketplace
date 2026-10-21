@@ -103,6 +103,7 @@ class Myob(PackBase):
     def setUp(self):
         super().setUp()
         self.file = self.w.myob.add_file("file-acme", "Acme Plumbing Pty Ltd")
+        self.file["lock"] = day(40)
         self.w.myob.add_file("file-beta", "Beta Cafe")
         self.supplies = card("c-supplies", "Plumbing Supplies Co", abn="51 824 753 556")
         self.file["cards"].append(self.supplies)
@@ -188,7 +189,7 @@ class Myob(PackBase):
         self.assertIn("Fix each one in MYOB", item["description"])
         self.assertTrue(self.lines(item, "CHK-079"))
         # CHK-002 reads bill PDFs, which only Bookkeeping for Xero's bill intake reads.
-        self.assertIn("Not checked, as MYOB's API doesn't give what they need: CHK-002, CHK-016, CHK-017", item["description"])
+        self.assertIn("Not checked, as MYOB's API doesn't give what they need: CHK-002, CHK-016, CHK-021", item["description"])
         # Bills carry no attachment flag in MYOB: never a "nothing attached" finding.
         self.assertFalse(self.lines(item, "CHK-086"))
         self.assertNotIn("Open in", item["description"])
@@ -268,6 +269,51 @@ class Myob(PackBase):
         line = self.lines(self.open_item(), "CHK-037")[0]
         self.assertIn("Invoice 00000099 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
         self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+
+    # ── what the MYOB connector added for the checks (myhub-mcp-servers #819) ──
+    def test_supplier_bank_fingerprints_feed_the_bank_checks(self):
+        sparky = card("c-sparky", "Sparky Electrical Pty Ltd", abn="53004085616")
+        twin = card("c-twin", "Twin Trades", abn="83914571673")
+        sparky["_bank"], twin["_bank"], self.supplies["_bank"] = "062-000 11112222", "062000 11112222", "033-000 99998888"
+        self.file["cards"] += [sparky, twin]
+        self.overnight()  # the first night records the fingerprints
+        self.supplies["_bank"] = "033-000 55556666"
+        self.check_now("Acme Plumbing")  # the next run (overnight() skips a client already checked today)
+        desc = self.open_item()["description"]
+        self.assertTrue(self.lines(self.open_item(), "CHK-017"), desc)
+        self.assertIn("Plumbing Supplies Co", self.lines(self.open_item(), "CHK-017")[0])
+        self.assertIn("Sparky Electrical Pty Ltd", self.lines(self.open_item(), "CHK-018")[0])
+        self.assertNotIn("11112222", json.dumps(self.w.files))
+        self.assertNotIn("CHK-017", desc.split("Not checked")[-1])
+
+    def test_open_quotes_purchase_orders_and_an_old_lock_date(self):
+        self.file["quotes"] = [{"UID": "q1", "Number": "EST-2001", "Date": day(20) + "T00:00:00",
+                                "Customer": {"UID": "c-sun", "Name": "Sunline Solar"}, "TotalAmount": 1650.0}]
+        self.file["orders"] = [{"UID": "o1", "Number": "PO-0001", "Date": day(20) + "T00:00:00", "Supplier": {"UID": "c-supplies", "Name": "Plumbing Supplies Co"},
+                                "TotalAmount": 330.0, "Status": "Open"},
+                               {"UID": "o2", "Number": "PO-0002", "Date": day(60) + "T00:00:00", "Supplier": {"UID": "c-supplies", "Name": "Plumbing Supplies Co"},
+                                "TotalAmount": 99.0, "Status": "ConvertedToBill"}]
+        self.file["lock"] = day(400)
+        self.overnight()
+        item = self.open_item()
+        self.assertIn("1 quote(s) are still open, not turned into an invoice (EST-2001)", self.lines(item, "CHK-040")[0])
+        self.assertIn("1 purchase order(s) are still open, not turned into a bill (PO-0001)", self.lines(item, "CHK-093")[0])
+        self.assertIn("more than 6 months ago", self.lines(item, "CHK-134")[0])
+
+    def test_a_connector_without_them_leaves_those_checks_not_checked(self):
+        self.file["old_connector"] = True
+        self.file["quotes"] = [{"UID": "q1", "Number": "EST-2001", "Date": day(20) + "T00:00:00", "Customer": {"UID": "c-sun", "Name": "Sunline"},
+                                "TotalAmount": 1650.0}]
+        sparky = card("c-sparky", "Sparky Electrical Pty Ltd", abn="53004085616")
+        self.file["cards"].append(sparky)
+        self.file["docs"] += [mdoc("b1", "INV-7", sparky, day(10), 440.0), mdoc("b2", "INV-7", sparky, day(7), 440.0)]
+        self.overnight()
+        desc = self.open_item()["description"]
+        for check in ("CHK-017", "CHK-018", "CHK-040", "CHK-057", "CHK-093", "CHK-134", "CHK-135"):
+            self.assertIn(check, desc.split("Not checked")[-1], check)
+        self.assertFalse(self.lines(self.open_item(), "CHK-040"))
+        self.assertFalse(self.lines(self.open_item(), "CHK-134"))
 
 
 def qvendor(vid, name, address=True):
@@ -374,6 +420,24 @@ class QuickBooks(PackBase):
         line = self.lines(self.open_item(), "CHK-037")[0]
         self.assertIn("Invoice 1003 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
         self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+
+    def test_pending_estimates_and_open_purchase_orders(self):
+        sun = {"value": "C3", "name": "Sunline Solar"}
+        self.q.estimates += [
+            {"Id": "e1", "DocNumber": "E-1", "TxnDate": day(20), "CustomerRef": sun, "TotalAmt": 1650, "TxnStatus": "Pending"},
+            {"Id": "e2", "DocNumber": "E-2", "TxnDate": day(20), "CustomerRef": sun, "TotalAmt": 990, "TxnStatus": "Accepted",
+             "LinkedTxn": [{"TxnId": "200", "TxnType": "Invoice"}]},
+            {"Id": "e3", "DocNumber": "E-3", "TxnDate": day(15), "CustomerRef": sun, "TotalAmt": 440, "TxnStatus": "Accepted"},
+            {"Id": "e4", "DocNumber": "E-4", "TxnDate": day(15), "CustomerRef": sun, "TotalAmt": 330, "TxnStatus": "Closed"}]
+        self.q.purchase_orders += [
+            {"Id": "p1", "DocNumber": "PO-9", "TxnDate": day(12), "VendorRef": {"value": "12", "name": "Plumbing Supplies Co"}, "TotalAmt": 300, "POStatus": "Open"},
+            {"Id": "p2", "DocNumber": "PO-8", "TxnDate": day(30), "VendorRef": {"value": "12", "name": "Plumbing Supplies Co"}, "TotalAmt": 200, "POStatus": "Closed"}]
+        self.overnight()
+        item = self.open_item()
+        self.assertIn("2 quote(s) are still pending, or accepted but not invoiced (E-1, E-3)", self.lines(item, "CHK-040")[0])
+        self.assertIn("1 purchase order(s) are still open, not turned into a bill (PO-9)", self.lines(item, "CHK-093")[0])
+        self.assertNotIn("CHK-040", item["description"].split("Not checked")[-1])
 
 
 if __name__ == "__main__":

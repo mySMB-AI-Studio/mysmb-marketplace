@@ -90,8 +90,10 @@ else:
             if weekly:
                 state["last_weekly"] = str(today)
             state["truncated"] = ledger.get("truncated") or []
-            if ledger.get("na"):
-                state["na"] = sorted(ledger["na"])
+            # Only a weekly run reads everything, so only it decides what isn't checked (a daily run skips the
+            # weekly lookups and would list those again).
+            if "na" in ledger and (weekly or "na" not in state):
+                state["na"] = sorted(ledger["na"] or [])
             state.pop("failed", None)
             what = ck_sync_item(client, settings, state, item, new, resolved, params["findings_form"])
             bk_write_json(path, state)
