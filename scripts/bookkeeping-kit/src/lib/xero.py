@@ -8,6 +8,11 @@ XERO = "xero-accounting"
 XERO_EXPENSE_TYPES = {"EXPENSE", "DIRECTCOSTS", "OVERHEADS", "FIXED", "CURRENT", "INVENTORY", "PREPAYMENT", "NONCURRENT"}
 XERO_REVENUE_TYPES = {"REVENUE", "SALES", "OTHERINCOME"}
 XERO_DEAD = {"DELETED", "VOIDED"}
+# Checks the Xero connector can't answer: not run, and listed on the Checks item (never shown as clear). Xero's bank
+# statement lines are a restricted API: an app needs Xero's approval (an agreement and the bank statement scope).
+XERO_NA = {
+    "CHK-023": "Xero shares bank statement lines only with apps it has approved for them, and this one isn't yet",
+}
 
 
 def xero_call(tool, tenant_id=None, **args):
@@ -598,7 +603,7 @@ def xero_ledger(tenant_id, today, since, weekly):
     bank, cut = xero_pages("list_bank_transactions", tenant_id, "BankTransactions", where="Date>=" + xero_since(since))
     if cut:
         truncated.append("bank transactions")
-    ledger = {"ledger": "xero", "weekly": bool(weekly), "truncated": truncated,
+    ledger = {"ledger": "xero", "weekly": bool(weekly), "truncated": truncated, "na": dict(XERO_NA),
               "contacts": [xero_contact(c) for c in contacts if c.get("ContactID")],
               "docs": docs,
               "bank": [xero_bank_txn(t) for t in bank if t.get("BankTransactionID") and t.get("Status") != "DELETED"]}

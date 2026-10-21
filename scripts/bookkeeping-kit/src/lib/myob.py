@@ -284,17 +284,26 @@ def myob_ledger(file_id, today, since, weekly):
     journal_since = min(since, (today.replace(day=1) - datetime.timedelta(days=100)).replace(day=1))
     cash = {str(a["UID"]) for a in accounts if a.get("Type") in ("Bank", "CreditCard")}
     spend = {s["id"]: s for s in bank}
-    journals = []
+    journals, moves = [], []
     for j in myob_items(myob_call("list_journal_transactions", file_id, from_date=str(journal_since), to_date=str(today))):
         if not isinstance(j, dict):
             continue
         when = myob_date(j.get("DateOccurred") or j.get("DatePosted"))
         source = j.get("SourceTransaction") or {}
-        if j.get("JournalType") == "General" or source.get("TransactionType") == "GeneralJournal":
+        general = j.get("JournalType") == "General" or source.get("TransactionType") == "GeneralJournal"
+        if general:
             journals.append({"id": str(j.get("UID") or ""), "date": when, "narration": str(j.get("Description") or ""), "link": ""})
         hits = [ln for ln in j.get("Lines") or [] if isinstance(ln, dict) and myob_ref(ln.get("Account")) in cash]
         if not hits or when < str(since):
             continue
+        # What CHK-023 compares with the statement lines: each payment, receipt, spend or receive money and transfer, per
+        # bank or card account it moved (a general journal straight to a bank account needn't have a line).
+        if not general:
+            who = spend[myob_ref(source)]["contact"] if myob_ref(source) in spend else str(j.get("Description") or "")
+            for ln in hits:
+                moves.append({"id": myob_ref(source) or "j-" + str(j.get("UID") or ""), "account": myob_ref(ln.get("Account")),
+                              "date": when, "amount": round((-1 if ln.get("IsCredit") else 1) * abs(bk_money(ln.get("Amount")) or 0.0), 2),
+                              "text": who})
         reconciled = all(ln.get("ReconciledDate") for ln in hits)
         if myob_ref(source) in spend:
             spend[myob_ref(source)]["reconciled"] = reconciled
@@ -303,11 +312,30 @@ def myob_ledger(file_id, today, since, weekly):
                          "total": round(sum((-1 if ln.get("IsCredit") else 1) * abs(bk_money(ln.get("Amount")) or 0.0) for ln in hits), 2),
                          "tax": 0.0, "attachments": None, "reconciled": reconciled, "lines": [], "link": ""})
     ledger["journals"] = journals
+    # Bank feed and imported statement lines (CHK-023): IsCredit is money in; SourceTransactions are the recorded
+    # transactions a line is matched to. No lines at all (no feeds, nothing imported) leaves CHK-023 not checked; a
+    # connector that can't list them leaves its findings as they were. Not yet seen on a real file: confirm on QA.
+    exc = None
+    try:
+        statement = []
+        for s in myob_items(myob_call("list_bank_statement_lines", file_id, from_date=str(since), to_date=str(today), status="All")):
+            if not isinstance(s, dict) or not s.get("UID"):
+                continue
+            status = str(s.get("Status") or "").lower()
+            statement.append({"id": str(s["UID"]), "account": myob_ref(s.get("Account")), "date": myob_date(s.get("Date")),
+                              "amount": round((1 if s.get("IsCredit") else -1) * abs(bk_money(s.get("Amount")) or 0.0), 2),
+                              "text": str(s.get("Description") or s.get("Reference") or "").strip(),
+                              "status": status if status in ("uncoded", "coded", "hidden") else "coded",
+                              "matched": [myob_ref(t) for t in s.get("SourceTransactions") or [] if isinstance(t, dict) and myob_ref(t)]})
+        ledger["statement"], ledger["bank_moves"] = statement, moves
+        if not statement:
+            na["CHK-023"] = "this company file has no bank feed or imported statement lines in the weeks checked"
+    except Exception as exc:
+        ledger["unread"].append("statement")
     # The lock period (CHK-134, CHK-135): MYOB locks entries dated before LockPeriodPriorTo, so the last locked day is
     # the day before. Quotes and purchase orders (CHK-040, CHK-093): MYOB has no drafts, so the open ones are the nearest
     # match (an accepted quote becomes an invoice, an order a bill). A connector without these tools leaves them not checked.
     lock = ""
-    exc = None
     try:
         prior = ck_day(myob_date((myob_call("get_lock_period", file_id) or {}).get("LockPeriodPriorTo")))
         lock = str(prior - datetime.timedelta(days=1)) if prior else ""

@@ -156,6 +156,9 @@ class Checks(unittest.TestCase):
         self.assertIn("[Open in Xero](https://go.xero.com/organisationlogin/default.aspx?shortcode=!Ab12C"
                       "&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=b2)", item["description"])
         self.assertEqual(self.state()["todo_id"], item["id"])
+        # Xero's bank statement lines are a restricted API: CHK-023 is listed as not checked, never shown as clear.
+        self.assertIn("Not checked, as Xero's API doesn't give what they need: CHK-023.", item["description"])
+        self.assertEqual(self.state()["na"], ["CHK-023"])
         # Already checked today: the next scheduled run skips it.
         run_flow(self.w, AUTOS[AUTO], {"kind": "schedule"}, {"client_name": ""})
         self.assertEqual(len(self.items()), 1)

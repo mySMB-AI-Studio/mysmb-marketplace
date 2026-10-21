@@ -21,7 +21,7 @@ class FakeMyob:
 
     def add_file(self, fid, name):
         self.files[fid] = {
-            "name": name, "cards": [], "suppliers": [], "docs": [], "spend": [], "payments": [], "receipts": [], "quotes": [], "orders": [], "lock": None, "old_connector": False, "journals": [],
+            "name": name, "cards": [], "suppliers": [], "docs": [], "spend": [], "payments": [], "receipts": [], "quotes": [], "orders": [], "lock": None, "old_connector": False, "journals": [], "statement": [],
             "tax_codes": [{"UID": "tc-gst", "Code": "GST", "Rate": 10.0}, {"UID": "tc-fre", "Code": "FRE", "Rate": 0.0},
                           {"UID": "tc-nt", "Code": "N-T", "Rate": 0.0}],
             "accounts": [
@@ -118,6 +118,9 @@ class FakeMyob:
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}
         if tool == "list_accounts":
             return {"Count": len(f["accounts"]), "Items": copy.deepcopy(f["accounts"])}
+        if tool == "list_bank_statement_lines":
+            rows = [x for x in f["statement"] if frm <= x["Date"][:10] <= to]
+            return {"Count": len(rows), "Items": copy.deepcopy(rows)}
         if tool == "list_journal_transactions":
             rows = [j for j in f["journals"] if frm <= j["DateOccurred"][:10] <= to]
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}

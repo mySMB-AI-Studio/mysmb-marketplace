@@ -315,6 +315,77 @@ class Myob(PackBase):
         self.assertFalse(self.lines(self.open_item(), "CHK-040"))
         self.assertFalse(self.lines(self.open_item(), "CHK-134"))
 
+    # ── CHK-023: statement lines ──
+    def line(self, uid, date, amount, text="BANK FEE", status="Coded", matched=(), account="a-bank"):
+        self.file["statement"].append({"UID": uid, "Date": date + "T00:00:00", "Description": text, "Account": {"UID": account},
+                                       "Amount": abs(amount), "IsCredit": amount > 0, "Status": status, "Reference": "",
+                                       "SourceTransactions": [{"UID": m, "TransactionType": "SpendMoneyTxn"} for m in matched]})
+
+    def feed(self, newest, oldest, every, skip=(), account="a-bank"):
+        for n in range(oldest, newest - 1, -every):
+            if not skip or not skip[0] <= n <= skip[1]:
+                self.line(account + "-l" + str(n), day(n), -10.0, account=account)
+
+    def test_statement_lines_missing_gap_and_twice(self):
+        # Lines every 2 days, none from 40 to 29 days ago; the line 50 days ago came in twice, the second still uncoded.
+        self.feed(2, 80, 2, skip=(30, 40))
+        self.line("l-twice", day(50), -10.0, status="Uncoded")
+        # Recorded: one with no line, one matched to its line, one with an unmatched line of the same amount 4 days away,
+        # one before the feed's first line and one too recent to judge.
+        self.spend("s-miss", self.supplies, day(60), 330.0)
+        self.spend("s-link", self.supplies, day(20), 99.0)
+        self.line("l-link", day(20), -99.0, matched=("s-link",))
+        self.spend("s-near", self.supplies, day(70), 55.0)
+        self.line("l-near", day(66), -55.0, status="Uncoded")
+        self.spend("s-early", self.supplies, day(85), 44.0)
+        self.spend("s-late", self.supplies, day(1), 77.0)
+        self.overnight()
+        item = self.open_item()
+        rows = self.lines(item, "CHK-023")
+        self.assertEqual(len(rows), 3, rows)
+        missing = next(r for r in rows if "no bank statement line" in r)
+        self.assertIn("1 transaction(s) recorded on 1-1110 Business Cheque Account have no bank statement line: -$330.00 on "
+                      + datetime.date.fromisoformat(day(60)).strftime("%d %b %Y").lstrip("0") + " (Plumbing Supplies Co)", missing)
+        self.assertIn("$330.00", missing.split("—")[2])
+        gap = next(r for r in rows if "No bank statement lines" in r)
+        self.assertIn("from " + datetime.date.fromisoformat(day(41)).strftime("%d %b %Y").lstrip("0") + " to "
+                      + datetime.date.fromisoformat(day(29)).strftime("%d %b %Y").lstrip("0") + " (13 days)", gap)
+        twice = next(r for r in rows if "more than once" in r)
+        self.assertIn("1 bank statement line(s) on 1-1110 Business Cheque Account came in more than once: "
+                      + datetime.date.fromisoformat(day(50)).strftime("%d %b %Y").lstrip("0") + " BANK FEE -$10.00", twice)
+        self.assertIn("hide the extra line in MYOB", twice)
+        self.assertNotIn("CHK-023", item["description"].split("Not checked")[-1])
+        # The statement lines are read for the weekly window only.
+        args = next(a for t, a in self.w.myob.calls if t == "list_bank_statement_lines")
+        self.assertEqual((args["status"], args["to_date"]), ("All", str(TODAY)))
+
+    def test_a_feed_that_stopped_and_a_quiet_account(self):
+        self.file["accounts"].append({"UID": "a-save", "DisplayID": "1-1120", "Name": "Savings Account", "Classification": "Asset",
+                                      "Type": "Bank", "IsHeader": False, "IsActive": True})
+        # The cheque account had a line every 2 days until 20 days ago; the savings account has one a fortnight.
+        self.feed(20, 60, 2)
+        self.feed(10, 85, 15, account="a-save")
+        self.overnight()
+        rows = self.lines(self.open_item(), "CHK-023")
+        self.assertEqual(len(rows), 1, rows)
+        self.assertIn("No bank statement lines on 1-1110 Business Cheque Account since "
+                      + datetime.date.fromisoformat(day(20)).strftime("%d %b %Y").lstrip("0") + " (19 days)", rows[0])
+        self.assertIn("Check the bank feed is still connected", rows[0])
+
+    def test_no_statement_lines_or_none_readable(self):
+        # No feeds and nothing imported: not checked, never shown as clear.
+        self.overnight()
+        state = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing.json"])
+        self.assertIn("CHK-023", state["na"])
+        # A list that can't be read leaves the open findings as they were.
+        self.feed(2, 80, 2, skip=(30, 40))
+        self.check_now("Acme Plumbing")
+        self.assertEqual(len(self.lines(self.open_item(), "CHK-023")), 1)
+        self.w.myob.errors["list_bank_statement_lines"] = "The filter isn't supported"
+        self.check_now("Acme Plumbing")
+        self.assertEqual(len(self.lines(self.open_item(), "CHK-023")), 1)
+        self.assertNotIn("CHK-023", json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing.json"])["na"])
+
 
 def qvendor(vid, name, address=True):
     return {"Id": vid, "DisplayName": name, "Active": True, "BillAddr": {"Line1": "1 Main St"} if address else {}}
@@ -391,6 +462,8 @@ class QuickBooks(PackBase):
         self.assertIn("never sent from QuickBooks (1001)", self.lines(item, "CHK-024")[0])
         self.assertIn("Not checked, as QuickBooks' API doesn't give what they need: CHK-002", item["description"])
         self.assertFalse(self.lines(item, "CHK-022"))
+        # QuickBooks' API has no bank feed lines.
+        self.assertIn("CHK-023", item["description"].split("Not checked")[-1])
 
     def test_the_closing_date_is_the_lock_date(self):
         self.q.close_date = ""

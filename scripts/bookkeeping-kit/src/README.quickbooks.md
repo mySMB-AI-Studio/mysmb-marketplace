@@ -61,6 +61,7 @@ These are listed on the Checks item as not checked, never shown as clear:
 | CHK-007, CHK-008 and the register checks (CHK-002 to CHK-005, CHK-009, CHK-030, CHK-039, CHK-068, CHK-069, CHK-071, CHK-072, CHK-076, CHK-077, CHK-085, CHK-088) | QuickBooks contacts carry no ABN field through its API |
 | CHK-017, CHK-018, CHK-057 (supplier bank details changed or shared) | QuickBooks' API doesn't return supplier bank details |
 | CHK-022 (unreconciled transactions) | QuickBooks doesn't say through its API whether a transaction is reconciled |
+| CHK-023 (bank statement line missing) | QuickBooks' API doesn't return bank feed lines |
 | CHK-033, CHK-078 (invoices and bills in draft) | QuickBooks has no draft or awaiting-approval invoices or bills |
 | CHK-016 (batch payment text) | QuickBooks' API has no batch payments |
 | CHK-139, CHK-140 (fixed assets) | These read Xero Assets |

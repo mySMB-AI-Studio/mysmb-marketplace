@@ -9,6 +9,9 @@
 #   weekly only: accounts [{id, code, name, type, tax_type, active, pl}], tax_rates {tax_type: rate %},
 #               journals [{id, date, narration, link}], org {lock_date, eoy_lock_date, settings_link},
 #               balances {now, month_ago: {account id: balance}}, pl_12m {income, moved: [account ids]}
+#   weekly, where the ledger shares them (MYOB): statement [{id, account (id), date, amount (+ in, - out), text,
+#               status: uncoded|coded|hidden, matched: [ids of the recorded transactions it's matched to]}],
+#               bank_moves [{id (the recorded transaction's), account (id), date, amount (+ in, - out), text}]
 # IDs, names and default severities are the mySMB checks catalogue's (Prompt Library, Checks sheet). Urgent is
 # never set automatically. Readings marked heuristic wait on the content owner's confirmation.
 import secrets
@@ -62,6 +65,7 @@ CK_CATALOGUE = {
     "CHK-082": ("Purchases", "Unusual Monthly Billing", "Low"),
     "CHK-083": ("Purchases", "Unusually Overdue Bill Outside Normal Behaviour", "Low"),
     "CHK-084": ("Purchases", "Grouped Overdue Bill Outside Normal Behaviour", "Low"),
+    "CHK-023": ("Banking", "Bank Statement Line Missing", "Medium"),
     # Fixed asset checks: need what Asset lookups (Xero Assets) saved.
     "CHK-139": ("Bookkeeping", "Draft Fixed Asset", "Low"),
     "CHK-140": ("Bookkeeping", "Unmapped Fixed Asset Account With Balance", "Low"),
@@ -88,10 +92,10 @@ CK_DAILY = ("CHK-006", "CHK-017", "CHK-018", "CHK-028", "CHK-035", "CHK-055", "C
 CK_WEEKLY = ("CHK-007", "CHK-008", "CHK-021", "CHK-022", "CHK-024", "CHK-031", "CHK-033", "CHK-058", "CHK-059",
              "CHK-086", "CHK-125", "CHK-129", "CHK-132", "CHK-133", "CHK-134", "CHK-135", "CHK-136", "CHK-138",
              "CHK-016", "CHK-040", "CHK-078", "CHK-093", "CHK-137", "CHK-041", "CHK-074", "CHK-094", "CHK-131",
-             "CHK-141", "CHK-170", "CHK-036", "CHK-037", "CHK-038", "CHK-082", "CHK-083", "CHK-084")
-# The weekly checks that read a list only they need (batch payments, quotes, purchase orders): when that list can't be
-# read, the check isn't evaluated, so its open findings stay as they are instead of closing.
-CK_SOURCE_CHECKS = {"batch_payments": "CHK-016", "quotes": "CHK-040", "purchase_orders": "CHK-093"}
+             "CHK-141", "CHK-170", "CHK-036", "CHK-037", "CHK-038", "CHK-082", "CHK-083", "CHK-084", "CHK-023")
+# The weekly checks that read a list only they need (batch payments, quotes, purchase orders, statement lines): when that
+# list can't be read, the check isn't evaluated, so its open findings stay as they are instead of closing.
+CK_SOURCE_CHECKS = {"batch_payments": "CHK-016", "quotes": "CHK-040", "purchase_orders": "CHK-093", "statement": "CHK-023"}
 # Weekly, and only when Asset lookups (Xero Assets) has saved results in the last fortnight.
 CK_ASSETS = ("CHK-139", "CHK-140")
 CK_ASSETS_DAYS = 14
@@ -100,7 +104,7 @@ CK_REGISTER = ("CHK-002", "CHK-003", "CHK-004", "CHK-005", "CHK-009", "CHK-030",
                "CHK-071", "CHK-072", "CHK-076", "CHK-077", "CHK-085", "CHK-088")
 CK_REGISTER_DAYS = 14
 CK_HEURISTIC = ("CHK-003", "CHK-005", "CHK-009", "CHK-016", "CHK-056", "CHK-129", "CHK-133", "CHK-041", "CHK-074",
-                "CHK-094", "CHK-131", "CHK-141", "CHK-036", "CHK-037", "CHK-038", "CHK-082", "CHK-083", "CHK-084")
+                "CHK-094", "CHK-131", "CHK-141", "CHK-036", "CHK-037", "CHK-038", "CHK-082", "CHK-083", "CHK-084", "CHK-023")
 # The GST-related checks: the GST checks section of the weekly report (CRA-10 GST Check).
 CK_GST = ("CHK-003", "CHK-008", "CHK-031", "CHK-058", "CHK-059", "CHK-068", "CHK-069", "CHK-076", "CHK-077", "CHK-085",
           "CHK-129", "CHK-136", "CHK-137")
@@ -166,6 +170,15 @@ CK_UNUSUAL_MIN = 500.0
 CK_ON_TIME_DAYS = 7
 CK_ON_TIME_SHARE = 0.75
 CK_OVERDUE_MIN_DAYS = 30
+# CHK-023 (heuristic): statement lines against the recorded bank transactions, per account with lines. A recorded
+# transaction matches a line it's linked to, or an unlinked line of the same amount within 5 days; ones in the last 3
+# days before the newest line aren't judged yet. A gap: at least 10 days in a row with no line, and at least 3 times the
+# account's usual days between lines (an account with a line a month isn't flagged monthly), on 6 or more line dates.
+CK_FEED_MATCH_DAYS = 5
+CK_FEED_LAG_DAYS = 3
+CK_FEED_GAP_DAYS = 10
+CK_FEED_GAP_RATIO = 3
+CK_FEED_MIN_DATES = 6
 
 
 def ck_day(value):
@@ -863,6 +876,86 @@ def ck_behaviour_rules(ledger, contacts, today):
     return out
 
 
+# ── Statement lines (weekly, where the ledger shares them): CHK-023 ──
+def ck_money_signed(amount):
+    return ("-" if amount < 0 else "") + ck_money(abs(amount))
+
+
+def ck_statement_rules(ledger, today):
+    """Per account with statement lines: recorded transactions with no line, days with no lines (a gap, or a feed that
+    stopped), and lines that came in twice."""
+    out = []
+    where = ck_where(ledger)
+    one = datetime.timedelta(days=1)
+    names = {a["id"]: ck_account_label(a) for a in ledger.get("accounts") or []}
+    lines = []
+    for s in ledger.get("statement") or []:
+        when = ck_day(s.get("date"))
+        if s.get("account") and when:
+            lines.append(dict(s, day=when))
+    linked = {(s["account"], i) for s in lines for i in s.get("matched") or []}
+    by_account = {}
+    for s in lines:
+        by_account.setdefault(s["account"], []).append(s)
+    for account in sorted(by_account):
+        rows = sorted(by_account[account], key=lambda s: s["date"])
+        label = names.get(account) or "a bank account"
+        first, judged_to = rows[0]["date"], str(rows[-1]["day"] - datetime.timedelta(days=CK_FEED_LAG_DAYS))
+        # Recorded, with no line: not linked to one, and no unlinked line of the same amount within a few days.
+        free = [s for s in rows if not s.get("matched") and s.get("status") != "hidden"]
+        missing = []
+        for m in sorted((m for m in ledger.get("bank_moves") or [] if m.get("account") == account), key=lambda m: m["date"]):
+            if (account, m["id"]) in linked or not first <= m["date"] <= judged_to:
+                continue
+            hit = next((s for s in free if abs(s["amount"] - m["amount"]) < 0.005
+                        and abs(ck_gap(s["date"], m["date"])) <= CK_FEED_MATCH_DAYS), None)
+            if hit:
+                free.remove(hit)
+            else:
+                missing.append(m)
+        if missing:
+            shown = [ck_money_signed(m["amount"]) + " on " + ck_date_text(m["date"]) + (" (" + m["text"] + ")" if m.get("text") else "")
+                     for m in missing[:5]]
+            out.append(ck_finding("CHK-023", "no-line:" + account, str(len(missing)) + " transaction(s) recorded on " + label
+                                  + " have no bank statement line: " + "; ".join(shown)
+                                  + (" and " + str(len(missing) - 5) + " more" if len(missing) > 5 else "")
+                                  + ". Check each one went through the bank: one entered twice, on the wrong account or never paid "
+                                  "has no line.", amount=sum(abs(m["amount"]) for m in missing),
+                                  sig="|".join(sorted(m["id"] for m in missing))))
+        # Days with no line, against the account's own rhythm, and from the newest line to today (a feed that stopped).
+        dates = sorted({s["day"] for s in rows})
+        if len(dates) >= CK_FEED_MIN_DATES:
+            least = max(CK_FEED_GAP_DAYS, CK_FEED_GAP_RATIO * ck_median([(b - a).days for a, b in zip(dates, dates[1:])]))
+            for a, b in zip(dates, dates[1:]):
+                empty = (b - a).days - 1
+                if empty >= least:
+                    out.append(ck_finding("CHK-023", "gap:" + account + ":" + str(a + one), "No bank statement lines on " + label
+                                          + " from " + ck_date_text(a + one) + " to " + ck_date_text(b - one) + " (" + str(empty)
+                                          + " days). Check the bank feed for those days, or import the statement for them."))
+            stale = (today - dates[-1]).days - 1
+            if stale >= least:
+                out.append(ck_finding("CHK-023", "stopped:" + account, "No bank statement lines on " + label + " since "
+                                      + ck_date_text(dates[-1]) + " (" + str(stale) + " days). Check the bank feed is still "
+                                      "connected, or import the latest statement.", sig=str(dates[-1])))
+        # The same line twice (date, amount and description), one of them still uncoded. A hidden line doesn't count.
+        groups = {}
+        for s in rows:
+            if s.get("status") != "hidden":
+                text = " ".join(str(s.get("text") or "").lower().split())
+                groups.setdefault((s["date"], round(s["amount"], 2), text), []).append(s)
+        twice = [g for g in groups.values() if len(g) > 1 and any(s.get("status") == "uncoded" for s in g)]
+        if twice:
+            shown = [ck_date_text(g[0]["date"]) + " " + (str(g[0].get("text") or "") or "(no description)") + " "
+                     + ck_money_signed(g[0]["amount"]) + (" (" + str(len(g)) + " times)" if len(g) > 2 else "") for g in twice[:5]]
+            out.append(ck_finding("CHK-023", "twice:" + account, str(len(twice)) + " bank statement line(s) on " + label
+                                  + " came in more than once: " + "; ".join(shown)
+                                  + (" and " + str(len(twice) - 5) + " more" if len(twice) > 5 else "")
+                                  + ". If it went through the bank once, hide the extra line in " + where + " instead of coding it.",
+                                  amount=sum(abs(g[0]["amount"]) * (len(g) - 1) for g in twice),
+                                  sig="|".join(sorted(s["id"] for g in twice for s in g))))
+    return out
+
+
 # ── Register checks (weekly, from what Register lookups saved; skipped when there's nothing recent) ──
 def ck_cancelled_on(row, day):
     """True when the register shows the ABN cancelled on or before the day."""
@@ -1100,6 +1193,7 @@ def ck_run(ledger, client, snap, today, secret, captured, register=None, intake_
     evaluated = set(CK_DAILY)
     if ledger.get("weekly"):
         found += ck_weekly_rules(ledger, client, snap, today, captured)
+        found += ck_statement_rules(ledger, today)
         evaluated |= set(CK_WEEKLY)
         # Register findings close when their data goes stale (Register lookups unpublished or failing for a
         # fortnight) rather than staying open for good; the checklist says the register checks are paused.
