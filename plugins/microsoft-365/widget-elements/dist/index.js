@@ -51,6 +51,23 @@ const sender_tone = (args) => {
         hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
     return CHART_TONES[hash % CHART_TONES.length];
 };
+/**
+ * Status tone for a Microsoft Graph presence `availability` value — this is
+ * real, live state (TILE-DISPLAY-STANDARDS.md §7), not an arbitrary category,
+ * so it uses the status tone vocabulary (success/warning/destructive/muted)
+ * rather than the chart-1..5 hash used for avatar/sender coloring elsewhere
+ * in this plugin.
+ */
+const presence_tone = (args) => {
+    const availability = String(args.value ?? '');
+    if (availability === 'Available' || availability === 'AvailableIdle')
+        return 'success';
+    if (availability === 'Busy' || availability === 'BusyIdle' || availability === 'DoNotDisturb')
+        return 'destructive';
+    if (availability === 'Away' || availability === 'BeRightBack')
+        return 'warning';
+    return 'muted'; // Offline, PresenceUnknown, or anything unrecognized
+};
 /** `/ui/activeTab` starts unset until a tab is clicked — treat that as "inbox" everywhere a tab comparison needs a concrete value. */
 const default_tab = (args) => String(args.value ?? '').trim() || 'inbox';
 /** Tab button variant: filled when active, ghost otherwise. Mirrors the Zoom Recordings tile's tab_variant exactly. */
@@ -384,6 +401,7 @@ const elements = {
         item_tone,
         item_icon,
         sender_tone,
+        presence_tone,
         default_tab,
         tab_variant,
         tab_tone,
