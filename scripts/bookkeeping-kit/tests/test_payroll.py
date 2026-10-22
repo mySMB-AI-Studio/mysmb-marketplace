@@ -301,6 +301,9 @@ class PayrollTests(Base):
         self.assertIn("Fran&#x27;s timesheet deleted", pack["content"])
         self.assertIn("Sam Special", pack["content"])
         self.assertIn("2,560.00", pack["content"])
+        # Links open in a new tab: the pack shows in the Reports viewer's frame, where a plain link loads inside the frame.
+        self.assertIn("<base target='_blank'>", pack["content"])
+        self.assertIn("' target='_blank' rel='noopener noreferrer'>Full check report</a>", pack["content"])
         self.assertEqual(self.run_record()["status"], "in_review")
 
     def test_no_draft_pay_run_means_no_pack(self):
