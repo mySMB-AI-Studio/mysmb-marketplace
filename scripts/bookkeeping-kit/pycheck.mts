@@ -41,7 +41,9 @@ for (const rel of manifest.content.automations as string[]) {
   for (const d of diags) {
     const file = path.basename(d.file);
     const lines = fs.readFileSync(d.file, 'utf8').split('\n');
-    console.log(`     ${file}:${d.range.start.line + 1} ${d.message.split('\n')[0]}\n       > ${lines[d.range.start.line]?.trim()}`);
+    // A file-level error (an import cycle, say) has no range.
+    const at = d.range?.start?.line ?? 0;
+    console.log(`     ${file}:${at + 1} ${d.message.split('\n')[0]}\n       > ${lines[at]?.trim()}`);
   }
   fs.rmSync(dir, { recursive: true, force: true });
 }

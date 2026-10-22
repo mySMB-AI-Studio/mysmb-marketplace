@@ -14,8 +14,6 @@ outcome = ""
 todo_id = ""
 
 quoted = "\n".join("> " + ln for ln in str(request.get("text") or "")[:1500].splitlines() if ln.strip())
-asked_by = ("**Requested by** " + (request.get("from") or "the client") + (", " + str(request.get("received")) if request.get("received") else "")
-            + ("  \n**Subject:** " + str(request.get("subject")) if request.get("subject") else ""))
 
 if problem:
     dest = ""
@@ -29,9 +27,16 @@ if problem:
         title=("Invoice request needs attention: " + (request.get("subject") or "request")
                + (" (" + client["name"] + ")" if client.get("name") else ""))[:200],
         scope="org",
-        description=(problem + "\n\n" + asked_by + "\n\n" + quoted + ("\n\n- Request file: `" + dest + "` in Knowledge" if dest else "")
-                     + "\n\nFix it, then run **Bookkeeping: Draft requested invoice (Xero)** by hand with the client's name "
-                     "and the request text, or raise the invoice in Xero yourself, and complete this item."),
+        description=bk_card(
+            "fix what's below, then run **Bookkeeping: Draft requested invoice (Xero)** by hand with the client's name and "
+            "the request text, or raise the invoice in Xero yourself. Then complete this item. Nothing has gone to Xero.",
+            [("What went wrong", problem),
+             ("Client", bk_client_label(client) if client.get("name") else ""),
+             ("Requested by", (request.get("from") or "the client") + (", " + bk_when(request.get("received"), settings) if request.get("received") else "")
+              + (" (" + str(request["mailbox"]) + ")" if request.get("mailbox") else "")),
+             ("Subject", str(request.get("subject") or "")),
+             ("Request file", "`" + dest + "` in Knowledge" if dest else "")],
+            body="**The request**\n\n" + quoted),
         priority="high",
         due_date=str(bk_add_business_days(today, 1)),
         assignee_ids=[owner] if owner else None,
@@ -50,8 +55,11 @@ else:
     item = api.workq.create(
         title=re.sub(r"\s+", " ", title)[:200],
         scope="org",
-        description=(asked_by + "\n\n" + quoted + "\n\n---\n\n"
-                     + xero_bill_markdown(proposal, warnings, blocking, bill_id, "", client.get("name", ""))),
+        description=xero_bill_markdown(
+            proposal, warnings, blocking, bill_id, "", client.get("name", ""), client=client, settings=settings,
+            origin={"from": request.get("from") or "", "subject": request.get("subject") or "",
+                    "received": request.get("received") or "", "mailbox": request.get("mailbox") or ""} if request.get("from") else None,
+            note="**The request**\n\n" + quoted),
         priority="high" if (blocking or c.get("is_new")) else "medium",
         due_date=str(bk_add_business_days(today, 1)),
         assignee_ids=[reviewer] if reviewer else None,

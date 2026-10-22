@@ -108,11 +108,23 @@ if not problem:
                     title=("Get approval from " + (client.get("name") or "the client") + ": " + (c.get("name") or "bill")
                            + " " + facts["total"])[:200],
                     scope="org",
-                    description=("This bill is over the client-approval limit (" + bk_fmt(limit) + ").\n\n"
-                                 "1. Email " + (client.get("contact_name") or "the business owner")
-                                 + (" (" + client["contact_email"] + ")" if client.get("contact_email") else "")
-                                 + " using the draft below.\n2. When they reply, fill in the **Client bill approval** form on this item.\n\n"
-                                 "**Draft email**\n\n" + email),
+                    description=bk_card(
+                        "email " + (client.get("contact_name") or "the business owner")
+                        + (" (" + client["contact_email"] + ")" if client.get("contact_email") else "")
+                        + " using the draft below. When they reply, fill in the **Client bill approval** form on this item.",
+                        [("Client", bk_client_label(client)),
+                         ("Bill", (c.get("name") or "a supplier") + (" " + proposal["invoice_number"] if proposal.get("invoice_number") else "")
+                          + ", " + facts["total"] + (", due " + proposal["due_date"] if proposal.get("due_date") else "")),
+                         ("Why", "it's over " + (client.get("name") or "the client") + "'s client-approval limit of " + bk_fmt(limit)),
+                         ("In Xero", ("the draft stays a draft in " + str(client.get("xero_org_name") or client.get("name") or "the client")
+                                      + "'s Xero until they approve: [open in Xero](" + xero_org_link(xero_bill_link(bill_id, doc_type), proposal.get("short_code")) + ")")
+                          if bill_id else "nothing yet: the bill is created in Xero once they approve"),
+                         ("Reviewed by", "the reviewer approved it on the review item")],
+                        body="**Draft email**\n\n" + email,
+                        answers=[("They approved it", "the bill becomes **" + ("Approved" if settings.get("approved_status") == "AUTHORISED"
+                                                                               else "Awaiting approval") + "** in Xero"),
+                                 ("They rejected it", "the draft is deleted from Xero" if bill_id else "nothing goes to Xero"),
+                                 ("They asked a question", "you get a follow-up item with a drafted reply")]),
                     priority="high",
                     due_date=str(bk_add_business_days(today, 3)),
                     assignee_ids=[actor] if actor else None,
@@ -178,12 +190,17 @@ if not problem:
                 title=("Ask " + (client.get("name") or "the client") + " about " + (c.get("name") or "a bill") + " "
                        + (proposal.get("invoice_number") or ""))[:200],
                 scope="org",
-                description=("1. Email " + (client.get("contact_name") or "the business owner")
-                             + (" (" + client["contact_email"] + ")" if client.get("contact_email") else "")
-                             + " using the draft below.\n2. When they answer, fill in the **Bill review** form on this item.\n\n"
-                             "**Draft email**\n\n" + email + "\n\n---\n\n"
-                             + xero_bill_markdown(proposal, record.get("warnings"), record.get("blocking"), bill_id,
-                                                  record.get("file") or "", client.get("name", ""))),
+                description=xero_bill_markdown(
+                    proposal, record.get("warnings"), record.get("blocking"), bill_id, record.get("file") or "",
+                    client.get("name", ""), client=client, origin=record.get("origin") or {},
+                    attach_error=record.get("attach_error") or "", settings=settings,
+                    todo=("email " + (client.get("contact_name") or "the business owner")
+                          + (" (" + client["contact_email"] + ")" if client.get("contact_email") else "")
+                          + " using the draft below. When they answer, fill in the **"
+                          + ("Invoice to send" if proposal.get("origin") == "request" else "Invoice review" if sales else "Bill review")
+                          + "** form on this item."),
+                    note=("**Question from the review**\n\n" + (decision.get("notes") or "(none written)") + "\n\n"
+                          if action == "ask" else "") + "**Draft email**\n\n" + email),
                 priority="medium",
                 due_date=str(bk_add_business_days(today, 3)),
                 assignee_ids=[actor] if actor else None,

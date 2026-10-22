@@ -172,6 +172,84 @@ def bk_exceptions_owner(settings, client):
     return (settings or {}).get("exceptions_owner_id") or bk_reviewer(settings, client)
 
 
+def bk_card(todo, facts=None, body="", answers=None, after=""):
+    """A WorkQ item's description, in the same order on every item: what to do (first, so it's never missed), then the
+    facts (where it came from, which client and Xero organisation, the file), the details, what each answer on the form
+    does, and anything after. facts and answers are [(label, text)]; empty texts are left out. Lists, not tables:
+    WorkQ descriptions don't render markdown tables."""
+    out = ["**What to do:** " + str(todo).strip(), ""]
+    rows = [(k, v) for k, v in (facts or []) if v]
+    if rows:
+        out += ["- **" + k + ":** " + str(v) for k, v in rows]
+        out.append("")
+    if body:
+        out += [str(body).strip(), ""]
+    rows = [(k, v) for k, v in (answers or []) if v]
+    if rows:
+        out += ["**What each answer does**", ""] + ["- **" + k + ":** " + str(v) for k, v in rows] + [""]
+    if after:
+        out.append(str(after).strip())
+    return "\n".join(out).strip()
+
+
+def bk_when(value, settings=None):
+    """An ISO time (an email's time received) as "Wed 22 Oct, 10:14 am" in the practice's time zone, or the text as
+    given when it isn't one."""
+    s = str(value or "").strip()
+    if not s:
+        return ""
+    try:
+        if s.isdigit():
+            # Gmail gives epoch milliseconds.
+            d = datetime.datetime.fromtimestamp(int(s) / (1000 if len(s) > 11 else 1), datetime.timezone.utc)
+        else:
+            d = datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except (ValueError, OverflowError, OSError):
+        return s
+    if d.tzinfo:
+        d = d.astimezone(bk_tz(settings))
+    return (d.strftime("%a ") + str(d.day) + d.strftime(" %b, ") + str(d.hour % 12 or 12) + d.strftime(":%M ")
+            + ("am" if d.hour < 12 else "pm"))
+
+
+def bk_client_label(client):
+    """"Irvine Jackson Pty Ltd (Xero: Irvine Jackson Pty Ltd)": the client and the Xero organisation its documents go
+    to, so a client set up against the wrong organisation is plain to see."""
+    c = client or {}
+    name = str(c.get("name") or c.get("slug") or "")
+    org = str(c.get("xero_org_name") or "")
+    return (name + " (Xero: " + org + ")") if org else name
+
+
+def bk_origin(file_name):
+    """Where a document in Bookkeeping Inbox came from: what Email intake noted when it filed it ({from, subject,
+    received, mailbox, why, how}), or {} for a file someone put there by hand."""
+    log = bk_read_json(BK_MAIL + "/origins.json") or {}
+    return dict(log.get(str(file_name or "").split("/")[-1]) or {})
+
+
+def bk_note_origin(file_name, origin):
+    """Remember where a document came from, before it's saved into Bookkeeping Inbox (saving it starts Process bill, which
+    reads this). Bounded to the newest 1000."""
+    path = BK_MAIL + "/origins.json"
+    log = bk_read_json(path) or {}
+    log[str(file_name).split("/")[-1]] = dict(origin, at=datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat())
+    keep = sorted(log.items(), key=lambda kv: str((kv[1] or {}).get("at") or ""))[-1000:]
+    bk_write_json(path, dict(keep))
+
+
+def bk_origin_line(origin, settings=None):
+    """One line saying where a document came from: the email (sender, subject, when, which mailbox) or Knowledge."""
+    o = origin or {}
+    if o.get("from"):
+        return ("Email from " + str(o["from"]) + (", \"" + str(o.get("subject")) + "\"" if o.get("subject") else "")
+                + (", " + bk_when(o.get("received"), settings) if o.get("received") else "")
+                + (" (" + str(o["mailbox"]) + ")" if o.get("mailbox") else ""))
+    if o.get("how") == "decided":
+        return "Filed under this client from a *Which client is this for?* item"
+    return "Put into Knowledge (Bookkeeping Inbox) by hand"
+
+
 def bk_ledger_info(ledger):
     """A ledger pack's (name, the client setting that holds the client's file in it, what that file is called, the
     client setting with its name). Xero when unset: clients and nodes from before the MYOB and QuickBooks packs are Xero's."""

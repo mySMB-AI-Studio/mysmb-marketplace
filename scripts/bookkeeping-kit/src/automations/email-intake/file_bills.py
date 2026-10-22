@@ -156,6 +156,12 @@ for email in params.get("bills") or []:
                 continue
             slug = found["slug"]
             if slug:
+                # Noted before the file is saved: saving it starts Process bill, which puts this on the review item
+                # (and asks which client it's for when it went to the only client but is addressed to someone else).
+                bk_note_origin(name, {"from": email["from"], "subject": email.get("subject") or "",
+                                      "received": email.get("received") or "", "mailbox": mailbox, "client": slug,
+                                      "why": found["why"], "how": ("only client" if found["why"] == "the only client"
+                                                                  else "folder" if "mail folder" in found["why"] else "matched")})
                 api.files.put(file=BK_INBOX + "/" + slug + "/" + name, scratch_file=local)
                 filed += 1
                 placed.append(slug)
@@ -170,21 +176,32 @@ for email in params.get("bills") or []:
             placed.append("")
             route_note_unmatched(name, found.get("addressed_to") or "", sender, email.get("subject") or "")
             _item("Which client is this invoice for? " + name.split(" ", 2)[-1],
-                  "A " + str(email.get("kind") or "bill") + " arrived by email, but " + found["why"]
-                  + ", so it wasn't filed under a client.\n\n- From: " + email["from"] + "\n- Subject: " + email["subject"]
-                  + "\n- Received: " + email["received"] + " (" + mailbox + ")\n- File: `" + dest + "` in Knowledge\n\n"
-                  "Download it and upload it into `" + BK_INBOX + "/<client>/` in Knowledge, and it's processed from "
-                  "there. Who it was addressed to is remembered, so the next one is filed by itself. Then complete this item.")
+                  bk_card("download the file below and upload it into `" + BK_INBOX + "/<client>/` in Knowledge (the "
+                          "client's folder), then complete this item. It's processed from there, nothing has gone to "
+                          "Xero yet.",
+                          [("What arrived", "a " + str(email.get("kind") or "bill") + " (" + name.split(" ", 2)[-1] + ")"),
+                           ("Came from", bk_origin_line({"from": email["from"], "subject": email["subject"],
+                                                          "received": email["received"], "mailbox": mailbox}, settings)),
+                           ("Addressed to", found.get("addressed_to") or "no business name could be read"),
+                           ("Why it wasn't filed", found["why"]),
+                           ("Clients set up", ", ".join(sorted(str(c.get("name") or c["slug"]) for c in clients)) or "none"),
+                           ("File", "`" + dest + "` in Knowledge")],
+                          after="Who it was addressed to is remembered, so the next one from them is filed by itself. If "
+                                "it's for a business that isn't set up yet, run **Bookkeeping: Start setup** with its "
+                                "name first."))
             lines.append("- " + name.split(" ", 2)[-1] + " from " + email["from"] + ": **needs a client** (" + found["why"] + ")")
         if notes or not placed:
             # Part or all of an email that looked like a bill couldn't be filed: say so rather than let it vanish.
             what = "; ".join(notes + left_out) or "none of its attachments looked like a bill"
             _item(("Part of this email wasn't filed: " if placed else "Check this email: ") + str(email.get("subject") or "(no subject)"),
-                  "An email from " + email["from"] + " looked like a " + str(email.get("kind") or "bill") + ", but "
-                  + what + (", so that part wasn't filed." if placed else ", so nothing was filed.") + "\n\n- Subject: "
-                  + email["subject"] + "\n- Received: " + email["received"] + " (" + mailbox + ")\n\nIf it is a bill, "
-                  "save it as a PDF (or a JPEG photo) and drop it into `" + BK_INBOX + "/<client>/` in Knowledge. Then "
-                  "complete this item.",
+                  bk_card("open the email. If it holds a bill, save it as a PDF (or a JPEG photo) and drop it into `"
+                          + BK_INBOX + "/<client>/` in Knowledge, then complete this item. If it isn't a bill, just "
+                          "complete this item.",
+                          [("Came from", bk_origin_line({"from": email["from"], "subject": email["subject"],
+                                                          "received": email["received"], "mailbox": mailbox}, settings)),
+                           ("What happened", "it looked like a " + str(email.get("kind") or "bill") + ", but " + what
+                            + (", so that part wasn't filed." if placed else ", so nothing was filed.")),
+                           ("Already filed", ", ".join(_client_line(p) for p in placed if p) if any(placed) else "")]),
                   priority="medium")
             lines.append("- " + email["subject"] + ": " + what)
         elif left_out:
@@ -198,10 +215,11 @@ for email in params.get("bills") or []:
         if errors[email["id"]] >= 3:
             seen[email["id"]] = {"at": now, "outcome": "failed", "note": str(exc)[:200], "print": email.get("print") or ""}
             _item("Couldn't take a bill from email: " + email["subject"],
-                  "Email intake tried three times and couldn't save this email's attachment: " + str(exc)[:400]
-                  + "\n\n- From: " + email["from"] + "\n- Received: " + email["received"] + " (" + mailbox
-                  + ")\n\nSave the PDF from the email and upload it into `" + BK_INBOX
-                  + "/<client>/` in Knowledge, then complete this item.")
+                  bk_card("save the PDF from the email and upload it into `" + BK_INBOX + "/<client>/` in Knowledge, "
+                          "then complete this item. Email intake has stopped trying this one.",
+                          [("Came from", bk_origin_line({"from": email["from"], "subject": email["subject"],
+                                                          "received": email["received"], "mailbox": mailbox}, settings)),
+                           ("What went wrong", "its attachment couldn't be saved, three times: " + str(exc)[:400])]))
         else:
             _hold(email)
 
@@ -220,10 +238,13 @@ for email in params.get("unreadable") or []:
             " It probably links to the bill online.")
         _item(("Bill with nothing to read attached" + (" (" + str((by_slug.get(slug) or {}).get("name") or slug) + ")" if slug else "")
                + ": " + str(email.get("subject") or "(no subject)")),
-              "An email from " + email["from"] + " looks like a " + str(email.get("kind") or "bill") + ", but has no PDF or "
-              "photo attached." + attached + "\n\n- Subject: " + email["subject"] + "\n- Received: " + email["received"]
-              + " (" + mailbox + ")\n\nDownload the bill as a PDF and drop it into `" + folder + "` in Knowledge, and "
-              "it's processed from there. Then complete this item.",
+              bk_card("download the bill as a PDF (from the supplier's link or portal) and drop it into `" + folder
+                      + "` in Knowledge, then complete this item. It's processed from there.",
+                      [("Came from", bk_origin_line({"from": email["from"], "subject": email["subject"],
+                                                      "received": email["received"], "mailbox": mailbox}, settings)),
+                       ("Client", bk_client_label(by_slug.get(slug)) if slug else "not clear from the email"),
+                       ("What happened", "it looks like a " + str(email.get("kind") or "bill") + ", but has no PDF or "
+                        "photo attached." + attached)]),
               priority="medium", extra=["no-attachment"])
         seen[email["id"]] = {"at": now, "outcome": "no_attachment", "clients": [slug] if slug else [], "print": email.get("print") or ""}
         lines.append("- " + email["subject"] + " from " + email["from"] + ": **a bill with nothing to read attached**"
@@ -269,10 +290,14 @@ for email in params.get("requests") or []:
             unmatched += 1
             quoted = "\n".join("> " + ln for ln in text[:1500].splitlines() if ln.strip())
             _item("Which client is this invoice request from? " + email["subject"],
-                  "An email asks for an invoice to be raised, but " + why + ".\n\n- From: " + email["from"]
-                  + "\n- Subject: " + email["subject"] + "\n- Received: " + email["received"] + " (" + mailbox
-                  + ")\n\n" + quoted + "\n\nRun **Bookkeeping: Draft requested invoice (Xero)** by hand with "
-                  "the client's name and the request text, then complete this item.")
+                  bk_card("run **Bookkeeping: Draft requested invoice (Xero)** by hand with the client's name and the "
+                          "request text below, then complete this item. Nothing has gone to Xero yet.",
+                          [("Came from", bk_origin_line({"from": email["from"], "subject": email["subject"],
+                                                          "received": email["received"], "mailbox": mailbox}, settings)),
+                           ("Why it wasn't filed", why),
+                           ("Tip", "add the sender's address as the contact email in that client's settings, and the "
+                                   "next request from them is filed by itself")],
+                          body="**The request**\n\n" + quoted))
             seen[email["id"]] = {"at": now, "outcome": "unmatched", "clients": [], "print": email.get("print") or ""}
             lines.append("- " + email["subject"] + " from " + email["from"] + ": **request needs a client** (" + why + ")")
         errors.pop(email["id"], None)
