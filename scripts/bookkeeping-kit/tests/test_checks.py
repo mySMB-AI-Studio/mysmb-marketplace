@@ -419,6 +419,11 @@ class Checks(unittest.TestCase):
             self.assertIn(text, page)
         # Its own white page, so it reads the same in a dark-themed viewer.
         self.assertIn("html{background:#ffffff", page)
+        # Links open in a new tab: the report shows in a frame, and Xero refuses to load inside one (a white screen on QA).
+        self.assertIn("<base target='_blank'>", page)
+        links = re.findall(r"<a [^>]*>", page)
+        self.assertTrue(links)
+        self.assertTrue(all("target='_blank'" in a and "noopener" in a for a in links), links)
         self.assertEqual(self.w.notifications[0]["user_ids"], [OWNER])
         self.overnight()
         self.assertEqual(len(self.w.artifacts), 1)

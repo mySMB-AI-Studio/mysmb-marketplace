@@ -21,7 +21,7 @@ if not params.get("problem") and summary.get("report_due"):
         return bk_fmt(value) if value is not None else "—"
 
     def finding_row(name, f):
-        link = (" <a href='" + esc(f["link"]) + "'>Open in " + where + "</a>") if f.get("link") else ""
+        link = (" <a href='" + esc(f["link"]) + "' target='_blank' rel='noopener noreferrer'>Open in " + where + "</a>") if f.get("link") else ""
         return ("<tr><td>" + esc(name) + "</td><td class='s" + esc(f["severity"]) + "'>" + esc(f["severity"]) + "</td><td>"
                 + esc(f["check"]) + " " + esc(f["name"]) + "</td><td class='n'>" + money(f.get("amount")) + "</td><td>"
                 + esc(f["text"]) + link + "</td><td>" + esc(ck_ref(f["key"])) + "</td></tr>")
@@ -74,7 +74,7 @@ if not params.get("problem") and summary.get("report_due"):
               + "$" + money(sum(f.get("amount") or 0 for f in every)) + " at risk")
     head = "<tr><th>Business</th><th>Severity</th><th>Check</th><th>$</th><th>Finding</th><th>Ref</th></tr>"
     page = (
-        "<!doctype html><html><head><meta charset='utf-8'><title>Ledger checks " + str(today) + "</title>"
+        "<!doctype html><html><head><meta charset='utf-8'><base target='_blank'><title>Ledger checks " + str(today) + "</title>"
         "<meta name='color-scheme' content='light'>"
         "<style>html{background:#ffffff;color-scheme:light}"
         "body{font:14px/1.45 system-ui,sans-serif;margin:0;padding:24px 28px;color:#1c2330;background:#ffffff}"
