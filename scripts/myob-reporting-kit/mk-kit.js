@@ -154,12 +154,12 @@ var MK = (function () {
     return f ? { name: f.name, id: f.id, country: f.country, files: list } : { name: null, id: null, country: list[0].country, files: list, ambiguous: true };
   }
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  // The MYOB API does not expose the company file's financial year. AU files end 30 June, NZ files 31 March (the defaults);
-  // a report may override with cfg.fyMonth. Returns {month:1-12, source}.
+  // AU files end 30 June, NZ files 31 March (the defaults); a report may override with cfg.fyMonth. A report that binds
+  // get_accounting_properties (cfg.props) reads the file's own year end instead (MK.app fy()). Returns {month:1-12, source}.
   function fiscalStart(country, fyMonth) {
     if (fyMonth) return { month: fyMonth, source: 'report setting' };
-    if (/^nz/i.test(country || '')) return { month: 4, source: 'assumed — NZ default; the MYOB API does not expose it' };
-    return { month: 7, source: 'assumed — AU default; the MYOB API does not expose it' };
+    if (/^nz/i.test(country || '')) return { month: 4, source: 'assumed — NZ default' };
+    return { month: 7, source: 'assumed — AU default' };
   }
   function homeCurrency(country) { return /^nz/i.test(country || '') ? 'NZD' : 'AUD'; }
   var SYM = { AUD: '$', NZD: '$', USD: 'US$', CAD: 'C$', GBP: '£', EUR: '€', PHP: '₱', SGD: 'S$', HKD: 'HK$', JPY: '¥', INR: '₹' };
@@ -544,8 +544,11 @@ var MK = (function () {
     function disp() { return readDisplay(I.display ? S.inputs[I.display] : ''); }
     function setDisp(patch) { if (!I.display) return; var d = disp(), k; for (k in patch) d[k] = patch[k]; S.inputs[I.display] = writeDisplay(d); }
     function co() { return companyOf(S.data[cfg.files], I.companyFile ? S.inputs[I.companyFile] : ''); }
-    // The MYOB API doesn't expose the company file's year end: the report's Year end control (display fy) overrides the AU / NZ default.
-    function fy() { var e = +disp().fy; if (e >= 1 && e <= 12) return { month: e % 12 + 1, source: 'set in this report — year ends ' + MONTHS[e - 1], set: true }; return fiscalStart(co().country, cfg.fyMonth); }
+    // The year end: the report's Year end control (display fy), else the file's own (GeneralLedger/AccountingProperties, when the
+    // report binds it as cfg.props), else the AU / NZ default.
+    function props() { var v = cfg.props && S.data[cfg.props]; return v && typeof v === 'object' ? (Array.isArray(v.Items) ? v.Items[0] || null : v) : null; }
+    function fyAuto() { var pr = props(), e = pr && +pr.LastMonthFinancialYear; return e >= 1 && e <= 12 ? { month: e % 12 + 1, source: 'from MYOB — this file\'s year ends ' + MONTHS[e - 1], file: true } : fiscalStart(co().country, cfg.fyMonth); }
+    function fy() { var e = +disp().fy; if (e >= 1 && e <= 12) return { month: e % 12 + 1, source: 'set in this report — year ends ' + MONTHS[e - 1], set: true }; return fyAuto(); }
     // MYOB errors arrive as data ({__error}); move them to S.errors so every section and check treats them as failed sources.
     function absorb(id, v) { var e = errorOf(v); if (e) { delete S.data[id]; S.errors[id] = { code: 'tool_error', message: e }; } else { S.data[id] = v; delete S.errors[id]; } }
     function err(id) { var e = S.errors[id]; return e ? (FRIENDLY[e.code] || e.message || 'Unavailable') + (e.code === 'tool_error' && e.message ? ' (' + e.message + ')' : '') : null; }
@@ -565,13 +568,17 @@ var MK = (function () {
         var id = q.shift(), latest = function () { return S.req[id] === tok[id]; };
         return id && (latest() ? MH.getData(id, inputs).then(function (v) { if (latest()) absorb(id, v); }, function (e) { if (latest()) S.errors[id] = { code: (e && e.code) || 'tool_error', message: (e && e.message) || String(e) }; }).then(lane) : lane());
       }
-      return Promise.all(ids.slice(0, 4).map(lane)).then(function () { S.fetchedAt = new Date().toISOString(); S.busy--; status(''); render(); });
+      return Promise.all(ids.slice(0, 4).map(lane)).then(function () {
+        S.fetchedAt = new Date().toISOString(); S.busy--; status('');
+        // the file's own financial year arrived with this load: inputs worked out from it may now differ (they reload once; props itself doesn't)
+        if (cfg.derive && cfg.props && ids.indexOf(cfg.props) >= 0) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp(), S.data) || {}, k4; for (k4 in dv) if (dv[k4] !== S.inputs[k4]) return change({}); }
+        render(); });
     }
     function change(patch, dispPatch) {
       var changed = [], k;
       for (k in patch) if (k && S.inputs[k] !== patch[k]) { S.inputs[k] = patch[k]; changed.push(k); }
       if (dispPatch) setDisp(dispPatch);
-      if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp()) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
+      if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs), fy().month, disp(), S.data) || {}; for (k in dv) if (S.inputs[k] !== dv[k]) { S.inputs[k] = dv[k]; changed.push(k); } }
       var d = disp();
       // keep the comparison window aligned with the main window
       if (cfg.compare && d.c !== 'none') {
@@ -590,7 +597,7 @@ var MK = (function () {
       if (I.asAt && d.a && d.a !== 'custom') { var a = asAt(d.a, f); if (a && a !== S.inputs[I.asAt]) p[I.asAt] = a; }
       if (cfg.roll) { var cr = cfg.roll(Object.assign({}, S.inputs), f, d) || {}, k2; for (k2 in cr) if (cr[k2] !== S.inputs[k2]) p[k2] = cr[k2]; }
       // derived inputs (e.g. fy_start) are right on first open, not only after a change
-      if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs, p), f, d) || {}, k3; for (k3 in dv) if (dv[k3] !== S.inputs[k3]) p[k3] = dv[k3]; }
+      if (cfg.derive) { var dv = cfg.derive(Object.assign({}, S.inputs, p), f, d, S.data) || {}, k3; for (k3 in dv) if (dv[k3] !== S.inputs[k3]) p[k3] = dv[k3]; }
       return Object.keys(p).length ? p : null;
     }
     // In snapshot mode the embedded data carries its own period: read it from the primary MYOB report.
@@ -613,8 +620,8 @@ var MK = (function () {
       if (I.asAt) x += '<label class="ctl">As at<select id="mk-asat-preset"' + dis + '>' + opt(ASAT, d.a) + '</select></label><label class="ctl">Date<input type="date" id="mk-asat" value="' + h(S.inputs[I.asAt]) + '"' + dis + '></label>';
       if (I.basis) x += '<fieldset class="ctl seg"' + dis + '><legend>Accounting method</legend>' + ['Cash', 'Accrual'].map(function (b) { return '<label><input type="radio" name="mk-basis" value="' + b + '"' + (S.inputs[I.basis] === b ? ' checked' : '') + dis + '>' + b + '</label>'; }).join('') + '</fieldset>';
       if (I.columnsBy && cfg.columnsBy) x += '<label class="ctl">Display columns by<select id="mk-cols"' + dis + '>' + opt(cfg.columnsBy, S.inputs[I.columnsBy]) + '</select></label>';
-      if (I.start || I.asAt) { var mfy = fiscalStart(c0.country, cfg.fyMonth), mend = (mfy.month + 10) % 12 + 1;
-        x += '<label class="ctl">Year end<select id="mk-fy"' + dis + ' title="The month the financial year ends. MYOB does not share it, so the default is the Australian (June) or New Zealand (March) year end">' + opt([['', 'Default (' + MONTHS[mend - 1] + ')']].concat(MONTHS.map(function (m, i) { return [String(i + 1), m]; })), d.fy || '') + '</select></label>'; }
+      if (I.start || I.asAt) { var mfy = fyAuto(), mend = (mfy.month + 10) % 12 + 1;
+        x += '<label class="ctl">Year end<select id="mk-fy"' + dis + ' title="The month the financial year ends. The default is the year end MYOB gives for this file when the report reads it, otherwise the Australian (June) or New Zealand (March) year end">' + opt([['', 'Default (' + MONTHS[mend - 1] + ')']].concat(MONTHS.map(function (m, i) { return [String(i + 1), m]; })), d.fy || '') + '</select></label>'; }
       if (cfg.compare) x += '<label class="ctl">Compare to<select id="mk-cmp"' + dis + '>' + opt((I.asAt ? [['none', 'None'], ['prev_period', 'Previous month end'], ['prev_year', 'Previous year']] : [['none', 'None'], ['prev_period', 'Previous period'], ['prev_year', 'Previous year'], ['ytd', 'Year-to-date']]).concat(I.cmpStart || I.cmpAsAt ? [['custom', 'Custom dates']] : []), d.c) + '</select></label>';
       // Custom dates: the comparison period is typed in (decision D15), not derived from the report period
       if (cfg.compare && d.c === 'custom') x += I.cmpStart ? '<label class="ctl">Compare from<input type="date" id="mk-cmp-from" value="' + h(S.inputs[I.cmpStart]) + '"' + dis + '></label><label class="ctl">to<input type="date" id="mk-cmp-to" value="' + h(S.inputs[I.cmpEnd]) + '"' + dis + '></label>'

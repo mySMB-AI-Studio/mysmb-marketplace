@@ -325,6 +325,9 @@ function listJobRegister(p) {
 // 2028 has no budget set up yet). Income, cost of sales and the regular expenses per month in each account's normal balance, rising
 // 1% a month, plus one balance-sheet account (the bank), as MYOB allows; MonthlyBudgets carry the calendar Year and Month
 const BUDGET = [['4-1300', 1600], ['4-1400', 5200], ['5-1000', 950], ['6-1100', 250], ['6-1430', 300], ['6-4100', 2200], ['6-4460', 160], ['6-5130', 2400], ['6-5140', 276], ['8-1000', 25], ['1-1110', 1500]];
+// The file's own financial year (GeneralLedger/AccountingProperties, as get_accounting_properties returns it): both files are on
+// the current year, FY2027, ending in June.
+function getAccountingProperties() { return { CurrentFinancialYear: 2027, LastMonthFinancialYear: 6, ConversionDate: '2024-07-01T00:00:00' }; }
 function getBudget(p) {
   const B = books(p && p.myob_company_file_id), fy = p && p.financial_year != null ? +p.financial_year : 2027;
   if (fy !== 2027 && fy !== 2028) return { __error: 'MYOB: budgets are available for the current or the next financial year only' };
@@ -355,4 +358,4 @@ function listSuppliers(p) {
 function listInventoryAdjustments() { return { Count: 0, Items: [] }; }
 // expected figures computed independently of the MYOB JSON (for assertions)
 const expect = { balances: (date, cf) => balances(books(cf), date), plByAccount: (a, b, cash, cf) => plByAccount(books(cf), a, b, cash), netProfit: (a, b, cash, cf) => netProfit(books(cf), a, b, cash), movement: (a, b, cf) => movement(books(cf), a, b), books, invoiceOut: (i, cf) => invoiceOut(books(cf), i), billOut: (b, cf) => billOut(books(cf), b) };
-module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, getBudget, listSpendMoney, listSuppliers, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };
+module.exports = { TODAY, CF1, CF2, FILES, U, profitAndLoss, balanceSheet, listAccounts, listInvoices, listBills, listContacts, listPayments, listSupplierPayments, listBankStatementLines, listTimesheets, listEmployeeLeaveBalances, listInventoryAdjustments, listJobRegister, JOBS, getBudget, getAccountingProperties, listSpendMoney, listSuppliers, listJournalTransactions, listTaxCodes, taxCodeSummary, payrollCategorySummary, listInvoiceLines, listBillLines, listItems, listPayrollAdvices, agedReceivables, agedPayables, companyFiles, expect, fyStart, addDays, eom, r2 };

@@ -942,8 +942,8 @@ module.exports = [
     "title": "Budget Management",
     "menu": "Reporting → Reports → Business → Budget management",
     "trigger": "the user asks for budgets, the budget, budget management, monthly budgets by category, or budget vs actual",
-    "discovery": "Call `get_budget` once with `financial_year` (the year the financial year ends: 2027 = July 2026 – June 2027; MYOB holds the current and the next year only), `get_profit_and_loss_3m` once from the year's start to the end of last month (the actuals), `list_accounts` once and `list_company_files` once. `get_budget` returns `Budgets[]` of `{Account, MonthlyBudgets: [{Year, Month, Amount}]}` (calendar year and month) and `LastMonthInFinancialYear`",
-    "dates": "Input `budget_year` = `current` | `next` (the Budget year select); `financial_year`, `fy_start` and `act_end` are worked out from it and today, so a saved report rolls into the next year — never type them. The view is display `v` (`budget` | `actual`).",
+    "discovery": "Call `get_accounting_properties` once (the file's own `CurrentFinancialYear` and `LastMonthFinancialYear`: a file moves to a new year only when someone starts one in MYOB, so it can be years behind the calendar), `get_budget` once with `financial_year` (the year the financial year ends: 2027 = July 2026 – June 2027; MYOB sets up budgets for the file's current and next year only), `get_profit_and_loss_3m` once from the year's start to the end of last month, or to the year end for a year that has ended (the actuals), `list_accounts` once and `list_company_files` once. `get_budget` returns `Budgets[]` of `{Account, MonthlyBudgets: [{Year, Month, Amount}]}` (calendar year and month) and `LastMonthInFinancialYear`",
+    "dates": "Input `budget_year` = `current` | `next` | `file` (the Budget year select; `file` = the file's own current year in MYOB); `financial_year`, `fy_start` and `act_end` are worked out from it, today and the file's year end, so a saved report rolls into the next year — never type them. The view is display `v` (`budget` | `actual`).",
     "members": [
       [
         "Budget by month",
@@ -959,7 +959,7 @@ module.exports = [
       ],
       [
         "Earlier years, job budgets",
-        "N/A — MYOB's API keeps the current and next financial year only"
+        "N/A — MYOB sets up budgets for a file's current and next financial year only; when the file is behind, the report says which years it can hold"
       ]
     ],
     "checks": [
