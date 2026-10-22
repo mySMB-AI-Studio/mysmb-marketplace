@@ -26,9 +26,22 @@ export const AUTOMATIONS = [
     neutral: true,
     name: 'Bookkeeping: Start setup',
     description:
-      'Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run only) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.',
+      'Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run, or again when you choose to set up again) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.',
     triggers: [{ kind: 'manual' }],
     params: [
+      {
+        name: 'setup_again',
+        type: 'str',
+        control: 'select',
+        label: 'Set up again?',
+        description: 'Bookkeeping remembers its setup in Knowledge, even after the extension is removed and installed again. Choose Yes to get the Bookkeeping setup form again; submitting it replaces the saved setup. Client settings are kept.',
+        required: false,
+        options: [
+          { value: 'no', label: 'No: keep the saved setup' },
+          { value: 'yes', label: 'Yes: send me the Bookkeeping setup form again' },
+        ],
+        value: 'no',
+      },
       {
         name: 'client_names',
         type: 'str',
@@ -51,12 +64,13 @@ export const AUTOMATIONS = [
     scopes: ['workq:write', 'files:read'],
     forms: ['setup', 'client-settings', 'payroll-settings'],
     nodes: [
-      node('start_setup', 'Create setup items', 'Creates the Bookkeeping setup item if bookkeeping is not set up yet, and one client settings item per business listed, each with its form attached.', ['util'],
+      node('start_setup', 'Create setup items', 'Creates the Bookkeeping setup item if bookkeeping isn’t set up yet (or when Set up again is Yes), and one client settings item per business listed, each with its form attached.', ['util'],
         [
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
           payrollOnly(formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form')),
           hidden('client_names', 'str', '{{ params.client_names }}', 'Client names'),
+          hidden('setup_again', 'str', '{{ params.setup_again }}', 'Set up again'),
           payrollOnly(hidden('payroll_names', 'str', '{{ params.payroll_names }}', 'Payroll client names')),
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who ran it'),
         ],
