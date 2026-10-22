@@ -313,12 +313,120 @@ const flatten_action_items: ComputedFunction = (args) => {
   return rows.slice(0, MAX_ACTION_ITEMS);
 };
 
+interface ReadAiTranscriptTurn {
+  speaker?: { name?: string } | null;
+  start_time_ms?: number;
+  end_time_ms?: number;
+}
+
+interface ReadAiTranscript {
+  speakers?: { name?: string }[];
+  turns?: ReadAiTranscriptTurn[];
+}
+
+// `transcript` is only added here (not on the shared ReadAiMeeting interface
+// above) since it's a much heavier expand than summary/metrics/action_items
+// and only this tile's dataProvider requests it.
+type ReadAiMeetingWithTranscript = ReadAiMeeting & { transcript?: ReadAiTranscript | null };
+
+// Rank-based, not name-hashed like toneForName — the whole point is for the
+// bar + name + percentage of the SAME speaker to share one color, and for
+// the biggest talker to consistently read as the "lead" color regardless of
+// whose name hashes where.
+const RANK_TONES = ['chart-1', 'chart-5', 'chart-2'] as const;
+const MAX_RANKED_SPEAKERS = 3;
+
+/** "Alice Chen" → "AC", "Madonna" → "M", "" → "?" — two-letter initials for the talk-time avatars (distinct from the single-letter `initialFor` used elsewhere). */
+function twoLetterInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Builds the Speaker Talk-Time breakdown for the single most recent meeting
+ * (list_meetings(limit: 1, expand=["transcript"])). Read.ai's API has no
+ * talk-time or speaking-percentage field at all — this sums each speaker's
+ * real turn durations (end_time_ms - start_time_ms, confirmed live) from the
+ * raw transcript, the same "derive it from timestamps" approach already used
+ * for meeting duration elsewhere in this plugin.
+ *
+ * Turns attributed to "UNKNOWN_SPEAKER" (confirmed present in live data for
+ * voices the transcript couldn't identify) are excluded entirely — both from
+ * the ranking and from the percentage denominator — since they can't be
+ * attached to a real person. The top 3 speakers by talk time are shown
+ * individually; everyone else is rolled into a single "Others" row.
+ *
+ * Args: { value: array } — list_meetings' raw `data` array.
+ */
+const flatten_talk_time: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as ReadAiMeetingWithTranscript[]) : [];
+  const meeting = raw[0];
+  if (!meeting) return { meeting_subtitle: '', meeting_platform: '', report_url: '', speakers: [] };
+
+  const turns = Array.isArray(meeting.transcript?.turns) ? meeting.transcript!.turns! : [];
+  const talkMsByName = new Map<string, number>();
+  for (const turn of turns) {
+    const name = String(turn?.speaker?.name ?? '').trim();
+    if (!name || name === 'UNKNOWN_SPEAKER') continue;
+    const durationMs = Number(turn?.end_time_ms ?? 0) - Number(turn?.start_time_ms ?? 0);
+    if (!(durationMs > 0)) continue;
+    talkMsByName.set(name, (talkMsByName.get(name) ?? 0) + durationMs);
+  }
+
+  const ranked = Array.from(talkMsByName.entries()).sort((a, b) => b[1] - a[1]);
+  const totalMs = ranked.reduce((sum, [, ms]) => sum + ms, 0);
+  const pctOf = (ms: number) => (totalMs > 0 ? Math.round((ms / totalMs) * 100) : 0);
+
+  const top = ranked.slice(0, MAX_RANKED_SPEAKERS);
+  const rest = ranked.slice(MAX_RANKED_SPEAKERS);
+
+  const speakers: { id: string; name: string; initials: string; tone: string; bar_pct: number; percent_label: string }[] =
+    top.map(([name, ms], index) => {
+      const pct = pctOf(ms);
+      return {
+        id: name,
+        name,
+        initials: twoLetterInitials(name),
+        tone: RANK_TONES[index] ?? 'muted',
+        bar_pct: pct,
+        percent_label: `${pct}%`,
+      };
+    });
+
+  if (rest.length > 0) {
+    const restMs = rest.reduce((sum, [, ms]) => sum + ms, 0);
+    const pct = pctOf(restMs);
+    speakers.push({
+      id: '__others__',
+      name: 'Others',
+      initials: `+${rest.length}`,
+      tone: 'muted',
+      bar_pct: pct,
+      percent_label: `${pct}%`,
+    });
+  }
+
+  const title = String(meeting.title ?? 'Untitled meeting');
+  const startMs = Number(meeting.start_time_ms ?? 0);
+  const durationLabel = formatDuration(startMs, meeting.end_time_ms);
+
+  return {
+    meeting_subtitle: durationLabel ? `${title} · ${durationLabel}` : title,
+    meeting_platform: platformLabel(meeting.platform),
+    report_url: String(meeting.report_url ?? ''),
+    speakers,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'readai',
   functions: {
     flatten_meetings,
     flatten_scorecard,
     flatten_action_items,
+    flatten_talk_time,
   },
 };
 
