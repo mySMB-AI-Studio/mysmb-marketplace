@@ -7,7 +7,7 @@ let total = 0, fails = 0;
 const ok = (name, cond, info) => { total++; if (cond) console.log('  ✓ ' + name); else { fails++; console.log('  FAIL ' + name + (info !== undefined ? ' ' + (typeof info === 'string' ? info : JSON.stringify(info)).slice(0, 700) : '')); } };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const banner = (t) => text(t.doc, '#mk-banner'), green = (t) => t.doc.querySelector('#mk-banner').className.includes('pass'), red = (t) => t.doc.querySelector('#mk-banner').className.includes('fail');
-const TOOL = { get_budget: L.getBudget, get_profit_and_loss_3m: L.profitAndLoss, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
+const TOOL = { get_budget: L.getBudget, get_accounting_properties: L.getAccountingProperties, get_profit_and_loss_3m: L.profitAndLoss, list_accounts: L.listAccounts, list_company_files: L.companyFiles };
 const calls = [];
 const FX = (m, over) => { const f = {}; m.bindings.forEach((b) => { f[b.id] = (p) => { calls.push([b.id, p]); return TOOL[b.tool.name](p); }; }); return Object.assign(f, over || {}); };
 const onFile = (m, set) => { const c = JSON.parse(JSON.stringify(m)); c.inputs.find((i) => i.name === 'company_file').default = L.CF1; Object.keys(set || {}).forEach((k) => { c.inputs.find((i) => i.name === k).default = set[k]; }); return c; };
@@ -48,6 +48,42 @@ const budNp = (n) => { let s = 0; L.getBudget({ myob_company_file_id: L.CF1, fin
   ok('budget: a month outside the financial year fails', red(t) && /✗ Every budget month falls in the financial year/.test(banner(t)), banner(t).slice(0, 300));
   t = await go({ budget: (p) => { const r = L.getBudget(p); r.Budgets.push({ Account: { UID: 'zzz', DisplayID: '6-9999', Name: 'Mystery' }, MonthlyBudgets: [{ Year: 2026, Month: 7, Amount: 10 }] }); return r; }, accounts: (p) => L.listAccounts(p) });
   ok('budget: a budgeted category missing from the chart of accounts fails', red(t) && /✗ Every budgeted category is in the chart of accounts .*6-9999/.test(banner(t)), banner(t).slice(0, 300));
+  // ---------------- the file's own financial year (GeneralLedger/AccountingProperties, mcp get_accounting_properties)
+  t = await go();
+  ok('budget: the year end comes from MYOB — the banner says so, nothing "assumed"', green(t) && /Financial year starts July \(from MYOB — this file's year ends June\)/.test(banner(t)) && !/assumed/.test(text(t.doc, '#mk-sources')), [banner(t).slice(0, 300), text(t.doc, '#mk-sources').slice(0, 400)]);
+  // QA, 22 Oct 2026: MYOB's shared sandbox is still on FY2023, so MYOB can hold budgets for FY2023 and FY2024 only
+  const behind = () => ({ CurrentFinancialYear: 2023, LastMonthFinancialYear: 6, ConversionDate: '2016-07-01T00:00:00' });
+  const nf = (fy) => ({ __error: 'No budget is set up for the ' + fy + ' financial year in this MYOB file (MYOB GeneralLedger/AccountBudget/' + fy + ': not found; budgets found for 2018, 2019). This MYOB file is on FY2023 (MYOB moves a file to a new financial year only when someone starts one in MYOB), so budgets can be set up for FY2023 and FY2024 only. Choose one of those years.' });
+  // the ledger's FY2027 budget moved back four years, as a file on FY2023 would hold it
+  const fy2023 = (p) => { const r = L.getBudget(Object.assign({}, p, { financial_year: 2027 })); r.FinancialYear = 2023; r.Budgets.forEach((b) => b.MonthlyBudgets.forEach((x) => { x.Year -= 4; })); return r; };
+  const asked = []; const bud = (p) => { asked.push(+p.financial_year); return +p.financial_year === 2023 ? fy2023(p) : nf(p.financial_year); };
+  t = await go({ props: behind, budget: bud });
+  ok('budget: a file behind the calendar (on FY2023) — the message names the years it can hold and how to see them, not red',
+    /No budget is set up in MYOB for the financial year 1 July 2026 – 30 June 2027 \(FY2027\)\. This MYOB file is still on FY2023 \(MYOB moves a file to a new financial year only when someone starts one in MYOB\), so it can hold budgets for FY2023 and FY2024 only\. To see them, choose The file's year in MYOB\./.test(text(t.doc, '#mk-body')) &&
+    !red(t) && /ℹ Budget for FY2027 in MYOB — none set up \(MYOB: not found\) · this file is on FY2023/.test(banner(t)), [text(t.doc, '#mk-body').slice(0, 400), banner(t).slice(0, 300)]);
+  asked.length = 0; calls.length = 0;
+  t = await go({ props: behind, budget: bud }, { budget_year: 'file', display: disp({ v: 'actual' }) });
+  const pnl = calls.filter((c) => c[0] === 'pnl').map((c) => c[1]).pop() || {};
+  ok('budget: The file\'s year in MYOB asks for FY2023, and the actuals are the whole year (July 2022 – June 2023)',
+    asked.includes(2023) && pnl.from_date === '2022-07-01' && pnl.to_date === '2023-06-30' && /Financial year 1 July 2022 – 30 June 2023/.test(text(t.doc, 'header')) && kpi(t, 'Months compared') === 'Jul 22 – Jun 23' && green(t) && /4\/4 checks passed/.test(banner(t)),
+    [asked, pnl, text(t.doc, 'header').slice(0, 200), kpi(t, 'Months compared'), banner(t).slice(0, 300)]);
+  ok('budget: the Budget year select offers the file\'s year', [...t.doc.querySelectorAll('select')].some((s) => [...s.options].some((o) => o.value === 'file' && o.selected && /The file's year in MYOB/.test(o.textContent))));
+  asked.length = 0;
+  t = await go({ props: () => ({ CurrentFinancialYear: 2027, LastMonthFinancialYear: 6 }), budget: bud }, { budget_year: 'file' });
+  ok('budget: the file\'s own year with no budget — said plainly, no "choose another year"', /No budget is set up in MYOB for the financial year 1 July 2026 – 30 June 2027 \(FY2027\)\. That is this file's own year in MYOB\. To see one here, set it up in MYOB\./.test(text(t.doc, '#mk-body')) && !red(t), text(t.doc, '#mk-body').slice(0, 300));
+  // an older connector without get_accounting_properties: today's year and the AU default year end, as before, not red
+  calls.length = 0;
+  t = await go({ props: () => ({ __error: 'Tool get_accounting_properties not found' }) });
+  ok('budget: without the file\'s year (an older connector) — today\'s FY2027 and the AU default, not red', green(t) && /4\/4 checks passed/.test(banner(t)) && /Financial year starts July \(assumed — AU default\)/.test(banner(t)) && calls.some(([id, p]) => id === 'budget' && p.financial_year === 2027), banner(t).slice(0, 300));
+  // a year that ends in December, from MYOB: the year runs January – December, so 28 Sep 2026 is in FY2026
+  asked.length = 0;
+  t = await go({ props: () => ({ CurrentFinancialYear: 2026, LastMonthFinancialYear: 12 }), budget: bud });
+  ok('budget: a December year end from MYOB — FY2026 is January – December 2026', asked.includes(2026) && /Financial year 1 January 2026 – 31 December 2026/.test(text(t.doc, 'header')) && /Financial year starts January \(from MYOB — this file's year ends December\)/.test(banner(t)), [asked, text(t.doc, 'header').slice(0, 200), banner(t).slice(0, 200)]);
+  // the opening bundle never arrives (a large file, QA 19 Oct): sources load one by one at the report's own starting values (This
+  // financial year), before the file's year end is known; once it is (December), the year is worked out again and the budget reloads
+  asked.length = 0;
+  { const m = onFile(man('bu')); t = await run('bu', m, FX(m, { props: () => ({ CurrentFinancialYear: 2026, LastMonthFinancialYear: 12 }), budget: bud }), { bundleInputs: true, noBundle: true, fallbackMs: 20 }); await wait(300); }
+  ok('budget: loaded section by section, the file\'s year end still decides — FY2026 (January – December) asked for once it is known', asked[asked.length - 1] === 2026 && /Financial year 1 January 2026 – 31 December 2026/.test(text(t.doc, 'header')) && /Loaded section by section/.test(text(t.doc, '#mk-sources')), [asked, text(t.doc, 'header').slice(0, 200), banner(t).slice(0, 300)]);
 
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);
