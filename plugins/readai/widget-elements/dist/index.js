@@ -195,11 +195,71 @@ const flatten_scorecard = (args) => {
         report_url: String(current.report_url ?? ''),
     };
 };
+const MAX_ACTION_ITEMS = 8;
+// Read.ai's API has no priority field for an action item — just the raw
+// sentence — so this is our own keyword heuristic over the sentence text,
+// not anything Read.ai assigned. Surfaced in the UI as "Estimated priority"
+// (never unlabeled "Priority") so it isn't mistaken for real Read.ai data.
+const HIGH_PRIORITY_SIGNALS = [
+    'urgent', 'asap', 'critical', 'deadline', 'immediately', 'today', 'tomorrow',
+    'proposal', 'contract', 'budget', 'client',
+];
+const LOW_PRIORITY_SIGNALS = ['inform', 'encourage', 'recommend', 'consider', 'explore'];
+function estimatePriority(text) {
+    const t = text.toLowerCase();
+    if (HIGH_PRIORITY_SIGNALS.some((k) => t.includes(k)))
+        return { label: 'High', tone: 'destructive' };
+    if (LOW_PRIORITY_SIGNALS.some((k) => t.includes(k)))
+        return { label: 'Low', tone: 'success' };
+    // 'warning' is deliberately darkened to near-brown in light mode for text
+    // contrast (confirmed in tokens.css: #8a5a00) — not the vivid orange the
+    // user asked for. 'chart-3' (#f59e0b light / #fbbf24 dark) is genuinely
+    // orange in both themes, so it's used here instead.
+    return { label: 'Medium', tone: 'chart-3' };
+}
+/**
+ * Flattens list_meetings(expand=["action_items"])' raw `data` array into
+ * display rows for the Action Items Tracker tile: one row per action-item
+ * sentence, tagged with the title of the meeting it came from and a keyword-
+ * estimated priority. Meetings are already newest-first, so items are taken
+ * in that order and capped at MAX_ACTION_ITEMS so one meeting with a long
+ * list can't crowd out the rest.
+ *
+ * There's no assignee, due-date, or completed/checked field in Read.ai's API
+ * for an action item either — those stay out entirely rather than being
+ * fabricated.
+ *
+ * Args: { value: array } — list_meetings' raw `data` array.
+ */
+const flatten_action_items = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const rows = [];
+    for (const meeting of raw) {
+        const meetingTitle = String(meeting.title ?? 'Untitled meeting');
+        const reportUrl = String(meeting.report_url ?? '');
+        const items = Array.isArray(meeting.action_items) ? meeting.action_items : [];
+        items.forEach((text, index) => {
+            const priority = estimatePriority(String(text ?? ''));
+            rows.push({
+                id: `${meeting.id ?? meetingTitle}-${index}`,
+                text: String(text ?? ''),
+                meeting_title: meetingTitle,
+                priority_label: priority.label,
+                priority_tone: priority.tone,
+                report_url: reportUrl,
+            });
+        });
+        if (rows.length >= MAX_ACTION_ITEMS)
+            break;
+    }
+    return rows.slice(0, MAX_ACTION_ITEMS);
+};
 const elements = {
     slug: 'readai',
     functions: {
         flatten_meetings,
         flatten_scorecard,
+        flatten_action_items,
     },
 };
 export default elements;
