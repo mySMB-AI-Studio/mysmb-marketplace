@@ -101,6 +101,24 @@ class CursorTests(MailBase):
         self.assertEqual([c["subject"] for c in steps["find_emails"]["outputs"]["candidates"]], ["Invoice A"])
         self.assertEqual(sorted(p.split("/")[-1].split(" ", 2)[-1] for p in self.filed()), ["A.pdf", "B.pdf"])
 
+    def test_more_than_a_page_in_one_second_never_stalls_the_folder(self):
+        # 60 emails received in the same second (a bulk move, say), then one more a minute later. Each run relists
+        # the cursor's second; once all 60 are handled, a full page of them would come back every run and the later
+        # email would never be reached, unless the intake pages past them.
+        same = recent(hours=2)
+        later = recent(hours=1)
+        for i in range(60):
+            self.w.mail.add("outlook", "Invoice B" + str(i), "accounts@sparky.example", same,
+                            [pdf(att_id="b" + str(i), name="B" + str(i) + ".pdf")])
+        self.w.mail.add("outlook", "Invoice LATE", "accounts@sparky.example", later, [pdf(att_id="late", name="LATE.pdf")])
+        handled = []
+        for _ in range(6):
+            handled += [c["subject"] for c in self.run_intake()["find_emails"]["outputs"]["candidates"]]
+        self.assertIn("Invoice LATE", handled)
+        self.assertEqual(len(handled), 61)
+        self.assertEqual(len(set(handled)), 61)
+        self.assertTrue(any(c[1] == "list_emails" and c[2].get("skip") for c in self.w.mail.calls))
+
     def test_an_older_connector_still_works(self):
         # Production before the connector update: receivedAfter and oldestFirst are ignored.
         self.w.mail.old_connector = True

@@ -35,7 +35,7 @@ else:
         start = mail_when(old.get(key)) or first_run
         cursors[key] = mail_iso(start)
         try:
-            rows = mail_list(provider, folder, start, labels)
+            rows = mail_list(provider, folder, start, labels, known=seen)
         except Exception as exc:
             notes.append("Couldn't read the folder " + folder + ": " + str(exc)[:200])
             continue

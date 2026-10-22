@@ -478,15 +478,26 @@ class FakeMail:
                     raise RuntimeError("tool_error: Mail folder \"" + args["folder"] + "\" wasn't found. Use list_mail_folders to see the folder paths.")
                 rows = [m for m in box if not folder or m["folder"].lower() == folder]
                 rows = sorted(rows, key=lambda m: self.at(m["received"]), reverse=True)
+                limit = args.get("limit", 10)
                 if not self.old_connector:
                     if args.get("receivedAfter"):
                         rows = [m for m in rows if self.at(m["received"]) > self.at(args["receivedAfter"])]
                     if args.get("oldestFirst"):
                         rows = rows[::-1]
+                    skip = int(args.get("skip") or 0)
+                    page = rows[skip:skip + limit]
+                    if args.get("oldestFirst") and len(page) == limit:
+                        # The connector never ends an oldest-first batch part-way through one received time.
+                        for m in rows[skip + limit:]:
+                            if self.at(m["received"]) != self.at(page[-1]["received"]):
+                                break
+                            page.append(m)
+                else:
+                    page = rows[:limit]
                 return [{"id": m["id"], "subject": m["subject"], "bodyPreview": m["preview"],
                          "from": {"emailAddress": {"name": m["from"].split("@")[0], "address": m["from"]}},
                          "receivedDateTime": m["received"], "isRead": False, "hasAttachments": bool(m["attachments"])}
-                        for m in rows[: args.get("limit", 10)]]
+                        for m in page]
             if tool == "list_email_attachments":
                 return [{"id": a["id"], "name": a["name"], "contentType": a["type"], "size": len(a["bytes"]),
                          "isInline": a.get("inline", False), "kind": a.get("kind", "file")}
