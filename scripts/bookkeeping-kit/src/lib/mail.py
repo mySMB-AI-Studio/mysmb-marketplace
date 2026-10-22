@@ -16,6 +16,8 @@ MAIL_PHOTO_MIN_BYTES = 30000
 MAIL_PHOTO_TYPES = (".jpg", ".jpeg", ".png", ".webp", ".gif", ".tif", ".tiff", ".heic", ".heif")
 MAIL_PHOTO_MIMES = ("image/jpeg", "image/png", "image/webp", "image/gif", "image/tiff", "image/heic", "image/heif")
 MAIL_GMAIL_PAGES = 10
+# Outlook/Hotmail pages read past a full page of emails already handled (see mail_list).
+MAIL_OUTLOOK_PAGES = 10
 # The shared mailbox the outlook-shared intake reads (set by the node from the Bookkeeping settings).
 MAIL_MAILBOX = {"address": ""}
 
@@ -113,25 +115,44 @@ def mail_gmail_labels(provider):
     return {str(r.get("name") or "").lower(): str(r.get("id")) for r in rows or [] if isinstance(r, dict) and r.get("id")}
 
 
-def mail_list(provider, folder, after, labels=None):
+def mail_list(provider, folder, after, labels=None, known=None):
     """The folder's emails received after `after` (an aware datetime), oldest first, as
     [{id, subject, from, received, preview, has_attachments, print}]. Requests to raise an invoice usually have no
-    attachment, so every email is a candidate; triage decides."""
+    attachment, so every email is a candidate; triage decides. `known` holds the ids already handled."""
     out = []
     if mail_is_outlook(provider):
         # The connector filters and sorts (receivedAfter + oldestFirst), so the first page is the next batch however
         # much mail arrived. One second earlier than the cursor: emails received in the same second are listed again
-        # and skipped by the ledger, rather than missed.
-        rows = mail_call(provider, "list_emails", folder=folder, limit=50,
-                         receivedAfter=mail_iso(after - datetime.timedelta(seconds=1)), oldestFirst=True)
-        if isinstance(rows, dict):
-            rows = rows.get("value") or rows.get("emails") or rows.get("messages") or []
-        for m in rows or []:
-            if isinstance(m, dict) and m.get("id"):
+        # and skipped by the ledger, rather than missed. A full page of emails already handled (more than a page
+        # received in one second, say) would then come back every run and stall the folder, so it's read past with
+        # `skip`; a connector without `skip` returns the same page again, which ends the paging.
+        since = mail_iso(after - datetime.timedelta(seconds=1))
+        skip = 0
+        last_ids = None
+        listed = set()
+        for _ in range(MAIL_OUTLOOK_PAGES):
+            args = {"folder": folder, "limit": 50, "receivedAfter": since, "oldestFirst": True}
+            if skip:
+                args["skip"] = skip
+            rows = mail_call(provider, "list_emails", **args)
+            if isinstance(rows, dict):
+                rows = rows.get("value") or rows.get("emails") or rows.get("messages") or []
+            page = [m for m in rows or [] if isinstance(m, dict) and m.get("id")]
+            ids = [str(m["id"]) for m in page]
+            if ids == last_ids:
+                break
+            last_ids = ids
+            for m in page:
+                if str(m["id"]) in listed:
+                    continue
+                listed.add(str(m["id"]))
                 out.append({"id": str(m["id"]), "subject": str(m.get("subject") or ""), "from": mail_addr(m.get("from")),
                             "received": str(m.get("receivedDateTime") or ""),
                             "preview": str(m.get("bodyPreview") or "")[:1500],
                             "has_attachments": bool(m.get("hasAttachments"))})
+            if len(page) < 50 or any(i not in (known or {}) for i in ids):
+                break
+            skip += len(page)
     else:
         label = "INBOX" if folder.lower() == "inbox" else (labels or {}).get(folder.lower())
         if not label:
