@@ -13,7 +13,7 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
 | m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
-| m365-presence | Read Teams/M365 presence (availability, activity) for yourself and frequent collaborators | `People.Read`, `Presence.Read.All` | **Admin consent required** |
+| m365-presence | Read Teams/M365 presence (availability, activity) for yourself and frequent collaborators | `People.Read`, `Presence.Read.All` | **Admin consent required** (own app registration — see below) |
 | hotmail-mail | Read, search, and inspect emails in a **personal** Hotmail/Outlook.com/Live.com account | `Mail.Read` | **User self-consent OK** (no tenant/admin — personal accounts self-consent individually) |
 | hotmail-calendar | View, create, and manage events in a **personal** calendar | `Calendars.ReadWrite` | **User self-consent OK** |
 | hotmail-people | Read contacts in a **personal** account | `Contacts.Read` | **User self-consent OK** |
@@ -41,15 +41,21 @@ user-self-consentable. Bundling them into one authorization request would
 force every existing `m365-teams` connection through admin approval just to
 keep working.
 
-`m365-presence` is likewise a separate server from `m365-people`, not an
-extra tool bolted onto it: `Presence.Read.All` requires tenant admin consent,
-while `People.Read`/`User.Read` on `m365-people` are user-self-consentable.
-Bundling it in would force every existing `m365-people` connection through
-admin approval just to keep working. `m365-presence` still declares
-`People.Read` itself (in addition to `Presence.Read.All`) because
-`list_colleague_presence` needs it to resolve the caller's relevant
-colleagues before batching their presence — each server's connection only
-carries the scopes declared on its own route.
+`m365-presence` is likewise a separate server from `m365-people` — but unlike
+`m365-teams-transcripts`/`m365-teams`, it goes a step further and uses a
+**completely separate Entra app registration**, not just its own route on the
+main app. `Presence.Read.All` requires tenant admin consent, and the main app
+(`ENTRA_CLIENT_ID`) may be administered by someone with no path to add a
+redirect URI or grant that consent for it — registering a new app is a
+lower-privilege action in most tenants than administering an existing one,
+so whoever can create their own app registration can unblock this without
+touching the shared one. See
+**[m365-presence's own app registration](#m365-presence-uses-a-different-separate-app-registration)**
+below. `m365-presence` still declares `People.Read` itself (in addition to
+`Presence.Read.All`) because `list_colleague_presence` needs it to resolve
+the caller's relevant colleagues before batching their presence — each
+server's connection only carries the scopes declared on its own route, and
+being on a different app doesn't change that.
 
 ## Configuration
 
@@ -59,9 +65,9 @@ own scopes.
 
 ## Admin consent for high-risk scopes
 
-`m365-mail-send`, `m365-teams-transcripts`, and `m365-presence` (and some
-optional scopes on calendar, files, teams) require **tenant admin consent**
-before any user can connect. Do this once:
+`m365-mail-send` and `m365-teams-transcripts` (and some optional scopes on
+calendar, files, teams) require **tenant admin consent** before any user can
+connect — all on the main app (`ENTRA_CLIENT_ID`). Do this once:
 
 1. Sign in to https://entra.microsoft.com as a Global Admin.
 2. **Identity → Applications → Enterprise applications**.
@@ -76,6 +82,11 @@ https://login.microsoftonline.com/{TENANT_ID}/adminconsent?client_id={APP_CLIENT
 
 After admin consent, every user in the tenant can connect the send server
 without another prompt.
+
+`m365-presence` also requires tenant admin consent, but on its **own**, separate
+app registration — see
+**[m365-presence uses a different, separate app registration](#m365-presence-uses-a-different-separate-app-registration)**
+below. Granting consent on the main app above does nothing for `m365-presence`.
 
 ## Tools
 
@@ -242,21 +253,40 @@ So each server needs **both** rows below registered against the Entra app regist
 | `m365-teams` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams/callback` |
 | `m365-teams-transcripts` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-teams-transcripts/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-teams-transcripts/callback` |
 | `m365-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-people/callback` |
-| `m365-presence` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-presence/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-presence/callback` |
 
 > Register these under the Entra app registration whose id is `ENTRA_CLIENT_ID`
 > on the gateway (Azure Portal → App registrations → Authentication → Web →
-> Redirect URIs). These eight servers share one app registration, differing
+> Redirect URIs). These seven servers share one app registration, differing
 > only by requested scopes.
->
-> `m365-presence` also needs the **`Presence.Read.All`** delegated permission
-> (Microsoft Graph) added to this app registration, then admin consent
-> granted (see **[Admin consent](#admin-consent-for-high-risk-scopes)**
-> above) — `People.Read`/`User.Read` are already covered by the other
-> servers on this app.
 >
 > `m365-mail-send` is only reached when a user creates a draft, so an unregistered
 > URI there stays invisible until someone clicks "Open draft".
+
+### `m365-presence` uses a DIFFERENT, separate app registration
+
+(`M365_PRESENCE_CLIENT_ID`/`M365_PRESENCE_CLIENT_SECRET`) — deliberately, and
+for a different reason than Hotmail's split below. `m365-presence` is still a
+work-or-school app, same audience as the main app above. The split exists
+because `Presence.Read.All` requires tenant admin consent, and the main app
+may be administered by someone with no path to add a redirect URI or grant
+that consent for it (confirmed live: connecting `m365-presence` through an
+unregistered redirect URI throws `AADSTS50011: redirect_uri_mismatch`).
+Registering a new app is a lower-privilege action in most tenants than
+administering an existing one, so whoever can create their own app
+registration can register the redirect URI and grant admin consent for just
+this app, without needing access to the main one.
+
+Register this app as **"Accounts in this organizational directory only"**
+(or your tenant's equivalent) — **NOT** "Personal Microsoft accounts" (that's
+the Hotmail app below).
+
+| Server | Redirect URIs (register both, on the m365-presence app, not the main one) |
+|---|---|
+| `m365-presence` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-presence/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-presence/callback` |
+
+Also add the **`Presence.Read.All`** delegated permission (Microsoft Graph)
+on this app and grant admin consent for it specifically — consenting on the
+main app does nothing here, since this is a different app entirely.
 
 **`hotmail-mail`/`hotmail-calendar` use a DIFFERENT, separate app registration**
 (`HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET`) — deliberately, because the main
