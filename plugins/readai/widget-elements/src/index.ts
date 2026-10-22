@@ -122,6 +122,11 @@ interface ReadAiMeeting {
   // due-date, or completed/checked field for an action item, so the tile only
   // ever shows the sentence itself plus which meeting it came from.
   action_items?: string[] | null;
+  // Confirmed live (list_meetings(expand=["summary"])): a plain multi-
+  // paragraph string (paragraphs separated by "\n\n"). Docs call out that an
+  // active/very recent meeting may have no summary yet (generated after the
+  // meeting concludes), so it can come back missing entirely.
+  summary?: string | null;
 }
 
 /**
@@ -147,6 +152,7 @@ const flatten_meetings: ComputedFunction = (args) => {
       subtitle: startMs ? formatMeetingSubtitle(startMs, meeting.platform) : '',
       duration_label: formatDuration(startMs, meeting.end_time_ms),
       report_url: String(meeting.report_url ?? ''),
+      summary: String(meeting.summary ?? '').trim(),
     };
   });
 };
