@@ -100,6 +100,25 @@ const patient_web_url: ComputedFunction = (args) => {
   }
 };
 
+/**
+ * Today (UTC), YYYY-MM-DD — the start of get_next_available_time's search
+ * window. Takes no meaningful input; evaluated fresh on each click so a tile
+ * left open overnight still searches from the real "today".
+ */
+const today_date: ComputedFunction = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * Today + 6 days (UTC), YYYY-MM-DD — the end of get_next_available_time's
+ * search window. Cliniko's API rejects a from/to span of more than 7 days
+ * (confirmed via docs.api.cliniko.com), so this is the widest window a
+ * single call can cover.
+ */
+const today_plus_6_date: ComputedFunction = () => {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + 6);
+  return d.toISOString().slice(0, 10);
+};
+
 const elements: PluginElementsModule = {
   slug: 'cliniko-scheduling',
   functions: {
@@ -109,6 +128,8 @@ const elements: PluginElementsModule = {
     patient_display_name,
     extract_patient_id,
     patient_web_url,
+    today_date,
+    today_plus_6_date,
   },
 };
 

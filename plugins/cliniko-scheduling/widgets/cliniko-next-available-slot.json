@@ -1,0 +1,226 @@
+{
+  "id": "cliniko-next-available-slot",
+  "title": "Next Available Slot",
+  "description": "Pick a business, practitioner and appointment type to find the next open booking slot in Cliniko — searches the next 7 days (Cliniko's own search-window limit).",
+  "category": "health",
+  "tags": ["cliniko", "scheduling", "availability", "booking"],
+  "keywords": ["next available", "open slot", "availability", "booking", "appointment"],
+  "connectorsUsed": ["cliniko-practice", "cliniko-scheduling"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 8, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "cliniko-practice",
+    "tool": "list_practitioners",
+    "params": { "per_page": 100 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body"],
+        "watch": {
+          "/cliniko-practice/list_practitioners": [
+            {
+              "action": "cliniko-practice.list_businesses",
+              "params": { "per_page": 100 }
+            },
+            {
+              "action": "cliniko-scheduling.list_appointment_types",
+              "params": { "per_page": 100 }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/practitionerOptions",
+                "value": {
+                  "$computed": "to_options",
+                  "args": {
+                    "value": { "$state": "/cliniko-practice/list_practitioners/practitioners" },
+                    "valueField": "id",
+                    "labelPattern": "{first_name} {last_name}"
+                  }
+                }
+              }
+            }
+          ],
+          "/cliniko-practice/list_businesses": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/businessOptions",
+                "value": {
+                  "$computed": "to_options",
+                  "args": {
+                    "value": { "$state": "/cliniko-practice/list_businesses/businesses" },
+                    "valueField": "id",
+                    "labelField": "business_name"
+                  }
+                }
+              }
+            }
+          ],
+          "/cliniko-scheduling/list_appointment_types": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/appointmentTypeOptions",
+                "value": {
+                  "$computed": "to_options",
+                  "args": {
+                    "value": { "$state": "/cliniko-scheduling/list_appointment_types/appointment_types" },
+                    "valueField": "id",
+                    "labelField": "name"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "CalendarSearch", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Next Available Slot", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Cliniko · Scheduling" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "formStack"] },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't search availability: ${/_errors/cliniko-scheduling.get_next_available_time}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/cliniko-scheduling.get_next_available_time" }
+      },
+
+      "formStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["businessRow", "practitionerRow", "appointmentTypeRow", "findRow", "resultLoading", "resultFound", "resultNotFound"]
+      },
+
+      "businessRow": { "type": "FormRow", "props": { "label": "Business" }, "children": ["businessSelect"] },
+      "businessSelect": {
+        "type": "Select",
+        "props": { "value": { "$bindState": "/ui/selectedBusinessId" }, "options": { "$state": "/ui/businessOptions" }, "placeholder": "Select a business…", "size": "sm" }
+      },
+
+      "practitionerRow": { "type": "FormRow", "props": { "label": "Practitioner" }, "children": ["practitionerSelect"] },
+      "practitionerSelect": {
+        "type": "Select",
+        "props": { "value": { "$bindState": "/ui/selectedPractitionerId" }, "options": { "$state": "/ui/practitionerOptions" }, "placeholder": "Select a practitioner…", "size": "sm" }
+      },
+
+      "appointmentTypeRow": { "type": "FormRow", "props": { "label": "Appointment type" }, "children": ["appointmentTypeSelect"] },
+      "appointmentTypeSelect": {
+        "type": "Select",
+        "props": { "value": { "$bindState": "/ui/selectedAppointmentTypeId" }, "options": { "$state": "/ui/appointmentTypeOptions" }, "placeholder": "Select an appointment type…", "size": "sm" }
+      },
+
+      "findRow": { "type": "Row", "props": { "justify": "end" }, "children": ["findBtn"] },
+      "findBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Find Next Available Time",
+          "leadingIcon": "Search",
+          "size": "sm",
+          "tone": "accent",
+          "variant": "primary",
+          "disabled": {
+            "$cond": {
+              "$and": [
+                { "$state": "/ui/selectedBusinessId" },
+                { "$state": "/ui/selectedPractitionerId" },
+                { "$state": "/ui/selectedAppointmentTypeId" }
+              ]
+            },
+            "$then": false,
+            "$else": true
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "cliniko-scheduling.get_next_available_time",
+              "params": {
+                "business_id": { "$state": "/ui/selectedBusinessId" },
+                "practitioner_id": { "$state": "/ui/selectedPractitionerId" },
+                "appointment_type_id": { "$state": "/ui/selectedAppointmentTypeId" },
+                "from_time": { "$computed": "cliniko-scheduling_today_date", "args": { "value": true } },
+                "to_time": { "$computed": "cliniko-scheduling_today_plus_6_date", "args": { "value": true } }
+              }
+            },
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/hasSearchedAvailability", "value": true }
+            }
+          ]
+        }
+      },
+
+      "resultLoading": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["resultLoadingSpinner", "resultLoadingLabel"],
+        "visible": { "$state": "/_loading/cliniko-scheduling.get_next_available_time" }
+      },
+      "resultLoadingSpinner": { "type": "Spinner", "props": { "size": "sm" } },
+      "resultLoadingLabel": { "type": "Caption", "props": { "text": "Searching…", "tone": "muted" } },
+
+      "resultFound": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["resultFoundLabel", "resultFoundValue"],
+        "visible": {
+          "$and": [
+            { "$state": "/ui/hasSearchedAvailability" },
+            { "$state": "/_loading/cliniko-scheduling.get_next_available_time", "not": true },
+            { "$state": "/cliniko-scheduling/get_next_available_time/appointment_start" }
+          ]
+        }
+      },
+      "resultFoundLabel": { "type": "Caption", "props": { "text": "Next available:", "tone": "success", "weight": "semibold" } },
+      "resultFoundValue": {
+        "type": "Text",
+        "props": {
+          "size": "md",
+          "weight": "medium",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{date} at {time}",
+              "date": {
+                "$computed": "cliniko-scheduling_format_appointment_date",
+                "args": { "value": { "$state": "/cliniko-scheduling/get_next_available_time/appointment_start" } }
+              },
+              "time": {
+                "$computed": "cliniko-scheduling_format_appointment_time",
+                "args": { "value": { "$state": "/cliniko-scheduling/get_next_available_time/appointment_start" } }
+              }
+            }
+          }
+        }
+      },
+
+      "resultNotFound": {
+        "type": "Caption",
+        "props": { "text": "No open times in the next 7 days for this combination.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/hasSearchedAvailability" },
+            { "$state": "/_loading/cliniko-scheduling.get_next_available_time", "not": true },
+            { "$state": "/cliniko-scheduling/get_next_available_time/appointment_start", "not": true }
+          ]
+        }
+      }
+    }
+  }
+}
