@@ -33,52 +33,6 @@
             {
               "action": "cliniko-scheduling.list_appointment_types",
               "params": { "per_page": 100 }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/practitionerOptions",
-                "value": {
-                  "$computed": "to_options",
-                  "args": {
-                    "value": { "$state": "/cliniko-practice/list_practitioners/practitioners" },
-                    "valueField": "id",
-                    "labelPattern": "{first_name} {last_name}"
-                  }
-                }
-              }
-            }
-          ],
-          "/cliniko-practice/list_businesses": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/businessOptions",
-                "value": {
-                  "$computed": "to_options",
-                  "args": {
-                    "value": { "$state": "/cliniko-practice/list_businesses/businesses" },
-                    "valueField": "id",
-                    "labelField": "business_name"
-                  }
-                }
-              }
-            }
-          ],
-          "/cliniko-scheduling/list_appointment_types": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/appointmentTypeOptions",
-                "value": {
-                  "$computed": "to_options",
-                  "args": {
-                    "value": { "$state": "/cliniko-scheduling/list_appointment_types/appointment_types" },
-                    "valueField": "id",
-                    "labelField": "name"
-                  }
-                }
-              }
             }
           ]
         }
@@ -110,19 +64,55 @@
       "businessRow": { "type": "FormRow", "props": { "label": "Business" }, "children": ["businessSelect"] },
       "businessSelect": {
         "type": "Select",
-        "props": { "value": { "$bindState": "/ui/selectedBusinessId" }, "options": { "$state": "/ui/businessOptions" }, "placeholder": "Select a business…", "size": "sm" }
+        "props": {
+          "value": { "$bindState": "/ui/selectedBusinessId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/cliniko-practice/list_businesses/businesses" },
+              "valueField": "id",
+              "labelField": "business_name"
+            }
+          },
+          "placeholder": "Select a business…",
+          "size": "sm"
+        }
       },
 
       "practitionerRow": { "type": "FormRow", "props": { "label": "Practitioner" }, "children": ["practitionerSelect"] },
       "practitionerSelect": {
         "type": "Select",
-        "props": { "value": { "$bindState": "/ui/selectedPractitionerId" }, "options": { "$state": "/ui/practitionerOptions" }, "placeholder": "Select a practitioner…", "size": "sm" }
+        "props": {
+          "value": { "$bindState": "/ui/selectedPractitionerId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/cliniko-practice/list_practitioners/practitioners" },
+              "valueField": "id",
+              "labelPattern": "{first_name} {last_name}"
+            }
+          },
+          "placeholder": "Select a practitioner…",
+          "size": "sm"
+        }
       },
 
       "appointmentTypeRow": { "type": "FormRow", "props": { "label": "Appointment type" }, "children": ["appointmentTypeSelect"] },
       "appointmentTypeSelect": {
         "type": "Select",
-        "props": { "value": { "$bindState": "/ui/selectedAppointmentTypeId" }, "options": { "$state": "/ui/appointmentTypeOptions" }, "placeholder": "Select an appointment type…", "size": "sm" }
+        "props": {
+          "value": { "$bindState": "/ui/selectedAppointmentTypeId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/cliniko-scheduling/list_appointment_types/appointment_types" },
+              "valueField": "id",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select an appointment type…",
+          "size": "sm"
+        }
       },
 
       "findRow": { "type": "Row", "props": { "justify": "end" }, "children": ["findBtn"] },
