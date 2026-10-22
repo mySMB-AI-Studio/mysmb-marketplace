@@ -70,12 +70,17 @@
       "listSection": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["pulledFromCaption", "itemsList"],
+        "children": ["pulledFromCaption", "priorityNote", "itemsList"],
         "visible": { "$state": "/_loading/readai.list_meetings", "not": true }
       },
       "pulledFromCaption": {
         "type": "Text",
         "props": { "text": "Pulled from recent meetings", "size": "sm", "weight": "semibold" }
+      },
+      "priorityNote": {
+        "type": "Caption",
+        "props": { "text": "Note: priority is an estimated guide, not provided by Read AI", "tone": "muted" },
+        "visible": { "$state": "/ui/action_items/0" }
       },
 
       "loading": {
@@ -144,17 +149,7 @@
 
       "footerRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["priorityNote", "footerLinkGroup"]
-      },
-      "priorityNote": {
-        "type": "Caption",
-        "props": { "text": "Note: priority is an estimated guide, not provided by Read AI", "tone": "muted" },
-        "visible": { "$state": "/ui/action_items/0" }
-      },
-      "footerLinkGroup": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "props": { "gap": "xs", "align": "center", "justify": "end", "clickable": true },
         "children": ["footerIcon", "footerLabel", "footerChevron"],
         "on": {
           "click": { "action": "open_url", "params": { "url": "https://app.read.ai", "target": "_blank" } }
