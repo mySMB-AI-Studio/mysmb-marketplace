@@ -1,17 +1,17 @@
 {
   "id": "servicem8-invoicing-summary",
   "title": "ServiceM8 — Invoicing Summary",
-  "description": "A live Status | Amount summary of jobs from your ServiceM8 account — Quotes, Work Orders, Completed - Pending Approval, and Completed - Awaiting Payment, each showing the total invoice value of jobs in that state, always shown even at 0.00 — matching ServiceM8's own Invoicing tab's Summary view. Inactive (archived) jobs, Unsuccessful jobs, and fully paid jobs are excluded, same as that screen — a paid job has nothing left pending. Any status outside ServiceM8's defaults falls into an \"Other\" row (shown only when non-empty) rather than being silently dropped from the total. No currency symbol is shown — ServiceM8's API exposes no account-currency field, and a hardcoded symbol would be wrong for accounts not using AUD. Only the first page of jobs is summed (ServiceM8's API returns up to 1,000 jobs per page) — an account with more jobs than that will under-total rather than paginate further.",
+  "description": "A live Status | Amount summary of jobs from your ServiceM8 account — Quotes, Work Orders, and Completed, each showing the total invoice value of jobs in that status, always shown even at 0.00 — matching ServiceM8's own Invoicing tab's Summary view, confirmed field-for-field against a real account's live screen. Inactive (archived) jobs and Unsuccessful jobs are excluded, same as that screen. No currency symbol is shown — ServiceM8's API exposes no account-currency field, and a hardcoded symbol would be wrong for accounts not using AUD. Any status outside ServiceM8's four defaults falls into an \"Other\" row (shown only when non-empty) rather than being silently dropped from the total. This first version does not split \"Completed\" into pending-approval vs. awaiting-payment sub-rows the way ServiceM8's screen does — that split depends on invoice_sent/payment_received semantics that haven't been verified against a real completed, invoiced job. Only the first page of jobs is summed (ServiceM8's API returns up to 1,000 jobs per page) — an account with more jobs than that will under-total rather than paginate further.",
   "category": "field-service",
   "tags": ["servicem8", "invoicing", "jobs", "field-service", "trades", "finance"],
-  "keywords": ["invoicing", "invoices", "quotes", "work orders", "completed", "pending approval", "awaiting payment", "summary", "field service", "servicem8"],
+  "keywords": ["invoicing", "invoices", "quotes", "work orders", "completed", "summary", "field service", "servicem8"],
   "connectorsUsed": ["servicem8"],
   "popularity": 0,
   "brandColor": "#34DFBA",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min": { "colSpan": 4, "rowSpan": 5 },
-    "max": { "colSpan": 8, "rowSpan": 9 }
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
   },
   "dataProvider": {
     "mcp": "servicem8",
@@ -59,7 +59,7 @@
       "loading": {
         "type": "Stack",
         "props": { "gap": "xs" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "children": ["sk1", "sk2", "sk3"],
         "visible": {
           "$and": [
             { "$state": "/_loading/servicem8.list_jobs" },
@@ -70,7 +70,6 @@
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
 
       "empty": {
         "type": "Empty",
@@ -87,11 +86,11 @@
         "type": "Table",
         "props": {
           "loading": { "$state": "/_loading/servicem8.list_jobs" },
-          "skeletonRows": 4,
+          "skeletonRows": 3,
           "rows": { "$state": "/ui/rows" },
           "columns": [
             { "id": "status", "header": "Status", "field": "status_label", "priority": 1 },
-            { "id": "amount", "header": "Amount", "field": "amount", "width": 110, "priority": 1 }
+            { "id": "amount", "header": "Amount", "field": "amount", "width": 120, "priority": 1 }
           ]
         },
         "visible": { "$state": "/ui/rows/0" }
