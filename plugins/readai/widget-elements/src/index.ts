@@ -102,6 +102,12 @@ interface ReadAiOwner {
   email?: string;
 }
 
+interface ReadAiMetrics {
+  read_score?: number;
+  sentiment?: number;
+  engagement?: number;
+}
+
 interface ReadAiMeeting {
   id?: string;
   title?: string;
@@ -110,6 +116,7 @@ interface ReadAiMeeting {
   owner?: ReadAiOwner | null;
   report_url?: string;
   platform?: string;
+  metrics?: ReadAiMetrics | null;
 }
 
 /**
@@ -139,10 +146,98 @@ const flatten_meetings: ComputedFunction = (args) => {
   });
 };
 
+// read_score/sentiment/engagement are all plain 0-100 floats, confirmed
+// directly from live list_meetings(expand=["metrics"]) data — Read.ai's docs
+// show no range at all (their one example per field doesn't match live data),
+// so this scale is taken from observation, not documentation. There is no
+// trend/delta field in the API; "vs. previous meeting" is computed here by
+// diffing the two most recent meetings' metrics (dataProvider requests
+// limit: 2), which is why list_meetings — not get_meeting — is the source.
+const METRIC_DEFS = [
+  { key: 'read_score', label: 'Read Score', tone: 'success' },
+  { key: 'sentiment', label: 'Sentiment', tone: 'chart-1' },
+  { key: 'engagement', label: 'Engagement', tone: 'warning' },
+] as const satisfies ReadonlyArray<{ key: keyof ReadAiMetrics; label: string; tone: string }>;
+
+function clampPct(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+// Thresholds are a UI-only convention — Read.ai's API has no "tier" field.
+function scoreTier(score: number): string {
+  if (score >= 80) return 'Excellent';
+  if (score >= 60) return 'Good';
+  return 'Needs Improvement';
+}
+
+/**
+ * Builds the Meeting Score Monitor scorecard from list_meetings' raw `data`
+ * array (newest first, `limit: 2`, `expand: ["metrics"]`): the latest
+ * meeting's Read Score/Sentiment/Engagement, each with a trend vs. the
+ * second-most-recent meeting (absent when there's no prior meeting to
+ * compare against), and the latest meeting's own report_url for the footer
+ * link.
+ *
+ * Args: { value: array } — list_meetings' raw `data` array.
+ */
+const flatten_scorecard: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as ReadAiMeeting[]) : [];
+  const current = raw[0];
+  const previous = raw[1];
+
+  if (!current) {
+    return {
+      has_data: false,
+      meeting_title: '',
+      has_trend: false,
+      metrics: [],
+      read_score_label: '',
+      read_score_tier: '',
+      report_url: '',
+    };
+  }
+
+  const currentMetrics = current.metrics ?? {};
+  const previousMetrics = previous?.metrics ?? {};
+  const hasTrend = Object.values(previousMetrics).some((v) => typeof v === 'number');
+
+  const metrics = METRIC_DEFS.map((def) => {
+    const value = currentMetrics[def.key];
+    const prevValue = previousMetrics[def.key];
+    const hasValue = typeof value === 'number';
+    const diff =
+      hasValue && typeof prevValue === 'number' ? Math.round(value) - Math.round(prevValue) : null;
+
+    return {
+      id: def.key,
+      label: def.label,
+      value_label: hasValue ? String(Math.round(value)) : '—',
+      bar_pct: hasValue ? clampPct(value) : 0,
+      bar_tone: def.tone,
+      trend_icon: diff ? (diff > 0 ? 'ArrowUp' : 'ArrowDown') : '',
+      trend_tone: diff ? (diff > 0 ? 'success' : 'destructive') : 'muted',
+      trend_label: diff ? `${diff > 0 ? '+' : ''}${diff}` : '',
+    };
+  });
+
+  const readScore = currentMetrics.read_score;
+
+  return {
+    has_data: true,
+    meeting_title: String(current.title ?? 'Untitled meeting'),
+    has_trend: hasTrend,
+    metrics,
+    read_score_label: typeof readScore === 'number' ? String(Math.round(readScore)) : '—',
+    read_score_tier: typeof readScore === 'number' ? scoreTier(readScore) : '',
+    report_url: String(current.report_url ?? ''),
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'readai',
   functions: {
     flatten_meetings,
+    flatten_scorecard,
   },
 };
 
