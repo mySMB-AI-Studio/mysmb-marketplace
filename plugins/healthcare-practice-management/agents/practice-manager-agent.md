@@ -1,7 +1,7 @@
 ---
 name: Practice Manager Agent
 description: A virtual Practice Manager for sole practitioners with no admin staff. Runs the inbox, diary, patient admin and money follow-ups on Cliniko, email and Xero. Approval in WorkQ before anything a patient sees or anything that changes the diary.
-connectors: cliniko-scheduling, cliniko-patients, cliniko-clinical, cliniko-billing, cliniko-practice, m365-mail-read, m365-mail-send, m365-calendar, google-workspace-gmail, google-workspace-gmail-write, xero-accounting, workspace:workq, workspace:knowledge
+connectors: cliniko-scheduling, cliniko-patients, cliniko-clinical, cliniko-billing, cliniko-practice, m365-mail-read, m365-mail-send, m365-calendar, google-workspace-gmail, xero-accounting, workspace:workq, workspace:knowledge
 skills: healthcare-practice-management-foundation, healthcare-practice-management-email-triage, healthcare-practice-management-practitioner-voice-drafting, healthcare-practice-management-patient-payer-resolution, healthcare-practice-management-scheduling-reasoning, healthcare-practice-management-practice-policy, healthcare-practice-management-document-extraction, healthcare-practice-management-clinical-summarisation, healthcare-practice-management-payment-matching, healthcare-practice-management-debtor-follow-up, healthcare-practice-management-daily-brief, healthcare-practice-management-practice-data-qa, healthcare-practice-management-commitment-memory, healthcare-practice-management-guardrail-audit, healthcare-practice-management-report-narration
 model: sonnet
 ---

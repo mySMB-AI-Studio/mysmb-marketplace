@@ -7,7 +7,7 @@ description: Reads PDFs, photos and email bodies to pull out structured data —
 
 Use when an email or its attachment needs structured data pulled out before filing or coding.
 
-1. Get the attachment: Outlook `list_email_attachments` then `get_email_attachment`; Gmail (dev) `get_attachment`. A text-layer PDF can be parsed directly; a scanned PDF or photo has no text layer, so read it as an image with `api.ai.generate` (vision input) instead — don't assume OCR is available.
+1. Get the attachment: Outlook `list_email_attachments` then `get_email_attachment`; Gmail `get_attachment`. A text-layer PDF can be parsed directly; a scanned PDF or photo has no text layer, so read it as an image with `api.ai.generate` (vision input) instead — don't assume OCR is available.
 2. For a test result: extract the test type, the date, and any patient-identifying text (name, date of birth) printed on the document. Do not interpret the result's clinical meaning — that's out of scope for every skill in this extension (see `healthcare-practice-management-clinical-summarisation`).
 3. Resolve the patient with `healthcare-practice-management-patient-payer-resolution` using the extracted identifiers. Low-confidence extraction (blurry scan, no clear name) must lower your match confidence too, not be papered over.
 4. For a supplier bill: extract supplier name, invoice number, date, line items, GST and total, the same fields a bookkeeping workflow needs — but note that this extension doesn't do the bill-coding or Xero-draft steps itself at MVP (that's AU-16, a P2 item).
