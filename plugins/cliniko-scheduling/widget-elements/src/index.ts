@@ -100,6 +100,49 @@ const patient_web_url: ComputedFunction = (args) => {
   }
 };
 
+/**
+ * Today (UTC), YYYY-MM-DD — the start of get_next_available_time's search
+ * window. Takes no meaningful input; evaluated fresh on each click so a tile
+ * left open overnight still searches from the real "today".
+ */
+const today_date: ComputedFunction = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * Today + 6 days (UTC), YYYY-MM-DD — the end of get_next_available_time's
+ * search window. Cliniko's API rejects a from/to span of more than 7 days
+ * (confirmed via docs.api.cliniko.com), so this is the widest window a
+ * single call can cover.
+ */
+const today_plus_6_date: ComputedFunction = () => {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + 6);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * "12 Oct 2026 at 2:30 pm (Sydney time)" for a next-available-time result.
+ * Always formats in Australia/Sydney — NOT derived from the business
+ * record's own configured timezone. This plugin's test org has its business
+ * set to Pacific/Noumea (New Caledonia), which doesn't reflect where the
+ * practice actually is, and every other automation in this cycle already
+ * falls back to "Australia/Sydney" as the sensible default when a per-practice
+ * timezone isn't being honoured — matching that convention here rather than
+ * trusting unreliable test-org configuration.
+ * Args: { value: string (UTC ISO appointment_start) }
+ */
+const format_next_available: ComputedFunction = (args) => {
+  const raw = args.value;
+  if (!raw || typeof raw !== 'string') return '—';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return '—';
+
+  const opts: Intl.DateTimeFormatOptions = { timeZone: 'Australia/Sydney' };
+  const dateStr = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', ...opts });
+  const timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, ...opts });
+
+  return `${dateStr} at ${timeStr} (Sydney time)`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'cliniko-scheduling',
   functions: {
@@ -109,6 +152,9 @@ const elements: PluginElementsModule = {
     patient_display_name,
     extract_patient_id,
     patient_web_url,
+    today_date,
+    today_plus_6_date,
+    format_next_available,
   },
 };
 
