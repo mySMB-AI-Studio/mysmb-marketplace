@@ -1,30 +1,62 @@
 {
-  "id": "readai-recent-meetings",
-  "title": "Recent Meetings",
-  "description": "Latest Read.ai meeting reports — title, when it happened, and duration — newest first.",
   "category": "productivity",
-  "tags": ["readai", "meetings", "reports", "transcripts"],
-  "keywords": ["recent meetings", "read ai", "meeting reports", "readai"],
-  "connectorsUsed": ["readai"],
+  "connectorsUsed": [
+    "readai"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "readai",
+    "params": {
+      "expand": [
+        "summary"
+      ]
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Latest Read.ai meeting reports — title, when it happened, and duration — newest first.",
+  "id": "readai-recent-meetings",
+  "keywords": [
+    "recent meetings",
+    "read ai",
+    "meeting reports",
+    "readai"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 5 },
-    "max": { "colSpan": 5, "rowSpan": 8 }
-  },
-  "dataProvider": {
-    "mcp": "readai",
-    "tool": "list_meetings",
-    "params": { "expand": ["summary"] }
+    "max": {
+      "colSpan": 5,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "meetingsList"
+        ],
         "props": {},
-        "children": ["headerRow", "divider0", "body", "footerRow", "summaryOverlay"],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider0",
+          "body",
+          "footerRow",
+          "summaryOverlay"
+        ],
+        "props": {},
+        "type": "Card",
         "watch": {
           "/readai/list_meetings/data": [
             {
@@ -33,178 +65,488 @@
                 "statePath": "/ui/meetings",
                 "value": {
                   "$computed": "readai_flatten_meetings",
-                  "args": { "value": { "$state": "/readai/list_meetings/data" } }
+                  "args": {
+                    "value": {
+                      "$state": "/readai/list_meetings/data"
+                    }
+                  }
                 }
               }
             }
           ]
         }
       },
-
-      "headerRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIconBadge", "titleStack"]
-      },
-      "titleIconBadge": {
-        "type": "Badge",
-        "props": { "tone": "chart-1", "variant": "soft" },
-        "children": ["titleIcon"]
-      },
-      "titleIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "chart-1", "size": "sm" } },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": { "type": "Heading", "props": { "text": "Recent Meetings", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Read AI" } },
-      "divider0": { "type": "Divider", "props": {} },
-
-      "body": {
-        "type": "Body",
+      "divider0": {
         "props": {},
-        "children": ["loading", "empty", "meetingsList"]
+        "type": "Divider"
       },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/readai.list_meetings" }
-      },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
       "empty": {
+        "props": {
+          "message": "No meetings recorded yet."
+        },
         "type": "Empty",
-        "props": { "message": "No meetings recorded yet." },
         "visible": {
           "$and": [
-            { "$state": "/_loading/readai.list_meetings", "not": true },
-            { "$state": "/ui/meetings/0", "not": true }
+            {
+              "$state": "/_loading/readai.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/ui/meetings/0",
+              "not": true
+            }
           ]
         }
       },
-
-      "meetingsList": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["meetingRow"],
-        "repeat": { "statePath": "/ui/meetings", "key": "id" },
-        "visible": { "$state": "/_loading/readai.list_meetings", "not": true }
+      "eyebrow": {
+        "props": {
+          "text": "Read AI"
+        },
+        "type": "Eyebrow"
       },
-      "meetingRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true, "clickable": true },
-        "children": ["meetingAvatar", "meetingTextStack", "meetingTrailingGroup"],
+      "footerIcon": {
+        "props": {
+          "name": "ExternalLink",
+          "size": "xs",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "footerLabel": {
+        "props": {
+          "size": "sm",
+          "text": "Open in Read AI",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerIcon",
+          "footerLabel"
+        ],
         "on": {
-          "click": [
-            { "action": "setState", "params": { "statePath": "/ui/selected/id", "value": { "$bindItem": "id" } } },
-            { "action": "setState", "params": { "statePath": "/ui/selected/title", "value": { "$bindItem": "title" } } },
-            { "action": "setState", "params": { "statePath": "/ui/selected/subtitle", "value": { "$bindItem": "subtitle" } } },
-            { "action": "setState", "params": { "statePath": "/ui/selected/summary", "value": { "$bindItem": "summary" } } },
-            { "action": "setState", "params": { "statePath": "/ui/selected/report_url", "value": { "$bindItem": "report_url" } } }
-          ]
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://app.read.ai"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIconBadge",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings"
         }
       },
       "meetingAvatar": {
-        "type": "Avatar",
-        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "avatar_tone" }, "size": "sm" }
-      },
-      "meetingTextStack": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["meetingTitle", "meetingSubtitle"]
-      },
-      "meetingTitle": {
-        "type": "Text",
-        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "meetingSubtitle": {
-        "type": "Caption",
-        "props": { "text": { "$item": "subtitle" }, "tone": "muted" }
-      },
-      "meetingTrailingGroup": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["meetingDurationBadge"]
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "size": "sm",
+          "tone": {
+            "$item": "avatar_tone"
+          }
+        },
+        "type": "Avatar"
       },
       "meetingDurationBadge": {
+        "props": {
+          "text": {
+            "$item": "duration_label"
+          },
+          "tone": "accent",
+          "variant": "soft"
+        },
         "type": "Badge",
-        "props": { "text": { "$item": "duration_label" }, "tone": "accent", "variant": "soft" },
-        "visible": { "$item": "duration_label" }
-      },
-
-      "footerRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center", "justify": "end", "clickable": true },
-        "children": ["footerIcon", "footerLabel"],
-        "on": {
-          "click": { "action": "open_url", "params": { "url": "https://app.read.ai", "target": "_blank" } }
+        "visible": {
+          "$item": "duration_label"
         }
       },
-      "footerIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "accent", "size": "xs" } },
-      "footerLabel": { "type": "Text", "props": { "text": "Open in Read AI", "size": "sm", "tone": "accent" } },
-
-      "summaryOverlay": {
-        "type": "Overlay",
-        "props": { "maxWidth": "32rem" },
-        "visible": { "$state": "/ui/selected/id" },
+      "meetingRow": {
+        "children": [
+          "meetingAvatar",
+          "meetingTextStack",
+          "meetingTrailingGroup"
+        ],
         "on": {
-          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/selected/id", "value": "" } }
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selected/id",
+                "value": {
+                  "$bindItem": "id"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selected/title",
+                "value": {
+                  "$bindItem": "title"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selected/subtitle",
+                "value": {
+                  "$bindItem": "subtitle"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selected/summary",
+                "value": {
+                  "$bindItem": "summary"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selected/report_url",
+                "value": {
+                  "$bindItem": "report_url"
+                }
+              }
+            }
+          ]
         },
-        "children": ["ovStack"]
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true
+        },
+        "type": "Row"
       },
-      "ovStack": {
+      "meetingSubtitle": {
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "meetingTextStack": {
+        "children": [
+          "meetingTitle",
+          "meetingSubtitle"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "meetingTitle": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "meetingTrailingGroup": {
+        "children": [
+          "meetingDurationBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "meetingsList": {
+        "children": [
+          "meetingRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/meetings"
+        },
         "type": "Stack",
-        "props": { "gap": "md" },
-        "children": ["ovHeader", "ovDivider", "ovSummaryEyebrow", "ovSummaryBody", "ovSummaryEmpty", "ovDivider2", "ovActions"]
+        "visible": {
+          "$state": "/_loading/readai.list_meetings",
+          "not": true
+        }
+      },
+      "ovActionIcon": {
+        "props": {
+          "name": "ExternalLink",
+          "size": "xs",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "ovActionLabel": {
+        "props": {
+          "size": "sm",
+          "text": "Open Full Report in Read AI",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "ovActions": {
+        "children": [
+          "ovActionIcon",
+          "ovActionLabel"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/selected/report_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "ovClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selected/id",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close summary"
+        },
+        "type": "OverlayClose"
+      },
+      "ovDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "ovDivider2": {
+        "props": {},
+        "type": "Divider"
       },
       "ovHeader": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "start", "gap": "sm" },
-        "children": ["ovTitleStack", "ovClose"]
+        "children": [
+          "ovTitleStack",
+          "ovClose"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
       },
-      "ovTitleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["ovTitle", "ovSubtitle"]
+      "ovStack": {
+        "children": [
+          "ovHeader",
+          "ovDivider",
+          "ovSummaryEyebrow",
+          "ovSummaryBody",
+          "ovSummaryEmpty",
+          "ovDivider2",
+          "ovActions"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack"
       },
-      "ovTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/selected/title" }, "level": "h2", "wrap": true } },
-      "ovSubtitle": { "type": "Caption", "props": { "text": { "$state": "/ui/selected/subtitle" }, "tone": "muted" } },
-      "ovClose": {
-        "type": "OverlayClose",
-        "props": { "ariaLabel": "Close summary" },
-        "on": {
-          "click": { "action": "setState", "params": { "statePath": "/ui/selected/id", "value": "" } }
-        }
+      "ovSubtitle": {
+        "props": {
+          "text": {
+            "$state": "/ui/selected/subtitle"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
-      "ovDivider": { "type": "Divider", "props": {} },
-      "ovSummaryEyebrow": { "type": "Eyebrow", "props": { "text": "Summary" } },
       "ovSummaryBody": {
+        "props": {
+          "preserveLines": true,
+          "size": "sm",
+          "text": {
+            "$state": "/ui/selected/summary"
+          }
+        },
         "type": "Text",
-        "props": { "text": { "$state": "/ui/selected/summary" }, "size": "sm", "preserveLines": true },
-        "visible": { "$state": "/ui/selected/summary" }
+        "visible": {
+          "$state": "/ui/selected/summary"
+        }
       },
       "ovSummaryEmpty": {
+        "props": {
+          "text": "No summary available yet for this meeting.",
+          "tone": "muted"
+        },
         "type": "Caption",
-        "props": { "text": "No summary available yet for this meeting.", "tone": "muted" },
-        "visible": { "$state": "/ui/selected/summary", "not": true }
-      },
-      "ovDivider2": { "type": "Divider", "props": {} },
-      "ovActions": {
-        "type": "Row",
-        "props": { "justify": "end", "align": "center", "gap": "xs", "clickable": true },
-        "children": ["ovActionIcon", "ovActionLabel"],
-        "on": {
-          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/selected/report_url" }, "target": "_blank" } }
+        "visible": {
+          "$state": "/ui/selected/summary",
+          "not": true
         }
       },
-      "ovActionIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "accent", "size": "xs" } },
-      "ovActionLabel": { "type": "Text", "props": { "text": "Open Full Report in Read AI", "size": "sm", "tone": "accent" } }
-    }
+      "ovSummaryEyebrow": {
+        "props": {
+          "text": "Summary"
+        },
+        "type": "Eyebrow"
+      },
+      "ovTitle": {
+        "props": {
+          "level": "h2",
+          "text": {
+            "$state": "/ui/selected/title"
+          },
+          "wrap": true
+        },
+        "type": "Heading"
+      },
+      "ovTitleStack": {
+        "children": [
+          "ovTitle",
+          "ovSubtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "summaryOverlay": {
+        "children": [
+          "ovStack"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selected/id",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "32rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/selected/id"
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Recent Meetings"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Calendar",
+          "size": "sm",
+          "tone": "chart-1"
+        },
+        "type": "Icon"
+      },
+      "titleIconBadge": {
+        "children": [
+          "titleIcon"
+        ],
+        "props": {
+          "tone": "chart-1",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "readai",
+    "meetings",
+    "reports",
+    "transcripts"
+  ],
+  "title": "Recent Meetings"
 }

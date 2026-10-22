@@ -10,11 +10,7 @@ Read.ai's own docs show `https://api.read.ai/oauth/ui` as the example redirect t
 
 ## Configuration
 
-No environment variables are required in this plugin — the OAuth client credentials live server-side in the myHub-hosted MCP gateway (`READAI_CLIENT_ID` / `READAI_CLIENT_SECRET`, sourced from `READAI_CLIENT_ID_STAGING` / `READAI_CLIENT_SECRET_STAGING` in staging), not here.
-
-| Variable | Required | Description |
-|---|---|---|
-| *(none)* | — | Server-side OAuth client — nothing to configure in this plugin. |
+No configuration variables are required.
 
 ## Tools
 
