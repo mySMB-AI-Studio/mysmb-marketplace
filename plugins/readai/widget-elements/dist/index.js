@@ -114,6 +114,7 @@ const flatten_meetings = (args) => {
             subtitle: startMs ? formatMeetingSubtitle(startMs, meeting.platform) : '',
             duration_label: formatDuration(startMs, meeting.end_time_ms),
             report_url: String(meeting.report_url ?? ''),
+            summary: String(meeting.summary ?? '').trim(),
         };
     });
 };
