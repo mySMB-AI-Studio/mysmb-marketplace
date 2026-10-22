@@ -1,7 +1,7 @@
 {
   "id": "m365-team-presence",
   "title": "Team Presence",
-  "description": "Live Teams/Microsoft 365 availability for your most frequent collaborators, ranked by Microsoft Graph's own relevance scoring. Requires a separate, admin-consented connection from the other Microsoft 365 tiles.",
+  "description": "Live Teams/Microsoft 365 availability for your most frequent collaborators, ranked by Microsoft Graph's own relevance scoring, plus a picker to set your own status. Setting your status is temporary — it overlays your real presence and expires on its own (60 minutes here) unless cleared first. Requires a separate, admin-consented connection from the other Microsoft 365 tiles.",
   "category": "productivity",
   "tags": [
     "m365",
@@ -49,7 +49,16 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "divider", "body"] },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider", "myStatusSection", "divider2", "body"],
+        "watch": {
+          "/m365-presence/list_colleague_presence": [
+            { "action": "m365-presence.get_my_presence", "params": {} }
+          ]
+        }
+      },
       "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
       "titleGroup": {
         "type": "Row",
@@ -72,6 +81,113 @@
         }
       },
       "divider": { "type": "Divider", "props": {} },
+
+      "myStatusSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["myStatusRow", "pickerRow", "setErrorBanner", "clearErrorBanner"]
+      },
+      "myStatusRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["myStatusDot", "myStatusLabel", "myStatusValue"]
+      },
+      "myStatusDot": {
+        "type": "Dot",
+        "props": {
+          "tone": { "$computed": "microsoft-365_presence_tone", "args": { "value": { "$state": "/m365-presence/get_my_presence/availability" } } },
+          "size": "sm"
+        },
+        "visible": { "$state": "/m365-presence/get_my_presence/availability" }
+      },
+      "myStatusLabel": { "type": "Caption", "props": { "text": "Your status:", "tone": "muted" } },
+      "myStatusValue": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "medium",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{availability} · {activity}",
+              "availability": { "$state": "/m365-presence/get_my_presence/availability" },
+              "activity": { "$state": "/m365-presence/get_my_presence/activity" }
+            }
+          }
+        },
+        "visible": { "$state": "/m365-presence/get_my_presence/availability" }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["myPresenceSelect", "setPresenceBtn", "clearPresenceBtn", "refreshPresenceBtn"]
+      },
+      "myPresenceSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/myPresenceState" },
+          "options": [
+            { "value": "available", "label": "Available" },
+            { "value": "busy", "label": "Busy" },
+            { "value": "in_a_conference_call", "label": "In a conference call" },
+            { "value": "away", "label": "Away" },
+            { "value": "presenting", "label": "Presenting (Do Not Disturb)" }
+          ],
+          "placeholder": "Set your status…",
+          "size": "sm"
+        }
+      },
+      "setPresenceBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Set",
+          "size": "sm",
+          "variant": "primary",
+          "tone": "accent",
+          "disabled": { "$cond": { "$state": "/ui/myPresenceState", "not": true }, "$then": true, "$else": false }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-presence.set_my_presence",
+              "params": { "state": { "$state": "/ui/myPresenceState" }, "expirationMinutes": 60 }
+            },
+            { "action": "m365-presence.get_my_presence", "params": {} }
+          ]
+        }
+      },
+      "clearPresenceBtn": {
+        "type": "Button",
+        "props": { "label": "Clear", "size": "sm", "variant": "ghost", "tone": "muted" },
+        "on": {
+          "click": [
+            { "action": "m365-presence.clear_my_presence", "params": {} },
+            { "action": "m365-presence.get_my_presence", "params": {} }
+          ]
+        }
+      },
+      "refreshPresenceBtn": {
+        "type": "Button",
+        "props": { "label": "Refresh", "size": "sm", "variant": "ghost", "tone": "muted" },
+        "on": {
+          "click": [
+            { "action": "m365-presence.get_my_presence", "params": {} }
+          ]
+        }
+      },
+      "setErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't set your status: ${/_errors/m365-presence.set_my_presence}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-presence.set_my_presence" }
+      },
+      "clearErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't clear your status: ${/_errors/m365-presence.clear_my_presence}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-presence.clear_my_presence" }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+
       "body": { "type": "Body", "props": {}, "children": ["errorBanner", "loading", "empty", "list"] },
       "errorBanner": {
         "type": "Caption",
