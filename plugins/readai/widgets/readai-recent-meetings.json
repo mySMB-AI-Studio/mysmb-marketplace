@@ -1,0 +1,146 @@
+{
+  "id": "readai-recent-meetings",
+  "title": "Recent Meetings",
+  "description": "Latest Read.ai meeting reports — title, when it happened, and duration — newest first.",
+  "category": "productivity",
+  "tags": ["readai", "meetings", "reports", "transcripts"],
+  "keywords": ["recent meetings", "read ai", "meeting reports", "readai"],
+  "connectorsUsed": ["readai"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 5, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "readai",
+    "tool": "list_meetings",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "divider0", "body", "footerRow"],
+        "watch": {
+          "/readai/list_meetings/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/meetings",
+                "value": {
+                  "$computed": "readai_flatten_meetings",
+                  "args": { "value": { "$state": "/readai/list_meetings/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "accent", "size": "sm" } },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": { "type": "Heading", "props": { "text": "Recent Meetings", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Read.AI" } },
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "meetingsList"]
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/readai.list_meetings" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No meetings recorded yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/readai.list_meetings", "not": true },
+            { "$state": "/ui/meetings/0", "not": true }
+          ]
+        }
+      },
+
+      "meetingsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["meetingRow"],
+        "repeat": { "statePath": "/ui/meetings", "key": "id" },
+        "visible": { "$state": "/_loading/readai.list_meetings", "not": true }
+      },
+      "meetingRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["meetingAvatar", "meetingTextStack", "meetingTrailingGroup"]
+      },
+      "meetingAvatar": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "avatar_tone" }, "size": "sm" }
+      },
+      "meetingTextStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["meetingTitle", "meetingSubtitle"]
+      },
+      "meetingTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "weight": "semibold", "truncate": true }
+      },
+      "meetingSubtitle": {
+        "type": "Caption",
+        "props": { "text": { "$item": "subtitle" }, "tone": "muted" }
+      },
+      "meetingTrailingGroup": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["meetingDurationBadge", "meetingViewButton"]
+      },
+      "meetingDurationBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "duration_label" }, "tone": "accent", "variant": "soft" },
+        "visible": { "$item": "duration_label" }
+      },
+      "meetingViewButton": {
+        "type": "IconButton",
+        "props": { "icon": "ExternalLink", "tone": "accent", "ariaLabel": "View in Read.AI", "size": "sm" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$bindItem": "report_url" }, "target": "_blank" } }
+        }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end", "clickable": true },
+        "children": ["footerIcon", "footerLabel"],
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://app.read.ai", "target": "_blank" } }
+        }
+      },
+      "footerIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "accent", "size": "xs" } },
+      "footerLabel": { "type": "Text", "props": { "text": "Open in Read AI", "size": "sm", "tone": "accent" } }
+    }
+  },
+  "status": "published"
+}
