@@ -51,8 +51,8 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 <!-- >>> no-payroll -->
 - **Forms (8):** Bookkeeping setup, Client bookkeeping settings, Which client is this for?, Bill review, Invoice review, Invoice to send, Client bill approval, Check findings.
 <!-- <<< no-payroll -->
-- **Agent (1):** Bookkeeping Coordinator (Xero). It answers status questions, explains coding and exceptions, drafts client emails, and can build a live Aged Payables, Purchases Overview, Exceptions Dashboard or GST Reconciliation Detail report on request. It never approves or sends anything.
-- **Skill (1):** `bookkeeping-xero-foundation`. Also reuses four report skills from `xero-reporting-studio` (`xero-report-foundation`, `xero-aged-payables`, `xero-purchases-overview`, `xero-exceptions-dashboard`, `xero-gst-reconciliation-detail`) — **`xero-reporting-studio` must be installed on the same workspace** for these to resolve; without it, the agent simply won't have them available.
+- **Agent (1):** Bookkeeping Coordinator (Xero). It answers status questions, explains coding and exceptions, drafts client emails and looks things up in each client's Xero. For live reports it points to the **Xero Reporting Studio** extension. It never approves or sends anything.
+- **Skill (1):** `bookkeeping-xero-foundation`. An agent can only use skills bundled in its own extension, so the agent no longer lists Xero Reporting Studio's report skills; install that extension for live Xero reports.
 
 ## Configuration
 
