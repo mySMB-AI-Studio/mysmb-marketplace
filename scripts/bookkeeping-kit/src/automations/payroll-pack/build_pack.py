@@ -35,7 +35,7 @@ if wanted and run:
         totals = {k: bk_money(draft.get(k)) for k in ("Wages", "Tax", "Super", "Deductions", "Reimbursement", "NetPay")}
         slips = sorted(draft.get("Payslips") or [], key=lambda s: pay_name(s))
         check = run.get("last_check") or {}
-        page = ["<!doctype html><html><head><meta charset='utf-8'><title>Pay run review pack</title><style>"
+        page = ["<!doctype html><html><head><meta charset='utf-8'><base target='_blank'><title>Pay run review pack</title><style>"
                 "body{font-family:system-ui,sans-serif;margin:24px;color:#1f2937}h1{font-size:20px}h2{font-size:16px;margin-top:24px}"
                 "table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #e5e7eb;padding:6px 8px;"
                 "text-align:left}th{background:#f9fafb}td.n,th.n{text-align:right}.warn{color:#b45309}.muted{color:#6b7280}</style></head><body>",
@@ -61,7 +61,7 @@ if wanted and run:
         else:
             page.append("<p>The last check (" + _esc(check.get("at")) + ") found nothing to fix.</p>")
         if check.get("url"):
-            page.append("<p><a href='" + _esc(check["url"]) + "'>Full check report</a></p>")
+            page.append("<p><a href='" + _esc(check["url"]) + "' target='_blank' rel='noopener noreferrer'>Full check report</a></p>")
         if check.get("changes"):
             page.append("<h2>Changes this period</h2><ul>" + "".join("<li>" + _esc(x) + "</li>" for x in check["changes"]) + "</ul>")
         page.append("<h2>Notes</h2>")
@@ -75,7 +75,7 @@ if wanted and run:
         pack_url = str((saved or {}).get("url") or "")
         item = api.workq.create(
             title=("Review pay run: " + run["name"] + ", " + run["period_start"] + " to " + run["period_end"])[:200],
-            scope="org",
+            scope="me",
             description=("**" + run["name"] + "**, pay day **" + run["payment_date"] + "**: " + str(len(slips)) + " employees, "
                          "wages " + bk_fmt(totals["Wages"]) + ", net pay " + bk_fmt(totals["NetPay"]) + ".\n\n"
                          + ("The last check still had **" + str(check.get("open_items")) + " open item(s)**.\n\n" if check.get("open_items") else "")

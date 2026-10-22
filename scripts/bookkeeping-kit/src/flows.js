@@ -12,7 +12,7 @@ const step = (id, name) => `{{ steps.${id}.outputs.${name} }}`;
 const payrollOnly = (x) => ({ ...x, payrollOnly: true });
 
 export const FORMS = ['setup', 'client-settings', 'bill-review', 'client-bill-approval', 'invoice-review', 'invoice-send-review',
-  'payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval', 'check-findings'];
+  'payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval', 'check-findings', 'client-choice'];
 export const PAYROLL_FORMS = ['payroll-settings', 'payrun', 'payroll-review', 'client-payroll-approval'];
 // Wording that changes in the build without payroll (exact substrings of the definitions below).
 export const WITHOUT_PAYROLL_TEXT = [
@@ -26,9 +26,22 @@ export const AUTOMATIONS = [
     neutral: true,
     name: 'Bookkeeping: Start setup',
     description:
-      'Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run only) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.',
+      'Creates the WorkQ items that set up bookkeeping: the Bookkeeping setup form (first run, or again when you choose to set up again) and one Client bookkeeping settings form per business you list. Run it again any time to add businesses.',
     triggers: [{ kind: 'manual' }],
     params: [
+      {
+        name: 'setup_again',
+        type: 'str',
+        control: 'select',
+        label: 'Set up again?',
+        description: 'Bookkeeping remembers its setup in Knowledge, even after the extension is removed and installed again. Choose Yes to get the Bookkeeping setup form again; submitting it replaces the saved setup. Client settings are kept.',
+        required: false,
+        options: [
+          { value: 'no', label: 'No: keep the saved setup' },
+          { value: 'yes', label: 'Yes: send me the Bookkeeping setup form again' },
+        ],
+        value: 'no',
+      },
       {
         name: 'client_names',
         type: 'str',
@@ -51,12 +64,13 @@ export const AUTOMATIONS = [
     scopes: ['workq:write', 'files:read'],
     forms: ['setup', 'client-settings', 'payroll-settings'],
     nodes: [
-      node('start_setup', 'Create setup items', 'Creates the Bookkeeping setup item if bookkeeping is not set up yet, and one client settings item per business listed, each with its form attached.', ['util'],
+      node('start_setup', 'Create setup items', 'Creates the Bookkeeping setup item if bookkeeping isn’t set up yet (or when Set up again is Yes), and one client settings item per business listed, each with its form attached.', ['util'],
         [
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
           payrollOnly(formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form')),
           hidden('client_names', 'str', '{{ params.client_names }}', 'Client names'),
+          hidden('setup_again', 'str', '{{ params.setup_again }}', 'Set up again'),
           payrollOnly(hidden('payroll_names', 'str', '{{ params.payroll_names }}', 'Payroll client names')),
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who ran it'),
         ],
@@ -69,17 +83,18 @@ export const AUTOMATIONS = [
     key: 'apply-setup',
     name: 'Bookkeeping: Apply setup (Xero)',
     description:
-      'When a Bookkeeping setup or Client bookkeeping settings form is submitted, saves the answers to Knowledge (Bookkeeping/settings.json and Bookkeeping/Clients/<client>.json), finds the client’s Xero organisation, and creates the client’s inbox folder.',
+      'When a Bookkeeping setup or Client bookkeeping settings form is submitted, saves the answers to Knowledge (Bookkeeping/settings.json and Bookkeeping/Clients/<client>.json), finds the client’s Xero organisation, and creates the client’s inbox folder. When a Which client is this for? form is submitted, files the bill under the client chosen (setting the Xero organisation it’s addressed to up as a new client when asked), so Process bill takes it from there, and remembers the name it was addressed to.',
     triggers: [
       { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:setup' } },
       { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:client-settings' } },
+      { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:client-choice' } },
       payrollOnly({ kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payroll-settings' } }),
     ],
     params: [],
     scopes: ['workq:write', 'files:read', 'files:write', 'connectors:xero-accounting'],
-    forms: ['setup', 'client-settings', 'payroll-settings'],
+    forms: ['setup', 'client-settings', 'client-choice', 'payroll-settings'],
     nodes: [
-      node('apply_setup', 'Save the settings', 'Saves the setup, client or payroll settings answers to Knowledge, matches the client to a Xero organisation, and comments on the setup item with the next steps.', ['util', 'xero', 'payroll'],
+      node('apply_setup', 'Save the settings', 'Saves the setup, client or payroll settings answers to Knowledge, matches the client to a Xero organisation, and comments on the setup item with the next steps. A Which client is this for? answer files the bill under the chosen client.', ['util', 'xero', 'route', 'payroll'],
         [
           hidden('responses', 'dict', '{{ trigger.event.payload.responses }}', 'Form answers'),
           hidden('todo_id', 'str', '{{ trigger.event.subject.todo_id }}', 'Setup item'),
@@ -87,9 +102,10 @@ export const AUTOMATIONS = [
           hidden('actor', 'str', '{{ trigger.actor_user_id }}', 'Person who submitted it'),
           formPicker('setup_form', 'setup', 'Bookkeeping setup form'),
           formPicker('client_form', 'client-settings', 'Client bookkeeping settings form'),
+          formPicker('choice_form', 'client-choice', 'Which client is this for? form'),
           payrollOnly(formPicker('payroll_form', 'payroll-settings', 'Client payroll settings form')),
         ],
-        [out('outcome', 'str', 'settings_saved, client_saved, payroll_saved, xero_org_not_found or ignored')]),
+        [out('outcome', 'str', 'settings_saved, client_saved, payroll_saved, xero_org_not_found or ignored; for a client choice: filed, client_created, not_ours or unclear')]),
     ],
     rootOrder: ['apply_setup'],
   },
@@ -115,13 +131,14 @@ export const AUTOMATIONS = [
       },
     ],
     scopes: ['files:read', 'files:write', 'workq:write', 'ai:generate', 'connectors:xero-accounting'],
-    forms: ['bill-review', 'invoice-review'],
+    forms: ['bill-review', 'invoice-review', 'client-choice'],
     nodes: [
       node('resolve_file', 'Is this a bill or invoice?', 'Checks the new file is a PDF or a photo (JPG, PNG, WebP, GIF or TIFF; it becomes a PDF) in Bookkeeping Inbox. One in the inbox itself is matched to its client, or moves to Bookkeeping Failed/unmatched with a WorkQ item; filing it under a client later teaches the name it was addressed to.', ['util', 'route'],
         [hidden('path', 'str', '{{ trigger.event.subject.path ?? params.file_path }}', 'File path')],
         [out('should_process', 'bool', 'True for a PDF in a client inbox folder, or one in the inbox itself that was matched to a client'), out('path', 'str', 'Knowledge path'),
           out('client_folder', 'str', 'Client folder name (the matched client, for a file in the inbox itself)'), out('file_name', 'str', 'File name'), out('skip_reason', 'str', 'Why it was skipped'),
-          out('learned', 'str', 'What was learned from a document filed by hand, or empty')]),
+          out('learned', 'str', 'What was learned from a document filed by hand, or empty'),
+          out('origin', 'dict', 'Where it came from: the email Email intake noted, or how it was placed')]),
       { id: 'gate', kind: 'if', title: 'Only PDFs for a client', summary: 'Continues only for PDFs in a client inbox folder, or matched to a client.',
         cond: 'steps["resolve_file"]["outputs"]["should_process"]',
         then: ['load_context', 'read_invoice', 'split_gate'], else: [] },
@@ -139,28 +156,35 @@ export const AUTOMATIONS = [
         cond: 'steps["read_invoice"]["outputs"]["statement"]', then: ['file_statement'], else: ['check_and_code', 'post_draft', 'route_review'] },
       node('file_statement', 'File the statement in Xero', 'Matches the bank account (by number or name) or the supplier or customer and attaches the PDF to it in Xero. A bank statement whose lines aren’t in Xero yet becomes a CSV for Xero’s statement import, with a WorkQ item to upload it; a statement of account is compared with what Xero shows open.', ['util', 'xero'],
         [hidden('ctx', 'dict', step('load_context', 'ctx'), 'Context', true), hidden('statement', 'dict', step('read_invoice', 'statement'), 'Statement', true),
-          hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
+          hidden('path', 'str', step('resolve_file', 'path'), 'File path', true),
+          hidden('origin', 'dict', step('resolve_file', 'origin'), 'Where it came from')],
         [out('outcome', 'str', 'filed, ready_to_import, filed_with_issues or exception'), out('todo_id', 'str', 'The WorkQ item, when one was needed'),
           out('csv_path', 'str', 'The CSV for Xero’s statement import, when one was made')]),
-      node('check_and_code', 'Check and code', 'Works out whether it is a bill or a sales invoice, finds the supplier or customer in Xero, checks totals, GST, ABN, bank details and duplicates against the PDF, and codes each line from a saved rule, the contact’s history, or AI.', ['util', 'xero', 'checks'],
+      node('check_and_code', 'Check and code', 'Works out whether it is a bill or a sales invoice, finds the supplier or customer in Xero, checks totals, GST, ABN, bank details and duplicates against the PDF, and codes each line from a saved rule, the contact’s history, or AI. A bill for another business waits for a Which client answer.', ['util', 'xero', 'route', 'checks'],
         [hidden('ctx', 'dict', step('load_context', 'ctx'), 'Context', true), hidden('invoice', 'dict', step('read_invoice', 'invoice'), 'Invoice'),
+          hidden('origin', 'dict', step('resolve_file', 'origin'), 'Where it came from'),
           hidden('problem', 'str', step('read_invoice', 'problem'), 'Problem so far'), hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
         [out('proposal', 'dict', 'The bill to post'), out('warnings', 'list[str]', 'Things to check'), out('blocking', 'list[str]', 'Things to fix before approving'),
-          out('confidence', 'str', 'high, medium or low'), out('problem', 'str', 'Why processing stopped, or empty')]),
+          out('confidence', 'str', 'high, medium or low'), out('problem', 'str', 'Why processing stopped, or empty'),
+          out('needs_client', 'dict', 'Who the bill is addressed to, when it must be asked which client it’s for; empty otherwise')]),
       node('post_draft', 'Create the draft in Xero', 'Creates a DRAFT bill or sales invoice in the client’s Xero organisation and attaches the PDF (new suppliers and customers wait for approval).', ['util', 'xero'],
         [hidden('ctx', 'dict', step('load_context', 'ctx'), 'Context', true), hidden('proposal', 'dict', step('check_and_code', 'proposal'), 'Bill'),
           hidden('blocking', 'list[str]', step('check_and_code', 'blocking'), 'Blocking issues'), hidden('problem', 'str', step('check_and_code', 'problem'), 'Problem so far'),
+          hidden('needs_client', 'dict', step('check_and_code', 'needs_client'), 'Waiting for which client'),
           hidden('path', 'str', step('resolve_file', 'path'), 'File path', true)],
         [out('bill_id', 'str', 'Xero InvoiceID of the draft, or empty'), out('attach_error', 'str', 'Why the PDF could not be attached, or empty'),
           out('problem', 'str', 'Why processing stopped, or empty')]),
-      node('route_review', 'Send for review', 'Creates the review item with the Bill review or Invoice review form (or skips review for small, confident bills when allowed), or an exception item if something went wrong. Moves the PDF out of the inbox.', ['util', 'xero'],
+      node('route_review', 'Send for review', 'Creates the review item with the Bill review or Invoice review form (or skips review for small, confident bills when allowed), a Which client is this for? item for a bill addressed to another business, or an exception item if something went wrong. Moves the PDF out of the inbox.', ['util', 'xero'],
         [hidden('problem', 'str', step('post_draft', 'problem'), 'Problem so far'), hidden('ctx', 'dict', step('load_context', 'ctx'), 'Context', true),
           hidden('proposal', 'dict', step('check_and_code', 'proposal'), 'Bill'), hidden('warnings', 'list[str]', step('check_and_code', 'warnings'), 'Warnings'),
           hidden('blocking', 'list[str]', step('check_and_code', 'blocking'), 'Blocking issues'), hidden('confidence', 'str', step('check_and_code', 'confidence'), 'Confidence'),
           hidden('bill_id', 'str', step('post_draft', 'bill_id'), 'Draft bill'), hidden('attach_error', 'str', step('post_draft', 'attach_error'), 'Attachment error'),
           hidden('path', 'str', step('resolve_file', 'path'), 'File path', true), formPicker('review_form', 'bill-review', 'Bill review form'),
-          formPicker('invoice_form', 'invoice-review', 'Invoice review form')],
-        [out('outcome', 'str', 'review, auto_approved or exception'), out('todo_id', 'str', 'The WorkQ item created')]),
+          hidden('origin', 'dict', step('resolve_file', 'origin'), 'Where it came from'),
+          hidden('needs_client', 'dict', step('check_and_code', 'needs_client'), 'Waiting for which client'),
+          formPicker('invoice_form', 'invoice-review', 'Invoice review form'),
+          formPicker('client_choice_form', 'client-choice', 'Which client is this for? form')],
+        [out('outcome', 'str', 'review, auto_approved, needs_client or exception'), out('todo_id', 'str', 'The WorkQ item created')]),
     ],
     rootOrder: ['resolve_file', 'gate'],
   },
@@ -300,6 +324,7 @@ export const AUTOMATIONS = [
     ],
     params: [
       { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: checks it now)', required: false, value: '' },
+      { name: 'look_back_months', type: 'str', control: 'text', label: 'Look back this many months (manual runs with a client only, for a test company; 0 to stop)', required: false, value: '' },
     ],
     scopes: ['files:read', 'files:write', 'workq:read', 'workq:write', 'artifacts:write', 'notify:send', 'connectors:xero-accounting'],
     forms: ['check-findings'],
@@ -318,7 +343,8 @@ export const AUTOMATIONS = [
       { id: 'gate', kind: 'if', title: 'Check clients?', summary: 'Continues for the overnight schedule, a manual run, or a form asking to check again.',
         cond: 'steps["apply_findings"]["outputs"]["should_check"]', then: ['run_checks', 'publish_report'], else: [] },
       node('run_checks', 'Check the ledgers', 'For each client due a check (until the time budget runs out; the next run carries on): reads its Xero file, runs the daily or weekly checks, merges them with its findings file in Knowledge, and rewrites its Checks item in WorkQ.', ['util', 'xero', 'checks'],
-        [hidden('only', 'list[str]', step('apply_findings', 'only'), 'Clients to check'), formPicker('findings_form', 'check-findings', 'Check findings form')],
+        [hidden('only', 'list[str]', step('apply_findings', 'only'), 'Clients to check'), formPicker('findings_form', 'check-findings', 'Check findings form'),
+          hidden('look_back_months', 'str', '{{ params.look_back_months }}', 'Look back (months)')],
         [out('summary', 'dict', 'Clients checked, findings open, new and resolved, errors'), out('problem', 'str', 'Why nothing was checked, or empty')]),
       node('publish_report', 'Publish the weekly report', 'Once a week, after every client is checked: saves the data quality report (open findings by business, and the client queries) as an HTML artifact and notifies the checks owner.', ['util', 'checks'],
         [hidden('summary', 'dict', step('run_checks', 'summary'), 'Summary', true), hidden('problem', 'str', step('run_checks', 'problem'), 'Problem')],
@@ -354,7 +380,9 @@ export const AUTOMATIONS = [
       'Register (ABN status, GST registration, DGR status) and saves the results, so Ledger checks can run the register ' +
       'checks: cancelled businesses still being billed or paid, GST charged by businesses that aren’t registered, ' +
       'donations to non-DGR bodies, ABNs that look wrong. Each business is re-checked weekly. Also searches the register ' +
-      'for a few suppliers with no ABN. Needs the ABR Lookup extension; publish it only if that’s installed. Reads only.',
+      'for a few suppliers with no ABN. Needs the ABR Lookup extension; publish it only if that’s installed. Reads only. ' +
+      'For a test company with made-up ABNs, a CSV in Bookkeeping/Test register named after the client is read instead ' +
+      'of the register (see the README).',
     triggers: [{ kind: 'schedule', cron: '30 23 * * *', timezone: 'Australia/Sydney' }, { kind: 'manual' }],
     params: [
       { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only: looks it up now)', required: false, value: '' },
@@ -425,7 +453,8 @@ export const AUTOMATIONS = [
         (provider === 'deputy' ? 'Deputy hours with Xero Payroll per employee per day, ' : 'the timesheets in Xero Payroll, ') +
         'lists missing starters and salaried staff with timesheets, splits each casual’s shifts into penalty bands and checks ' +
         'the rates against the client’s pay guide, lists this period’s changes (junior birthdays, arrangements ending, 1 July) ' +
-        'and reimbursement differences, then posts a report and one drafted query email. Reads only. Publish one version.',
+        'and reimbursement differences, runs the checks catalogue’s payroll checks (employee records, payslips, pay items and ' +
+        'super owed), then posts a report and one drafted query email. Reads only. Publish one version.',
       triggers: [
         { kind: 'event', eventType: 'form.response_submitted', filter: { form_id: '@form:payrun' } },
         { kind: 'manual' },
@@ -433,7 +462,7 @@ export const AUTOMATIONS = [
       params: [
         { name: 'client_name', type: 'str', control: 'text', label: 'Client business (manual runs only)', required: false, value: '' },
       ],
-      scopes: ['files:read', 'files:write', 'workq:write', 'ai:generate', 'artifacts:write', ...connectors],
+      scopes: ['files:read', 'files:write', 'workq:write', 'ai:generate', 'artifacts:write', ...connectors, 'connectors:xero-accounting'],
       forms: ['payrun'],
       nodes: [
         node('load_run', 'Find the pay run', 'Finds the pay run for the item (or the client’s open one), records the officer’s notes, and handles Cancel.', ['util', 'payroll'],
@@ -444,7 +473,7 @@ export const AUTOMATIONS = [
             out('problem', 'str', 'Why the checks won’t run, or empty')]),
         { id: 'gate', kind: 'if', title: 'Only when asked', summary: 'Continues only for Run the checks.',
           cond: 'steps["load_run"]["outputs"]["should_check"]', then: ['check', 'report'], else: [] },
-        node('check', 'Check the pay run', 'Reads the pay calendar’s employees, timesheets, pay items and draft pay run from Xero Payroll' + (provider === 'deputy' ? ', the period’s Deputy timesheets,' : '') + ' the pay guide and the reimbursement file, and works out what to fix.', ['util', 'payroll'],
+        node('check', 'Check the pay run', 'Reads the pay calendar’s employees, timesheets, pay items and draft pay run from Xero Payroll' + (provider === 'deputy' ? ', the period’s Deputy timesheets,' : '') + ' the pay guide and the reimbursement file, runs the catalogue’s payroll checks (with the super liability’s balance from Xero), and works out what to fix.', ['util', 'xero', 'payroll'],
           [fixed('provider', 'str', provider, 'Timesheet source'), hidden('ctx', 'dict', step('load_run', 'ctx'), 'Context', true),
             hidden('problem', 'str', step('load_run', 'problem'), 'Problem so far')],
           [out('findings', 'dict', 'What the check found'), out('problem', 'str', 'Why the check stopped, or empty')]),
@@ -515,6 +544,10 @@ export const AUTOMATIONS = [
       'Needs the Microsoft 365 extension, with Outlook connected by the automation’s owner.'],
     ['outlook-shared', 'Outlook shared mailbox', 'm365-mail-shared', 'the shared Outlook mailbox named in Bookkeeping setup (e.g. accounts@…)',
       'Needs the Microsoft 365 shared mailbox connection (m365-mail-shared, part of this extension), connected by an owner who has access to that mailbox.'],
+    // Personal Microsoft accounts (Hotmail, Outlook.com, Live.com) can't sign in to the Microsoft 365 connection, which
+    // is work or school only; they have their own Hotmail connection with the same mail tools.
+    ['hotmail', 'Hotmail', 'hotmail-mail', 'the owner’s Hotmail or Outlook.com inbox',
+      'Needs the Microsoft 365 extension, with hotmail-mail connected by the automation’s owner, signed in with that personal Microsoft account (Hotmail, Outlook.com or Live.com).'],
     ['gmail', 'Gmail', 'google-workspace-gmail', 'the owner’s Gmail',
       'Needs the Google Workspace extension, with Gmail connected by the automation’s owner.'],
   ].map(

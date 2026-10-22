@@ -31,6 +31,21 @@ else:
         cache = bk_read_json(path) or {}
         rows = cache.setdefault("abns", {})
         names = cache.setdefault("names", {})
+        test_path, test_rows = abr_test_register(client, bk_ledger_info(params.get("ledger"))[3])
+        if test_path:
+            # A test company: its answers come from its test register file, never from the register.
+            cache["abns"] = {a: dict(test_rows[a], checked=str(today)) for a in sorted(abns) if a in test_rows}
+            cache["names"] = {}
+            cache["test_register"] = test_path
+            cache["refreshed"] = str(today)
+            bk_write_json(path, cache)
+            summary["clients"].append({"client": client.get("name"), "abns": len(abns), "looked_up": 0,
+                                       "test_register": test_path, "from_test_register": len(cache["abns"])})
+            continue
+        if cache.pop("test_register", None):
+            # Back to the real register: forget every answer the test file gave.
+            rows.clear()
+            names.clear()
         stale = sorted(a for a in abns if not rows.get(a)
                        or (today - (ck_day(rows[a].get("checked")) or today - datetime.timedelta(days=999))).days >= ABR_RECHECK_DAYS)
         done = 0

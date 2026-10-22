@@ -103,6 +103,7 @@ class Myob(PackBase):
     def setUp(self):
         super().setUp()
         self.file = self.w.myob.add_file("file-acme", "Acme Plumbing Pty Ltd")
+        self.file["lock"] = day(40)
         self.w.myob.add_file("file-beta", "Beta Cafe")
         self.supplies = card("c-supplies", "Plumbing Supplies Co", abn="51 824 753 556")
         self.file["cards"].append(self.supplies)
@@ -187,7 +188,8 @@ class Myob(PackBase):
         self.assertIn("(MYOB: Acme Plumbing Pty Ltd)", item["description"])
         self.assertIn("Fix each one in MYOB", item["description"])
         self.assertTrue(self.lines(item, "CHK-079"))
-        self.assertIn("Not checked, as MYOB's API doesn't give what they need: CHK-016, CHK-017", item["description"])
+        # CHK-002 reads bill PDFs, which only Bookkeeping for Xero's bill intake reads.
+        self.assertIn("Not checked, as MYOB's API doesn't give what they need: CHK-002, CHK-016, CHK-021", item["description"])
         # Bills carry no attachment flag in MYOB: never a "nothing attached" finding.
         self.assertFalse(self.lines(item, "CHK-086"))
         self.assertNotIn("Open in", item["description"])
@@ -252,6 +254,139 @@ class Myob(PackBase):
 
 
 # ── QuickBooks ───────────────────────────────────────────────────────────────
+    def test_customer_payments_give_the_overdue_checks_their_history(self):
+        harbour = card("c-hl", "Harbourline Logistics Pty Ltd", kind="Customer")
+        self.file["cards"].append(harbour)
+        for k in range(3):
+            self.file["docs"].append(mdoc("hi%d" % k, "0000010%d" % k, harbour, day(30 + 20 * k), 3960.0, kind="invoice",
+                                          status="Closed", account="a-sales", delivery="Email"))
+            self.file["receipts"].append({"UID": "r%d" % k, "Date": day(10 + 20 * k) + "T00:00:00",
+                                          "Invoices": [{"UID": "hi%d" % k, "Number": "0000010%d" % k, "Type": "Invoice"}]})
+        late = mdoc("hi9", "00000099", harbour, day(274), 3960.0, kind="invoice", account="a-sales", delivery="Email")
+        late["Due"] = day(244)
+        self.file["docs"].append(late)
+        self.overnight()
+        line = self.lines(self.open_item(), "CHK-037")[0]
+        self.assertIn("Invoice 00000099 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
+        self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+
+    # ── what the MYOB connector added for the checks (myhub-mcp-servers #819) ──
+    def test_supplier_bank_fingerprints_feed_the_bank_checks(self):
+        sparky = card("c-sparky", "Sparky Electrical Pty Ltd", abn="53004085616")
+        twin = card("c-twin", "Twin Trades", abn="83914571673")
+        sparky["_bank"], twin["_bank"], self.supplies["_bank"] = "062-000 11112222", "062000 11112222", "033-000 99998888"
+        self.file["cards"] += [sparky, twin]
+        self.overnight()  # the first night records the fingerprints
+        self.supplies["_bank"] = "033-000 55556666"
+        self.check_now("Acme Plumbing")  # the next run (overnight() skips a client already checked today)
+        desc = self.open_item()["description"]
+        self.assertTrue(self.lines(self.open_item(), "CHK-017"), desc)
+        self.assertIn("Plumbing Supplies Co", self.lines(self.open_item(), "CHK-017")[0])
+        self.assertIn("Sparky Electrical Pty Ltd", self.lines(self.open_item(), "CHK-018")[0])
+        self.assertNotIn("11112222", json.dumps(self.w.files))
+        self.assertNotIn("CHK-017", desc.split("Not checked")[-1])
+
+    def test_open_quotes_purchase_orders_and_an_old_lock_date(self):
+        self.file["quotes"] = [{"UID": "q1", "Number": "EST-2001", "Date": day(20) + "T00:00:00",
+                                "Customer": {"UID": "c-sun", "Name": "Sunline Solar"}, "TotalAmount": 1650.0}]
+        self.file["orders"] = [{"UID": "o1", "Number": "PO-0001", "Date": day(20) + "T00:00:00", "Supplier": {"UID": "c-supplies", "Name": "Plumbing Supplies Co"},
+                                "TotalAmount": 330.0, "Status": "Open"},
+                               {"UID": "o2", "Number": "PO-0002", "Date": day(60) + "T00:00:00", "Supplier": {"UID": "c-supplies", "Name": "Plumbing Supplies Co"},
+                                "TotalAmount": 99.0, "Status": "ConvertedToBill"}]
+        self.file["lock"] = day(400)
+        self.overnight()
+        item = self.open_item()
+        self.assertIn("1 quote(s) are still open, not turned into an invoice (EST-2001)", self.lines(item, "CHK-040")[0])
+        self.assertIn("1 purchase order(s) are still open, not turned into a bill (PO-0001)", self.lines(item, "CHK-093")[0])
+        self.assertIn("more than 6 months ago", self.lines(item, "CHK-134")[0])
+
+    def test_a_connector_without_them_leaves_those_checks_not_checked(self):
+        self.file["old_connector"] = True
+        self.file["quotes"] = [{"UID": "q1", "Number": "EST-2001", "Date": day(20) + "T00:00:00", "Customer": {"UID": "c-sun", "Name": "Sunline"},
+                                "TotalAmount": 1650.0}]
+        sparky = card("c-sparky", "Sparky Electrical Pty Ltd", abn="53004085616")
+        self.file["cards"].append(sparky)
+        self.file["docs"] += [mdoc("b1", "INV-7", sparky, day(10), 440.0), mdoc("b2", "INV-7", sparky, day(7), 440.0)]
+        self.overnight()
+        desc = self.open_item()["description"]
+        for check in ("CHK-017", "CHK-018", "CHK-040", "CHK-057", "CHK-093", "CHK-134", "CHK-135"):
+            self.assertIn(check, desc.split("Not checked")[-1], check)
+        self.assertFalse(self.lines(self.open_item(), "CHK-040"))
+        self.assertFalse(self.lines(self.open_item(), "CHK-134"))
+
+    # ── CHK-023: statement lines ──
+    def line(self, uid, date, amount, text="BANK FEE", status="Coded", matched=(), account="a-bank"):
+        self.file["statement"].append({"UID": uid, "Date": date + "T00:00:00", "Description": text, "Account": {"UID": account},
+                                       "Amount": abs(amount), "IsCredit": amount > 0, "Status": status, "Reference": "",
+                                       "SourceTransactions": [{"UID": m, "TransactionType": "SpendMoneyTxn"} for m in matched]})
+
+    def feed(self, newest, oldest, every, skip=(), account="a-bank"):
+        for n in range(oldest, newest - 1, -every):
+            if not skip or not skip[0] <= n <= skip[1]:
+                self.line(account + "-l" + str(n), day(n), -10.0, account=account)
+
+    def test_statement_lines_missing_gap_and_twice(self):
+        # Lines every 2 days, none from 40 to 29 days ago; the line 50 days ago came in twice, the second still uncoded.
+        self.feed(2, 80, 2, skip=(30, 40))
+        self.line("l-twice", day(50), -10.0, status="Uncoded")
+        # Recorded: one with no line, one matched to its line, one with an unmatched line of the same amount 4 days away,
+        # one before the feed's first line and one too recent to judge.
+        self.spend("s-miss", self.supplies, day(60), 330.0)
+        self.spend("s-link", self.supplies, day(20), 99.0)
+        self.line("l-link", day(20), -99.0, matched=("s-link",))
+        self.spend("s-near", self.supplies, day(70), 55.0)
+        self.line("l-near", day(66), -55.0, status="Uncoded")
+        self.spend("s-early", self.supplies, day(85), 44.0)
+        self.spend("s-late", self.supplies, day(1), 77.0)
+        self.overnight()
+        item = self.open_item()
+        rows = self.lines(item, "CHK-023")
+        self.assertEqual(len(rows), 3, rows)
+        missing = next(r for r in rows if "no bank statement line" in r)
+        self.assertIn("1 transaction(s) recorded on 1-1110 Business Cheque Account have no bank statement line: -$330.00 on "
+                      + datetime.date.fromisoformat(day(60)).strftime("%d %b %Y").lstrip("0") + " (Plumbing Supplies Co)", missing)
+        self.assertIn("$330.00", missing.split("—")[2])
+        gap = next(r for r in rows if "No bank statement lines" in r)
+        self.assertIn("from " + datetime.date.fromisoformat(day(41)).strftime("%d %b %Y").lstrip("0") + " to "
+                      + datetime.date.fromisoformat(day(29)).strftime("%d %b %Y").lstrip("0") + " (13 days)", gap)
+        twice = next(r for r in rows if "more than once" in r)
+        self.assertIn("1 bank statement line(s) on 1-1110 Business Cheque Account came in more than once: "
+                      + datetime.date.fromisoformat(day(50)).strftime("%d %b %Y").lstrip("0") + " BANK FEE -$10.00", twice)
+        self.assertIn("hide the extra line in MYOB", twice)
+        self.assertNotIn("CHK-023", item["description"].split("Not checked")[-1])
+        # The statement lines are read for the weekly window only.
+        args = next(a for t, a in self.w.myob.calls if t == "list_bank_statement_lines")
+        self.assertEqual((args["status"], args["to_date"]), ("All", str(TODAY)))
+
+    def test_a_feed_that_stopped_and_a_quiet_account(self):
+        self.file["accounts"].append({"UID": "a-save", "DisplayID": "1-1120", "Name": "Savings Account", "Classification": "Asset",
+                                      "Type": "Bank", "IsHeader": False, "IsActive": True})
+        # The cheque account had a line every 2 days until 20 days ago; the savings account has one a fortnight.
+        self.feed(20, 60, 2)
+        self.feed(10, 85, 15, account="a-save")
+        self.overnight()
+        rows = self.lines(self.open_item(), "CHK-023")
+        self.assertEqual(len(rows), 1, rows)
+        self.assertIn("No bank statement lines on 1-1110 Business Cheque Account since "
+                      + datetime.date.fromisoformat(day(20)).strftime("%d %b %Y").lstrip("0") + " (19 days)", rows[0])
+        self.assertIn("Check the bank feed is still connected", rows[0])
+
+    def test_no_statement_lines_or_none_readable(self):
+        # No feeds and nothing imported: not checked, never shown as clear.
+        self.overnight()
+        state = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing.json"])
+        self.assertIn("CHK-023", state["na"])
+        # A list that can't be read leaves the open findings as they were.
+        self.feed(2, 80, 2, skip=(30, 40))
+        self.check_now("Acme Plumbing")
+        self.assertEqual(len(self.lines(self.open_item(), "CHK-023")), 1)
+        self.w.myob.errors["list_bank_statement_lines"] = "The filter isn't supported"
+        self.check_now("Acme Plumbing")
+        self.assertEqual(len(self.lines(self.open_item(), "CHK-023")), 1)
+        self.assertNotIn("CHK-023", json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing.json"])["na"])
+
+
 def qvendor(vid, name, address=True):
     return {"Id": vid, "DisplayName": name, "Active": True, "BillAddr": {"Line1": "1 Main St"} if address else {}}
 
@@ -327,6 +462,8 @@ class QuickBooks(PackBase):
         self.assertIn("never sent from QuickBooks (1001)", self.lines(item, "CHK-024")[0])
         self.assertIn("Not checked, as QuickBooks' API doesn't give what they need: CHK-002", item["description"])
         self.assertFalse(self.lines(item, "CHK-022"))
+        # QuickBooks' API has no bank feed lines.
+        self.assertIn("CHK-023", item["description"].split("Not checked")[-1])
 
     def test_the_closing_date_is_the_lock_date(self):
         self.q.close_date = ""
@@ -340,6 +477,40 @@ class QuickBooks(PackBase):
         self.assertTrue(errors and "reaches Beta Cafe, not Acme Plumbing Pty Ltd" in errors[0], errors)
         self.assertEqual(self.items(), [])
         self.assertEqual([t for t, _a in self.q.calls], ["get_company_info"])
+
+
+    def test_customer_payments_give_the_overdue_checks_their_history(self):
+        for k in range(3):
+            inv = qinvoice("3%d" % k, "20%d" % k, ("C9", "Harbourline Logistics Pty Ltd"), day(30 + 20 * k), 3600.0)
+            inv["Balance"] = 0
+            self.q.invoices.append(inv)
+            self.q.customer_payments.append({"Id": "p%d" % k, "TxnDate": day(10 + 20 * k),
+                                             "Line": [{"Amount": 3960.0, "LinkedTxn": [{"TxnId": "3%d" % k, "TxnType": "Invoice"}]}]})
+        late = qinvoice("39", "1003", ("C9", "Harbourline Logistics Pty Ltd"), day(274), 3600.0)
+        late["DueDate"] = day(244)
+        self.q.invoices.append(late)
+        self.overnight()
+        line = self.lines(self.open_item(), "CHK-037")[0]
+        self.assertIn("Invoice 1003 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
+        self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+
+    def test_pending_estimates_and_open_purchase_orders(self):
+        sun = {"value": "C3", "name": "Sunline Solar"}
+        self.q.estimates += [
+            {"Id": "e1", "DocNumber": "E-1", "TxnDate": day(20), "CustomerRef": sun, "TotalAmt": 1650, "TxnStatus": "Pending"},
+            {"Id": "e2", "DocNumber": "E-2", "TxnDate": day(20), "CustomerRef": sun, "TotalAmt": 990, "TxnStatus": "Accepted",
+             "LinkedTxn": [{"TxnId": "200", "TxnType": "Invoice"}]},
+            {"Id": "e3", "DocNumber": "E-3", "TxnDate": day(15), "CustomerRef": sun, "TotalAmt": 440, "TxnStatus": "Accepted"},
+            {"Id": "e4", "DocNumber": "E-4", "TxnDate": day(15), "CustomerRef": sun, "TotalAmt": 330, "TxnStatus": "Closed"}]
+        self.q.purchase_orders += [
+            {"Id": "p1", "DocNumber": "PO-9", "TxnDate": day(12), "VendorRef": {"value": "12", "name": "Plumbing Supplies Co"}, "TotalAmt": 300, "POStatus": "Open"},
+            {"Id": "p2", "DocNumber": "PO-8", "TxnDate": day(30), "VendorRef": {"value": "12", "name": "Plumbing Supplies Co"}, "TotalAmt": 200, "POStatus": "Closed"}]
+        self.overnight()
+        item = self.open_item()
+        self.assertIn("2 quote(s) are still pending, or accepted but not invoiced (E-1, E-3)", self.lines(item, "CHK-040")[0])
+        self.assertIn("1 purchase order(s) are still open, not turned into a bill (PO-9)", self.lines(item, "CHK-093")[0])
+        self.assertNotIn("CHK-040", item["description"].split("Not checked")[-1])
 
 
 if __name__ == "__main__":

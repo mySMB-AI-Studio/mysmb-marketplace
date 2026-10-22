@@ -13,6 +13,7 @@ MYOB_STATUS = {"Open": "authorised", "Closed": "paid", "Credit": "authorised"}
 MYOB_PL = ("Income", "CostOfSales", "Expense", "OtherIncome", "OtherExpense")
 # Checks the myob-accounting connector can't answer: not run, and listed on the Checks item (never shown as clear).
 MYOB_NA = {
+    "CHK-002": "it reads the ABN on bill PDFs, which only Bookkeeping for Xero's bill intake reads",
     "CHK-016": "MYOB's API has no batch payment text",
     "CHK-017": "the MYOB connector doesn't return supplier bank details",
     "CHK-018": "the MYOB connector doesn't return supplier bank details",
@@ -161,14 +162,21 @@ def myob_ledger(file_id, today, since, weekly):
     cards, cut = myob_pages("list_contacts", file_id, type="All")
     if cut:
         truncated.append("contact cards (first " + "{:,}".format(MYOB_PAGE * MYOB_MAX_PAGES) + ")")
-    abn = {myob_ref(s): re.sub(r"\D", "", str(s.get("ABN") or "")) for s in myob_items(myob_call("list_suppliers", file_id))}
+    # Bank details (CHK-017, CHK-018, CHK-057): the connector's keyed fingerprint of each supplier's account, never the
+    # details. A connector without it returns no BankFingerprint, and those checks stay not checked.
+    supplier_rows = myob_items(myob_call("list_suppliers", file_id, bank_fingerprint_key=ck_secret()))
+    abn = {myob_ref(s): re.sub(r"\D", "", str(s.get("ABN") or "")) for s in supplier_rows}
+    fingerprints = {myob_ref(s): str(s.get("BankFingerprint") or "") for s in supplier_rows if "BankFingerprint" in s}
+    if fingerprints:
+        for check in ("CHK-017", "CHK-018", "CHK-057"):
+            na.pop(check, None)
     people = []
     for x in cards:
         if x.get("Type") not in ("Customer", "Supplier") or x.get("IsActive") is False or not x.get("UID"):
             continue
         name = str(x.get("CompanyName") or " ".join(str(p) for p in (x.get("FirstName"), x.get("LastName")) if p))
         people.append({"id": str(x["UID"]), "type": x["Type"], "name": name, "tax_number": abn.get(str(x["UID"]), ""),
-                       "bank": "", "has_address": any(str(a.get("Street") or a.get("City") or "").strip()
+                       "bank": "", "bank_h": fingerprints.get(str(x["UID"]), ""), "has_address": any(str(a.get("Street") or a.get("City") or "").strip()
                                                       for a in x.get("Addresses") or [] if isinstance(a, dict)), "link": ""})
     suppliers = {bk_norm(p["name"]) for p in people if p["type"] == "Supplier"}
     contacts = [dict((k, v) for k, v in p.items() if k != "type") for p in people
@@ -214,6 +222,17 @@ def myob_ledger(file_id, today, since, weekly):
             uid = myob_ref(ln.get("Purchase")) if isinstance(ln, dict) else ""
             if uid and when > paid.get(uid, ""):
                 paid[uid] = when
+    # When a sales invoice was paid (weekly, for the overdue behaviour checks): the latest customer payment applied to it.
+    # A customer payment lists its invoices under "Invoices" (each with the invoice's UID); "Lines" with a Sale is accepted
+    # too. Not yet seen on a real file: confirm on QA.
+    if weekly:
+        receipts, _cut = myob_pages("list_payments", file_id, from_date=str(since), to_date=str(today))
+        for p in receipts:
+            when = myob_date(p.get("Date"))
+            for ln in p.get("Invoices") or p.get("Lines") or []:
+                uid = (myob_ref(ln.get("Sale")) or myob_ref(ln.get("Invoice")) or str(ln.get("UID") or "")) if isinstance(ln, dict) else ""
+                if uid and when > paid.get(uid, ""):
+                    paid[uid] = when
     docs = []
     for doc_id in order:
         d = by_doc[doc_id]
@@ -225,7 +244,7 @@ def myob_ledger(file_id, today, since, weekly):
         d["tax"] = round(sum(x["tax"] for x in d["lines"]), 2)
         if not h:
             d["total"] = round(sum(x["amount"] + x["tax"] for x in d["lines"]), 2)
-        if d["kind"] == "bill" and d["status"] == "paid":
+        if d["kind"] in ("bill", "invoice") and d["status"] == "paid":
             d["paid_on"] = paid.get(doc_id, "")
         docs.append(d)
     for doc_id, h in heads.items():
@@ -265,17 +284,26 @@ def myob_ledger(file_id, today, since, weekly):
     journal_since = min(since, (today.replace(day=1) - datetime.timedelta(days=100)).replace(day=1))
     cash = {str(a["UID"]) for a in accounts if a.get("Type") in ("Bank", "CreditCard")}
     spend = {s["id"]: s for s in bank}
-    journals = []
+    journals, moves = [], []
     for j in myob_items(myob_call("list_journal_transactions", file_id, from_date=str(journal_since), to_date=str(today))):
         if not isinstance(j, dict):
             continue
         when = myob_date(j.get("DateOccurred") or j.get("DatePosted"))
         source = j.get("SourceTransaction") or {}
-        if j.get("JournalType") == "General" or source.get("TransactionType") == "GeneralJournal":
+        general = j.get("JournalType") == "General" or source.get("TransactionType") == "GeneralJournal"
+        if general:
             journals.append({"id": str(j.get("UID") or ""), "date": when, "narration": str(j.get("Description") or ""), "link": ""})
         hits = [ln for ln in j.get("Lines") or [] if isinstance(ln, dict) and myob_ref(ln.get("Account")) in cash]
         if not hits or when < str(since):
             continue
+        # What CHK-023 compares with the statement lines: each payment, receipt, spend or receive money and transfer, per
+        # bank or card account it moved (a general journal straight to a bank account needn't have a line).
+        if not general:
+            who = spend[myob_ref(source)]["contact"] if myob_ref(source) in spend else str(j.get("Description") or "")
+            for ln in hits:
+                moves.append({"id": myob_ref(source) or "j-" + str(j.get("UID") or ""), "account": myob_ref(ln.get("Account")),
+                              "date": when, "amount": round((-1 if ln.get("IsCredit") else 1) * abs(bk_money(ln.get("Amount")) or 0.0), 2),
+                              "text": who})
         reconciled = all(ln.get("ReconciledDate") for ln in hits)
         if myob_ref(source) in spend:
             spend[myob_ref(source)]["reconciled"] = reconciled
@@ -284,7 +312,52 @@ def myob_ledger(file_id, today, since, weekly):
                          "total": round(sum((-1 if ln.get("IsCredit") else 1) * abs(bk_money(ln.get("Amount")) or 0.0) for ln in hits), 2),
                          "tax": 0.0, "attachments": None, "reconciled": reconciled, "lines": [], "link": ""})
     ledger["journals"] = journals
-    ledger["org"] = {"lock_date": "", "eoy_lock_date": "", "settings_link": ""}
+    # Bank feed and imported statement lines (CHK-023): IsCredit is money in; SourceTransactions are the recorded
+    # transactions a line is matched to. No lines at all (no feeds, nothing imported) leaves CHK-023 not checked; a
+    # connector that can't list them leaves its findings as they were. Not yet seen on a real file: confirm on QA.
+    exc = None
+    try:
+        statement = []
+        for s in myob_items(myob_call("list_bank_statement_lines", file_id, from_date=str(since), to_date=str(today), status="All")):
+            if not isinstance(s, dict) or not s.get("UID"):
+                continue
+            status = str(s.get("Status") or "").lower()
+            statement.append({"id": str(s["UID"]), "account": myob_ref(s.get("Account")), "date": myob_date(s.get("Date")),
+                              "amount": round((1 if s.get("IsCredit") else -1) * abs(bk_money(s.get("Amount")) or 0.0), 2),
+                              "text": str(s.get("Description") or s.get("Reference") or "").strip(),
+                              "status": status if status in ("uncoded", "coded", "hidden") else "coded",
+                              "matched": [myob_ref(t) for t in s.get("SourceTransactions") or [] if isinstance(t, dict) and myob_ref(t)]})
+        ledger["statement"], ledger["bank_moves"] = statement, moves
+        if not statement:
+            na["CHK-023"] = "this company file has no bank feed or imported statement lines in the weeks checked"
+    except Exception as exc:
+        ledger["unread"].append("statement")
+    # The lock period (CHK-134, CHK-135): MYOB locks entries dated before LockPeriodPriorTo, so the last locked day is
+    # the day before. Quotes and purchase orders (CHK-040, CHK-093): MYOB has no drafts, so the open ones are the nearest
+    # match (an accepted quote becomes an invoice, an order a bill). A connector without these tools leaves them not checked.
+    lock = ""
+    try:
+        prior = ck_day(myob_date((myob_call("get_lock_period", file_id) or {}).get("LockPeriodPriorTo")))
+        lock = str(prior - datetime.timedelta(days=1)) if prior else ""
+        for check in ("CHK-134", "CHK-135"):
+            na.pop(check, None)
+    except Exception as exc:
+        lock = ""
+    ledger["org"] = {"lock_date": lock, "eoy_lock_date": "", "settings_link": ""}
+    try:
+        ledger["quotes"] = [myob_open_doc(q, "Customer") for q in myob_items(myob_call("list_quotes", file_id, from_date=str(since),
+                                                                                        to_date=str(today)))]
+        ledger["quote_state"] = "are still open, not turned into an invoice"
+        na.pop("CHK-040", None)
+    except Exception as exc:
+        ledger.pop("quotes", None)
+    try:
+        ledger["purchase_orders"] = [myob_open_doc(o, "Supplier") for o in myob_items(myob_call("list_purchase_orders", file_id,
+                                                                                                status="Open"))]
+        ledger["order_state"] = "are still open, not turned into a bill"
+        na.pop("CHK-093", None)
+    except Exception as exc:
+        ledger.pop("purchase_orders", None)
     ledger["balances"] = {"now": myob_breakdown(myob_call("get_balance_sheet", file_id, date=str(today))),
                           "month_ago": myob_breakdown(myob_call("get_balance_sheet", file_id, date=str(today - datetime.timedelta(days=30))))}
     pl = myob_breakdown(myob_call("get_profit_and_loss_3m", file_id, from_date=str(today - datetime.timedelta(days=364)),
@@ -293,6 +366,12 @@ def myob_ledger(file_id, today, since, weekly):
     ledger["pl_12m"] = {"income": round(sum(v for k, v in pl.items() if k in income), 2),
                         "moved": sorted(k for k, v in pl.items() if v)}
     return ledger
+
+
+def myob_open_doc(x, who):
+    """An open quote or purchase order, as the CHK-040 / CHK-093 rows."""
+    return {"id": str(x.get("UID") or ""), "number": str(x.get("Number") or ""), "date": myob_date(x.get("Date")),
+            "contact": myob_ref(x.get(who), "Name"), "total": round(bk_money(x.get("TotalAmount")) or 0.0, 2), "link": ""}
 
 
 def bk_ledger(client, today, since, weekly):

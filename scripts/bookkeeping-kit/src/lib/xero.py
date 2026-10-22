@@ -8,6 +8,11 @@ XERO = "xero-accounting"
 XERO_EXPENSE_TYPES = {"EXPENSE", "DIRECTCOSTS", "OVERHEADS", "FIXED", "CURRENT", "INVENTORY", "PREPAYMENT", "NONCURRENT"}
 XERO_REVENUE_TYPES = {"REVENUE", "SALES", "OTHERINCOME"}
 XERO_DEAD = {"DELETED", "VOIDED"}
+# Checks the Xero connector can't answer: not run, and listed on the Checks item (never shown as clear). Xero's bank
+# statement lines are a restricted API: an app needs Xero's approval (an agreement and the bank statement scope).
+XERO_NA = {
+    "CHK-023": "Xero shares bank statement lines only with apps it has approved for them, and this one isn't yet",
+}
 
 
 def xero_call(tool, tenant_id=None, **args):
@@ -347,63 +352,96 @@ def xero_bill_link(bill_id, doc_type="ACCPAY"):
     return "https://go.xero.com/" + area + "/Edit.aspx?InvoiceID=" + str(bill_id)
 
 
-def xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id="", file_path="", client_name=""):
-    """The review item's description: what the AI read, how it coded it, and what to check."""
+def xero_bill_markdown(proposal, warnings=None, blocking=None, bill_id="", file_path="", client_name="", client=None,
+                       origin=None, attach_error="", settings=None, todo="", note=""):
+    """The review item's description, in the shared item layout: what to do; where the document came from, which
+    client and Xero organisation it's for, the supplier or customer, totals, what's in Xero and whether the PDF is
+    attached; the lines and what to check; then what each answer on the form does."""
     p = proposal or {}
     c = p.get("contact") or {}
     cur = p.get("currency") or ""
     sales = p.get("doc_type") == "ACCREC"
     raising = p.get("origin") == "request"
     doc = "invoice" if sales else "bill"
-    out = []
-    if raising:
-        out.append("**Invoice to raise** from " + (client_name or "the client") + " to **" + (c.get("name") or "Unknown customer")
-                   + "**" + (" (new customer)" if c.get("is_new") else "") + (" · " + c["email"] if c.get("email") else ""))
-    elif sales:
-        out.append("**Sales invoice** from " + (client_name or "the client") + " to **" + (c.get("name") or "Unknown customer")
-                   + "**" + (" (new customer)" if c.get("is_new") else ""))
-    else:
-        out.append("**" + (c.get("name") or "Unknown supplier") + "**" + (" (new supplier)" if c.get("is_new") else "")
-                   + (" for " + client_name if client_name else ""))
-    out.append("")
-    out.append("- Invoice " + (p.get("invoice_number") or ("numbered by Xero" if raising else "—")) + ", dated " + (p.get("date") or "—")
-               + ", due " + (p.get("due_date") or "—"))
-    out.append("- Total " + bk_fmt(p.get("total"), cur) + " (GST " + bk_fmt(p.get("tax"), cur) + ", amounts "
-               + ("include" if p.get("line_amount_types") == "Inclusive" else "exclude") + " GST)")
+    party = "customer" if sales else "supplier"
+    client = client or {}
+    who = client_name or str(client.get("name") or "") or "the client"
+    org = str(client.get("xero_org_name") or "") or who
+    form = "Invoice to send" if raising else "Invoice review" if sales else "Bill review"
+    if not todo:
+        todo = ("check the " + ("invoice" if raising else doc) + " below" + ("" if raising else " against the PDF")
+                + ", then fill in the **" + form + "** form on this item.")
+    if blocking:
+        todo += " First fix what's under **Must fix before approving** (with *Approve with changes*)."
+    name = "**" + (c.get("name") or ("Unknown " + party)) + "**"
+    if c.get("is_new"):
+        name += " (new " + party + ") · not in " + org + "'s Xero yet: it's created there when you approve"
+    if c.get("abn"):
+        name += " · ABN " + str(c["abn"])
+    if c.get("email"):
+        name += " · " + str(c["email"])
     if bill_id:
         # Through the client's own organisation (its short code), or Xero opens whichever one the browser last used.
-        out.append("- Draft " + doc + " in Xero: [open in Xero](" + xero_org_link(xero_bill_link(bill_id, p.get("doc_type") or "ACCPAY"),
-                                                                    p.get("short_code")) + ")")
+        in_xero = ("draft " + doc + " in " + org + "'s Xero: [open in Xero](" + xero_org_link(
+            xero_bill_link(bill_id, p.get("doc_type") or "ACCPAY"), p.get("short_code")) + ")")
     else:
-        out.append("- Not in Xero yet: the " + doc + " is created when you approve")
-    if file_path:
-        out.append("- PDF: `" + file_path + "` in Knowledge")
-    out.append("")
-    out.append("**Lines**")
-    out.append("")
+        in_xero = "not in Xero yet: the " + doc + " is created in " + org + "'s Xero when you approve"
+    pdf = ""
+    if file_path and attach_error:
+        pdf = ("⚠️ not attached in Xero (" + str(attach_error)[:200] + "). Attach `" + file_path + "` from Knowledge by "
+               "hand. If Xero says 401 or 403, the automations' owner needs to reconnect Xero.")
+    elif file_path and bill_id:
+        pdf = "attached to the draft in Xero; the copy is `" + file_path + "` in Knowledge"
+    elif file_path:
+        pdf = "`" + file_path + "` in Knowledge; it's attached in Xero when the " + doc + " is created"
+    o = origin or {}
+    facts = [
+        ("Client", bk_client_label(client) if client.get("name") else who),
+        ("What it is", ("an invoice to raise for " + who + "'s customer" if raising
+                        else "a sales invoice " + who + " issued to its customer" if sales
+                        else "a supplier bill to " + who)),
+        (party.capitalize(), name),
+        ("Came from", bk_origin_line(o, settings) if origin is not None else ""),
+        ("Why this client", ("it's the only client set up" if o.get("why") == "the only client" else str(o.get("why") or ""))
+         if o.get("from") else ""),
+        ("Invoice", (p.get("invoice_number") or ("numbered by Xero" if raising else "no number")) + ", dated "
+         + (p.get("date") or "—") + ", due " + (p.get("due_date") or "—")),
+        ("Total", bk_fmt(p.get("total"), cur) + " (GST " + bk_fmt(p.get("tax"), cur) + ", amounts "
+         + ("include" if p.get("line_amount_types") == "Inclusive" else "exclude") + " GST)"),
+        ("In Xero", in_xero),
+        ("PDF", pdf),
+    ]
+    body = ([str(note).strip(), ""] if note else []) + ["**Lines**", ""]
     # A list, not a table: WorkQ descriptions don't render markdown tables.
     for i, ln in enumerate(p.get("lines") or []):
         desc = str(ln.get("description") or "").replace("\n", " ")[:120]
-        out.append("- Line " + str(i + 1) + ": " + desc + ", " + bk_fmt(ln.get("line_amount"), cur) + ". Account **"
-                   + (ln.get("account_code") or "missing") + "**, tax " + (ln.get("tax_type") or "—") + ". "
-                   + str(ln.get("reason") or "")[:160] + " (" + str(ln.get("confidence") or "low") + " confidence)")
+        body.append("- Line " + str(i + 1) + ": " + desc + ", " + bk_fmt(ln.get("line_amount"), cur) + ". Account **"
+                    + (ln.get("account_code") or "missing") + "**, tax " + (ln.get("tax_type") or "—") + ". "
+                    + str(ln.get("reason") or "")[:160] + " (" + str(ln.get("confidence") or "low") + " confidence)")
     if blocking:
-        out.append("")
-        out.append("**Must fix before approving**")
-        out.extend("- " + b for b in blocking)
+        body += ["", "**Must fix before approving**", ""] + ["- " + b for b in blocking]
     if warnings:
-        out.append("")
-        out.append("**Check**")
-        out.extend("- " + w for w in warnings)
-    out.append("")
+        body += ["", "**Check**", ""] + ["- " + w for w in warnings]
+    status = "Approved" if (settings or {}).get("approved_status") == "AUTHORISED" else "Awaiting approval"
+    created = (" (the new " + party + " is created first)") if c.get("is_new") else ""
     if raising:
-        out.append("Fill in the **Invoice to send** form on this item: approve it (and choose whether Xero emails it to the "
-                   "customer), change it, reject it or ask the client.")
+        approve = ("the invoice becomes **Awaiting payment** in " + org + "'s Xero" + created + ". Xero emails it to the "
+                   "customer only if you answer yes to that question; otherwise send it from Xero when you're ready.")
+    elif sales:
+        approve = ("the sales invoice becomes **Awaiting payment** in " + org + "'s Xero" + created + ". Approving "
+                   "records it in Xero as awaiting payment; nothing is emailed to the customer.")
     else:
-        out.append("Fill in the **" + ("Invoice" if sales else "Bill") + " review** form on this item to approve, change, "
-                   "reject or ask the client." + (" Approving records it in Xero as awaiting payment; nothing is emailed "
-                                                  "to the customer." if sales else ""))
-    return "\n".join(out)
+        approve = ("the bill becomes **" + status + "** in " + org + "'s Xero" + created + ", or goes to the business "
+                   "owner first when it's over the client-approval limit.")
+    answers = [
+        ("Approve", approve),
+        ("Approve with changes", "write the changes in plain words (\"line 1 account 449\", \"all lines GST free\", "
+                                 "\"due date 30 Oct\"); they're made, then it's approved as above"),
+        ("Reject", ("the draft is deleted from Xero" if bill_id else "nothing goes to Xero") + "; the PDF stays in Knowledge"),
+        ("Ask the client", "you get a follow-up item with a drafted email to " + (str(client.get("contact_name") or "")
+                                                                                   or "the business owner")),
+    ]
+    return bk_card(todo, facts, "\n".join(body), answers)
 
 
 # ── Ledger checks: the neutral ledger snapshot (see checks.py for the shape) ──
@@ -598,7 +636,7 @@ def xero_ledger(tenant_id, today, since, weekly):
     bank, cut = xero_pages("list_bank_transactions", tenant_id, "BankTransactions", where="Date>=" + xero_since(since))
     if cut:
         truncated.append("bank transactions")
-    ledger = {"ledger": "xero", "weekly": bool(weekly), "truncated": truncated,
+    ledger = {"ledger": "xero", "weekly": bool(weekly), "truncated": truncated, "na": dict(XERO_NA),
               "contacts": [xero_contact(c) for c in contacts if c.get("ContactID")],
               "docs": docs,
               "bank": [xero_bank_txn(t) for t in bank if t.get("BankTransactionID") and t.get("Status") != "DELETED"]}

@@ -13,6 +13,37 @@ def _note(body, done=True):
         api.workq.complete(todo_id=todo_id)
 
 
+def _same_name(a, b):
+    return bool(a and b) and (a == b or (len(a) > 3 and len(b) > 3 and (a in b or b in a)))
+
+
+def _client_from_org(tenant_id, org_name, settings):
+    """A Xero organisation the connection can see, set up as a client with the practice's defaults (the reviewer from
+    Bookkeeping setup, GST registered, no client-approval limit, ledger checks off until its settings are filled in).
+    Returns (client, created)."""
+    for c in route_clients():
+        if c.get("xero_tenant_id") == tenant_id:
+            return c, False
+    slug = bk_slug(org_name)
+    if bk_read_json(BK_CLIENTS + "/" + slug + ".json"):
+        slug = bk_slug(org_name + " " + str(tenant_id)[:4])
+    ident = xero_org_identity(tenant_id)
+    client = {
+        "version": 1, "slug": slug, "name": org_name, "xero_tenant_id": tenant_id, "xero_org_name": org_name,
+        "abn": ident.get("abn") or "", "org_names": ident.get("names") or [], "aliases": [], "mail_folder": "",
+        "gst_registered": True, "reviewer_id": None, "reviewer_name": "", "client_approval_above": None,
+        "contact_name": "", "contact_email": "", "notes": "", "checks_enabled": False,
+        "set_up_from": "a Which client is this for? item", "updated_by": actor, "updated_at": bk_now_iso(settings),
+    }
+    bk_write_json(BK_CLIENTS + "/" + slug + ".json", client)
+    if bk_read_json(BK_RULES + "/" + slug + ".json") is None:
+        bk_write_json(BK_RULES + "/" + slug + ".json", {"suppliers": {}})
+    api.files.put(file=BK_INBOX + "/" + slug + "/_README.txt",
+                  content="Drop supplier bill PDFs for " + org_name + " into this folder. Each PDF becomes a draft bill in "
+                  "Xero (" + org_name + ") and a review item in WorkQ.\n")
+    return client, True
+
+
 if not responses:
     # No answers: the Publish practice run sends a sample event with an empty payload.
     outcome = "ignored"
@@ -188,3 +219,122 @@ elif form_id == params["client_form"]:
             "Saved settings for **" + name + "** (Xero: " + client["xero_org_name"] + ").\n\n"
             "Drop bill PDFs into `" + BK_INBOX + "/" + slug + "` in Knowledge. Settings file: `" + BK_CLIENTS + "/" + slug + ".json`."
         )
+
+elif form_id == params["choice_form"]:
+    # "Which client is this for?": Process bill parked a bill addressed to another business. File it under the client
+    # chosen (its new file in that inbox folder starts Process bill again) and remember the name it was addressed to.
+    settings = bk_read_json(BK_SETTINGS) or {}
+    record = (bk_read_json(BK_BILLS + "/" + todo_id + ".json") or {}) if todo_id else {}
+    if record.get("status") != "needs_client":
+        outcome = "ignored"
+        _note("This bill was already dealt with, so nothing was changed.", done=False)
+    else:
+        choice = str(bk_answer(responses, "q_choice") or "").lower()
+        typed = str(bk_answer(responses, "q_client") or "").strip()
+        needs = record.get("needs") or {}
+        addressed = str(needs.get("addressed_to") or "").strip()
+        file_path = str(record.get("file") or "")
+        clients = route_clients()
+        by_slug = {c["slug"]: c for c in clients}
+        routing = bk_read_json(BK_ROUTING) or {}
+        target = None
+        created = False
+        remember = False
+        why_not = ""
+        if choice.startswith("none"):
+            record["status"] = "not_ours"
+            outcome = "not_ours"
+            _note("Left alone: nothing went to Xero. The PDF stays in `" + file_path + "` in Knowledge.")
+        elif choice.startswith("the business"):
+            if needs.get("kind") == "client":
+                target = by_slug.get(str(needs.get("slug") or ""))
+                why_not = "" if target else "the client " + str(needs.get("name")) + " isn't set up any more"
+            elif needs.get("kind") == "org":
+                exc = None  # the platform lint wants names bound before `except ... as`
+                try:
+                    target, created = _client_from_org(str(needs.get("tenant_id") or ""), str(needs.get("org_name") or addressed), settings)
+                except Exception as exc:
+                    why_not = "setting up " + str(needs.get("org_name")) + " failed (" + str(exc)[:200] + ")"
+            else:
+                why_not = (addressed + " isn't a client or a Xero organisation the connection can see, so it can't be "
+                           "set up from here. Run **Bookkeeping: Start setup** with its name first, or choose another answer")
+        elif choice.startswith("the client it was filed"):
+            target = by_slug.get(str(record.get("client_slug") or ""))
+            remember = True
+            why_not = "" if target else "the client it was filed under isn't set up any more"
+        elif choice.startswith("another"):
+            key = bk_norm(typed)
+            found = [c for c in clients if key and (c["slug"] == bk_slug(typed) or any(_same_name(n, key) for n in route_names(c, routing)))]
+            if len(found) == 1:
+                target = found[0]
+                remember = True
+            else:
+                why_not = (("no client is called \"" + typed + "\"" if not found else "\"" + typed + "\" matches "
+                            + ", ".join(str(c.get("name")) for c in found)) if typed else "no client name was given")
+        else:
+            why_not = "the form didn't say which client"
+
+        if target:
+            if remember and addressed and bk_norm(addressed):
+                routing.setdefault("names", {})[addressed] = target["slug"]
+                bk_write_json(BK_ROUTING, routing)
+            name = file_path.split("/")[-1]
+            dest = BK_INBOX + "/" + target["slug"] + "/" + name
+            bk_note_origin(name, dict(record.get("origin") or {}, how="decided",
+                                      why="chosen on a Which client is this for? item"))
+            bk_move(file_path, dest)
+            record["status"] = "filed"
+            record["filed_to"] = target["slug"]
+            outcome = "client_created" if created else "filed"
+            body = ("Filed under **" + bk_client_label(target) + "**: `" + dest + "`. Process bill reads it now, and its "
+                    "review item follows (or an item saying what went wrong).")
+            if remember and addressed:
+                body += "\n\nRemembered: bills addressed to **" + addressed + "** are for " + str(target.get("name")) + " from now on."
+            if created:
+                follow = api.workq.create(
+                    title="Bookkeeping settings for " + str(target.get("name")),
+                    scope="org",
+                    description=bk_card(
+                        "fill in the **Client bookkeeping settings** form on this item. Enter the Xero organisation name "
+                        "exactly as **" + str(target.get("xero_org_name")) + "**.",
+                        [("Client", bk_client_label(target)),
+                         ("Set up from", "a Which client is this for? item, with the practice's defaults")],
+                        body=("Until then it uses the practice's defaults: the reviewer from Bookkeeping setup, GST "
+                              "registered, no client-approval limit, and no ledger checks.")),
+                    priority="medium",
+                    due_date=str(bk_add_business_days(bk_today(settings), 2)),
+                    assignee_ids=[actor] if actor else None,
+                    labels=["bookkeeping", "setup", target["slug"]],
+                )
+                api.workq.attach_form(todo_id=follow["id"], form_id=params["client_form"])
+                body = ("Set up **" + str(target.get("name")) + "** as a client (Xero: " + str(target.get("xero_org_name"))
+                        + ") with the practice's defaults; fill in its settings on the *Bookkeeping settings for "
+                        + str(target.get("name")) + "* item.\n\n" + body)
+            _note(body)
+        elif outcome != "not_ours":
+            # A form is answered once per item, so the question moves to a fresh item with the same details.
+            outcome = "unclear"
+            again = api.workq.create(
+                title=("Which client is this bill for? " + str(record.get("supplier") or "")
+                       + (" " + str(record.get("invoice_number")) if record.get("invoice_number") else ""))[:200],
+                scope="org",
+                description=bk_card(
+                    "answer the **Which client is this for?** form again. The last answer couldn't be used: " + why_not + ".",
+                    [("Addressed to", addressed),
+                     ("Filed under", bk_client_label(by_slug.get(str(record.get("client_slug") or ""))) or str(record.get("client_slug") or "")),
+                     ("Clients set up", ", ".join(sorted(str(c.get("name") or c["slug"]) for c in clients))),
+                     ("Came from", bk_origin_line(record.get("origin") or {}, settings)),
+                     ("File", "`" + file_path + "` in Knowledge")]),
+                priority="high",
+                due_date=str(bk_add_business_days(bk_today(settings), 1)),
+                assignee_ids=[actor] if actor else None,
+                labels=["bookkeeping", "bill-exception", "which-client", str(record.get("client_slug") or "")],
+            )
+            api.workq.attach_form(todo_id=again["id"], form_id=params["choice_form"])
+            bk_write_json(BK_BILLS + "/" + again["id"] + ".json", dict(record))
+            record["status"] = "asked_again"
+            record["asked_again_in"] = again["id"]
+            _note("That answer couldn't be used: " + why_not + ". The question is on a fresh item.")
+        record.setdefault("history", []).append({"at": bk_now_iso(settings), "by": actor, "choice": choice,
+                                                  "client": typed, "outcome": outcome})
+        bk_write_json(BK_BILLS + "/" + todo_id + ".json", record)

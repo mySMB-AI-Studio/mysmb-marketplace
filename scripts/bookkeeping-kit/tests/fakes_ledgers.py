@@ -6,6 +6,8 @@ document's lines with its number, date, status, card and tax-inclusive flag; a f
 {QueryResponse: {<Entity>: [...]}}; reports are Intuit's JSON (Rows.Row with ColData, sections with Summary).
 """
 import copy
+import re
+import hashlib
 import datetime
 
 
@@ -19,7 +21,7 @@ class FakeMyob:
 
     def add_file(self, fid, name):
         self.files[fid] = {
-            "name": name, "cards": [], "suppliers": [], "docs": [], "spend": [], "payments": [], "journals": [],
+            "name": name, "cards": [], "suppliers": [], "docs": [], "spend": [], "payments": [], "receipts": [], "quotes": [], "orders": [], "lock": None, "old_connector": False, "journals": [], "statement": [],
             "tax_codes": [{"UID": "tc-gst", "Code": "GST", "Rate": 10.0}, {"UID": "tc-fre", "Code": "FRE", "Rate": 0.0},
                           {"UID": "tc-nt", "Code": "N-T", "Rate": 0.0}],
             "accounts": [
@@ -60,7 +62,24 @@ class FakeMyob:
         if tool == "list_suppliers":
             rows = [{"UID": c["UID"], "Name": c.get("CompanyName"), "ABN": c.get("_abn") or None, "IsActive": True}
                     for c in f["cards"] if c["Type"] == "Supplier"]
+            # #819: a keyed fingerprint of the bank account (card "_bank"), never the details.
+            if args.get("bank_fingerprint_key") and not f["old_connector"]:
+                for r, c in zip(rows, [c for c in f["cards"] if c["Type"] == "Supplier"]):
+                    bank = re.sub(r"\D", "", c.get("_bank") or "")
+                    r["BankFingerprint"] = (hashlib.sha256((args["bank_fingerprint_key"] + "|" + bank).encode()).hexdigest()[:16]
+                                            if bank else None)
             return {"Count": len(rows), "Items": rows}
+        if tool in ("list_quotes", "list_purchase_orders", "get_lock_period") and f["old_connector"]:
+            raise RuntimeError("tool_error: unknown tool " + tool)
+        if tool == "list_quotes":
+            rows = [q for q in f["quotes"] if frm <= q["Date"][:10] <= to]
+            return {"Count": len(rows), "Items": copy.deepcopy(rows)}
+        if tool == "list_purchase_orders":
+            rows = [o for o in f["orders"] if args.get("status") in (None, "All") or o["Status"] == args["status"]]
+            return {"Count": len(rows), "Items": copy.deepcopy(rows)}
+        if tool == "get_lock_period":
+            return {"LockPeriodPriorTo": (f["lock"] + "T00:00:00") if f["lock"] else None,
+                    "TransactionsCannotBeChangedMustBeReversed": False}
         if tool in ("list_invoices", "list_bills"):
             kind = "invoice" if tool == "list_invoices" else "bill"
             assert args.get("status") == "Open"
@@ -90,11 +109,18 @@ class FakeMyob:
             size, page = args.get("page_size") or 100, args.get("page_index") or 0
             rows = [p for p in f["payments"] if frm <= p["Date"][:10] <= to][page * size:(page + 1) * size]
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}
+        if tool == "list_payments":
+            size, page = args.get("page_size") or 100, args.get("page_index") or 0
+            rows = [p for p in f["receipts"] if frm <= p["Date"][:10] <= to][page * size:(page + 1) * size]
+            return {"Count": len(rows), "Items": copy.deepcopy(rows)}
         if tool == "list_spend_money":
             rows = [s for s in f["spend"] if frm <= s["Date"][:10] <= to]
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}
         if tool == "list_accounts":
             return {"Count": len(f["accounts"]), "Items": copy.deepcopy(f["accounts"])}
+        if tool == "list_bank_statement_lines":
+            rows = [x for x in f["statement"] if frm <= x["Date"][:10] <= to]
+            return {"Count": len(rows), "Items": copy.deepcopy(rows)}
         if tool == "list_journal_transactions":
             rows = [j for j in f["journals"] if frm <= j["DateOccurred"][:10] <= to]
             return {"Count": len(rows), "Items": copy.deepcopy(rows)}
@@ -117,6 +143,8 @@ class FakeQbo:
         self.name = name
         self.calls = []
         self.vendors, self.invoices, self.bills, self.purchases, self.payments = [], [], [], [], []
+        self.customer_payments = []
+        self.estimates, self.purchase_orders = [], []
         self.attachables, self.journals = [], []
         self.close_date = ""
         self.tax_rates = [{"Id": "r-gst-p", "Name": "GST (purchases)", "RateValue": 10}, {"Id": "r-gst-s", "Name": "GST (sales)", "RateValue": 10},
@@ -179,6 +207,8 @@ class FakeQbo:
         entity, rows = {
             "list_vendor": ("Vendor", self.vendors), "list_invoice": ("Invoice", self.invoices), "list_bill": ("Bill", self.bills),
             "list_purchase": ("Purchase", self.purchases), "list_bill_payment": ("BillPayment", self.payments),
+            "list_payment": ("Payment", self.customer_payments),
+            "list_estimate": ("Estimate", self.estimates), "list_purchase_order": ("PurchaseOrder", self.purchase_orders),
             "list_attachable": ("Attachable", self.attachables), "list_journal_entry": ("JournalEntry", self.journals),
             "list_account": ("Account", self.accounts), "list_tax_code": ("TaxCode", self.tax_codes), "list_tax_rate": ("TaxRate", self.tax_rates),
         }.get(tool, (None, None))

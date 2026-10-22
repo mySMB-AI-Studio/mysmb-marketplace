@@ -43,7 +43,7 @@ class WithoutPayrollTests(unittest.TestCase):
         autos = self.payloads(self.plugin, "automations")
         forms = self.payloads(self.plugin, "forms")
         default_autos = self.payloads(self.default, "automations")
-        self.assertEqual((len(autos), len(forms)), (13, 7))
+        self.assertEqual((len(autos), len(forms)), (14, 8))
         self.assertEqual(sorted(autos), sorted(n for n in default_autos if "Payroll" not in n and "pay run" not in n.lower()
                                                 and n != "Bookkeeping: Apply payroll review"))
         for root, _dirs, files in os.walk(self.plugin):

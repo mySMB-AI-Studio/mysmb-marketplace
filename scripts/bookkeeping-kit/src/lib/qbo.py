@@ -22,6 +22,7 @@ QBO_NA = {
     "CHK-018": "QuickBooks' API doesn't return supplier bank details",
     "CHK-057": "QuickBooks' API doesn't return supplier bank details",
     "CHK-022": "QuickBooks doesn't say through its API whether a transaction is reconciled",
+    "CHK-023": "QuickBooks' API doesn't return bank feed lines",
     "CHK-033": "QuickBooks has no draft or awaiting-approval invoices",
     "CHK-078": "QuickBooks has no draft or awaiting-approval bills",
     "CHK-040": "QuickBooks has no draft estimates",
@@ -82,6 +83,14 @@ def bk_find_file(name):
 
 def qbo_ref(value):
     return str((value or {}).get("value") or "") if isinstance(value, dict) else ""
+
+
+def qbo_open_doc(t, who, page):
+    """An open estimate or purchase order, as the CHK-040 / CHK-093 rows."""
+    ref = t.get(who) if isinstance(t.get(who), dict) else {}
+    return {"id": str(t.get("Id") or ""), "number": str(t.get("DocNumber") or ""), "date": str(t.get("TxnDate") or "")[:10],
+            "contact": str(ref.get("name") or ""), "total": round(bk_money(t.get("TotalAmt")) or 0.0, 2),
+            "link": QBO_APP + page + "?txnId=" + str(t.get("Id"))}
 
 
 def qbo_report_rows(report):
@@ -199,8 +208,16 @@ def qbo_ledger(today, since, weekly):
                 if isinstance(link, dict) and link.get("TxnType") == "Bill":
                     key = "bill:" + str(link.get("TxnId"))
                     paid[key] = max(paid.get(key, ""), str(p.get("TxnDate") or "")[:10])
+    # When a sales invoice was paid (weekly, for the overdue behaviour checks): the latest customer payment linked to it.
+    if weekly:
+        for p in pages("list_payment", "Payment", window, "customer payments"):
+            for ln in p.get("Line") or []:
+                for link in (ln.get("LinkedTxn") or []) if isinstance(ln, dict) else []:
+                    if isinstance(link, dict) and link.get("TxnType") == "Invoice":
+                        key = "invoice:" + str(link.get("TxnId"))
+                        paid[key] = max(paid.get(key, ""), str(p.get("TxnDate") or "")[:10])
     for d in docs:
-        if d["kind"] == "bill" and d["status"] == "paid":
+        if d["kind"] in ("bill", "invoice") and d["status"] == "paid":
             d["paid_on"] = paid.get(d["id"], "")
 
     bank = []
@@ -241,6 +258,26 @@ def qbo_ledger(today, since, weekly):
             d["attachments"] = (("Invoice" if d["kind"] == "invoice" else "Bill") + ":" + d["id"].split(":", 1)[1]) in on
         for s in bank:
             s["attachments"] = ("Purchase:" + s["id"].split(":", 1)[1]) in on
+
+    # Estimates and purchase orders (CHK-040, CHK-093): QuickBooks has no drafts, so pending estimates (and accepted ones
+    # not yet invoiced) and open purchase orders are the nearest match. If they can't be read, the checks stay not checked.
+    exc = None
+    try:
+        estimates = pages("list_estimate", "Estimate", window, "estimates")
+        ledger["quotes"] = [qbo_open_doc(e, "CustomerRef", "estimate") for e in estimates if e.get("TxnStatus") == "Pending"
+                            or (e.get("TxnStatus") == "Accepted"
+                                and not any(isinstance(t, dict) and t.get("TxnType") == "Invoice" for t in e.get("LinkedTxn") or []))]
+        ledger["quote_state"] = "are still pending, or accepted but not invoiced"
+        na.pop("CHK-040", None)
+    except Exception as exc:
+        ledger.pop("quotes", None)
+    try:
+        orders = pages("list_purchase_order", "PurchaseOrder", window, "purchase orders")
+        ledger["purchase_orders"] = [qbo_open_doc(o, "VendorRef", "purchaseorder") for o in orders if o.get("POStatus") == "Open"]
+        ledger["order_state"] = "are still open, not turned into a bill"
+        na.pop("CHK-093", None)
+    except Exception as exc:
+        ledger.pop("purchase_orders", None)
 
     accounts = pages("list_account", "Account", "Active = true", "accounts")
     ledger["accounts"] = [{"id": str(a.get("Id")), "code": str(a.get("Id")),

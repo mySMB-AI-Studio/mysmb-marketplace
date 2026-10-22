@@ -179,16 +179,20 @@ if csv_path and not problem and not issues:
     item = api.workq.create(
         title=("Import statement into Xero: " + label + (", " + period if period else "") + " (" + str(client.get("name") or slug) + ")")[:200],
         scope="org",
-        description=("**" + str(len(import_rows)) + " transactions** read from the statement, and they add up: it opens at "
-                     + bk_fmt(bk_money(st.get("opening_balance"))) + " and closes at " + bk_fmt(closing) + ". The PDF is attached "
-                     "to " + filed_to + " in Xero.\n\n"
-                     + "".join("- " + n + "\n" for n in import_notes) + ("\n" if import_notes else "")
-                     + "To get the lines into Xero:\n\n"
-                     "1. Download `" + csv_path + "` from Knowledge (it's also in Xero Documents, attached to " + label + ").\n"
-                     "2. In Xero go to Accounting, Bank accounts, " + label + ", the ⋮ menu, Import a Statement.\n"
-                     "3. Upload the CSV. In Import settings choose the date format **dd/mm/yyyy**, then review and import.\n"
-                     "4. Complete this item.\n\n"
-                     "Xero only lets bank feeds add statement lines directly, so this upload stays a manual step."),
+        description=bk_card(
+            "import the CSV below into " + label + " in Xero (steps below), then complete this item.",
+            [("Client", bk_client_label(client)),
+             ("Came from", bk_origin_line(params.get("origin") or {}, settings)),
+             ("Statement", label + (", " + period if period else "") + ": **" + str(len(import_rows)) + " transactions**, "
+              "opening " + bk_fmt(bk_money(st.get("opening_balance"))) + ", closing " + bk_fmt(closing) + " (they add up)"),
+             ("In Xero", "the PDF is attached to " + filed_to),
+             ("CSV", "`" + csv_path + "` in Knowledge (also in Xero Documents, attached to " + label + ")")],
+            body=("".join("- " + n + "\n" for n in import_notes) + ("\n" if import_notes else "")
+                  + "**To get the lines into Xero**\n\n"
+                  "1. Download `" + csv_path + "` from Knowledge.\n"
+                  "2. In Xero go to Accounting, Bank accounts, " + label + ", the ⋮ menu, Import a Statement.\n"
+                  "3. Upload the CSV. In Import settings choose the date format **dd/mm/yyyy**, then review and import.\n\n"
+                  "Xero only lets bank feeds add statement lines directly, so this upload stays a manual step.")),
         priority="medium",
         due_date=str(bk_add_business_days(today, 2)),
         assignee_ids=[reviewer] if reviewer else None,
@@ -202,11 +206,16 @@ elif problem or issues:
         title=("Statement needs attention: " + (label or str(st.get("party_name") or st.get("account_name") or path.split("/")[-1]))
                + (", " + period if period else "") + " (" + str(client.get("name") or slug) + ")")[:200],
         scope="org",
-        description=((problem + "\n\n" if problem else "Filed to " + filed_to + " in Xero.\n\n")
-                     + "".join("- " + i + "\n" for i in issues)
-                     + "\n- File: `" + dest + "` in Knowledge\n\n"
-                     + ("Fix it in Xero (or file the statement by hand), then complete this item." if problem
-                        else "Reconcile the differences in Xero, then complete this item.")),
+        description=bk_card(
+            ("fix what's below in Xero (or file the statement by hand), then complete this item." if problem
+             else "reconcile the differences below in Xero, then complete this item."),
+            [("What went wrong", problem),
+             ("Client", bk_client_label(client) if client.get("name") else slug),
+             ("Came from", bk_origin_line(params.get("origin") or {}, settings)),
+             ("Statement", (label or str(st.get("party_name") or st.get("account_name") or "")) + (", " + period if period else "")),
+             ("In Xero", "" if problem else "filed to " + filed_to),
+             ("File", "`" + dest + "` in Knowledge")],
+            body=("**Differences**\n\n" + "".join("- " + i + "\n" for i in issues)) if issues else ""),
         priority="high" if problem else "medium",
         due_date=str(bk_add_business_days(today, 2)),
         assignee_ids=[owner] if owner else None,

@@ -10,6 +10,8 @@ path = params["path"]
 folder = ctx.get("folder") or path.split("/")[1]
 file_name = path.split("/")[-1]
 today = bk_today(settings)
+origin = params.get("origin") or {}
+needs = params.get("needs_client") or {}
 outcome = ""
 todo_id = ""
 
@@ -23,9 +25,13 @@ if problem:
     item = api.workq.create(
         title=("Bill needs attention: " + file_name + (" (" + client["name"] + ")" if client.get("name") else ""))[:200],
         scope="org",
-        description=(problem + "\n\n- File: `" + dest + "` in Knowledge\n\n"
-                     "When it's fixed, move the PDF back into `" + BK_INBOX + "/" + folder
-                     + "`, or key the bill by hand and complete this item."),
+        description=bk_card(
+            "fix what's below, then move the PDF back into `" + BK_INBOX + "/" + folder + "` in Knowledge to process it "
+            "again, or key the bill into Xero by hand. Then complete this item.",
+            [("What went wrong", problem),
+             ("Client", bk_client_label(client) if client.get("name") else "not set up (folder `" + folder + "`)"),
+             ("Came from", bk_origin_line(origin, settings)),
+             ("File", "`" + dest + "` in Knowledge")]),
         priority="high",
         due_date=str(bk_add_business_days(today, 1)),
         assignee_ids=[owner] if owner else None,
@@ -33,6 +39,71 @@ if problem:
     )
     todo_id = item["id"]
     outcome = "exception"
+elif needs:
+    # Addressed to another business: park the PDF and ask which client it's for (Apply setup acts on the answer).
+    dest = BK_FAILED + "/" + folder + "/" + file_name
+    try:
+        bk_move(path, dest)
+    except Exception:
+        dest = path
+    c = proposal.get("contact") or {}
+    addressed = str(needs.get("addressed_to") or "another business")
+    here = str(client.get("name") or folder)
+    what = ((c.get("name") or "a supplier") + (" " + proposal["invoice_number"] if proposal.get("invoice_number") else "")
+            + (", " + bk_fmt(proposal.get("total"), proposal.get("currency") or "") if proposal.get("total") is not None else ""))
+    if needs.get("kind") == "client":
+        title = "Is this bill for " + str(needs.get("name")) + "? " + what
+        first = ("**" + addressed + "** looks like your client **" + str(needs.get("name")) + "**"
+                 + (" (Xero: " + str(needs["org_name"]) + ")" if needs.get("org_name") else "") + ".")
+        option_one = "it's processed for " + str(needs.get("name")) + " instead, in its own Xero"
+    elif needs.get("kind") == "org":
+        title = "Bill for " + str(needs.get("org_name")) + ", which isn't set up in Bookkeeping: " + what
+        same = bk_norm(addressed) == bk_norm(needs.get("org_name"))
+        first = ("**" + addressed + "** is one of the Xero organisations your Xero connection can see"
+                 + ("" if same else " (**" + str(needs.get("org_name")) + "**)") + ", but it isn't set up as a client in "
+                 "Bookkeeping.")
+        option_one = ("**" + str(needs.get("org_name")) + "** is set up as a client (with the practice's reviewer; you get "
+                      "an item to fill in the rest of its settings) and the bill is processed in its Xero")
+    else:
+        title = "Which client is this bill for? " + what
+        first = ("**" + addressed + "** isn't a client or a Xero organisation your connection can see. It was filed under "
+                 + here + " only because " + here + " is the only client set up.")
+        option_one = ("not available for this one: set the business up first with **Bookkeeping: Start setup**, then "
+                      "choose *Another client* and give its name")
+    new_supplier = ""
+    if c.get("is_new"):
+        new_supplier = ("The supplier **" + str(c.get("name")) + "** isn't in " + here + "'s Xero yet: choosing " + here
+                        + " creates it there when the bill is approved.")
+    owner = bk_exceptions_owner(settings, client)
+    item = api.workq.create(
+        title=re.sub(r"\s+", " ", title)[:200],
+        scope="org",
+        description=bk_card(
+            "say which client this bill is for on the **Which client is this for?** form. Nothing has gone to Xero yet.",
+            [("Bill", what + (", dated " + proposal["date"] if proposal.get("date") else "")),
+             ("Addressed to", addressed),
+             ("Filed under", bk_client_label(client) if client.get("name") else folder),
+             ("Came from", bk_origin_line(origin, settings)),
+             ("File", "`" + dest + "` in Knowledge")],
+            body=first + ("\n\n" + new_supplier if new_supplier else ""),
+            answers=[("The business it's addressed to", option_one),
+                     ("The client it was filed under", "it's processed for " + here + " as normal, and bills addressed to "
+                      "**" + addressed + "** go to " + here + " from now on"),
+                     ("Another client", "name the client in the form; it's processed there, and bills addressed to **"
+                      + addressed + "** go to that client from now on"),
+                     ("None of our clients", "nothing goes to Xero and the PDF stays in `" + BK_FAILED + "/" + folder + "`")]),
+        priority="high",
+        due_date=str(bk_add_business_days(today, 1)),
+        assignee_ids=[owner] if owner else None,
+        labels=["bookkeeping", "bill-exception", "which-client", folder],
+    )
+    api.workq.attach_form(todo_id=item["id"], form_id=params["client_choice_form"])
+    bk_write_json(BK_BILLS + "/" + item["id"] + ".json", {
+        "status": "needs_client", "client_slug": client.get("slug") or folder, "file": dest, "needs": needs,
+        "origin": origin, "supplier": c.get("name") or "", "invoice_number": proposal.get("invoice_number") or "",
+        "total": proposal.get("total"), "created_at": bk_now_iso(settings)})
+    todo_id = item["id"]
+    outcome = "needs_client"
 else:
     tenant = client["xero_tenant_id"]
     dest = BK_PROCESSED + "/" + client["slug"] + "/" + file_name
@@ -50,6 +121,7 @@ else:
         "confidence": params.get("confidence") or "low",
         "file": dest,
         "attach_error": params.get("attach_error") or "",
+        "origin": origin,
         "created_at": bk_now_iso(settings),
         "history": [],
     }
@@ -83,17 +155,16 @@ else:
         outcome = "auto_approved"
     else:
         reviewer = bk_reviewer(settings, client)
-        if record["attach_error"]:
-            warnings = warnings + ["The PDF couldn't be attached to the Xero " + ("invoice" if sales else "bill") + ": "
-                                   + record["attach_error"]]
+        # A PDF that couldn't be attached is shown in the item's PDF line, near the top.
         c = proposal.get("contact") or {}
         title = (("Review sales invoice: " if sales else "Review bill: ") + (c.get("name") or ("customer" if sales else "supplier")) + " " + (proposal.get("invoice_number") or "")
                  + " " + bk_fmt(total, proposal.get("currency") or "") + " (" + client.get("name", "") + ")")
         item = api.workq.create(
             title=re.sub(r"\s+", " ", title)[:200],
             scope="org",
-            description=xero_bill_markdown(proposal, warnings, blocking, bill_id, dest, client.get("name", "")),
-            priority="high" if (blocking or warnings or c.get("is_new")) else "medium",
+            description=xero_bill_markdown(proposal, warnings, blocking, bill_id, dest, client.get("name", ""), client=client,
+                                           origin=origin, attach_error=record["attach_error"], settings=settings),
+            priority="high" if (blocking or warnings or c.get("is_new") or record["attach_error"]) else "medium",
             due_date=str(bk_add_business_days(today, 2)),
             assignee_ids=[reviewer] if reviewer else None,
             labels=["bookkeeping", "invoice-review" if sales else "bill-review", client["slug"]],

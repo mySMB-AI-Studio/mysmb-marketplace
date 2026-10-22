@@ -1,0 +1,392 @@
+{
+  "category": "productivity",
+  "connectorsUsed": [
+    "readai"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "readai",
+    "params": {
+      "expand": [
+        "transcript"
+      ],
+      "limit": 1
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Who spoke the most in your latest meeting, derived from the transcript's per-speaker timestamps.",
+  "id": "readai-speaker-talk-time",
+  "keywords": [
+    "speaker talk time",
+    "talk time",
+    "who spoke",
+    "read ai",
+    "readai"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 5,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "listSection"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider0",
+          "body",
+          "footerRow"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/readai/list_meetings/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/talktime",
+                "value": {
+                  "$computed": "readai_flatten_talk_time",
+                  "args": {
+                    "value": {
+                      "$state": "/readai/list_meetings/data"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "divider0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "Talk-time breakdown not available yet for this meeting."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/readai.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/ui/talktime/speakers/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "footerIcon": {
+        "props": {
+          "name": "ExternalLink",
+          "size": "xs",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "footerLabel": {
+        "props": {
+          "size": "sm",
+          "text": "Open in Read AI",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerIcon",
+          "footerLabel"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/talktime/report_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIconBadge",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "listSection": {
+        "children": [
+          "meetingContextStack",
+          "speakersList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings"
+        }
+      },
+      "meetingCaption": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/talktime/meeting_subtitle"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "meetingContextStack": {
+        "children": [
+          "meetingCaption",
+          "meetingPlatformCaption"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "meetingPlatformCaption": {
+        "props": {
+          "text": {
+            "$state": "/ui/talktime/meeting_platform"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/talktime/meeting_platform"
+        }
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "speakerAvatar": {
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Avatar"
+      },
+      "speakerBar": {
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": {
+            "$item": "bar_pct"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "speakerBarRow": {
+        "children": [
+          "speakerBar"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "speakerName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "speakerNameRow": {
+        "children": [
+          "speakerName",
+          "speakerPercent"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "speakerPercent": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "percent_label"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "speakerRow": {
+        "children": [
+          "speakerAvatar",
+          "speakerTextStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "speakerTextStack": {
+        "children": [
+          "speakerNameRow",
+          "speakerBarRow"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "speakersList": {
+        "children": [
+          "speakerRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/talktime/speakers"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings",
+          "not": true
+        }
+      },
+      "subtitle": {
+        "props": {
+          "text": "Read AI"
+        },
+        "type": "Eyebrow"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Speaker Talk-Time"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Mic",
+          "size": "sm",
+          "tone": "chart-1"
+        },
+        "type": "Icon"
+      },
+      "titleIconBadge": {
+        "children": [
+          "titleIcon"
+        ],
+        "props": {
+          "tone": "chart-1",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "readai",
+    "meetings",
+    "talk time",
+    "speakers"
+  ],
+  "title": "Speaker Talk-Time"
+}

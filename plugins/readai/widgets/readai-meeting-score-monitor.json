@@ -1,0 +1,471 @@
+{
+  "category": "productivity",
+  "connectorsUsed": [
+    "readai"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "readai",
+    "params": {
+      "expand": [
+        "metrics"
+      ],
+      "limit": 2
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Your latest meeting's Read Score, sentiment, and engagement, with trend vs. the previous meeting.",
+  "id": "readai-meeting-score-monitor",
+  "keywords": [
+    "meeting score",
+    "read score",
+    "sentiment",
+    "engagement",
+    "read ai",
+    "readai"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 5,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "calloutEyebrow": {
+        "props": {
+          "text": "LATEST READ SCORE",
+          "tone": "muted",
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "calloutScore": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/scorecard/read_score_label"
+          }
+        },
+        "type": "Stat"
+      },
+      "calloutTier": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/scorecard/read_score_tier"
+          },
+          "tone": "success",
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/readai/list_meetings/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/scorecard",
+                "value": {
+                  "$computed": "readai_flatten_scorecard",
+                  "args": {
+                    "value": {
+                      "$state": "/readai/list_meetings/data"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "content": {
+        "children": [
+          "meetingContextStack",
+          "metricsList",
+          "scoreCallout",
+          "footerRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/readai.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/ui/scorecard/has_data"
+            }
+          ]
+        }
+      },
+      "divider0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No scored meetings yet."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/readai.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/ui/scorecard/has_data",
+              "not": true
+            }
+          ]
+        }
+      },
+      "footerIcon": {
+        "props": {
+          "name": "ExternalLink",
+          "size": "xs",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "footerLabel": {
+        "props": {
+          "size": "sm",
+          "text": "Open in Read AI",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerIcon",
+          "footerLabel"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/scorecard/report_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIconBadge",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings"
+        }
+      },
+      "meetingContextStack": {
+        "children": [
+          "meetingTitleText",
+          "scorecardCaption",
+          "trendContextCaption"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "meetingTitleText": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/scorecard/meeting_title"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "metricBar": {
+        "props": {
+          "tone": {
+            "$item": "bar_tone"
+          },
+          "value": {
+            "$item": "bar_pct"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "metricBarRow": {
+        "children": [
+          "metricBar"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "metricHeaderRow": {
+        "children": [
+          "metricLabel",
+          "metricValueGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "metricLabel": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "label"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "metricRow": {
+        "children": [
+          "metricHeaderRow",
+          "metricBarRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "metricTrendIcon": {
+        "props": {
+          "name": {
+            "$item": "trend_icon"
+          },
+          "size": "xs",
+          "tone": {
+            "$item": "trend_tone"
+          }
+        },
+        "type": "Icon",
+        "visible": {
+          "$item": "trend_label"
+        }
+      },
+      "metricTrendText": {
+        "props": {
+          "text": {
+            "$item": "trend_label"
+          },
+          "tone": {
+            "$item": "trend_tone"
+          }
+        },
+        "type": "Caption",
+        "visible": {
+          "$item": "trend_label"
+        }
+      },
+      "metricValue": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "value_label"
+          },
+          "tone": {
+            "$item": "bar_tone"
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "metricValueGroup": {
+        "children": [
+          "metricValue",
+          "metricTrendIcon",
+          "metricTrendText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "metricsList": {
+        "children": [
+          "metricRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/scorecard/metrics"
+        },
+        "type": "Stack"
+      },
+      "scoreCallout": {
+        "children": [
+          "scoreCalloutInner"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "scoreCalloutInner": {
+        "children": [
+          "calloutEyebrow",
+          "calloutScore",
+          "calloutTier"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "scorecardCaption": {
+        "props": {
+          "text": "Your latest meeting's scorecard",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "subtitle": {
+        "props": {
+          "text": "Read AI"
+        },
+        "type": "Eyebrow"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Meeting Score Monitor"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Gauge",
+          "size": "sm",
+          "tone": "chart-1"
+        },
+        "type": "Icon"
+      },
+      "titleIconBadge": {
+        "children": [
+          "titleIcon"
+        ],
+        "props": {
+          "tone": "chart-1",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "trendContextCaption": {
+        "props": {
+          "text": "Note: ↓ / ↑ shows change vs. your previous meeting",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/scorecard/has_trend"
+        }
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "readai",
+    "meetings",
+    "score",
+    "sentiment",
+    "engagement"
+  ],
+  "title": "Meeting Score Monitor"
+}

@@ -1,0 +1,392 @@
+{
+  "category": "productivity",
+  "connectorsUsed": [
+    "readai"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "readai",
+    "params": {
+      "expand": [
+        "action_items"
+      ],
+      "limit": 5
+    },
+    "tool": "list_meetings"
+  },
+  "description": "Follow-up action items pulled from your recent Read.ai meetings.",
+  "id": "readai-action-items-tracker",
+  "keywords": [
+    "action items",
+    "follow ups",
+    "tasks",
+    "read ai",
+    "readai"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 5,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "listSection"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "divider0",
+          "body",
+          "footerRow"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/readai/list_meetings/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/action_items",
+                "value": {
+                  "$computed": "readai_flatten_action_items",
+                  "args": {
+                    "value": {
+                      "$state": "/readai/list_meetings/data"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "divider0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No action items found in recent meetings."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/readai.list_meetings",
+              "not": true
+            },
+            {
+              "$state": "/ui/action_items/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "footerChevron": {
+        "props": {
+          "name": "ChevronRight",
+          "size": "xs",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "footerIcon": {
+        "props": {
+          "name": "ExternalLink",
+          "size": "xs",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "footerLabel": {
+        "props": {
+          "size": "sm",
+          "text": "Open in Read AI",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerIcon",
+          "footerLabel",
+          "footerChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://app.read.ai"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIconBadge",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "itemDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "priority_tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "itemMeetingCaption": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "meeting_title"
+          },
+          "tone": "chart-1",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "itemPriorityBadge": {
+        "props": {
+          "text": {
+            "$item": "priority_label"
+          },
+          "tone": {
+            "$item": "priority_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "itemRow": {
+        "children": [
+          "itemDot",
+          "itemTextStack",
+          "itemTrailingGroup"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "itemText": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "text"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "itemTextStack": {
+        "children": [
+          "itemText",
+          "itemMeetingCaption"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "itemTrailingGroup": {
+        "children": [
+          "itemPriorityBadge",
+          "itemViewButton"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "itemViewButton": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$bindItem": "report_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "View in Read AI",
+          "icon": "ExternalLink",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "IconButton"
+      },
+      "itemsList": {
+        "children": [
+          "itemRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/action_items"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings",
+          "not": true
+        }
+      },
+      "listSection": {
+        "children": [
+          "pulledFromCaption",
+          "priorityNote",
+          "itemsList"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/readai.list_meetings"
+        }
+      },
+      "priorityNote": {
+        "props": {
+          "text": "Note: priority is an estimated guide, not provided by Read AI",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/action_items/0"
+        }
+      },
+      "pulledFromCaption": {
+        "props": {
+          "size": "sm",
+          "text": "Pulled from recent meetings",
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "subtitle": {
+        "props": {
+          "text": "Read AI"
+        },
+        "type": "Eyebrow"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Action Items Tracker"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "ClipboardList",
+          "size": "sm",
+          "tone": "chart-1"
+        },
+        "type": "Icon"
+      },
+      "titleIconBadge": {
+        "children": [
+          "titleIcon"
+        ],
+        "props": {
+          "tone": "chart-1",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "readai",
+    "meetings",
+    "action items",
+    "follow-ups"
+  ],
+  "title": "Action Items Tracker"
+}

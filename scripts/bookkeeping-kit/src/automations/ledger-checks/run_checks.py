@@ -44,6 +44,14 @@ else:
     for client in clients:
         path = BK_CHECKS + "/" + client["slug"] + ".json"
         state = bk_read_json(path) or {"version": 1, "slug": client["slug"]}
+        # A manual run for named clients can set how far back the checks look (a test company's seeded history); it
+        # stays until a manual run sets 0, so its findings don't close the next night.
+        if only and str(params.get("look_back_months") or "").strip():
+            months = int(re.sub(r"\D", "", str(params.get("look_back_months"))) or 0)
+            if months:
+                state["look_back_months"] = min(months, CK_LOOK_BACK_MAX_MONTHS)
+            else:
+                state.pop("look_back_months", None)
         if not only and state.get("last_daily") == str(today):
             continue
         failed = state.get("failed") or {}
@@ -60,6 +68,9 @@ else:
         try:
             since = (min(ck_fy_start(today), today - datetime.timedelta(days=90)) if weekly
                      else today - datetime.timedelta(days=CK_DAILY_DAYS))
+            look_back = ck_look_back_days(state)
+            if look_back:
+                since = min(since, today - datetime.timedelta(days=look_back))
             ledger = bk_ledger(client, today, since, weekly)
             snap = state.setdefault("snapshot", {})
             if snap.get("key_id") != key_id:
@@ -70,7 +81,8 @@ else:
             intake = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-intake.json") or {}
             register = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-abr.json") if weekly else None
             assets = bk_read_json(BK_CHECKS + "/" + client["slug"] + "-assets.json") if weekly else None
-            found, evaluated = ck_run(ledger, client, snap, today, secret, intake.get("captured"), register, intake.get("abns"), assets)
+            found, evaluated = ck_run(ledger, client, snap, today, secret, intake.get("captured"), register, intake.get("abns"), assets,
+                                      look_back)
             item = ck_find_item(state, client)
             ticked = ck_ticked((item or {}).get("description")) if ck_item_open(item) else set()
             new, resolved = ck_reconcile(state, found, evaluated, ticked, today)
@@ -78,8 +90,10 @@ else:
             if weekly:
                 state["last_weekly"] = str(today)
             state["truncated"] = ledger.get("truncated") or []
-            if ledger.get("na"):
-                state["na"] = sorted(ledger["na"])
+            # Only a weekly run reads everything, so only it decides what isn't checked (a daily run skips the
+            # weekly lookups and would list those again).
+            if "na" in ledger and (weekly or "na" not in state):
+                state["na"] = sorted(ledger["na"] or [])
             state.pop("failed", None)
             what = ck_sync_item(client, settings, state, item, new, resolved, params["findings_form"])
             bk_write_json(path, state)

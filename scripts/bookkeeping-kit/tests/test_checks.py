@@ -22,6 +22,18 @@ def day(n):
     return str(TODAY - datetime.timedelta(days=n))
 
 
+def month_day(k, d=15):
+    """Day d of the month k months ago (k=0: this month), never later than today."""
+    m = TODAY.replace(day=1)
+    for _ in range(k):
+        m = (m - datetime.timedelta(days=1)).replace(day=1)
+    return str(min(m.replace(day=d), TODAY))
+
+
+def plus(date, n):
+    return str(datetime.date.fromisoformat(date) + datetime.timedelta(days=n))
+
+
 def last_month_day():
     return str((TODAY.replace(day=1) - datetime.timedelta(days=1)).replace(day=10))
 
@@ -144,6 +156,9 @@ class Checks(unittest.TestCase):
         self.assertIn("[Open in Xero](https://go.xero.com/organisationlogin/default.aspx?shortcode=!Ab12C"
                       "&redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=b2)", item["description"])
         self.assertEqual(self.state()["todo_id"], item["id"])
+        # Xero's bank statement lines are a restricted API: CHK-023 is listed as not checked, never shown as clear.
+        self.assertIn("Not checked, as Xero's API doesn't give what they need: CHK-023.", item["description"])
+        self.assertEqual(self.state()["na"], ["CHK-023"])
         # Already checked today: the next scheduled run skips it.
         run_flow(self.w, AUTOS[AUTO], {"kind": "schedule"}, {"client_name": ""})
         self.assertEqual(len(self.items()), 1)
@@ -404,6 +419,11 @@ class Checks(unittest.TestCase):
             self.assertIn(text, page)
         # Its own white page, so it reads the same in a dark-themed viewer.
         self.assertIn("html{background:#ffffff", page)
+        # Links open in a new tab: the report shows in a frame, and Xero refuses to load inside one (a white screen on QA).
+        self.assertIn("<base target='_blank'>", page)
+        links = re.findall(r"<a [^>]*>", page)
+        self.assertTrue(links)
+        self.assertTrue(all("target='_blank'" in a and "noopener" in a for a in links), links)
         self.assertEqual(self.w.notifications[0]["user_ids"], [OWNER])
         self.overnight()
         self.assertEqual(len(self.w.artifacts), 1)
@@ -564,6 +584,240 @@ class Checks(unittest.TestCase):
         self.w.files["Bookkeeping/Checks/acme-plumbing.json"] = json.dumps(state)
         self.overnight()
         self.assertFalse(any(f["check"] == "CHK-071" for f in self.state().get("findings", {}).values()))
+
+    # ── the checks built from the seed packs (21 Oct) ──
+    def test_an_asic_fee_overdue_or_due_soon_is_high(self):
+        asic = self.add(contact("c-asic", "ASIC", "86768265615"))
+        self.org["invoices"] += [doc("a1", "ASIC-2026", asic, day(40), 321.0, due=day(30), tax=0),
+                                 doc("a2", "ASIC-LATE", asic, day(20), 96.0, due=day(-5), tax=0),
+                                 doc("a3", "ASIC-2025", asic, day(60), 310.0, due=day(50), status="PAID", paid_on=day(52), tax=0),
+                                 doc("a4", "ASIC-NEXT", asic, day(5), 321.0, due=day(-60), tax=0)]
+        self.overnight()
+        lines = [l for l in self.open_item()["description"].split("\n") if "CHK-170" in l]
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn("**High**", lines[0])
+        self.assertTrue(any("ASIC-2026 of $321.00 was due on" in l and "is unpaid" in l for l in lines))
+        self.assertTrue(any("ASIC-LATE of $96.00 is due on" in l for l in lines))
+
+    def test_nearly_the_same_bill_number_is_an_advanced_duplicate(self):
+        telstra = self.add(contact("c-tel", "Telstra Corporation Ltd", "33051775556"))
+        self.org["invoices"] += [doc("t1", "TEL-0515", telstra, day(10), 330.0, status="PAID", paid_on=day(9)),
+                                 doc("t2", "TEL-0515R", telstra, day(7), 330.0, status="PAID", paid_on=day(6)),
+                                 # Different numbers that just share a start aren't duplicates.
+                                 doc("t3", "INV-100", telstra, day(30), 99.0, due=day(-30)),
+                                 doc("t4", "INV-1001", telstra, day(12), 99.0, due=day(-30))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-081 Duplicate Bill Raised Advanced", desc)
+        self.assertIn("TEL-0515", desc)
+        self.assertNotIn("CHK-080", desc, "one finding per pair: the advanced duplicate")
+        self.assertNotIn("INV-1001", desc)
+
+    def test_spend_money_to_a_supplier_that_is_billed(self):
+        ms = self.add(contact("c-ms", "Microsoft Australia Pty Ltd", "29002589460"))
+        self.org["invoices"] += [doc("m1", "MS-07", ms, day(60), 660.0, account="489", status="PAID", paid_on=day(55)),
+                                 doc("m2", "MS-08", ms, day(30), 660.0, account="489", status="PAID", paid_on=day(25))]
+        self.org["BankTransactions"] = [spend("e16", ms, day(12), 660.0, account="489")]
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-074", desc)
+        self.assertIn("1 spend money payment(s) to Microsoft Australia Pty Ltd", desc)
+        self.assertIn("which is normally billed (2 bills)", desc)
+
+    def test_fuel_bought_and_no_fuel_tax_credits(self):
+        bp = self.add(contact("c-bp", "BP Australia", "40337466735"))
+        self.org["BankTransactions"] = [spend("e21", bp, day(12), 1480.0, account="449")]
+        self.overnight()
+        self.assertIn("CHK-131", self.open_item()["description"])
+        self.assertIn("$1,480.00 of fuel bought (BP Australia)", self.open_item()["description"])
+
+    def test_no_fuel_tax_credit_finding_when_they_are_recorded(self):
+        bp = self.add(contact("c-bp", "BP Australia", "40337466735"))
+        self.org["BankTransactions"] = [spend("e21", bp, day(12), 1480.0, account="449")]
+        self.org["accounts"].append({"AccountID": "acc-275", "Code": "275", "Name": "Fuel Tax Credits", "Type": "OTHERINCOME",
+                                     "Class": "REVENUE", "Status": "ACTIVE"})
+        self.org["profit_and_loss"]["income"]["acc-275"] = 310.0
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "CHK-131" in i["description"]])
+
+    def test_a_suppliers_bill_coded_to_an_unusual_account(self):
+        jm = self.add(contact("c-jm", "Jacaranda Marketing", "25671877382"))
+        self.org["invoices"] += [doc("j%d" % i, "JM-1%02d" % i, jm, day(70 - 10 * i), 880.0, account="400", status="PAID",
+                                     paid_on=day(68 - 10 * i)) for i in range(4)]
+        self.org["invoices"].append(doc("j9", "JM-127", jm, day(8), 880.0, account="429"))
+        self.overnight()
+        line = next(l for l in self.open_item()["description"].split("\n") if "CHK-094" in l)
+        self.assertIn("Jacaranda Marketing's expense is nearly always coded to 400 Advertising (4 of 5 lines)", line)
+        self.assertIn("bill JM-127 → 429 General Expenses", line)
+        self.assertIn("heuristic", line)
+
+    def test_a_fixed_asset_account_with_no_depreciation_account(self):
+        self.org["accounts"] += [
+            {"AccountID": "acc-710", "Code": "710", "Name": "Office Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-720", "Code": "720", "Name": "Computer Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-721", "Code": "721", "Name": "Less Accumulated Depreciation on Computer Equipment", "Type": "FIXED",
+             "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-700", "Code": "700", "Name": "Land", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"}]
+        self.org["trial_balance"] = {str(TODAY): {"acc-710": 8000.0, "acc-720": 5000.0, "acc-721": -1000.0, "acc-700": 90000.0}}
+        self.overnight()
+        lines = [l for l in self.open_item()["description"].split("\n") if "CHK-141" in l]
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("Fixed asset account 710 Office Equipment has a balance of $8,000.00", lines[0])
+
+    def test_one_general_depreciation_account_means_no_fixed_asset_account_finding(self):
+        self.org["accounts"] += [
+            {"AccountID": "acc-710", "Code": "710", "Name": "Office Equipment", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"},
+            {"AccountID": "acc-711", "Code": "711", "Name": "Accumulated Depreciation", "Type": "FIXED", "Class": "ASSET", "Status": "ACTIVE"}]
+        self.org["trial_balance"] = {str(TODAY): {"acc-710": 8000.0, "acc-711": -2000.0}}
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "CHK-141" in i["description"]])
+
+    def test_a_manual_look_back_finds_older_duplicates_and_stays_until_set_to_0(self):
+        bayside = self.add(contact("c-bos", "Bayside Office Supplies", "93107930949"))
+        self.org["invoices"] += [doc("b1", "BOS-0412", bayside, day(210), 462.0, status="PAID", paid_on=day(200)),
+                                 doc("b2", "BOS-0412", bayside, day(203), 462.0, status="PAID", paid_on=day(196))]
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "BOS-0412" in i["description"]], "older than the daily checks' 35 days")
+        manual = {"kind": "manual", "actor_user_id": OWNER}
+        run_flow(self.w, AUTOS[AUTO], manual, {"client_name": "Acme Plumbing", "look_back_months": "12"})
+        desc = self.open_item()["description"]
+        self.assertIn("CHK-080", desc)
+        self.assertIn("**Looking back 12 months**", desc)
+        self.overnight()
+        self.assertIn("CHK-080", self.open_item()["description"], "the next night still looks back, so it stays open")
+        run_flow(self.w, AUTOS[AUTO], manual, {"client_name": "Acme Plumbing", "look_back_months": "0"})
+        self.assertNotIn("look_back_months", self.state())
+
+    # ── behaviour checks: a contact's month or overdue documents against its own history ──
+    def sale(self, doc_id, number, who, date, total, paid_after=None, due=None):
+        """A sales invoice; paid_after: days after its date it was paid (None: still owed)."""
+        if paid_after is None:
+            return doc(doc_id, number, who, date, total, kind="ACCREC", account="200", tax_type="OUTPUT", sent=True,
+                       due=due or plus(date, 30))
+        return doc(doc_id, number, who, date, total, kind="ACCREC", account="200", tax_type="OUTPUT", sent=True,
+                   due=plus(date, 30), status="PAID", paid_on=plus(date, paid_after))
+
+    def test_a_month_far_above_a_customers_and_a_suppliers_usual(self):
+        harbour = self.add(contact("c-hl", "Harbourline Logistics Pty Ltd", "71938570839"))
+        ms = self.add(contact("c-ms", "Microsoft Australia Pty Ltd", "29002589460"))
+        for k in (3, 2, 1):
+            self.org["invoices"] += [self.sale("h%d" % k, "INV-10%d" % k, harbour, month_day(k), 4400.0, paid_after=15),
+                                     doc("m%d" % k, "MS-%d" % k, ms, month_day(k), 660.0, account="489", status="PAID",
+                                         paid_on=plus(month_day(k), 3))]
+        self.org["invoices"] += [self.sale("h0", "INV-1052", harbour, month_day(0, 1), 39050.0, due=day(-30)),
+                                 doc("m0", "MS-0", ms, month_day(0, 1), 1980.0, account="489", due=day(-30))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        line = next(l for l in desc.split("\n") if "CHK-036" in l)
+        self.assertIn("Harbourline Logistics Pty Ltd was invoiced $39,050.00 in", line)
+        self.assertIn("against a usual $4,400.00 a month (3 earlier months)", line)
+        self.assertIn("Microsoft Australia Pty Ltd billed $1,980.00 in", next(l for l in desc.split("\n") if "CHK-082" in l))
+
+    def test_an_overdue_invoice_from_a_customer_that_usually_pays_in_about_20_days(self):
+        harbour = self.add(contact("c-hl", "Harbourline Logistics Pty Ltd", "71938570839"))
+        self.org["invoices"] += [self.sale("h%d" % k, "INV-11%d" % k, harbour, day(60 + 30 * k), 3960.0, paid_after=20)
+                                 for k in range(3)]
+        self.org["invoices"].append(self.sale("h9", "INV-1003", harbour, day(274), 3960.0, due=day(244)))
+        self.overnight()
+        line = next(l for l in self.open_item()["description"].split("\n") if "CHK-037" in l)
+        self.assertIn("Invoice INV-1003 to Harbourline Logistics Pty Ltd ($3,960.00) is 244 days overdue", line)
+        self.assertIn("usually paid within about 20 days (3 paid)", line)
+
+    def test_several_overdue_invoices_after_a_steady_history_are_one_finding(self):
+        sunline = self.add(contact("c-ss", "Sunline Solar Pty Ltd", "27295289264"))
+        self.org["invoices"] += [self.sale("s%d" % k, "INV-20%d" % k, sunline, day(140 + 30 * k), 3300.0, paid_after=20)
+                                 for k in range(3)]
+        self.org["invoices"] += [self.sale("s7", "INV-1032", sunline, day(107), 3564.0, due=day(77)),
+                                 self.sale("s8", "INV-1037", sunline, day(77), 3960.0, due=day(47)),
+                                 self.sale("s9", "INV-1042", sunline, day(47), 2750.0, due=day(17))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        line = next(l for l in desc.split("\n") if "CHK-038" in l)
+        self.assertIn("3 invoices to Sunline Solar Pty Ltd ($10,274.00) are overdue (INV-1032 77 days, INV-1037 47 days, "
+                      "INV-1042 17 days)", line)
+        self.assertNotIn("CHK-037", desc, "grouped, not one finding each")
+
+    def test_overdue_bills_from_suppliers_usually_paid_promptly(self):
+        coastal = self.add(contact("c-cib", "Coastal Insurance Brokers Pty Ltd", "71014323325"))
+        granite = self.add(contact("c-gpg", "Granite Property Group Pty Ltd", "76676336067"))
+        self.org["invoices"].append(doc("c1", "CIB-2026-01", coastal, day(280), 3520.0, due=day(250), status="PAID", paid_on=day(265)))
+        self.org["invoices"].append(doc("c2", "CIB-2026-07", coastal, day(98), 3520.0, due=day(68)))
+        self.org["invoices"] += [doc("g%d" % k, "GPG-0%d" % k, granite, day(90 + 30 * k), 5500.0, due=day(83 + 30 * k),
+                                     status="PAID", paid_on=day(85 + 30 * k)) for k in range(3)]
+        self.org["invoices"] += [doc("g8", "GPG-08", granite, day(81), 5500.0, due=day(74)),
+                                 doc("g9", "GPG-09", granite, day(51), 5500.0, due=day(44)),
+                                 doc("g10", "GPG-10", granite, day(21), 5500.0, due=day(14))]
+        self.overnight()
+        desc = self.open_item()["description"]
+        self.assertIn("Bill CIB-2026-07 from Coastal Insurance Brokers Pty Ltd ($3,520.00) is 68 days overdue",
+                      next(l for l in desc.split("\n") if "CHK-083" in l))
+        self.assertIn("3 bills from Granite Property Group Pty Ltd ($16,500.00) are overdue",
+                      next(l for l in desc.split("\n") if "CHK-084" in l))
+
+    def test_a_customer_that_pays_at_all_sorts_of_times_isnt_unusual(self):
+        slow = self.add(contact("c-sl", "Slow Payers Pty Ltd", "33102417032"))
+        self.org["invoices"] += [self.sale("p%d" % k, "INV-30%d" % k, slow, day(200 + 20 * k), 990.0, paid_after=after)
+                                 for k, after in enumerate((15, 60, 90, 120))]
+        self.org["invoices"].append(self.sale("p9", "INV-309", slow, day(150), 990.0, due=day(120)))
+        self.overnight()
+        self.assertFalse([i for i in self.items() if "CHK-037" in i["description"]])
+
+    # ── the test register (a test company's made-up ABNs aren't on the register) ──
+    def register_csv(self, cancelled_on):
+        """The seed packs' "Registry fixture" tab saved as CSV: title lines, then the header, then one row per contact."""
+        dmy = datetime.date.fromisoformat(cancelled_on).strftime("%d/%m/%Y")
+        return ("﻿Registry fixture — ABR mock for the demo (agent configuration C12)\n"
+                "Identical to the other packs\n"
+                "Contact,ABN on record,Registry entity name,ABN status,GST registration,DGR,Checks\n"
+                "Plumbing Supplies Co,51 824 753 556,Plumbing Supplies Co,Active,Registered,No,\n"
+                "Gone Electrical,53 004 085 616,Gone Electrical Pty Ltd,Cancelled (" + dmy + "),Not registered,No,CHK-071\n"
+                "Northbank Consulting,12 345 678 901,—,Not found (invalid checksum),—,No,CHK-004\n"
+                "Hilltop Cleaning,,Hilltop Cleaning (sole trader),Active — found by name,Not registered,No,\n")
+
+    def test_a_test_register_replaces_the_register_for_that_client_only(self):
+        gone = self.add(contact("c-gone", "Gone Electrical", "53004085616"))
+        self.add(contact("c-north", "Northbank Consulting", "12345678901"))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        # The real register knows neither ABN, as with the seed packs' made-up ones.
+        self.w.files["Bookkeeping/Test register/Acme Plumbing Pty Ltd.csv"] = self.register_csv(day(30))
+        self.register_then_weekly()
+        self.assertEqual(self.w.abr.calls, [], "a test company never reaches the register")
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertEqual(cache["test_register"], "Bookkeeping/Test register/Acme Plumbing Pty Ltd.csv")
+        self.assertEqual(cache["abns"]["53004085616"]["status_from"], day(30))
+        self.assertTrue(cache["abns"]["51824753556"]["gst_registered"])
+        desc = self.register_desc()
+        self.assertIn("**Test register:**", desc)
+        self.assertIn("Gone Electrical's ABN 53004085616 was cancelled on", desc)
+        self.assertIn("Northbank Consulting (12345678901 fails the ABN checksum)", desc)
+        for line in desc.split("\n"):
+            if "CHK-071" in line or "CHK-004" in line:
+                self.assertIn("(Test register, not the Australian Business Register.)", line)
+
+    def test_deleting_the_test_register_goes_back_to_the_register(self):
+        gone = self.add(contact("c-gone", "Gone Electrical", "53004085616"))
+        self.org["invoices"].append(doc("g1", "GE-9", gone, day(10), 550.0))
+        path = "Bookkeeping/Test register/Acme Plumbing.csv"
+        self.w.files[path] = self.register_csv(day(30))
+        self.register_then_weekly()
+        self.assertIn("CHK-071", self.register_desc())
+        del self.w.files[path]
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        run_flow(self.w, AUTOS["Bookkeeping: Register lookups (ABR)"], {"kind": "schedule"}, {"client_name": ""})
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertNotIn("test_register", cache)
+        self.assertTrue(self.w.abr.calls, "the register is asked again")
+        self.assertFalse(cache["abns"]["53004085616"]["found"], "the file's cancelled record is forgotten")
+        self.assertEqual(cache["abns"]["51824753556"]["status"], "Active")
+
+    def test_another_clients_test_register_is_ignored(self):
+        self.on_register("51824753556", "Plumbing Supplies Co")
+        self.w.files["Bookkeeping/Test register/Other Business.csv"] = self.register_csv(day(30))
+        self.overnight()
+        run_flow(self.w, AUTOS["Bookkeeping: Register lookups (ABR)"], {"kind": "schedule"}, {"client_name": ""})
+        cache = json.loads(self.w.files["Bookkeeping/Checks/acme-plumbing-abr.json"])
+        self.assertNotIn("test_register", cache)
+        self.assertTrue(self.w.abr.calls)
 
     def test_register_lookups_rechecks_weekly_and_never_stores_the_digits_it_doesnt_need(self):
         self.on_register("51824753556", "Plumbing Supplies Co")
