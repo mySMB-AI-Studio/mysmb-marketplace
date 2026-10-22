@@ -116,6 +116,42 @@ const today_plus_6_date = () => {
     d.setUTCDate(d.getUTCDate() + 6);
     return d.toISOString().slice(0, 10);
 };
+/**
+ * "12 Oct 2026 at 2:30 pm (New Caledonia)" for a next-available-time result,
+ * formatted in the PRACTICE's own configured business timezone — not the
+ * viewer's — so the slot shown matches what Cliniko itself displays. Confirmed
+ * live: `list_businesses` returns both `time_zone_identifier` (IANA, e.g.
+ * "Pacific/Noumea") and `time_zone` (human label, e.g. "New Caledonia")
+ * directly on each business record — no extra API call needed. Falls back to
+ * the viewer's local timezone (and drops the label) if the business can't be
+ * found or carries no timezone, rather than showing nothing.
+ * Args: { value: string (UTC ISO appointment_start), businesses: array, businessId: string }
+ */
+const format_next_available = (args) => {
+    const raw = args.value;
+    if (!raw || typeof raw !== 'string')
+        return '—';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime()))
+        return '—';
+    const businesses = Array.isArray(args.businesses) ? args.businesses : [];
+    const id = String(args.businessId ?? '');
+    const match = businesses.find((b) => String(b?.id ?? '') === id);
+    const tzId = match ? String(match.time_zone_identifier ?? '') : '';
+    const tzLabel = match ? String(match.time_zone ?? '') : '';
+    let dateStr;
+    let timeStr;
+    try {
+        const opts = tzId ? { timeZone: tzId } : {};
+        dateStr = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', ...opts });
+        timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, ...opts });
+    }
+    catch {
+        dateStr = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+        timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+    return tzLabel ? `${dateStr} at ${timeStr} (${tzLabel})` : `${dateStr} at ${timeStr}`;
+};
 const elements = {
     slug: 'cliniko-scheduling',
     functions: {
@@ -127,6 +163,7 @@ const elements = {
         patient_web_url,
         today_date,
         today_plus_6_date,
+        format_next_available,
     },
 };
 export default elements;
