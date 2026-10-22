@@ -117,15 +117,15 @@ const today_plus_6_date = () => {
     return d.toISOString().slice(0, 10);
 };
 /**
- * "12 Oct 2026 at 2:30 pm (New Caledonia)" for a next-available-time result,
- * formatted in the PRACTICE's own configured business timezone — not the
- * viewer's — so the slot shown matches what Cliniko itself displays. Confirmed
- * live: `list_businesses` returns both `time_zone_identifier` (IANA, e.g.
- * "Pacific/Noumea") and `time_zone` (human label, e.g. "New Caledonia")
- * directly on each business record — no extra API call needed. Falls back to
- * the viewer's local timezone (and drops the label) if the business can't be
- * found or carries no timezone, rather than showing nothing.
- * Args: { value: string (UTC ISO appointment_start), businesses: array, businessId: string }
+ * "12 Oct 2026 at 2:30 pm (Sydney time)" for a next-available-time result.
+ * Always formats in Australia/Sydney — NOT derived from the business
+ * record's own configured timezone. This plugin's test org has its business
+ * set to Pacific/Noumea (New Caledonia), which doesn't reflect where the
+ * practice actually is, and every other automation in this cycle already
+ * falls back to "Australia/Sydney" as the sensible default when a per-practice
+ * timezone isn't being honoured — matching that convention here rather than
+ * trusting unreliable test-org configuration.
+ * Args: { value: string (UTC ISO appointment_start) }
  */
 const format_next_available = (args) => {
     const raw = args.value;
@@ -134,23 +134,10 @@ const format_next_available = (args) => {
     const d = new Date(raw);
     if (Number.isNaN(d.getTime()))
         return '—';
-    const businesses = Array.isArray(args.businesses) ? args.businesses : [];
-    const id = String(args.businessId ?? '');
-    const match = businesses.find((b) => String(b?.id ?? '') === id);
-    const tzId = match ? String(match.time_zone_identifier ?? '') : '';
-    const tzLabel = match ? String(match.time_zone ?? '') : '';
-    let dateStr;
-    let timeStr;
-    try {
-        const opts = tzId ? { timeZone: tzId } : {};
-        dateStr = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', ...opts });
-        timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, ...opts });
-    }
-    catch {
-        dateStr = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-        timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-    }
-    return tzLabel ? `${dateStr} at ${timeStr} (${tzLabel})` : `${dateStr} at ${timeStr}`;
+    const opts = { timeZone: 'Australia/Sydney' };
+    const dateStr = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', ...opts });
+    const timeStr = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, ...opts });
+    return `${dateStr} at ${timeStr} (Sydney time)`;
 };
 const elements = {
     slug: 'cliniko-scheduling',
