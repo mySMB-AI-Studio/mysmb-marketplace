@@ -290,6 +290,73 @@ const flatten_key_questions = (args) => {
     }
     return rows.slice(0, MAX_KEY_QUESTIONS);
 };
+const UNCATEGORIZED_FOLDER = 'Uncategorized';
+const MAX_FOLDERS = 10;
+/**
+ * Flattens list_meetings' raw `data` array into a single FLAT list of rows
+ * for the Meeting Folders tile: a "folder" row per distinct folder name
+ * (newest-active-folder-first, i.e. in the order its first meeting appears
+ * in the already-newest-first `data` array), immediately followed by a
+ * "meeting" row for each meeting filed under it. A meeting with more than
+ * one folder appears once under each.
+ *
+ * There's no nested/relative repeat in this plugin system's widget schema
+ * (repeat.statePath is always an absolute state path, confirmed against
+ * every other tile in this marketplace — none nests a repeat over a parent
+ * item's own array), so this returns one flat array rather than
+ * folder-objects-containing-meeting-arrays. The tile's single repeated row
+ * template shows either the folder header or a meeting line depending on
+ * each row's own `row_type`, with meeting rows additionally gated on
+ * matching the currently-expanded folder id — same "$item eq $state"
+ * accordion pattern already used by hubspot-support-tickets' ticket detail.
+ *
+ * A meeting with no folders at all (Read.ai's own field can come back empty
+ * or missing — not observed live, but documented as an array) is bucketed
+ * under "Uncategorized" rather than silently dropped.
+ *
+ * Args: { value: array } — list_meetings' raw `data` array.
+ */
+const flatten_folders = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const order = [];
+    const byFolder = new Map();
+    for (const meeting of raw) {
+        const names = Array.isArray(meeting.folders) && meeting.folders.length > 0
+            ? meeting.folders
+            : [UNCATEGORIZED_FOLDER];
+        const startMs = Number(meeting.start_time_ms ?? 0);
+        const meetingRow = {
+            id: String(meeting.id ?? ''),
+            title: String(meeting.title ?? 'Untitled meeting'),
+            subtitle: startMs ? formatMeetingSubtitle(startMs, meeting.platform) : '',
+            report_url: String(meeting.report_url ?? ''),
+        };
+        for (const name of names) {
+            if (!byFolder.has(name)) {
+                byFolder.set(name, []);
+                order.push(name);
+            }
+            byFolder.get(name).push(meetingRow);
+        }
+    }
+    const rows = [];
+    for (const name of order.slice(0, MAX_FOLDERS)) {
+        const folderId = `folder:${name}`;
+        const meetings = byFolder.get(name);
+        rows.push({ id: folderId, row_type: 'folder', folder_id: folderId, name, meeting_count: meetings.length });
+        meetings.forEach((m, index) => {
+            rows.push({
+                id: `${folderId}:${m.id || index}`,
+                row_type: 'meeting',
+                folder_id: folderId,
+                title: m.title,
+                subtitle: m.subtitle,
+                report_url: m.report_url,
+            });
+        });
+    }
+    return rows;
+};
 // Rank-based, not name-hashed like toneForName — the whole point is for the
 // bar + name + percentage of the SAME speaker to share one color, and for
 // the biggest talker to consistently read as the "lead" color regardless of
@@ -382,6 +449,7 @@ const elements = {
         flatten_scorecard,
         flatten_action_items,
         flatten_key_questions,
+        flatten_folders,
         flatten_talk_time,
     },
 };
