@@ -255,6 +255,41 @@ const flatten_action_items = (args) => {
     }
     return rows.slice(0, MAX_ACTION_ITEMS);
 };
+const MAX_KEY_QUESTIONS = 8;
+/**
+ * Flattens list_meetings(expand=["key_questions"])' raw `data` array into
+ * display rows for the Key Questions Tracker tile: one row per question
+ * sentence, tagged with the title of the meeting it came from. Meetings are
+ * already newest-first, so questions are taken in that order and capped at
+ * MAX_KEY_QUESTIONS so one meeting with a long list can't crowd out the rest
+ * — same capping approach as flatten_action_items.
+ *
+ * Unlike action items, there's no keyword-estimated priority here: a
+ * question doesn't carry the same "urgent vs. nice-to-have" signal a task
+ * does, so each row is just the question text plus where it came from.
+ *
+ * Args: { value: array } — list_meetings' raw `data` array.
+ */
+const flatten_key_questions = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const rows = [];
+    for (const meeting of raw) {
+        const meetingTitle = String(meeting.title ?? 'Untitled meeting');
+        const reportUrl = String(meeting.report_url ?? '');
+        const questions = Array.isArray(meeting.key_questions) ? meeting.key_questions : [];
+        questions.forEach((text, index) => {
+            rows.push({
+                id: `${meeting.id ?? meetingTitle}-${index}`,
+                text: String(text ?? ''),
+                meeting_title: meetingTitle,
+                report_url: reportUrl,
+            });
+        });
+        if (rows.length >= MAX_KEY_QUESTIONS)
+            break;
+    }
+    return rows.slice(0, MAX_KEY_QUESTIONS);
+};
 // Rank-based, not name-hashed like toneForName — the whole point is for the
 // bar + name + percentage of the SAME speaker to share one color, and for
 // the biggest talker to consistently read as the "lead" color regardless of
@@ -346,6 +381,7 @@ const elements = {
         flatten_meetings,
         flatten_scorecard,
         flatten_action_items,
+        flatten_key_questions,
         flatten_talk_time,
     },
 };

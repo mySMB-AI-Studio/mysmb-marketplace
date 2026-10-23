@@ -127,6 +127,10 @@ interface ReadAiMeeting {
   // active/very recent meeting may have no summary yet (generated after the
   // meeting concludes), so it can come back missing entirely.
   summary?: string | null;
+  // Confirmed live (list_meetings(expand=["key_questions"])): a plain array
+  // of free-text question sentences — same shape as action_items, no
+  // structured answered/unanswered or assignee field from Read.ai itself.
+  key_questions?: string[] | null;
 }
 
 /**
@@ -313,6 +317,44 @@ const flatten_action_items: ComputedFunction = (args) => {
   return rows.slice(0, MAX_ACTION_ITEMS);
 };
 
+const MAX_KEY_QUESTIONS = 8;
+
+/**
+ * Flattens list_meetings(expand=["key_questions"])' raw `data` array into
+ * display rows for the Key Questions Tracker tile: one row per question
+ * sentence, tagged with the title of the meeting it came from. Meetings are
+ * already newest-first, so questions are taken in that order and capped at
+ * MAX_KEY_QUESTIONS so one meeting with a long list can't crowd out the rest
+ * — same capping approach as flatten_action_items.
+ *
+ * Unlike action items, there's no keyword-estimated priority here: a
+ * question doesn't carry the same "urgent vs. nice-to-have" signal a task
+ * does, so each row is just the question text plus where it came from.
+ *
+ * Args: { value: array } — list_meetings' raw `data` array.
+ */
+const flatten_key_questions: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as ReadAiMeeting[]) : [];
+  const rows: { id: string; text: string; meeting_title: string; report_url: string }[] = [];
+
+  for (const meeting of raw) {
+    const meetingTitle = String(meeting.title ?? 'Untitled meeting');
+    const reportUrl = String(meeting.report_url ?? '');
+    const questions = Array.isArray(meeting.key_questions) ? meeting.key_questions : [];
+    questions.forEach((text, index) => {
+      rows.push({
+        id: `${meeting.id ?? meetingTitle}-${index}`,
+        text: String(text ?? ''),
+        meeting_title: meetingTitle,
+        report_url: reportUrl,
+      });
+    });
+    if (rows.length >= MAX_KEY_QUESTIONS) break;
+  }
+
+  return rows.slice(0, MAX_KEY_QUESTIONS);
+};
+
 interface ReadAiTranscriptTurn {
   speaker?: { name?: string } | null;
   start_time_ms?: number;
@@ -426,6 +468,7 @@ const elements: PluginElementsModule = {
     flatten_meetings,
     flatten_scorecard,
     flatten_action_items,
+    flatten_key_questions,
     flatten_talk_time,
   },
 };
