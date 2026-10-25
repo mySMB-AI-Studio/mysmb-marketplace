@@ -135,12 +135,56 @@ const pay_run_breakdown = (args) => {
         template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
     };
 };
+// get_timesheet_approval_check's per-employee `status` enum (see
+// src/integrations/xero-payroll-au/api/timesheet-approval-check.ts) mapped
+// to a display label/tone/icon. "no_timesheet" (salaried, nothing to check)
+// deliberately reads as muted/neutral, not success — it isn't a passed
+// check, it's not applicable.
+const CHECK_STATUS_META = {
+    match: { label: 'Match', tone: 'success', icon: 'CheckCircle2' },
+    mismatch: { label: 'Mismatch', tone: 'destructive', icon: 'AlertTriangle' },
+    not_approved: { label: 'Not approved', tone: 'warning', icon: 'Clock' },
+    missing_timesheet: { label: 'No timesheet', tone: 'destructive', icon: 'AlertTriangle' },
+    missing_from_payroll: { label: 'Missing from payroll', tone: 'warning', icon: 'AlertTriangle' },
+    no_timesheet: { label: 'N/A (salaried)', tone: 'muted', icon: 'Minus' },
+};
+const UNKNOWN_STATUS_META = { label: 'Unknown', tone: 'muted', icon: 'HelpCircle' };
+/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
+const check_status_label = (args) => {
+    const status = String(args.value ?? '');
+    return (CHECK_STATUS_META[status] ?? { ...UNKNOWN_STATUS_META, label: status || 'Unknown' }).label;
+};
+/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
+const check_status_tone = (args) => {
+    const status = String(args.value ?? '');
+    return (CHECK_STATUS_META[status] ?? UNKNOWN_STATUS_META).tone;
+};
+/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
+const check_status_icon = (args) => {
+    const status = String(args.value ?? '');
+    return (CHECK_STATUS_META[status] ?? UNKNOWN_STATUS_META).icon;
+};
+/**
+ * Title-cases a raw connector enum (e.g. Xero's PayRunStatus "DRAFT" →
+ * "Draft") — TILE-DISPLAY-STANDARDS.md §3 never shows a raw SCREAMING_CASE
+ * enum straight. Exported standalone (the existing private `titleCase`
+ * above only serves `fortnightly_pay_run_rows`) for any tile that needs to
+ * display a raw status string directly, e.g. get_timesheet_approval_check's
+ * `payRun.status`, which isn't pre-labeled server-side.
+ *
+ * Args: { value: string }
+ */
+const title_case = (args) => titleCase(String(args.value ?? ''));
 const elements = {
     slug: 'xero-payroll-au',
     functions: {
         fortnightly_pay_run_rows,
         pay_run_breakdown,
         format_dollars,
+        check_status_label,
+        check_status_tone,
+        check_status_icon,
+        title_case,
     },
 };
 export default elements;
