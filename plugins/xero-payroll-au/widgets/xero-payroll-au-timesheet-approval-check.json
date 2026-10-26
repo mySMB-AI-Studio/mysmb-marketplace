@@ -33,7 +33,7 @@
       "title": { "type": "Heading", "props": { "text": "Timesheet Approval & Count Check", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero Payroll AU" } },
 
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "content"] },
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorBanner", "empty", "content"] },
 
       "loading": {
         "type": "Stack",
@@ -46,12 +46,22 @@
       "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
 
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "Couldn't load timesheet check: ${/_errors/xero-payroll-au.get_timesheet_approval_check}" },
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/_errors/xero-payroll-au.get_timesheet_approval_check" }
+      },
+
       "empty": {
         "type": "Empty",
         "props": { "message": "No pay runs found for this organisation." },
         "visible": {
           "$and": [
             { "$state": "/_loading/xero-payroll-au.get_timesheet_approval_check", "not": true },
+            { "$state": "/_errors/xero-payroll-au.get_timesheet_approval_check", "not": true },
             { "$state": "/xero-payroll-au/get_timesheet_approval_check/hasPayRun", "not": true }
           ]
         }
@@ -147,7 +157,18 @@
       "matchedText": {
         "type": "Text",
         "props": {
-          "text": { "$cond": { "$state": "/xero-payroll-au/get_timesheet_approval_check/allMatched" }, "$then": "Counts match", "$else": "Count mismatch found" },
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": {
+                "$cond": { "$state": "/xero-payroll-au/get_timesheet_approval_check/allMatched" },
+                "$then": "Counts match: {a} approved / {p} in payroll",
+                "$else": "Count mismatch: {a} approved / {p} in payroll"
+              },
+              "a": { "$state": "/xero-payroll-au/get_timesheet_approval_check/approvedCount" },
+              "p": { "$state": "/xero-payroll-au/get_timesheet_approval_check/payrollCount" }
+            }
+          },
           "size": "sm",
           "weight": "medium"
         }
@@ -174,8 +195,24 @@
       "statusIcon": {
         "type": "Icon",
         "props": {
-          "name": { "$computed": "xero-payroll-au_check_status_icon", "args": { "value": { "$item": "status" } } },
-          "tone": { "$computed": "xero-payroll-au_check_status_tone", "args": { "value": { "$item": "status" } } },
+          "name": {
+            "$computed": "xero-payroll-au_check_row_icon",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "variance": { "$item": "variance" }
+            }
+          },
+          "tone": {
+            "$computed": "xero-payroll-au_check_row_tone",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "variance": { "$item": "variance" }
+            }
+          },
           "size": "sm"
         }
       },
@@ -201,13 +238,29 @@
           },
           "tone": "muted"
         },
-        "visible": { "$item": "status", "eq": "no_timesheet", "not": true }
+        "visible": { "$item": "category", "eq": "no_timesheet", "not": true }
       },
       "statusBadgeItem": {
         "type": "Badge",
         "props": {
-          "text": { "$computed": "xero-payroll-au_check_status_label", "args": { "value": { "$item": "status" } } },
-          "tone": { "$computed": "xero-payroll-au_check_status_tone", "args": { "value": { "$item": "status" } } },
+          "text": {
+            "$computed": "xero-payroll-au_check_row_label",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "variance": { "$item": "variance" }
+            }
+          },
+          "tone": {
+            "$computed": "xero-payroll-au_check_row_tone",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "variance": { "$item": "variance" }
+            }
+          },
           "variant": "soft"
         }
       }

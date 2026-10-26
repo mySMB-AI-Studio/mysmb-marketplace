@@ -144,39 +144,54 @@ const pay_run_breakdown: ComputedFunction = (args) => {
   };
 };
 
-// get_timesheet_approval_check's per-employee `status` enum (see
-// src/integrations/xero-payroll-au/api/timesheet-approval-check.ts) mapped
-// to a display label/tone/icon. "no_timesheet" (salaried, nothing to check)
-// deliberately reads as muted/neutral, not success — it isn't a passed
-// check, it's not applicable.
-const CHECK_STATUS_META: Record<string, { label: string; tone: string; icon: string }> = {
-  match: { label: 'Match', tone: 'success', icon: 'CheckCircle2' },
-  mismatch: { label: 'Mismatch', tone: 'destructive', icon: 'AlertTriangle' },
-  not_approved: { label: 'Not approved', tone: 'warning', icon: 'Clock' },
-  missing_timesheet: { label: 'No timesheet', tone: 'destructive', icon: 'AlertTriangle' },
+// get_timesheet_approval_check's per-employee `category` (structural:
+// where the employee's data is present) combined with its two independent
+// exception flags `notApproved`/`hasVariance` (only meaningful within
+// category "both") into a single display label/tone/icon. An employee can
+// be not-approved AND have a variance at the same time (e.g. a Draft
+// timesheet whose hours also don't match an already-built payslip) — both
+// must show, not just whichever was checked first, so this combines them
+// into one label (e.g. "Not approved · 38h variance") rather than picking
+// one. "no_timesheet" (salaried, nothing to check) deliberately reads as
+// muted/neutral, not success — it isn't a passed check, it's not
+// applicable.
+interface CheckRowArgs {
+  category?: unknown;
+  notApproved?: unknown;
+  hasVariance?: unknown;
+  variance?: unknown;
+}
+
+const NON_BOTH_META: Record<string, { label: string; tone: string; icon: string }> = {
   missing_from_payroll: { label: 'Missing from payroll', tone: 'warning', icon: 'AlertTriangle' },
+  paid_without_timesheet: { label: 'Paid without timesheet', tone: 'destructive', icon: 'AlertTriangle' },
   no_timesheet: { label: 'N/A (salaried)', tone: 'muted', icon: 'Minus' },
 };
 
-const UNKNOWN_STATUS_META = { label: 'Unknown', tone: 'muted', icon: 'HelpCircle' };
+function checkRowMeta(args: CheckRowArgs): { label: string; tone: string; icon: string } {
+  const category = String(args.category ?? '');
+  if (category !== 'both') {
+    return NON_BOTH_META[category] ?? { label: category || 'Unknown', tone: 'muted', icon: 'HelpCircle' };
+  }
+  const notApproved = Boolean(args.notApproved);
+  const hasVariance = Boolean(args.hasVariance);
+  const variance = Number(args.variance ?? 0);
+  const varianceLabel = `${Math.abs(variance)}h variance`;
 
-/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
-const check_status_label: ComputedFunction = (args) => {
-  const status = String(args.value ?? '');
-  return (CHECK_STATUS_META[status] ?? { ...UNKNOWN_STATUS_META, label: status || 'Unknown' }).label;
-};
+  if (notApproved && hasVariance) return { label: `Not approved · ${varianceLabel}`, tone: 'destructive', icon: 'AlertTriangle' };
+  if (hasVariance) return { label: varianceLabel, tone: 'destructive', icon: 'AlertTriangle' };
+  if (notApproved) return { label: 'Not approved', tone: 'warning', icon: 'Clock' };
+  return { label: 'Match', tone: 'success', icon: 'CheckCircle2' };
+}
 
-/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
-const check_status_tone: ComputedFunction = (args) => {
-  const status = String(args.value ?? '');
-  return (CHECK_STATUS_META[status] ?? UNKNOWN_STATUS_META).tone;
-};
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_label: ComputedFunction = (args) => checkRowMeta(args).label;
 
-/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
-const check_status_icon: ComputedFunction = (args) => {
-  const status = String(args.value ?? '');
-  return (CHECK_STATUS_META[status] ?? UNKNOWN_STATUS_META).icon;
-};
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_tone: ComputedFunction = (args) => checkRowMeta(args).tone;
+
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_icon: ComputedFunction = (args) => checkRowMeta(args).icon;
 
 /**
  * Title-cases a raw connector enum (e.g. Xero's PayRunStatus "DRAFT" →
@@ -196,9 +211,9 @@ const elements: PluginElementsModule = {
     fortnightly_pay_run_rows,
     pay_run_breakdown,
     format_dollars,
-    check_status_label,
-    check_status_tone,
-    check_status_icon,
+    check_row_label,
+    check_row_tone,
+    check_row_icon,
     title_case,
   },
 };

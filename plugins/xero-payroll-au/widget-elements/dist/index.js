@@ -135,35 +135,34 @@ const pay_run_breakdown = (args) => {
         template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
     };
 };
-// get_timesheet_approval_check's per-employee `status` enum (see
-// src/integrations/xero-payroll-au/api/timesheet-approval-check.ts) mapped
-// to a display label/tone/icon. "no_timesheet" (salaried, nothing to check)
-// deliberately reads as muted/neutral, not success — it isn't a passed
-// check, it's not applicable.
-const CHECK_STATUS_META = {
-    match: { label: 'Match', tone: 'success', icon: 'CheckCircle2' },
-    mismatch: { label: 'Mismatch', tone: 'destructive', icon: 'AlertTriangle' },
-    not_approved: { label: 'Not approved', tone: 'warning', icon: 'Clock' },
-    missing_timesheet: { label: 'No timesheet', tone: 'destructive', icon: 'AlertTriangle' },
+const NON_BOTH_META = {
     missing_from_payroll: { label: 'Missing from payroll', tone: 'warning', icon: 'AlertTriangle' },
+    paid_without_timesheet: { label: 'Paid without timesheet', tone: 'destructive', icon: 'AlertTriangle' },
     no_timesheet: { label: 'N/A (salaried)', tone: 'muted', icon: 'Minus' },
 };
-const UNKNOWN_STATUS_META = { label: 'Unknown', tone: 'muted', icon: 'HelpCircle' };
-/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
-const check_status_label = (args) => {
-    const status = String(args.value ?? '');
-    return (CHECK_STATUS_META[status] ?? { ...UNKNOWN_STATUS_META, label: status || 'Unknown' }).label;
-};
-/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
-const check_status_tone = (args) => {
-    const status = String(args.value ?? '');
-    return (CHECK_STATUS_META[status] ?? UNKNOWN_STATUS_META).tone;
-};
-/** Args: { value: string } — one get_timesheet_approval_check row's `status`. */
-const check_status_icon = (args) => {
-    const status = String(args.value ?? '');
-    return (CHECK_STATUS_META[status] ?? UNKNOWN_STATUS_META).icon;
-};
+function checkRowMeta(args) {
+    const category = String(args.category ?? '');
+    if (category !== 'both') {
+        return NON_BOTH_META[category] ?? { label: category || 'Unknown', tone: 'muted', icon: 'HelpCircle' };
+    }
+    const notApproved = Boolean(args.notApproved);
+    const hasVariance = Boolean(args.hasVariance);
+    const variance = Number(args.variance ?? 0);
+    const varianceLabel = `${Math.abs(variance)}h variance`;
+    if (notApproved && hasVariance)
+        return { label: `Not approved · ${varianceLabel}`, tone: 'destructive', icon: 'AlertTriangle' };
+    if (hasVariance)
+        return { label: varianceLabel, tone: 'destructive', icon: 'AlertTriangle' };
+    if (notApproved)
+        return { label: 'Not approved', tone: 'warning', icon: 'Clock' };
+    return { label: 'Match', tone: 'success', icon: 'CheckCircle2' };
+}
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_label = (args) => checkRowMeta(args).label;
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_tone = (args) => checkRowMeta(args).tone;
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_icon = (args) => checkRowMeta(args).icon;
 /**
  * Title-cases a raw connector enum (e.g. Xero's PayRunStatus "DRAFT" →
  * "Draft") — TILE-DISPLAY-STANDARDS.md §3 never shows a raw SCREAMING_CASE
@@ -181,9 +180,9 @@ const elements = {
         fortnightly_pay_run_rows,
         pay_run_breakdown,
         format_dollars,
-        check_status_label,
-        check_status_tone,
-        check_status_icon,
+        check_row_label,
+        check_row_tone,
+        check_row_icon,
         title_case,
     },
 };
