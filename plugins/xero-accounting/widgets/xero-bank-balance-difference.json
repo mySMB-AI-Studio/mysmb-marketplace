@@ -652,7 +652,14 @@
             "$state": "/ui/bbd/view/0/moneyInText"
           },
           "weight": "medium",
-          "tone": "success"
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/view/0/moneyInText",
+              "eq": "A$0.00"
+            },
+            "$then": "muted",
+            "$else": "success"
+          }
         }
       },
       "moneyOut": {
@@ -680,7 +687,14 @@
             "$state": "/ui/bbd/view/0/moneyOutText"
           },
           "weight": "medium",
-          "tone": "destructive"
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/view/0/moneyOutText",
+              "eq": "A$0.00"
+            },
+            "$then": "muted",
+            "$else": "destructive"
+          }
         }
       },
       "reconDivider": {
