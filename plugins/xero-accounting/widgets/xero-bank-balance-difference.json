@@ -1,0 +1,439 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "get_xero_bank_balance_difference",
+    "params": {}
+  },
+  "description": "Bank account tiles showing each Xero bank balance and the difference from the previous business day (Friday on a Monday) — green when up, red when down — with the transactions that explain the change.",
+  "id": "xero-bank-balance-difference",
+  "keywords": [
+    "bank",
+    "cash",
+    "balance",
+    "difference",
+    "change",
+    "movement",
+    "yesterday",
+    "previous day",
+    "daily",
+    "transactions",
+    "accounts"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Landmark",
+          "size": "sm",
+          "tone": "accent"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": "Bank Balance Difference"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/eyebrow"
+          }
+        },
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+          "not": true
+        }
+      },
+      "body": {
+        "type": "Body",
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "loadingGrid",
+          "s3"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference"
+        }
+      },
+      "loadingGrid": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "s1",
+          "s2"
+        ]
+      },
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "s3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bank accounts configured in Xero."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "tiles",
+          "divider",
+          "txnSection"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0"
+            }
+          ]
+        }
+      },
+      "tiles": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "tile"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/get_xero_bank_balance_difference/accounts",
+          "key": "accountId"
+        }
+      },
+      "tile": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "tileHeader",
+          "tileBalanceWrap"
+        ]
+      },
+      "tileHeader": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "tileIcon",
+          "tileName"
+        ]
+      },
+      "tileIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Banknote",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "tileName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        }
+      },
+      "tileBalanceWrap": {
+        "type": "Stack",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "tileBalance",
+          "tileDelta",
+          "tilePrevious"
+        ]
+      },
+      "tileBalance": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$item": "balanceText"
+          }
+        }
+      },
+      "tileDelta": {
+        "type": "Delta",
+        "props": {
+          "value": {
+            "$item": "differenceText"
+          },
+          "direction": {
+            "$item": "direction"
+          }
+        }
+      },
+      "tilePrevious": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "previousBalanceText"
+          }
+        }
+      },
+      "divider": {
+        "type": "Divider"
+      },
+      "txnSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "txnHeader",
+          "txnEmpty",
+          "txnList"
+        ]
+      },
+      "txnHeader": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "justify": "between",
+          "gap": "sm"
+        },
+        "children": [
+          "txnTitle",
+          "txnCount"
+        ]
+      },
+      "txnTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/transactionsTitle"
+          },
+          "weight": "medium"
+        }
+      },
+      "txnCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/transactionsSubtitle"
+          }
+        }
+      },
+      "txnEmpty": {
+        "type": "Empty",
+        "props": {
+          "message": "No transactions since the previous business day."
+        },
+        "visible": {
+          "$state": "/xero-accounting/get_xero_bank_balance_difference/transactions/0",
+          "not": true
+        }
+      },
+      "txnList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "txnRow"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/get_xero_bank_balance_difference/transactions",
+          "key": "id"
+        }
+      },
+      "txnRow": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "justify": "between",
+          "gap": "sm",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "txnText",
+          "txnAmount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "url"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "txnText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "children": [
+          "txnName",
+          "txnMeta"
+        ]
+      },
+      "txnName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "medium"
+        }
+      },
+      "txnMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          }
+        }
+      },
+      "txnAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "weight": "medium"
+        }
+      }
+    }
+  },
+  "tags": [
+    "xero",
+    "bank",
+    "accounts",
+    "cash",
+    "finance"
+  ],
+  "title": "Bank Balance Difference"
+}
