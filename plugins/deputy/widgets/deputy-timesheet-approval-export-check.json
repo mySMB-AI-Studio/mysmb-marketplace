@@ -1,0 +1,197 @@
+{
+  "id": "deputy-timesheet-approval-export-check",
+  "title": "Timesheet Approval & Export Check",
+  "description": "Confirms every employee's recent timesheets are approved and have actually been exported toward payroll. Deputy has no payroll/payslip data of its own to reconcile hours against — this checks Deputy's own approval and export status per timesheet instead, flagging anyone with unapproved timesheets or timesheets that are approved but never made it out. Covers the last 30 days.",
+  "category": "hr",
+  "tags": ["deputy", "workforce", "timesheets", "hr", "approval", "payroll"],
+  "keywords": ["timesheet approval", "export check", "unapproved timesheets", "payroll export", "deputy", "hr"],
+  "connectorsUsed": ["deputy-token"],
+  "popularity": 0,
+  "branding": { "color": "#34DFBA" },
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "deputy-token",
+    "tool": "list_timesheets",
+    "params": { "date_from": "$days_ago_30_date", "date_to": "$today_date", "max": 200 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body", "infoOverlay"],
+        "watch": {
+          "/deputy-token/list_timesheets": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "deputy_timesheet_check_rows",
+                  "args": { "timesheets": { "$state": "/deputy-token/list_timesheets" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["titleGroup", "infoBtn"]
+      },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardCheck", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Timesheet Approval & Export Check", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Deputy · last 30 days" } },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorBanner", "empty", "rowsList"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/deputy-token.list_timesheets" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "Couldn't load timesheets: ${/_errors/deputy-token.list_timesheets}" },
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/_errors/deputy-token.list_timesheets" }
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No timesheets found in the last 30 days." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/deputy-token.list_timesheets", "not": true },
+            { "$state": "/_errors/deputy-token.list_timesheets", "not": true },
+            { "$state": "/ui/rows/0", "not": true }
+          ]
+        }
+      },
+
+      "rowsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/deputy-token.list_timesheets", "not": true },
+            { "$state": "/ui/rows/0" }
+          ]
+        }
+      },
+
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://www.deputy.com/login", "target": "_blank" } }
+        },
+        "children": ["rowLeft", "rowRight"]
+      },
+      "rowLeft": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["employeeName", "employeeMeta"]
+      },
+      "employeeName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium" }
+      },
+      "employeeMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{h}h across {n} timesheets",
+              "h": { "$item": "totalHours" },
+              "n": { "$item": "timesheetCount" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "rowRight": {
+        "type": "Badge",
+        "props": { "text": { "$item": "label" }, "tone": { "$item": "tone" }, "variant": "soft" }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } }
+        }
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "How this tile works", "level": "h2" } },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoWhyLabel", "infoWhyText", "infoReadLabel", "infoReadText"]
+      },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Checks every employee's Deputy timesheets from the last 30 days and flags anyone with timesheets that still need approval, or that are approved but haven't actually been exported toward payroll yet.",
+          "size": "sm"
+        }
+      },
+      "infoWhyLabel": { "type": "Caption", "props": { "text": "Why not compare against payroll hours", "tone": "muted", "weight": "semibold" } },
+      "infoWhyText": {
+        "type": "Text",
+        "props": {
+          "text": "Deputy has no payroll or payslip data of its own — it only tracks time. So instead of reconciling hours against a payroll system, this uses Deputy's own \"approved\" and \"exported\" status per timesheet as the signal.",
+          "size": "sm"
+        }
+      },
+      "infoReadLabel": { "type": "Caption", "props": { "text": "How to read it", "tone": "muted", "weight": "semibold" } },
+      "infoReadText": {
+        "type": "Text",
+        "props": {
+          "text": "Each row is one employee. \"Not approved\" (red) means a timesheet is still sitting unapproved. \"Not exported\" (amber) means it's approved but hasn't gone out yet. \"All approved & exported\" (green) means everything for that employee is clean. Click a row to open Deputy.",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
