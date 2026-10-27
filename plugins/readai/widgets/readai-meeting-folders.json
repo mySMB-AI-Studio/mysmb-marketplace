@@ -1,0 +1,211 @@
+{
+  "id": "readai-meeting-folders",
+  "title": "Meeting Folders",
+  "description": "Your Read.ai meetings organized by the folders you've filed them under. Click a folder to see the meetings inside it, then click a meeting to open its full report in Read.ai.",
+  "category": "productivity",
+  "tags": [
+    "readai",
+    "meetings",
+    "folders",
+    "organization"
+  ],
+  "keywords": [
+    "folders",
+    "meeting folders",
+    "organize",
+    "read ai",
+    "readai"
+  ],
+  "connectorsUsed": [
+    "readai"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min": { "colSpan": 3, "rowSpan": 5 },
+    "max": { "colSpan": 5, "rowSpan": 9 }
+  },
+  "dataProvider": {
+    "mcp": "readai",
+    "tool": "list_meetings",
+    "params": { "limit": 10 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "divider0", "body", "footerRow"],
+        "watch": {
+          "/readai/list_meetings/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/folder_rows",
+                "value": {
+                  "$computed": "readai_flatten_folders",
+                  "args": { "value": { "$state": "/readai/list_meetings/data" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "headerRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIconBadge", "titleStack"]
+      },
+      "titleIconBadge": {
+        "type": "Badge",
+        "props": { "tone": "chart-1", "variant": "soft" },
+        "children": ["titleIcon"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Folder", "size": "sm", "tone": "chart-1" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Meeting Folders", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "Read AI" } },
+      "divider0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "foldersList"] },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": { "$state": "/_loading/readai.list_meetings" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No meetings found yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/readai.list_meetings", "not": true },
+            { "$state": "/ui/folder_rows/0", "not": true }
+          ]
+        }
+      },
+      "foldersList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/folder_rows", "key": "id" },
+        "visible": { "$state": "/_loading/readai.list_meetings", "not": true }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["folderHeaderRow", "meetingRow"]
+      },
+
+      "folderHeaderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true },
+        "children": ["folderLeft", "folderRight"],
+        "visible": { "$item": "row_type", "eq": "folder" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/expandedFolderId",
+              "value": {
+                "$cond": { "$item": "folder_id", "eq": { "$state": "/ui/expandedFolderId" } },
+                "$then": "",
+                "$else": { "$item": "folder_id" }
+              }
+            }
+          }
+        }
+      },
+      "folderLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["folderIcon", "folderName"]
+      },
+      "folderIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$cond": { "$item": "folder_id", "eq": { "$state": "/ui/expandedFolderId" } },
+            "$then": "FolderOpen",
+            "$else": "Folder"
+          },
+          "size": "sm",
+          "tone": "chart-1"
+        }
+      },
+      "folderName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium" }
+      },
+      "folderRight": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["folderCountBadge", "folderChevron"]
+      },
+      "folderCountBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "meeting_count" }, "tone": "muted", "variant": "soft" }
+      },
+      "folderChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$cond": { "$item": "folder_id", "eq": { "$state": "/ui/expandedFolderId" } },
+            "$then": "ChevronDown",
+            "$else": "ChevronRight"
+          },
+          "size": "xs",
+          "tone": "muted"
+        }
+      },
+
+      "meetingRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true },
+        "children": ["meetingTitleStack", "meetingViewButton"],
+        "visible": {
+          "$and": [
+            { "$item": "row_type", "eq": "meeting" },
+            { "$item": "folder_id", "eq": { "$state": "/ui/expandedFolderId" } }
+          ]
+        },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$bindItem": "report_url" }, "target": "_blank" } }
+        }
+      },
+      "meetingTitleStack": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true },
+        "children": ["meetingTitle", "meetingSubtitle"]
+      },
+      "meetingTitle": {
+        "type": "Text",
+        "props": { "text": { "$item": "title" }, "size": "sm", "truncate": true }
+      },
+      "meetingSubtitle": {
+        "type": "Caption",
+        "props": { "text": { "$item": "subtitle" }, "tone": "muted" }
+      },
+      "meetingViewButton": {
+        "type": "Icon",
+        "props": { "name": "ExternalLink", "size": "xs", "tone": "accent" }
+      },
+
+      "footerRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end", "clickable": true },
+        "children": ["footerIcon", "footerLabel"],
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://app.read.ai", "target": "_blank" } }
+        }
+      },
+      "footerIcon": { "type": "Icon", "props": { "name": "ExternalLink", "size": "xs", "tone": "accent" } },
+      "footerLabel": { "type": "Text", "props": { "text": "Open in Read AI", "size": "sm", "tone": "accent" } }
+    }
+  }
+}
