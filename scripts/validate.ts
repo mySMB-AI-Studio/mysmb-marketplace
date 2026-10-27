@@ -44,6 +44,15 @@
  *      bundle-relative path to an existing svg/png/jpg/webp/gif of ≤ 96 KB
  *      inside the plugin dir (marketplace sync inlines those as data URIs and
  *      silently drops anything else). Entries without the blocks are unaffected.
+ *  11. If a marketplace.json entry declares a top-level `welcome` block (reviewed
+ *      Welcome metadata the myHub app reads to suggest packages): it parses
+ *      strictly (schema 1, audience anchor, provider, install, cost, auth,
+ *      credentials, dependencies, setup steps as plain text with no links), obeys
+ *      the relevance rules (a role alone never anchors a package; shared
+ *      credentials are suggest-only), and agrees with the entry and package dir
+ *      (price vs cost, connection.authType / .mcp.json vs auth, dependencies,
+ *      primaryTile vs widgets/*.json). See scripts/welcome-metadata.ts. Entries
+ *      without a `welcome` key are unaffected.
  *
  * Branch tiers: dev → qa → uat → main. CI (.github/workflows/validate.yml)
  * runs this on every PR and on every push to each tier — including the
@@ -57,6 +66,7 @@ import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, relative, sep, isAbsolute } from "node:path";
 import { setupKeys, validatePortableContent } from "./extension-content";
 import { fileURLToPath } from "node:url";
+import { validateWelcomeMetadata } from "./welcome-metadata";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Alternate roots permit full CLI fixtures without changing published plugins.
@@ -90,6 +100,7 @@ interface MarketplacePlugin {
   source?: string | { type?: string; path?: string; source?: string };
   branding?: unknown;
   listing?: unknown;
+  welcome?: unknown;
 }
 
 interface Marketplace {
@@ -983,6 +994,14 @@ function main() {
     const relPath = sourcePath.replace(/^\.\//, "").replace(/^plugins\//, "");
     validatePlugin(relPath, p.name);
     validateStoreListing(relPath, p);
+    if ("welcome" in p) {
+      for (const msg of validateWelcomeMetadata(
+        p as unknown as Record<string, unknown>,
+        join(repoRoot, "plugins", relPath),
+      )) {
+        fail(`marketplace.json: plugin "${p.name}" welcome: ${msg}`);
+      }
+    }
   }
 
   report();
