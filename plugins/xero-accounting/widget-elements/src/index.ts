@@ -1748,6 +1748,177 @@ const bill_entry_build_payload: ComputedFunction = (args) => {
 };
 
 /**
+ * Validation + payload-building for the Fee & Reimbursement Drafts tile.
+ * Unlike bill_entry_*, this tile is always exactly ONE fixed-purpose line
+ * (the owner's platform fee reimbursement) -- reusing the shared multi-line
+ * bill_entry_is_invalid/_validation_message functions meant wrapping it in
+ * a one-item "lines" array, which skips their `lines.length === 0`
+ * short-circuit and so surfaced a blank/untouched amount as "unit price
+ * can't be negative" instead of "nothing entered yet" (found via a live
+ * UI review). Dedicated, flat-arg functions avoid that mismatch entirely.
+ * Args: { contactId, date, amount, accountCode, taxType }
+ */
+const fee_reimbursement_is_invalid: ComputedFunction = (args) => {
+  const contactId = String(args.contactId ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const accountCode = String(args.accountCode ?? '').trim();
+  const taxType = String(args.taxType ?? '').trim();
+  const amount = Number(args.amount);
+  if (!contactId || !date || !accountCode || !taxType) return true;
+  return !Number.isFinite(amount) || amount <= 0;
+};
+
+/** Human-readable reason the form can't submit yet, mirroring fee_reimbursement_is_invalid's checks in order. */
+const fee_reimbursement_validation_message: ComputedFunction = (args) => {
+  const contactId = String(args.contactId ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const accountCode = String(args.accountCode ?? '').trim();
+  const taxType = String(args.taxType ?? '').trim();
+  const amount = Number(args.amount);
+  if (!contactId) return 'Select the owner';
+  if (!date) return 'Set the bill date';
+  if (!accountCode) return 'Choose an expense account';
+  if (!taxType) return 'Choose a tax rate';
+  if (!Number.isFinite(amount) || amount <= 0) return 'Enter a fee greater than 0';
+  return '';
+};
+
+/**
+ * Builds the raw Xero invoice body create_invoice expects: one fixed line
+ * ("Platform fee reimbursement") against the owner. Status is explicit
+ * DRAFT so the tile's intent -- record a draft, not submit a live bill --
+ * is unambiguous in the request itself, same reasoning as
+ * bill_entry_build_payload.
+ * Args: { contactId, date, reference, amount, accountCode, taxType }
+ */
+const fee_reimbursement_build_payload: ComputedFunction = (args) => {
+  const date = String(args.date ?? '').trim();
+  const reference = String(args.reference ?? '').trim();
+  return {
+    Type: 'ACCPAY',
+    Status: 'DRAFT',
+    Contact: { ContactID: String(args.contactId ?? '') },
+    ...(date ? { Date: date } : {}),
+    ...(reference ? { Reference: reference } : {}),
+    LineItems: [
+      {
+        Description: 'Platform fee reimbursement',
+        Quantity: 1,
+        UnitAmount: Number(args.amount) || 0,
+        AccountCode: String(args.accountCode ?? ''),
+        TaxType: String(args.taxType ?? ''),
+      },
+    ],
+  };
+};
+
+/**
+ * Looks up the selected expense account's own TaxType (e.g. "INPUT" / GST
+ * on Expenses) so the tax rate pre-fills to what that account actually
+ * uses in Xero, instead of defaulting to nothing (found via the same live
+ * UI review). Falls back to whatever's already selected if the account
+ * isn't found, rather than clearing a manual choice.
+ * Args: { accounts, accountCode, current }
+ */
+const fee_reimbursement_account_tax_type: ComputedFunction = (args) => {
+  const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
+  const accountCode = String(args.accountCode ?? '').trim();
+  if (!accountCode) return args.current ?? '';
+  const account = accounts.find((a) => String(a.Code ?? '') === accountCode);
+  return (account?.TaxType as string | undefined) ?? (args.current ?? '');
+};
+
+/**
+ * Filters a list_accounts response to the given Xero account Types and
+ * maps it to Select options -- same {value, label} shape as the system's
+ * to_options, but with a type filter up front, since the dashboard can't
+ * call list_accounts twice with different `where` filters from one widget
+ * (a tool's result is keyed by mcp+tool only, so a second call would
+ * silently overwrite the first). One fetch, filtered twice client-side.
+ * Args: { accounts, types: string[] }
+ */
+const account_options_by_type: ComputedFunction = (args) => {
+  const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
+  const types = new Set((Array.isArray(args.types) ? (args.types as unknown[]) : []).map((t) => String(t)));
+  return accounts
+    .filter((a) => types.has(String(a.Type ?? '')))
+    .map((a) => ({ value: String(a.Code ?? ''), label: String(a.Name ?? '') }))
+    .filter((o) => o.value);
+};
+
+/**
+ * The amount a provision journal needs to post to bring the ledger up (or
+ * down) to the payroll-computed leave+RDO target -- target minus whatever
+ * is already sitting in the nominated GL account. Positive means the
+ * provision needs to grow (debit expense / credit provision); negative
+ * means it needs to shrink (the reverse). Zero means the ledger already
+ * matches and there's nothing to post.
+ * Args: { targetValue, currentBalance }
+ */
+const leave_provision_adjustment: ComputedFunction = (args) => {
+  const target = Number(args.targetValue) || 0;
+  const current = Number(args.currentBalance) || 0;
+  return Math.round((target - current) * 100) / 100;
+};
+
+/**
+ * True when the form is NOT ready to submit -- both accounts and the date
+ * must be set, and there must actually be a non-zero adjustment to post.
+ * Args: { provisionAccountCode, expenseAccountCode, date, adjustment }
+ */
+const leave_provision_is_invalid: ComputedFunction = (args) => {
+  const provisionAccountCode = String(args.provisionAccountCode ?? '').trim();
+  const expenseAccountCode = String(args.expenseAccountCode ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const adjustment = Number(args.adjustment);
+  if (!provisionAccountCode || !expenseAccountCode || !date) return true;
+  return !Number.isFinite(adjustment) || adjustment === 0;
+};
+
+/** Human-readable reason the form can't submit yet, mirroring leave_provision_is_invalid's checks in order. */
+const leave_provision_validation_message: ComputedFunction = (args) => {
+  const provisionAccountCode = String(args.provisionAccountCode ?? '').trim();
+  const expenseAccountCode = String(args.expenseAccountCode ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const adjustment = Number(args.adjustment);
+  if (!provisionAccountCode) return 'Choose the provision (liability) account';
+  if (!expenseAccountCode) return 'Choose the expense account';
+  if (!date) return 'Set the journal date';
+  if (!Number.isFinite(adjustment) || adjustment === 0) return 'The ledger already matches the provision target — nothing to post';
+  return '';
+};
+
+/**
+ * Builds the raw Xero manual journal body create_manual_journal expects --
+ * a two-line adjustment: the expense account takes the LineAmount as-is
+ * (Xero's own debit-positive/credit-negative convention for ManualJournal
+ * lines), the provision account takes the exact negative, so the two
+ * always net to zero regardless of whether the adjustment increases or
+ * decreases the provision.
+ * Args: { provisionAccountCode, expenseAccountCode, date, adjustment }
+ */
+const leave_provision_build_journal: ComputedFunction = (args) => {
+  const date = String(args.date ?? '').trim();
+  const adjustment = Math.round((Number(args.adjustment) || 0) * 100) / 100;
+  return {
+    Narration: 'Leave & RDO provision adjustment',
+    ...(date ? { Date: date } : {}),
+    JournalLines: [
+      {
+        LineAmount: adjustment,
+        AccountCode: String(args.expenseAccountCode ?? ''),
+        Description: 'Leave & RDO provision adjustment',
+      },
+      {
+        LineAmount: -adjustment,
+        AccountCode: String(args.provisionAccountCode ?? ''),
+        Description: 'Leave & RDO provision adjustment',
+      },
+    ],
+  };
+};
+
+/**
  * Outstanding balances for the currently selected supplier, read straight
  * off list_contacts' own response — Xero already returns a `Balances`
  * block per contact (AccountsPayable/AccountsReceivable, each with
@@ -2356,6 +2527,15 @@ const elements: PluginElementsModule = {
     today_iso,
     contra_create_disabled,
     contra_document_link,
+    fee_reimbursement_is_invalid,
+    fee_reimbursement_validation_message,
+    fee_reimbursement_build_payload,
+    fee_reimbursement_account_tax_type,
+    leave_provision_adjustment,
+    leave_provision_is_invalid,
+    leave_provision_validation_message,
+    leave_provision_build_journal,
+    account_options_by_type,
   },
 };
 
