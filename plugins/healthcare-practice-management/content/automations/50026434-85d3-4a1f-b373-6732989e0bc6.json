@@ -1,0 +1,86 @@
+{
+  "kind": "automation",
+  "originKey": "50026434-85d3-4a1f-b373-6732989e0bc6",
+  "name": "Healthcare Practice Management: Apply document filing decision",
+  "description": "Applies the decision on a Document filing form: files the email attachment on the suggested patient or on the Cliniko patient ID entered (with the referrer contact and referral case for a referral), or leaves it unfiled. Comments what was done and closes the item.",
+  "level": "org",
+  "knowledgeFiles": [],
+  "tags": [
+    "healthcare-practice-management",
+    "document-filing"
+  ],
+  "declaredScopes": [
+    "files:read",
+    "files:write",
+    "workq:write",
+    "notify:send",
+    "connectors:m365-mail-read",
+    "connectors:cliniko-patients",
+    "connectors:cliniko-clinical"
+  ],
+  "dependencies": [
+    {
+      "entityKind": "form",
+      "originKey": "0d7aadd6-7b51-417c-961a-d71d3b0c9708",
+      "sourceId": "0d7aadd6-7b51-417c-961a-d71d3b0c9708"
+    }
+  ],
+  "flowIr": {
+    "irVersion": 1,
+    "name": "Healthcare Practice Management: Apply document filing decision",
+    "description": "Applies the decision on a Document filing form: files the email attachment on the suggested patient or on the Cliniko patient ID entered (with the referrer contact and referral case for a referral), or leaves it unfiled. Comments what was done and closes the item.",
+    "params": [],
+    "rootOrder": [
+      "apply_filing"
+    ],
+    "triggers": [
+      {
+        "kind": "event",
+        "eventType": "form.response_submitted",
+        "filter": {
+          "form_id": "0d7aadd6-7b51-417c-961a-d71d3b0c9708"
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "id": "apply_filing",
+        "kind": "python",
+        "title": "Apply document filing decision",
+        "summary": "Files the document on the chosen patient, or records that it wasn't filed.",
+        "params": [
+          {
+            "binding": "{{ trigger.event.payload.responses }}",
+            "control": "hidden",
+            "label": "Form answers",
+            "name": "responses",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ trigger.event.subject.todo_id }}",
+            "control": "hidden",
+            "label": "Filing item",
+            "name": "todo_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "outcome",
+            "type": "str",
+            "description": "filed, not_filed, patient_not_found, filing_failed, draft_missing or ignored."
+          },
+          {
+            "name": "detail",
+            "type": "str",
+            "description": "Reserved for problem details."
+          }
+        ],
+        "code": "import json\nimport re\nimport base64\nimport datetime\nfrom zoneinfo import ZoneInfo\n\nFILEABLE_TYPES = (\"referral\", \"result\", \"imaging\", \"clinical_letter\")\nTYPE_LABELS = {\n    \"referral\": \"Referral\",\n    \"result\": \"Test result\",\n    \"imaging\": \"Imaging report\",\n    \"clinical_letter\": \"Clinical letter\",\n}\n\n\ndef read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\n\ndef write_json(path, data):\n    api.files.put(file=path, content=json.dumps(data, indent=2, sort_keys=True))\n\n\ndef delete_file(path):\n    try:\n        api.files.delete(file=path)\n    except Exception:\n        pass\n\n\ndef norm(s):\n    return re.sub(r\"\\s+\", \" \", re.sub(r\"[^a-z0-9 ]+\", \" \", str(s or \"\").lower())).strip()\n\n\ndef practice_tz(practice):\n    try:\n        return ZoneInfo(str(practice.get(\"timezone\") or \"Australia/Sydney\"))\n    except Exception:\n        return datetime.timezone.utc\n\n\ndef audit(slug, tz, source, action, target, summary, workq_item_id=\"\"):\n    # SK-13 format (healthcare-practice-management-foundation): one JSON line per action, practice-local ts.\n    now_local = datetime.datetime.now(tz)\n    path = \"PracticeManager/AuditLog/\" + slug + \"-\" + now_local.strftime(\"%Y-%m-%d\") + \".jsonl\"\n    line = {\n        \"ts\": now_local.isoformat(timespec=\"seconds\"), \"practice_slug\": slug, \"actor\": \"agent\",\n        \"source\": source, \"action\": action, \"target\": target, \"summary\": summary,\n    }\n    if workq_item_id:\n        line[\"workq_item_id\"] = workq_item_id\n    try:\n        try:\n            existing = api.files.read(file=path) or \"\"\n        except Exception:\n            existing = \"\"\n        if existing and not existing.endswith(\"\\n\"):\n            existing += \"\\n\"\n        api.files.put(file=path, content=existing + json.dumps(line, sort_keys=True) + \"\\n\")\n    except Exception:\n        pass\n\n\ndef fetch_attachment(message_id, attachment_id):\n    \"\"\"The attachment's bytes as standard base64, plus its name and content type.\"\"\"\n    att = api.connectors.invoke(\n        server=\"m365-mail-read\", tool=\"get_email_attachment\",\n        args={\"messageId\": message_id, \"attachmentId\": attachment_id, \"heicToJpeg\": True},\n    ) or {}\n    if isinstance(att, str):\n        att = json.loads(att)\n    return {\n        \"name\": str(att.get(\"name\") or \"document\"),\n        \"content_type\": str(att.get(\"contentType\") or \"application/octet-stream\"),\n        \"content_base64\": str(att.get(\"contentBase64\") or \"\"),\n    }\n\n\ndef to_scratch(att):\n    \"\"\"Write the attachment to this run's scratch space so the AI can read the file itself.\"\"\"\n    safe = re.sub(r\"[^A-Za-z0-9._-]+\", \"_\", att[\"name\"])[-80:] or \"document\"\n    path = api.files.scratch_path(safe)\n    with open(path, \"wb\") as fh:\n        fh.write(base64.b64decode(att[\"content_base64\"]))\n    return path\n\n\ndef patient_name(p):\n    return (str(p.get(\"first_name\") or \"\") + \" \" + str(p.get(\"last_name\") or \"\")).strip()\n\n\ndef find_patients(first, last, dob):\n    \"\"\"Cliniko patients whose first + last name match (case/punctuation-insensitive), narrowed by DOB when given.\"\"\"\n    if not last:\n        return []\n    try:\n        res = api.connectors.invoke(\n            server=\"cliniko-patients\", tool=\"list_patients\",\n            args={\"q\": [\"last_name:~\" + str(last)], \"per_page\": 100},\n        ) or {}\n        rows = res.get(\"patients\") or []\n    except Exception:\n        rows = []\n    out = []\n    for p in rows:\n        if p.get(\"archived_at\"):\n            continue\n        same_last = norm(p.get(\"last_name\")) == norm(last)\n        firsts = {norm(p.get(\"first_name\")), norm(p.get(\"preferred_first_name\"))}\n        same_first = bool(first) and norm(first) in firsts\n        if same_last and same_first:\n            out.append(p)\n    if dob:\n        exact = [p for p in out if str(p.get(\"date_of_birth\") or \"\")[:10] == str(dob)[:10]]\n        return exact\n    return out\n\n\ndef find_or_create_contact(referrer):\n    \"\"\"The referrer as a Cliniko contact: matched by email, then provider number, then name; created if new.\"\"\"\n    first = str(referrer.get(\"first_name\") or \"\").strip()\n    last = str(referrer.get(\"last_name\") or \"\").strip()\n    email = str(referrer.get(\"email\") or \"\").strip().lower()\n    provider = str(referrer.get(\"provider_number\") or \"\").strip()\n    if not last:\n        return None, False\n    try:\n        res = api.connectors.invoke(\n            server=\"cliniko-patients\", tool=\"list_contacts\",\n            args={\"q\": [\"last_name:~\" + last], \"per_page\": 100},\n        ) or {}\n        rows = [c for c in (res.get(\"contacts\") or []) if not c.get(\"archived_at\") and not c.get(\"deleted_at\")]\n    except Exception:\n        rows = []\n    for c in rows:\n        if email and str(c.get(\"email\") or \"\").strip().lower() == email:\n            return c, False\n    for c in rows:\n        if provider and str(c.get(\"provider_number\") or \"\").strip() == provider:\n            return c, False\n    for c in rows:\n        if norm(c.get(\"first_name\")) == norm(first) and norm(c.get(\"last_name\")) == norm(last):\n            return c, False\n    body = {\"first_name\": first or None, \"last_name\": last, \"type_code\": 1}  # 1 = Doctor\n    for key in (\"title\", \"company_name\", \"provider_number\"):\n        if referrer.get(key):\n            body[key] = str(referrer.get(key))\n    if email:\n        body[\"email\"] = email\n    if referrer.get(\"doctor_type\") in (\"general_practitioner\", \"specialist\"):\n        body[\"doctor_type\"] = referrer.get(\"doctor_type\")\n    created = api.connectors.invoke(server=\"cliniko-patients\", tool=\"create_contact\", args={\"contact\": body}) or {}\n    return created, True\n\n\ndef file_document(patient_id, att, extracted, received_at):\n    \"\"\"Upload the file to the patient; for a referral also link the referrer contact and a patient case.\n    Returns a dict describing what was done (for comments, notifications and the audit log).\"\"\"\n    kind = str(extracted.get(\"document_type\") or \"clinical_letter\")\n    label = TYPE_LABELS.get(kind, \"Document\")\n    referrer = extracted.get(\"referrer\") or {}\n    who = \" \".join(x for x in [str(referrer.get(\"title\") or \"\"), str(referrer.get(\"first_name\") or \"\"),\n                                str(referrer.get(\"last_name\") or \"\")] if x).strip()\n    description = (label + (\" from \" + who if who else \"\") + \", received \" + str(received_at)[:10])[:255]\n    uploaded = api.connectors.invoke(\n        server=\"cliniko-clinical\", tool=\"upload_patient_attachment\",\n        args={\n            \"patient_id\": str(patient_id), \"filename\": att[\"name\"][:255], \"content_type\": att[\"content_type\"],\n            \"description\": description, \"content_base64\": att[\"content_base64\"],\n        },\n    ) or {}\n    result = {\"attachment_id\": str(uploaded.get(\"id\") or \"\"), \"label\": label, \"description\": description,\n              \"contact\": None, \"contact_created\": False, \"case_id\": \"\"}\n    if kind == \"referral\":\n        contact, created = (None, False)\n        try:\n            contact, created = find_or_create_contact(referrer)\n        except Exception:\n            contact, created = (None, False)\n        ref = extracted.get(\"referral\") or {}\n        case = {\n            \"patient_id\": str(patient_id),\n            \"name\": (\"Referral\" + (\" - \" + who if who else \"\") + \" (\" + str(received_at)[:10] + \")\")[:255],\n            \"referral\": True,\n        }\n        if contact and contact.get(\"id\"):\n            case[\"contact_id\"] = str(contact.get(\"id\"))\n        if ref.get(\"referral_type\") in (\"medicare\", \"dva\"):\n            case[\"referral_type\"] = ref.get(\"referral_type\")\n        for key in (\"issue_date\", \"expiry_date\"):\n            if re.match(r\"^\\d{4}-\\d{2}-\\d{2}$\", str(ref.get(key) or \"\")):\n                case[key] = ref.get(key)\n        try:\n            sessions = int(ref.get(\"max_sessions\") or 0)\n        except Exception:\n            sessions = 0\n        if 1 <= sessions <= 300:\n            case[\"max_sessions\"] = sessions\n        if result[\"attachment_id\"]:\n            case[\"patient_attachment_ids\"] = [result[\"attachment_id\"]]\n        try:\n            made = api.connectors.invoke(server=\"cliniko-patients\", tool=\"create_patient_case\",\n                                         args={\"patient_case\": case}) or {}\n            result[\"case_id\"] = str(made.get(\"id\") or \"\")\n        except Exception as exc:\n            result[\"case_error\"] = str(exc)[:300]\n        result[\"contact\"] = contact\n        result[\"contact_created\"] = created\n    return result\n\n\ndef summary_lines(res, patient_label):\n    lines = [\"Filed **\" + res[\"label\"] + \"** on \" + patient_label + \" in Cliniko (attachment \" + (res[\"attachment_id\"] or \"id not returned\") + \").\"]\n    contact = res.get(\"contact\") or {}\n    if contact:\n        lines.append((\"Added the referrer as a new Cliniko contact: \" if res.get(\"contact_created\") else \"Linked the existing contact: \")\n                     + (str(contact.get(\"first_name\") or \"\") + \" \" + str(contact.get(\"last_name\") or \"\")).strip() + \".\")\n    if res.get(\"case_id\"):\n        lines.append(\"Created a referral case (\" + res[\"case_id\"] + \") with the file attached.\")\n    if res.get(\"case_error\"):\n        lines.append(\"Couldn't create the referral case: \" + res[\"case_error\"] + \" - add it by hand in Cliniko.\")\n    return lines\n\nSOURCE = \"automation:Apply document filing decision\"\n\nresponses = params.get(\"responses\") or {}\ntodo_id = params.get(\"todo_id\") or \"\"\noutcome = \"ignored\"\ndetail = \"\"\n\nif responses and todo_id:\n    draft_path = \"PracticeManager/DocumentDrafts/\" + todo_id + \".json\"\n    draft = read_json(draft_path, None)\n    if not draft:\n        api.workq.comment(todo_id=todo_id, body=\"Couldn't find the document details for this item - nothing was filed.\")\n        outcome = \"draft_missing\"\n    else:\n        slug = str(draft.get(\"slug\") or \"\")\n        practice = read_json(\"PracticeManager/Practices/\" + slug + \".json\", {}) or {}\n        tz = practice_tz(practice)\n        decision = str(responses.get(\"q_decision\") or \"\")\n        other_id = re.sub(r\"\\D\", \"\", str(responses.get(\"q_patient_id\") or \"\"))\n        name = str(draft.get(\"name\") or \"the attachment\")\n\n        if decision == \"Don't file\":\n            api.workq.comment(todo_id=todo_id, body=\"Marked as don't file. Nothing was added to Cliniko.\")\n            api.workq.complete(todo_id=todo_id)\n            audit(slug, tz, SOURCE, \"rejected\", {\"kind\": \"email_attachment\", \"id\": str(draft.get(\"message_id\") or \"\")},\n                  \"Reviewer chose not to file '\" + name + \"'\", todo_id)\n            delete_file(draft_path)\n            outcome = \"not_filed\"\n        else:\n            patient_id = other_id if decision == \"File on the patient ID below\" else str(draft.get(\"suggested_patient_id\") or \"\")\n            patient = {}\n            if patient_id:\n                try:\n                    patient = api.connectors.invoke(server=\"cliniko-patients\", tool=\"get_patient\", args={\"id\": patient_id}) or {}\n                except Exception:\n                    patient = {}\n            if not patient_id or not patient.get(\"id\"):\n                api.workq.comment(\n                    todo_id=todo_id,\n                    body=(\"No suggested patient on this item - choose \\\"File on the patient ID below\\\" and enter the Cliniko patient ID.\"\n                          if decision != \"File on the patient ID below\" and not patient_id\n                          else \"Couldn't find Cliniko patient \" + (patient_id or \"(blank)\") + \". Check the ID and submit the form again.\")\n                    + \" Nothing was filed.\",\n                )\n                outcome = \"patient_not_found\"\n            else:\n                try:\n                    att = fetch_attachment(str(draft.get(\"message_id\") or \"\"), str(draft.get(\"attachment_id\") or \"\"))\n                    res = file_document(patient_id, att, draft.get(\"extracted\") or {}, str(draft.get(\"received\") or \"\"))\n                    error = \"\"\n                except Exception as exc:\n                    res = {}\n                    error = str(exc)[:300]\n                if error:\n                    api.workq.comment(todo_id=todo_id, body=\"Filing failed, so nothing was added: \" + error + \"\\n\\nSubmit the form again to retry, or file it by hand in Cliniko.\")\n                    outcome = \"filing_failed\"\n                else:\n                    label = patient_name(patient)\n                    audit(slug, tz, SOURCE, \"approved\", {\"kind\": \"patient_attachment\", \"id\": str(res.get(\"attachment_id\") or \"\")},\n                          \"Filed '\" + name + \"' on \" + label + \" after a person confirmed the patient\", todo_id)\n                    api.workq.comment(todo_id=todo_id, body=\"\\n\".join(summary_lines(res, label)))\n                    api.workq.complete(todo_id=todo_id)\n                    kind = str((draft.get(\"extracted\") or {}).get(\"document_type\") or \"\")\n                    reviewer = practice.get(\"reviewer_id\") or \"\"\n                    if reviewer and kind in (\"result\", \"imaging\"):\n                        api.notify.send(title=str(res.get(\"label\") or \"Document\") + \" filed for \" + label,\n                                        body=\"Ready to review in Cliniko: \" + name, user_ids=[str(reviewer)])\n                    delete_file(draft_path)\n                    outcome = \"filed\"\n"
+      }
+    ]
+  },
+  "contentHash": "7c90f9144d890bda0bef2295371da7434ffc0cd2df3d340a9e406a0ee7dfd5e6"
+}
