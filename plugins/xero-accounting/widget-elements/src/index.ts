@@ -114,6 +114,64 @@ const bank_tx_label: ComputedFunction = (args) => {
   return t;
 };
 
+/**
+ * Flattens a `list_bank_transactions` response into rows for the system
+ * `Table` component. Switched from a hand-rolled Row/grid-template list
+ * (TILE-DISPLAY-STANDARDS note: avoid fixed-width CSS grid rows for
+ * tabular data) because that layout's fixed-width columns had no
+ * overflow handling at narrow tile sizes -- long contact/account names
+ * spilled visually into neighbouring columns instead of truncating or
+ * scrolling. Table renders a real `table-fixed` table with explicit
+ * column widths wrapped in an auto-scroll container, so columns keep
+ * their position at any tile size and the row scrolls horizontally
+ * instead of overlapping.
+ *
+ * Type/Status are returned as plain label strings (not badge tone
+ * values) -- Table's `variant: "badge"` tone only resolves through a
+ * pre-registered system `cellToneFormatters` entry, and neither
+ * Spend/Receive nor Reconciled/Unreconciled has one today. Colouring
+ * them would mean adding to that shared system registry (a myHubV2
+ * change, not a plugin-local one) rather than something this function
+ * can carry on its own -- left as plain text for now, confirmed
+ * acceptable with the requester rather than assumed.
+ *
+ * Table's default-variant cells are hardcoded single-line (`truncate
+ * whitespace-nowrap` in the system component) -- there's no cell style
+ * for stacking two lines of plain text the way the original hand-rolled
+ * row did (name on top, account below). Rather than a myHubV2 change to
+ * add one, Contact and Account are combined into a single "Contact ·
+ * Account" string column here and left to truncate like every other
+ * cell, confirmed acceptable with the requester rather than assumed.
+ *
+ * Args: { transactions: array }
+ * Returns: array of { id, typeLabel, contactAccount, amount,
+ *   statusLabel, date, detailUrl }
+ */
+const reconciliation_rows: ComputedFunction = (args) => {
+  const transactions = Array.isArray(args.transactions) ? (args.transactions as Record<string, unknown>[]) : [];
+
+  return transactions.map((t) => {
+    const id = String(t.BankTransactionID ?? '');
+    const contact = t.Contact as { Name?: string } | undefined;
+    const bankAccount = t.BankAccount as { Name?: string } | undefined;
+    const isReconciled = t.IsReconciled === true;
+    const contactName = contact?.Name || '';
+    const bankAccountName = bankAccount?.Name || '';
+
+    return {
+      id,
+      typeLabel: bank_tx_label({ value: t.Type }),
+      contactAccount: [contactName, bankAccountName].filter(Boolean).join(' · ') || '—',
+      amount: typeof t.Total === 'number' ? t.Total : Number(t.Total) || 0,
+      statusLabel: isReconciled ? 'Reconciled' : 'Unreconciled',
+      date: t.Date ?? null,
+      detailUrl: id
+        ? `https://go.xero.com/Bank/ViewTransaction.aspx?bankTransactionID=${id}`
+        : 'https://go.xero.com/',
+    };
+  });
+};
+
 // ── reconciliation_breakdown ─────────────────────────────────────────
 // Reconciled/unreconciled is a real binary status (TILE-DISPLAY-STANDARDS.md
 // §7's restraint model applies, not the categorical chart palette) —
@@ -2496,6 +2554,7 @@ const elements: PluginElementsModule = {
     bank_tx_tone,
     bank_tx_label,
     reconciliation_breakdown,
+    reconciliation_rows,
     remittance_rows,
     remittance_breakdown,
     reimbursement_draft_rows,
