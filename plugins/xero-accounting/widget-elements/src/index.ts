@@ -1748,6 +1748,87 @@ const bill_entry_build_payload: ComputedFunction = (args) => {
 };
 
 /**
+ * Validation + payload-building for the Fee & Reimbursement Drafts tile.
+ * Unlike bill_entry_*, this tile is always exactly ONE fixed-purpose line
+ * (the owner's platform fee reimbursement) -- reusing the shared multi-line
+ * bill_entry_is_invalid/_validation_message functions meant wrapping it in
+ * a one-item "lines" array, which skips their `lines.length === 0`
+ * short-circuit and so surfaced a blank/untouched amount as "unit price
+ * can't be negative" instead of "nothing entered yet" (found via a live
+ * UI review). Dedicated, flat-arg functions avoid that mismatch entirely.
+ * Args: { contactId, date, amount, accountCode, taxType }
+ */
+const fee_reimbursement_is_invalid: ComputedFunction = (args) => {
+  const contactId = String(args.contactId ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const accountCode = String(args.accountCode ?? '').trim();
+  const taxType = String(args.taxType ?? '').trim();
+  const amount = Number(args.amount);
+  if (!contactId || !date || !accountCode || !taxType) return true;
+  return !Number.isFinite(amount) || amount <= 0;
+};
+
+/** Human-readable reason the form can't submit yet, mirroring fee_reimbursement_is_invalid's checks in order. */
+const fee_reimbursement_validation_message: ComputedFunction = (args) => {
+  const contactId = String(args.contactId ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const accountCode = String(args.accountCode ?? '').trim();
+  const taxType = String(args.taxType ?? '').trim();
+  const amount = Number(args.amount);
+  if (!contactId) return 'Select the owner';
+  if (!date) return 'Set the bill date';
+  if (!accountCode) return 'Choose an expense account';
+  if (!taxType) return 'Choose a tax rate';
+  if (!Number.isFinite(amount) || amount <= 0) return 'Enter a fee greater than 0';
+  return '';
+};
+
+/**
+ * Builds the raw Xero invoice body create_invoice expects: one fixed line
+ * ("Platform fee reimbursement") against the owner. Status is explicit
+ * DRAFT so the tile's intent -- record a draft, not submit a live bill --
+ * is unambiguous in the request itself, same reasoning as
+ * bill_entry_build_payload.
+ * Args: { contactId, date, reference, amount, accountCode, taxType }
+ */
+const fee_reimbursement_build_payload: ComputedFunction = (args) => {
+  const date = String(args.date ?? '').trim();
+  const reference = String(args.reference ?? '').trim();
+  return {
+    Type: 'ACCPAY',
+    Status: 'DRAFT',
+    Contact: { ContactID: String(args.contactId ?? '') },
+    ...(date ? { Date: date } : {}),
+    ...(reference ? { Reference: reference } : {}),
+    LineItems: [
+      {
+        Description: 'Platform fee reimbursement',
+        Quantity: 1,
+        UnitAmount: Number(args.amount) || 0,
+        AccountCode: String(args.accountCode ?? ''),
+        TaxType: String(args.taxType ?? ''),
+      },
+    ],
+  };
+};
+
+/**
+ * Looks up the selected expense account's own TaxType (e.g. "INPUT" / GST
+ * on Expenses) so the tax rate pre-fills to what that account actually
+ * uses in Xero, instead of defaulting to nothing (found via the same live
+ * UI review). Falls back to whatever's already selected if the account
+ * isn't found, rather than clearing a manual choice.
+ * Args: { accounts, accountCode, current }
+ */
+const fee_reimbursement_account_tax_type: ComputedFunction = (args) => {
+  const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
+  const accountCode = String(args.accountCode ?? '').trim();
+  if (!accountCode) return args.current ?? '';
+  const account = accounts.find((a) => String(a.Code ?? '') === accountCode);
+  return (account?.TaxType as string | undefined) ?? (args.current ?? '');
+};
+
+/**
  * Outstanding balances for the currently selected supplier, read straight
  * off list_contacts' own response — Xero already returns a `Balances`
  * block per contact (AccountsPayable/AccountsReceivable, each with
@@ -2356,6 +2437,10 @@ const elements: PluginElementsModule = {
     today_iso,
     contra_create_disabled,
     contra_document_link,
+    fee_reimbursement_is_invalid,
+    fee_reimbursement_validation_message,
+    fee_reimbursement_build_payload,
+    fee_reimbursement_account_tax_type,
   },
 };
 
