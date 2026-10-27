@@ -144,12 +144,77 @@ const pay_run_breakdown: ComputedFunction = (args) => {
   };
 };
 
+// get_timesheet_approval_check's per-employee `category` (structural:
+// where the employee's data is present) combined with its two independent
+// exception flags `notApproved`/`hasVariance` (only meaningful within
+// category "both") into a single display label/tone/icon. An employee can
+// be not-approved AND have a variance at the same time (e.g. a Draft
+// timesheet whose hours also don't match an already-built payslip) — both
+// must show, not just whichever was checked first, so this combines them
+// into one label (e.g. "Not approved · 38h variance") rather than picking
+// one. "no_timesheet" (salaried, nothing to check) deliberately reads as
+// muted/neutral, not success — it isn't a passed check, it's not
+// applicable.
+interface CheckRowArgs {
+  category?: unknown;
+  notApproved?: unknown;
+  hasVariance?: unknown;
+  variance?: unknown;
+}
+
+const NON_BOTH_META: Record<string, { label: string; tone: string; icon: string }> = {
+  missing_from_payroll: { label: 'Missing from payroll', tone: 'warning', icon: 'AlertTriangle' },
+  paid_without_timesheet: { label: 'Paid without timesheet', tone: 'destructive', icon: 'AlertTriangle' },
+  no_timesheet: { label: 'N/A (salaried)', tone: 'muted', icon: 'Minus' },
+};
+
+function checkRowMeta(args: CheckRowArgs): { label: string; tone: string; icon: string } {
+  const category = String(args.category ?? '');
+  if (category !== 'both') {
+    return NON_BOTH_META[category] ?? { label: category || 'Unknown', tone: 'muted', icon: 'HelpCircle' };
+  }
+  const notApproved = Boolean(args.notApproved);
+  const hasVariance = Boolean(args.hasVariance);
+  const variance = Number(args.variance ?? 0);
+  const varianceLabel = `${Math.abs(variance)}h variance`;
+
+  if (notApproved && hasVariance) return { label: `Not approved · ${varianceLabel}`, tone: 'destructive', icon: 'AlertTriangle' };
+  if (hasVariance) return { label: varianceLabel, tone: 'destructive', icon: 'AlertTriangle' };
+  if (notApproved) return { label: 'Not approved', tone: 'warning', icon: 'Clock' };
+  return { label: 'Match', tone: 'success', icon: 'CheckCircle2' };
+}
+
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_label: ComputedFunction = (args) => checkRowMeta(args).label;
+
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_tone: ComputedFunction = (args) => checkRowMeta(args).tone;
+
+/** Args: { category, notApproved, hasVariance, variance } — one employee row. */
+const check_row_icon: ComputedFunction = (args) => checkRowMeta(args).icon;
+
+/**
+ * Title-cases a raw connector enum (e.g. Xero's PayRunStatus "DRAFT" →
+ * "Draft") — TILE-DISPLAY-STANDARDS.md §3 never shows a raw SCREAMING_CASE
+ * enum straight. Exported standalone (the existing private `titleCase`
+ * above only serves `fortnightly_pay_run_rows`) for any tile that needs to
+ * display a raw status string directly, e.g. get_timesheet_approval_check's
+ * `payRun.status`, which isn't pre-labeled server-side.
+ *
+ * Args: { value: string }
+ */
+const title_case: ComputedFunction = (args) => titleCase(String(args.value ?? ''));
+
 const elements: PluginElementsModule = {
   slug: 'xero-payroll-au',
   functions: {
     fortnightly_pay_run_rows,
     pay_run_breakdown,
     format_dollars,
+    check_row_label,
+    check_row_tone,
+    check_row_icon,
+    title_case,
   },
 };
 
