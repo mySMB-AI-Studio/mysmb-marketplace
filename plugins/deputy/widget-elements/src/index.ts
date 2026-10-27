@@ -116,12 +116,97 @@ const my_task_rows: ComputedFunction = (args) => {
   });
 };
 
+interface DeputyTimesheet {
+  Id?: number;
+  Employee?: number; // confirmed live: the real field is "Employee", NOT
+                      // "EmployeeId" as list_timesheets' tool description
+                      // claims -- checked actual data before using it.
+  TotalTime?: number;
+  TimeApproved?: boolean;
+  Exported?: unknown; // confirmed live: null when not exported; truthy
+                       // (a timestamp or similar) once it has been --
+                       // treated as a plain truthiness check rather than
+                       // assuming a specific type.
+  _DPMetaData?: { EmployeeInfo?: { DisplayName?: string } };
+}
+
+/**
+ * Deputy has no payroll/payslip data at all (confirmed against every tool
+ * this integration exposes) -- there's nothing to reconcile HOURS against
+ * the way the Xero Payroll AU tiles do. What Deputy DOES track per
+ * timesheet is whether it's been approved (`TimeApproved`) and whether
+ * it's actually been exported toward payroll (`Exported`, null until it
+ * has). This flattens list_timesheets into one row per employee over the
+ * fetched window, counting how many of their timesheets are missing each
+ * step, so "needs approval" and "approved but never exported" surface as
+ * two distinct, real problems rather than being conflated or guessed at.
+ *
+ * Args: { timesheets: array }
+ * Returns: array of { id, name, totalHours, timesheetCount,
+ *   notApprovedCount, notExportedCount, label, tone }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "deputy_timesheet_check_rows",
+ *     "args": { "timesheets": { "$state": "/deputy-token/list_timesheets" } }
+ *   }
+ */
+const timesheet_check_rows: ComputedFunction = (args) => {
+  const timesheets = Array.isArray(args.timesheets) ? (args.timesheets as DeputyTimesheet[]) : [];
+
+  const byEmployee = new Map<number, {
+    name: string;
+    totalHours: number;
+    timesheetCount: number;
+    notApprovedCount: number;
+    notExportedCount: number;
+  }>();
+
+  for (const sheet of timesheets) {
+    const employeeId = sheet.Employee;
+    if (employeeId == null) continue;
+    const name = sheet._DPMetaData?.EmployeeInfo?.DisplayName ?? `Employee #${employeeId}`;
+    const entry = byEmployee.get(employeeId) ?? { name, totalHours: 0, timesheetCount: 0, notApprovedCount: 0, notExportedCount: 0 };
+
+    entry.totalHours += Number(sheet.TotalTime ?? 0);
+    entry.timesheetCount += 1;
+    if (sheet.TimeApproved !== true) entry.notApprovedCount += 1;
+    else if (!sheet.Exported) entry.notExportedCount += 1; // only a distinct problem once it's actually approved
+
+    byEmployee.set(employeeId, entry);
+  }
+
+  const rows = Array.from(byEmployee.entries()).map(([employeeId, e]) => {
+    const issues: string[] = [];
+    if (e.notApprovedCount > 0) issues.push(`${e.notApprovedCount} not approved`);
+    if (e.notExportedCount > 0) issues.push(`${e.notExportedCount} not exported`);
+
+    return {
+      id: String(employeeId),
+      name: e.name,
+      totalHours: Math.round(e.totalHours * 100) / 100,
+      timesheetCount: e.timesheetCount,
+      notApprovedCount: e.notApprovedCount,
+      notExportedCount: e.notExportedCount,
+      label: issues.length ? issues.join(' · ') : 'All approved & exported',
+      tone: e.notApprovedCount > 0 ? 'destructive' : e.notExportedCount > 0 ? 'warning' : 'success',
+    };
+  });
+
+  // Issues first, then clean rows -- same "problems surface first"
+  // convention as the Xero payroll tiles.
+  const rank = (r: (typeof rows)[number]) => (r.notApprovedCount > 0 ? 0 : r.notExportedCount > 0 ? 1 : 2);
+  rows.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  return rows;
+};
+
 const elements: PluginElementsModule = {
   slug: 'deputy',
   functions: {
     department_rows,
     timesheet_rows,
     my_task_rows,
+    timesheet_check_rows,
   },
 };
 
