@@ -262,6 +262,41 @@ const payroll_readiness_rows: ComputedFunction = (args) => {
   });
 };
 
+// Compares get_super_contribution_summary's totalAccrued (payroll side)
+// against get_account_movement's movement (balance-sheet side, the same
+// liability account's actual GL movement for the same calendar-month
+// window) -- a real binary-ish status (TILE-DISPLAY-STANDARDS.md §7's
+// restraint model applies): "success" when they match within a cent
+// (rounding), a genuine "done" state; "destructive" for a real mismatch
+// that needs investigation, not a no-news-is-good-news default; "muted"
+// only when the liability account itself couldn't be matched on the
+// balance sheet at all (a setup problem, not a reconciliation result).
+interface SuperStatusArgs {
+  totalAccrued?: unknown;
+  movement?: unknown;
+  accountFound?: unknown;
+  accountName?: unknown;
+}
+
+const super_reconciliation_status: ComputedFunction = (args: SuperStatusArgs) => {
+  const totalAccrued = Math.round((Number(args.totalAccrued) || 0) * 100) / 100;
+  const movement = Math.round((Number(args.movement) || 0) * 100) / 100;
+  const accountFound = Boolean(args.accountFound);
+  const accountName = typeof args.accountName === 'string' ? args.accountName : null;
+  const difference = Math.round((movement - totalAccrued) * 100) / 100;
+  const isMatch = accountFound && Math.abs(difference) < 0.01;
+
+  return {
+    accountName,
+    accountFound,
+    totalAccrued,
+    movement,
+    difference,
+    matchLabel: !accountFound ? 'Account not found' : isMatch ? 'Reconciled' : 'Mismatch',
+    matchTone: !accountFound ? 'muted' : isMatch ? 'success' : 'destructive',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'xero-payroll-au',
   functions: {
@@ -273,6 +308,7 @@ const elements: PluginElementsModule = {
     check_row_icon,
     title_case,
     payroll_readiness_rows,
+    super_reconciliation_status,
   },
 };
 

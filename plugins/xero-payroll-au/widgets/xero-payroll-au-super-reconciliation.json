@@ -1,0 +1,264 @@
+{
+  "id": "xero-payroll-au-super-reconciliation",
+  "title": "Super Reconciliation",
+  "description": "Reconciles superannuation contributions accrued through payroll this month against the balance sheet's actual Superannuation liability account movement for the same period — flagging a match or a mismatch. Xero's API has no 'batch' resource for Auto Super (that feature is UI/backend-only, not exposed to any integration) — the pay-run list below is an honest substitute: each POSTED pay run's own real super total within the window, not an actual fund-payment batch.",
+  "category": "finance",
+  "tags": ["xero", "payroll", "superannuation", "super", "reconciliation", "balance-sheet", "compliance"],
+  "keywords": ["super reconciliation", "superannuation accrual", "super guarantee", "balance sheet", "liability account", "pay run", "auto super"],
+  "connectorsUsed": ["xero-payroll-au", "xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 10 },
+    "min": { "colSpan": 5, "rowSpan": 7 },
+    "max": { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-payroll-au",
+    "tool": "get_super_contribution_summary",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "footer", "infoOverlay"],
+        "watch": {
+          "/xero-payroll-au/get_super_contribution_summary": [
+            {
+              "action": "xero-accounting.get_account_movement",
+              "params": { "accountCode": { "$state": "/xero-payroll-au/get_super_contribution_summary/primaryLiabilityAccountCode" } }
+            }
+          ],
+          "/xero-accounting/get_account_movement": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/status",
+                "value": {
+                  "$computed": "xero-payroll-au_super_reconciliation_status",
+                  "args": {
+                    "totalAccrued": { "$state": "/xero-payroll-au/get_super_contribution_summary/totalAccrued" },
+                    "movement": { "$state": "/xero-accounting/get_account_movement/movement" },
+                    "accountFound": { "$state": "/xero-accounting/get_account_movement/accountFound" },
+                    "accountName": { "$state": "/xero-accounting/get_account_movement/accountName" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["titleGroup", "infoBtn"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "PiggyBank", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Super Reconciliation", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero Payroll AU · read-only, makes no changes" } },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorBanner", "empty", "statusSection", "noSuperCaption", "batchesLabel", "table"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/xero-payroll-au.get_super_contribution_summary" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "Couldn't load super contributions: ${/_errors/xero-payroll-au.get_super_contribution_summary}" },
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/_errors/xero-payroll-au.get_super_contribution_summary" }
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No super contributions found in this month's posted pay runs yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_super_contribution_summary", "not": true },
+            { "$state": "/xero-payroll-au/get_super_contribution_summary/batches/0", "not": true }
+          ]
+        }
+      },
+
+      "statusSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_super_contribution_summary", "not": true },
+            { "$state": "/xero-payroll-au/get_super_contribution_summary/primaryLiabilityAccountCode" }
+          ]
+        },
+        "children": ["statusRow", "statusDetailRow", "accountNotFoundCaption"]
+      },
+      "noSuperCaption": {
+        "type": "Caption",
+        "props": { "text": "Pay runs were posted this period, but none accrued any super yet — nothing to reconcile.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_super_contribution_summary", "not": true },
+            { "$state": "/xero-payroll-au/get_super_contribution_summary/batches/0" },
+            { "$state": "/xero-payroll-au/get_super_contribution_summary/primaryLiabilityAccountCode", "not": true }
+          ]
+        }
+      },
+      "statusRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["statusBadge", "statusAccountName"]
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/status/matchLabel" },
+          "tone": { "$state": "/ui/status/matchTone" },
+          "variant": "soft"
+        }
+      },
+      "statusAccountName": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/status/accountName" }, "tone": "muted" },
+        "visible": { "$state": "/ui/status/accountFound" }
+      },
+      "statusDetailRow": {
+        "type": "Row",
+        "props": { "gap": "lg" },
+        "visible": { "$state": "/ui/status/accountFound" },
+        "children": ["accruedStack", "movementStack", "differenceStack"]
+      },
+      "accruedStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["accruedLabel", "accruedValue"] },
+      "accruedLabel": { "type": "Caption", "props": { "text": "Accrued from payroll", "tone": "muted" } },
+      "accruedValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/status/totalAccrued" } } },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "movementStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["movementLabel", "movementValue"] },
+      "movementLabel": { "type": "Caption", "props": { "text": "Balance sheet movement", "tone": "muted" } },
+      "movementValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/status/movement" } } },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "differenceStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["differenceLabel", "differenceValue"] },
+      "differenceLabel": { "type": "Caption", "props": { "text": "Difference", "tone": "muted" } },
+      "differenceValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/status/difference" } } },
+          "size": "md",
+          "weight": "semibold",
+          "tone": { "$state": "/ui/status/matchTone" }
+        }
+      },
+      "accountNotFoundCaption": {
+        "type": "Caption",
+        "props": { "text": "Couldn't find a Superannuation liability account on the balance sheet for this period's contributions.", "tone": "warning" },
+        "visible": { "$state": "/ui/status/accountFound", "not": true }
+      },
+
+      "batchesLabel": {
+        "type": "Caption",
+        "props": { "text": "Pay runs this period (stand in for Xero's Auto Super batches — not exposed via API)", "tone": "muted" },
+        "visible": { "$state": "/xero-payroll-au/get_super_contribution_summary/batches/0" }
+      },
+
+      "table": {
+        "type": "Table",
+        "props": {
+          "columns": [
+            { "id": "periodLabel", "header": "Pay period", "field": "periodLabel", "width": 150 },
+            { "id": "paymentDate", "header": "Payment date", "field": "paymentDate", "width": 120, "format": "dd_mmm_yy" },
+            { "id": "totalSuper", "header": "Super accrued", "field": "totalSuper", "width": 130, "format": "currency" }
+          ],
+          "rows": { "$state": "/xero-payroll-au/get_super_contribution_summary/batches" }
+        },
+        "visible": { "$state": "/xero-payroll-au/get_super_contribution_summary/batches/0" }
+      },
+
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openXeroBtn"]
+      },
+      "openXeroBtn": {
+        "type": "Button",
+        "props": { "label": "Open Payroll in Xero", "tone": "brand", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://go.xero.com/", "target": "_blank" } }
+        }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } }
+        }
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "How this tile works", "level": "h2" } },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoScopeLabel", "infoScopeText"]
+      },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Sums real superannuation contribution amounts from every posted pay run's payslips this month, and compares that total against the actual balance movement in the matching liability account on the balance sheet. A mismatch usually means a contribution hasn't been posted, paid, or journalled yet.",
+          "size": "sm"
+        }
+      },
+      "infoScopeLabel": { "type": "Caption", "props": { "text": "About the pay-run list below", "tone": "muted", "weight": "semibold" } },
+      "infoScopeText": {
+        "type": "Text",
+        "props": {
+          "text": "Xero's API has no concept of an Auto Super \"batch\" at all — that feature isn't exposed to any integration. Each pay run's own real super total stands in as the closest honest equivalent, not an actual fund-payment batch.",
+          "size": "sm"
+        }
+      }
+    }
+  },
+  "status": "published"
+}
