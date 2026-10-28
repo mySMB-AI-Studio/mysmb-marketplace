@@ -211,6 +211,23 @@ const payroll_readiness_rows = (args) => {
         };
     });
 };
+const super_reconciliation_status = (args) => {
+    const totalAccrued = Math.round((Number(args.totalAccrued) || 0) * 100) / 100;
+    const movement = Math.round((Number(args.movement) || 0) * 100) / 100;
+    const accountFound = Boolean(args.accountFound);
+    const accountName = typeof args.accountName === 'string' ? args.accountName : null;
+    const difference = Math.round((movement - totalAccrued) * 100) / 100;
+    const isMatch = accountFound && Math.abs(difference) < 0.01;
+    return {
+        accountName,
+        accountFound,
+        totalAccrued,
+        movement,
+        difference,
+        matchLabel: !accountFound ? 'Account not found' : isMatch ? 'Reconciled' : 'Mismatch',
+        matchTone: !accountFound ? 'muted' : isMatch ? 'success' : 'destructive',
+    };
+};
 const elements = {
     slug: 'xero-payroll-au',
     functions: {
@@ -222,6 +239,7 @@ const elements = {
         check_row_icon,
         title_case,
         payroll_readiness_rows,
+        super_reconciliation_status,
     },
 };
 export default elements;
