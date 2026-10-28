@@ -174,6 +174,43 @@ const check_row_icon = (args) => checkRowMeta(args).icon;
  * Args: { value: string }
  */
 const title_case = (args) => titleCase(String(args.value ?? ''));
+/**
+ * Flattens get_payroll_readiness_check's per-employee output into rows for
+ * the system Table component. Table cells are single-line by design (see
+ * the Reconciliation tile fix this session), so missing fields and
+ * pending-leave detail are each combined into one readable summary string
+ * per employee rather than split into separate columns per issue.
+ *
+ * Args: { employees: array }
+ * Returns: array of { id, name, employmentType, statusLabel, issuesSummary }
+ */
+const payroll_readiness_rows = (args) => {
+    const employees = Array.isArray(args.employees) ? args.employees : [];
+    return employees.map((e) => {
+        const missing = e.missingFields ?? [];
+        const pending = e.pendingLeave ?? [];
+        const statusLabel = e.hasBalanceConflict ? 'Balance conflict' : e.ready ? 'Ready' : 'Needs attention';
+        const parts = [];
+        if (missing.length)
+            parts.push(`Missing: ${missing.join(', ')}`);
+        if (pending.length) {
+            const pendingText = pending
+                .map((p) => {
+                const flag = p.exceedsBalance ? ' — exceeds balance' : '';
+                return `${p.title ?? 'Leave'} ${p.requestedUnits ?? 0}h (balance ${p.currentBalance ?? 0}h)${flag}`;
+            })
+                .join('; ');
+            parts.push(`Pending: ${pendingText}`);
+        }
+        return {
+            id: e.employeeId ?? '',
+            name: e.name || 'Unknown employee',
+            employmentType: e.isTerminated ? 'Terminated' : 'Active',
+            statusLabel,
+            issuesSummary: parts.length ? parts.join(' · ') : 'No issues',
+        };
+    });
+};
 const elements = {
     slug: 'xero-payroll-au',
     functions: {
@@ -184,6 +221,7 @@ const elements = {
         check_row_tone,
         check_row_icon,
         title_case,
+        payroll_readiness_rows,
     },
 };
 export default elements;
