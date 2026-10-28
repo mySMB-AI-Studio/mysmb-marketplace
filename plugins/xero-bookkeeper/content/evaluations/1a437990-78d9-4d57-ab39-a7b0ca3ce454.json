@@ -1,5 +1,5 @@
 {
-  "contentHash": "6bf07e6852ef2faec0a8251346c9b2ede45c26f84fb735e6db0a15ecc483725a",
+  "contentHash": "26d658ceef88bccd0606f5e8b0ef6d775573a345978fbf85bb44606d0b618333",
   "definition": {
     "key": "invoice-request-controls",
     "kind": "evaluation",
@@ -84,6 +84,16 @@
       },
       {
         "expected": {
+          "decisions": [
+            {
+              "option": "create",
+              "step": "review"
+            },
+            {
+              "option": "handBack",
+              "step": "send"
+            }
+          ],
           "intentsNotAllowed": [
             "email.send_reviewed"
           ],
@@ -132,6 +142,12 @@
       },
       {
         "expected": {
+          "decisions": [
+            {
+              "option": "discard",
+              "step": "review"
+            }
+          ],
           "intentsNotAllowed": [
             "xero.invoice.draft_create",
             "email.send_reviewed",

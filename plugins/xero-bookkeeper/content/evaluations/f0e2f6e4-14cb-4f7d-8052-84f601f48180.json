@@ -1,5 +1,5 @@
 {
-  "contentHash": "04a4a7de011b0f5294ecd643c168588f17cd011b12b6812542fff0b685f10636",
+  "contentHash": "c98cfa1f5fe926a8984ba5ea14666d74655d6d412e6e3f6d837a92290aaa0455",
   "definition": {
     "key": "bill-intake-controls",
     "kind": "evaluation",
@@ -363,15 +363,22 @@
       },
       {
         "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "review"
+            },
+            {
+              "option": "holdDraft",
+              "step": "authorise"
+            }
+          ],
           "intentsNotAllowed": [
             "xero.bill.approve"
           ],
           "outcome": "heldAsDraft",
           "stepsReached": [
             "identify",
-            "extract",
-            "checks",
-            "review",
             "extract",
             "checks",
             "review",
@@ -391,11 +398,6 @@
             "total": 110
           },
           "responses": [
-            {
-              "note": "Code to 461 Printing & Stationery",
-              "option": "changeCoding",
-              "step": "review"
-            },
             {
               "option": "approve",
               "step": "review"
@@ -422,11 +424,11 @@
         "key": "changeCodingReworks",
         "rubric": [
           {
-            "criterion": "The second brief shows account 461 on the line with source reviewer and the note, and the rule is saved for the supplier.",
+            "criterion": "The bill exists in Xero only as a DRAFT; no approve intent was issued and the job ended with a note that it is held for manual authorisation.",
             "weight": 1
           }
         ],
-        "title": "A coding change returns through extract and a fresh review"
+        "title": "Approved but left as a draft: nothing is authorised"
       }
     ],
     "schemaVersion": 1,
