@@ -1,0 +1,267 @@
+{
+  "contentHash": "3883d2e1cca501e11820d7a775d4f42d964fa2536c47eebf540710e72a7f1285",
+  "definition": {
+    "description": "One post, article, email, announcement or visual. Each new piece starts a drafting job; the reviewer approves it before it is filed and booked for its publish date. Nothing is ever posted for you.",
+    "fields": [
+      {
+        "key": "piece_title",
+        "kind": "text",
+        "label": "Piece",
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "stages": [
+            {
+              "key": "planned",
+              "label": "Planned",
+              "state": "open"
+            },
+            {
+              "key": "drafting",
+              "label": "Drafting",
+              "state": "open"
+            },
+            {
+              "key": "ready_for_review",
+              "label": "Ready for review",
+              "state": "open"
+            },
+            {
+              "key": "changes_requested",
+              "label": "Changes requested",
+              "state": "open"
+            },
+            {
+              "key": "approved",
+              "label": "Approved",
+              "state": "open"
+            },
+            {
+              "key": "published",
+              "label": "Published",
+              "state": "closed"
+            },
+            {
+              "key": "skipped",
+              "label": "Skipped",
+              "state": "closed"
+            }
+          ]
+        },
+        "key": "piece_stage",
+        "kind": "pipeline",
+        "label": "Stage",
+        "promoted": "stage",
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "social_post",
+              "label": "Social media post"
+            },
+            {
+              "key": "article",
+              "label": "Article"
+            },
+            {
+              "key": "email",
+              "label": "Email"
+            },
+            {
+              "key": "announcement",
+              "label": "Announcement"
+            },
+            {
+              "key": "visual",
+              "label": "Visual"
+            }
+          ]
+        },
+        "key": "content_type",
+        "kind": "select",
+        "label": "Content type",
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "instagram",
+              "label": "Instagram"
+            },
+            {
+              "key": "facebook",
+              "label": "Facebook"
+            },
+            {
+              "key": "linkedin",
+              "label": "LinkedIn"
+            },
+            {
+              "key": "google_business",
+              "label": "Google Business"
+            },
+            {
+              "key": "email",
+              "label": "Email"
+            },
+            {
+              "key": "website",
+              "label": "Website"
+            },
+            {
+              "key": "print",
+              "label": "Print"
+            }
+          ]
+        },
+        "key": "channels",
+        "kind": "multi_select",
+        "label": "Channels",
+        "showInList": true
+      },
+      {
+        "config": {
+          "onTargetDelete": "unlink",
+          "target": "record:social_campaigns"
+        },
+        "key": "campaign",
+        "kind": "relation",
+        "label": "Campaign",
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "campaign",
+              "label": "Campaign"
+            },
+            {
+              "key": "adhoc",
+              "label": "One-off request"
+            },
+            {
+              "key": "repurpose",
+              "label": "Repurposed"
+            },
+            {
+              "key": "rhythm",
+              "label": "Always-on rhythm"
+            },
+            {
+              "key": "plan_my_month",
+              "label": "Plan my month"
+            },
+            {
+              "key": "seasonal",
+              "label": "Seasonal prompt"
+            }
+          ]
+        },
+        "key": "origin",
+        "kind": "select",
+        "label": "Origin"
+      },
+      {
+        "key": "publish_date",
+        "kind": "date",
+        "label": "Publish date",
+        "showInList": true
+      },
+      {
+        "key": "review_date",
+        "kind": "date",
+        "label": "Review by",
+        "showInList": true
+      },
+      {
+        "key": "topic",
+        "kind": "text",
+        "label": "Topic",
+        "searchable": true
+      },
+      {
+        "key": "angle",
+        "kind": "long_text",
+        "label": "Angle"
+      },
+      {
+        "key": "brief",
+        "kind": "long_text",
+        "label": "Brief (what was asked for)"
+      },
+      {
+        "key": "cta",
+        "kind": "text",
+        "label": "Call to action"
+      },
+      {
+        "key": "cta_url",
+        "kind": "url",
+        "label": "Call-to-action link"
+      },
+      {
+        "key": "sequence",
+        "kind": "text",
+        "label": "Position in campaign"
+      },
+      {
+        "key": "generate_draft",
+        "kind": "boolean",
+        "label": "Draft automatically"
+      },
+      {
+        "key": "current_version",
+        "kind": "number",
+        "label": "Draft version"
+      },
+      {
+        "key": "knowledge_path",
+        "kind": "text",
+        "label": "Latest draft in Knowledge"
+      },
+      {
+        "key": "check_summary",
+        "kind": "text",
+        "label": "Brand and compliance checks"
+      },
+      {
+        "key": "missing_info",
+        "kind": "long_text",
+        "label": "Missing information"
+      },
+      {
+        "key": "piece_key",
+        "kind": "text",
+        "label": "Piece key",
+        "rules": [
+          {
+            "kind": "unique_within_type"
+          }
+        ],
+        "showInDetail": false
+      }
+    ],
+    "icon": "file-text",
+    "labelPlural": "Content pieces",
+    "labelSingular": "Content piece",
+    "settings": {
+      "defaultSort": {
+        "dir": "asc",
+        "key": "publish_date"
+      }
+    },
+    "slug": "social_content_pieces",
+    "titleFieldKey": "piece_title"
+  },
+  "kind": "record_type",
+  "name": "Content pieces",
+  "originKey": "1d389196-08f0-5536-83b4-56b6ac59abe3"
+}
