@@ -1,0 +1,95 @@
+{
+  "contentHash": "a011ca5204fdc8172e21ba60f1dd9416f351b721b21f96093554157078925269",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "folder": "folder",
+          "limit": "limit",
+          "since": "since"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "list_emails"
+      },
+      {
+        "argMap": {
+          "messageId": "messageId"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "list_email_attachments"
+      },
+      {
+        "argMap": {
+          "attachmentId": "attachmentId",
+          "messageId": "messageId"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "get_email_attachment"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "attachmentId": {
+          "type": "string"
+        },
+        "folder": {
+          "description": "Mailbox folder; Inbox when omitted.",
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "messageId": {
+          "type": "string"
+        },
+        "since": {
+          "description": "ISO instant; only emails received after it.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "key": "email.read_inbox",
+    "kind": "capability",
+    "originKey": "382bd953-7ae0-4a5b-a1f0-aabb62e5f4eb",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "attachments": {
+          "type": "array"
+        },
+        "contentBytes": {
+          "type": "string"
+        },
+        "emails": {
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the intake mailbox"
+  },
+  "kind": "capability",
+  "name": "Read the intake mailbox",
+  "originKey": "382bd953-7ae0-4a5b-a1f0-aabb62e5f4eb"
+}

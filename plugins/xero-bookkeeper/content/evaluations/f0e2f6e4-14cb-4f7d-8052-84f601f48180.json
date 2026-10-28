@@ -1,0 +1,442 @@
+{
+  "contentHash": "04a4a7de011b0f5294ecd643c168588f17cd011b12b6812542fff0b685f10636",
+  "definition": {
+    "key": "bill-intake-controls",
+    "kind": "evaluation",
+    "originKey": "f0e2f6e4-14cb-4f7d-8052-84f601f48180",
+    "process": "cc598c11-febb-4ae0-a84f-9726d3a4268b",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "review"
+            },
+            {
+              "option": "authorise",
+              "step": "authorise"
+            }
+          ],
+          "outcome": "posted",
+          "stepsReached": [
+            "identify",
+            "extract",
+            "checks",
+            "review",
+            "record",
+            "authorise",
+            "posted"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "contact_email": "owner@demo.example",
+            "gst_registered": true,
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "abn": "51824753556",
+            "date": "2026-10-01",
+            "dueDate": "2026-10-31",
+            "gst": 32,
+            "invoiceNumber": "INV-2041",
+            "lines": [
+              {
+                "description": "Copy paper A4 x 10",
+                "quantity": 10,
+                "unitAmount": 32
+              }
+            ],
+            "supplier": "Ridgeway Office Supplies",
+            "total": 352
+          },
+          "responses": [
+            {
+              "option": "approve",
+              "step": "review"
+            },
+            {
+              "option": "authorise",
+              "step": "authorise"
+            }
+          ],
+          "settings": {
+            "clientApprovalAbove": 1000,
+            "duplicateWindowDays": 90,
+            "rateVariancePct": 15
+          },
+          "xero": {
+            "bills": [],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies",
+                "TaxNumber": "51824753556"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-01-ridgeway-INV-2041.pdf"
+        },
+        "key": "happyPath",
+        "rubric": [
+          {
+            "criterion": "The review brief shows supplier, invoice number, total and each line's account code with its source (rule, history or ai) and confidence.",
+            "weight": 0.6
+          },
+          {
+            "criterion": "The draft bill payload reconciles to the document total to the cent and carries the job reference.",
+            "weight": 0.4
+          }
+        ],
+        "title": "A clean bill under the threshold: approved, authorised, posted"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.draft_create",
+            "xero.bill.approve",
+            "email.send_reviewed"
+          ],
+          "stepsReached": [
+            "identify",
+            "extract",
+            "checks",
+            "review"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "gst_registered": true,
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "invoiceNumber": "INV-2041",
+            "supplier": "Ridgeway Office Supplies",
+            "total": 352
+          },
+          "elapsedBusinessDays": 12,
+          "responses": [],
+          "xero": {
+            "bills": [],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-01-ridgeway-INV-2041.pdf"
+        },
+        "key": "noPostingWithoutDecision",
+        "rubric": [
+          {
+            "criterion": "The reviewer is reminded after the reminder days, the manager is escalated to, and the job pauses; elapsed time is never treated as approval.",
+            "weight": 1
+          }
+        ],
+        "title": "Nobody decides: nothing is created in Xero"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.draft_create",
+            "xero.bill.approve",
+            "xero.contacts.upsert"
+          ],
+          "outcome": "duplicate",
+          "stepsReached": [
+            "identify",
+            "extract",
+            "checks",
+            "duplicate"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "date": "2026-10-01",
+            "invoiceNumber": "INV-2041",
+            "supplier": "Ridgeway Office Supplies",
+            "total": 352
+          },
+          "responses": [],
+          "xero": {
+            "bills": [
+              {
+                "Date": "2026-10-01",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000001",
+                "InvoiceNumber": "INV-2041",
+                "Status": "AUTHORISED",
+                "Total": 352,
+                "Type": "ACCPAY"
+              }
+            ],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-02-ridgeway-INV-2041-again.pdf"
+        },
+        "key": "duplicate",
+        "rubric": [
+          {
+            "criterion": "The duplicate note names the existing Xero bill (number and id) and tags [CHK-001].",
+            "weight": 1
+          }
+        ],
+        "title": "A bill already in Xero ends as duplicate with no review"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "review"
+            },
+            {
+              "option": "authorise",
+              "step": "authorise"
+            }
+          ],
+          "outcome": "posted",
+          "stepsReached": [
+            "identify",
+            "extract",
+            "checks",
+            "review",
+            "record",
+            "clientApproval",
+            "authorise",
+            "posted"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "contact_email": "owner@demo.example",
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "gst": 440,
+            "invoiceNumber": "INV-7788",
+            "supplier": "Acme Fitouts",
+            "total": 4840
+          },
+          "responses": [
+            {
+              "option": "approve",
+              "step": "review"
+            },
+            {
+              "choice": "approve",
+              "step": "clientApproval"
+            },
+            {
+              "option": "authorise",
+              "step": "authorise"
+            }
+          ],
+          "settings": {
+            "clientApprovalAbove": 1000
+          },
+          "xero": {
+            "bills": [],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000102",
+                "Name": "Acme Fitouts"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-03-acme-INV-7788.pdf"
+        },
+        "key": "aboveThresholdGoesToClient",
+        "rubric": [
+          {
+            "criterion": "The client approval request names the supplier, invoice number and total and goes only to the client's named contact.",
+            "weight": 1
+          }
+        ],
+        "title": "A bill above the threshold waits for the client's approval before it can be authorised"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "reject",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "xero.bill.draft_create",
+            "xero.contacts.upsert",
+            "xero.bill.approve"
+          ],
+          "outcome": "rejected",
+          "stepsReached": [
+            "identify",
+            "extract",
+            "checks",
+            "review",
+            "rejected"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "invoiceNumber": "0099",
+            "supplier": "Someone Else Pty Ltd",
+            "total": 120
+          },
+          "responses": [
+            {
+              "option": "reject",
+              "step": "review"
+            }
+          ],
+          "xero": {
+            "bills": [],
+            "contacts": []
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-04-not-ours.pdf"
+        },
+        "key": "rejected",
+        "title": "The reviewer rejects: nothing is created in Xero"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.draft_create",
+            "xero.bill.approve",
+            "email.send_reviewed"
+          ],
+          "outcome": "needsAttention",
+          "stepsReached": [
+            "identify",
+            "needsAttention"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "readable": false
+          },
+          "responses": []
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-05-photo.jpg"
+        },
+        "key": "unreadable",
+        "title": "A scan with no readable text ends as needsAttention"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.approve"
+          ],
+          "outcome": "heldAsDraft",
+          "stepsReached": [
+            "identify",
+            "extract",
+            "checks",
+            "review",
+            "extract",
+            "checks",
+            "review",
+            "record",
+            "authorise",
+            "heldAsDraft"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "document": {
+            "invoiceNumber": "INV-2050",
+            "supplier": "Ridgeway Office Supplies",
+            "total": 110
+          },
+          "responses": [
+            {
+              "note": "Code to 461 Printing & Stationery",
+              "option": "changeCoding",
+              "step": "review"
+            },
+            {
+              "option": "approve",
+              "step": "review"
+            },
+            {
+              "option": "holdDraft",
+              "step": "authorise"
+            }
+          ],
+          "xero": {
+            "bills": [],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-06-ridgeway-INV-2050.pdf"
+        },
+        "key": "changeCodingReworks",
+        "rubric": [
+          {
+            "criterion": "The second brief shows account 461 on the line with source reviewer and the note, and the rule is saved for the supplier.",
+            "weight": 1
+          }
+        ],
+        "title": "A coding change returns through extract and a fresh review"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.8
+    },
+    "title": "Bill intake: controls"
+  },
+  "kind": "evaluation",
+  "name": "Bill intake: controls",
+  "originKey": "f0e2f6e4-14cb-4f7d-8052-84f601f48180"
+}

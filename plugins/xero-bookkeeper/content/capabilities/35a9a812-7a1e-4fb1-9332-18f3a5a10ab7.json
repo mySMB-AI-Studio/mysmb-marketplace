@@ -1,0 +1,123 @@
+{
+  "contentHash": "ec9ac6514f71f56108c0187787b04535bec0c263a5e403b4df9cbea545967de9",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "attachments": "attachments",
+          "body": "body",
+          "contentType": "contentType",
+          "requestRef": "requestRef",
+          "subject": "subject",
+          "to": "to"
+        },
+        "scopes": [
+          "Mail.Send",
+          "Mail.ReadWrite"
+        ],
+        "server": "m365-mail-send",
+        "tool": "send_email"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "attachments": {
+          "items": {
+            "properties": {
+              "base64Content": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "fileName",
+              "base64Content",
+              "mimeType"
+            ],
+            "type": "object"
+          },
+          "maxItems": 3,
+          "type": "array"
+        },
+        "body": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "contentType": {
+          "default": "Text",
+          "enum": [
+            "Text",
+            "HTML"
+          ],
+          "type": "string"
+        },
+        "requestRef": {
+          "pattern": "^[A-Za-z0-9._-]{3,64}$",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "to": {
+          "description": "The client's named contact(s) only.",
+          "items": {
+            "format": "email",
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "to",
+        "subject",
+        "body",
+        "requestRef"
+      ],
+      "type": "object"
+    },
+    "key": "email.send_reviewed",
+    "kind": "capability",
+    "originKey": "35a9a812-7a1e-4fb1-9332-18f3a5a10ab7",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "conversationId": {
+          "type": "string"
+        },
+        "internetMessageId": {
+          "type": "string"
+        },
+        "messageId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-send",
+      "connectors:m365-mail-read"
+    ],
+    "reconcile": {
+      "by": "request_ref",
+      "tool": "find_sent_by_reference"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "send",
+    "title": "Send a reviewed email to a client"
+  },
+  "kind": "capability",
+  "name": "Send a reviewed email to a client",
+  "originKey": "35a9a812-7a1e-4fb1-9332-18f3a5a10ab7"
+}

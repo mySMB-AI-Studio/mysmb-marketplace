@@ -3649,6 +3649,75 @@
       "version": "0.0.0",
       "displayName": "Social Media Agent",
       "source": "./plugins/social-media-agent"
+    },
+    {
+      "category": "Finance",
+      "content": {
+        "agents": [
+          "content/agents/be048bb5-ce8b-40d3-a871-0cd4fea4e88e.json"
+        ],
+        "automations": [],
+        "capabilities": [
+          "content/capabilities/d7a7fddc-974f-4bdd-8d70-fe83d754cbc2.json",
+          "content/capabilities/ec672637-50c4-4dd5-a8fe-59c5ae10af94.json",
+          "content/capabilities/9f129396-eb79-47c6-9a00-8bf8df5a5bce.json",
+          "content/capabilities/9f6ca0cb-49f6-4c4c-a1a6-bcd236daf0c7.json",
+          "content/capabilities/f84dd821-bed5-4100-a0d2-c4eb9718b275.json",
+          "content/capabilities/e11da12c-8590-4431-ab90-cee85093c4cc.json",
+          "content/capabilities/2a09df8f-2e5f-4ba2-b816-541528afb70c.json",
+          "content/capabilities/8196118e-5dd1-4944-9cea-37f4e58c3dd7.json",
+          "content/capabilities/382bd953-7ae0-4a5b-a1f0-aabb62e5f4eb.json",
+          "content/capabilities/9e0736c2-1516-46c9-9df4-a7f224be7c42.json",
+          "content/capabilities/35a9a812-7a1e-4fb1-9332-18f3a5a10ab7.json"
+        ],
+        "evaluations": [
+          "content/evaluations/f0e2f6e4-14cb-4f7d-8052-84f601f48180.json",
+          "content/evaluations/1a437990-78d9-4d57-ab39-a7b0ca3ce454.json"
+        ],
+        "formTemplates": [],
+        "forms": [],
+        "processes": [
+          "content/processes/97f54b6f-6b6f-480e-afb7-07033a22efbd.json",
+          "content/processes/238217ec-00d8-45b6-bffd-765b72d0d0a8.json",
+          "content/processes/82a69601-e573-4731-9f4b-aec2ce5c8dfe.json",
+          "content/processes/cc598c11-febb-4ae0-a84f-9726d3a4268b.json",
+          "content/processes/d9047b6c-ebf5-4827-aa47-52a116d30d50.json"
+        ],
+        "setups": [
+          "content/setups/7aa2c4fe-ed52-4cb9-908e-634e2097f3e2.json"
+        ],
+        "workqTemplates": []
+      },
+      "description": "A business agent that runs accounts payable and receivable bookkeeping across one or many client Xero organisations. It files emailed and dropped supplier bills, reads and codes them, runs duplicate, ABN and rate checks, and raises every posting as a reviewer decision; it drafts requested sales invoices, reconciles supplier statements and runs nightly and weekly ledger checks with findings owned by a named person. Nothing is authorised in Xero or emailed to a client without a recorded decision. Setup is connections only: connect Xero (and optionally a mailbox); people are named at activation and clients are onboarded one by one through the agent.",
+      "listing": {
+        "agent": {
+          "outcomes": [
+            "Every supplier bill reaches Xero coded and approved by a person, or ends as a documented exception with the decision on file",
+            "Nothing is authorised in Xero or emailed to a client without a recorded decision",
+            "Supplier statements and the ledger are checked on a cadence, and every finding has a named owner"
+          ],
+          "processes": [
+            "client-onboarding",
+            "bill-intake",
+            "invoice-request",
+            "statement-check",
+            "ledger-checks"
+          ],
+          "requiredCapabilities": [
+            "xero.organisation.read",
+            "xero.bills.read",
+            "xero.bill.draft_create",
+            "xero.bill.approve"
+          ],
+          "role": "Bookkeeper (accounts payable and receivable, Xero)",
+          "setupEffort": "minutes"
+        }
+      },
+      "name": "xero-bookkeeper",
+      "tags": [],
+      "version": "0.1.0",
+      "displayName": "Xero Bookkeeper",
+      "source": "./plugins/xero-bookkeeper"
     }
   ]
 }

@@ -1,0 +1,243 @@
+{
+  "contentHash": "0da259559d636900263797e761681d4af832c6f4cc7e187c16f10344420e2379",
+  "definition": {
+    "capabilities": [
+      "xero.organisation.read",
+      "xero.accounts.read",
+      "xero.bills.read",
+      "records.write"
+    ],
+    "description": "Match a client business to its Xero organisation, read its base currency, timezone, GST registration and contact, and record the client under the agent's care once the manager confirms. Read-only in Xero.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "clientName",
+        "label": "Client business name",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "xeroOrgName",
+        "label": "Xero organisation name (as shown in Xero)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "contactName",
+        "label": "Client contact name",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "key": "contactEmail",
+        "label": "Client contact email (approvals and queries go here)",
+        "required": false,
+        "type": "string"
+      }
+    ],
+    "key": "client-onboarding",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 1,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 100,
+      "maxSteps": 20,
+      "maxWaitingDays": 14
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "97f54b6f-6b6f-480e-afb7-07033a22efbd",
+    "outcomes": [
+      {
+        "evidence": [
+          "client_record",
+          "decision_record"
+        ],
+        "key": "clientReady",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "declined",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "missing_items"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "Onboarding reads the organisation, chart of accounts and recent bills; it never writes to Xero.",
+        "key": "readOnlyInXero"
+      },
+      {
+        "description": "A client is recorded under the agent's care only after the manager's recorded confirmation.",
+        "key": "managerConfirms"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.resolve.xeroTenantId != null",
+        "steps.resolve.ready != null"
+      ],
+      "sampleInputs": {
+        "clientName": "Demo Company (AU)",
+        "contactEmail": "owner@demo.example",
+        "xeroOrgName": "Demo Company (AU)"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "resolve",
+        "kind": "agent",
+        "outputs": [
+          "client",
+          "xeroTenantId",
+          "ready",
+          "missing"
+        ],
+        "proposalSchema": "clientRecord",
+        "skill": "xero-bookkeeper-foundation",
+        "title": "Match the client to its Xero organisation"
+      },
+      {
+        "eligible": [
+          "manager"
+        ],
+        "key": "confirm",
+        "kind": "decision",
+        "materiality": [
+          "steps.resolve.xeroTenantId",
+          "steps.resolve.client.contactEmail",
+          "steps.resolve.client.gstRegistered"
+        ],
+        "options": [
+          {
+            "effect": "Saves the client record (name, Xero organisation id, GST registration, contact). From now on bills in this client's inbox folder are processed. Nothing changes in Xero.",
+            "intent": {
+              "capability": "records.write",
+              "payloadFrom": "steps.resolve.client"
+            },
+            "key": "activate",
+            "label": "Record the client and start bookkeeping",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the match back to the agent with your note. Nothing is saved.",
+            "key": "revise",
+            "label": "Ask for changes",
+            "transition": "resolve"
+          },
+          {
+            "effect": "Ends the job. Nothing is saved and nothing changes in Xero.",
+            "key": "decline",
+            "label": "Do not onboard this client"
+          }
+        ],
+        "sla": {
+          "escalateTo": "installation.backupManager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": 2
+        },
+        "title": "Confirm the client record",
+        "type": "client_onboarding"
+      },
+      {
+        "evidence": [
+          "steps.resolve.xeroTenantId",
+          "steps.confirm.responseId"
+        ],
+        "key": "ready",
+        "kind": "gate",
+        "outcome": "clientReady",
+        "requires": [
+          "steps.confirm.decision == 'activate'"
+        ],
+        "title": "Client recorded"
+      },
+      {
+        "evidence": [
+          "steps.confirm.responseId"
+        ],
+        "key": "declined",
+        "kind": "gate",
+        "outcome": "declined",
+        "requires": [
+          "steps.confirm.decision == 'decline'"
+        ],
+        "title": "Client not onboarded"
+      },
+      {
+        "evidence": [
+          "steps.resolve.missing"
+        ],
+        "key": "needsAttention",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "steps.resolve.ready == false"
+        ],
+        "title": "Organisation not found"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "clientName"
+      ],
+      "kind": "none"
+    },
+    "title": "Client onboarding (Xero)",
+    "transitions": [
+      {
+        "from": "resolve",
+        "to": "confirm",
+        "when": "steps.resolve.ready == true"
+      },
+      {
+        "from": "resolve",
+        "to": "needsAttention",
+        "when": "steps.resolve.ready == false"
+      },
+      {
+        "from": "confirm",
+        "to": "ready",
+        "when": "steps.confirm.decision == 'activate'"
+      },
+      {
+        "from": "confirm",
+        "to": "declined",
+        "when": "steps.confirm.decision == 'decline'"
+      }
+    ],
+    "variationPoints": [],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Client"
+    }
+  },
+  "kind": "process",
+  "name": "Client onboarding (Xero)",
+  "originKey": "97f54b6f-6b6f-480e-afb7-07033a22efbd"
+}

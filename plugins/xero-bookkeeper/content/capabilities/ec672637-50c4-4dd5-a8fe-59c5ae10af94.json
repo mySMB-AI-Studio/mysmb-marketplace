@@ -1,0 +1,99 @@
+{
+  "contentHash": "a9b485124f3c9e4b3b3ee4bb4630869ccd2afd582a8d4609d44259c5a6f7f63c",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "base64Content": "base64Content",
+          "fileName": "fileName",
+          "hostId": "hostId",
+          "hostType": "hostType",
+          "mimeType": "mimeType",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.attachments"
+        ],
+        "server": "xero-accounting",
+        "tool": "upload_attachment"
+      }
+    ],
+    "idempotency": {
+      "keyParam": "fileName",
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "base64Content": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        },
+        "hostId": {
+          "description": "InvoiceID",
+          "type": "string"
+        },
+        "hostType": {
+          "enum": [
+            "Invoices"
+          ],
+          "type": "string"
+        },
+        "mimeType": {
+          "enum": [
+            "application/pdf",
+            "image/jpeg",
+            "image/png"
+          ],
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "hostType",
+        "hostId",
+        "fileName",
+        "base64Content",
+        "mimeType"
+      ],
+      "type": "object"
+    },
+    "key": "xero.attachment.upload",
+    "kind": "capability",
+    "originKey": "ec672637-50c4-4dd5-a8fe-59c5ae10af94",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Attachments": {
+          "items": {
+            "properties": {
+              "AttachmentID": {
+                "type": "string"
+              },
+              "FileName": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "write_external",
+    "title": "Attach the source document to a Xero bill or invoice"
+  },
+  "kind": "capability",
+  "name": "Attach the source document to a Xero bill or invoice",
+  "originKey": "ec672637-50c4-4dd5-a8fe-59c5ae10af94"
+}
