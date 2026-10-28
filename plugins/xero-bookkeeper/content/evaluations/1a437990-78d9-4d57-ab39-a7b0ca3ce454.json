@@ -1,5 +1,5 @@
 {
-  "contentHash": "26d658ceef88bccd0606f5e8b0ef6d775573a345978fbf85bb44606d0b618333",
+  "contentHash": "5e29bc647075701fe508e5248a19855e9c8f80a86cc5ed7994f6151d4bfee3e0",
   "definition": {
     "key": "invoice-request-controls",
     "kind": "evaluation",
@@ -34,6 +34,69 @@
             "gst_registered": true,
             "slug": "demo-company-au",
             "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "draft": {
+              "customer": {
+                "contactId": "c0ffee00-0000-4000-8000-000000000201",
+                "name": "Ridgeway University"
+              },
+              "missing": [],
+              "proposal": {
+                "gst": 180,
+                "lines": [
+                  {
+                    "accountCode": "200",
+                    "description": "Consulting - October 2026 (10 hours)",
+                    "quantity": 10,
+                    "taxType": "OUTPUT",
+                    "unitAmount": 180
+                  }
+                ],
+                "subtotal": 1800,
+                "summary": "Ridgeway University: 10 x 180.00 to 200 Sales, GST 180.00, total 1980.00 incl GST",
+                "total": 1980,
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000201"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-31",
+                    "DueDate": "2026-11-14",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "200",
+                        "Description": "Consulting - October 2026 (10 hours)",
+                        "Quantity": 10,
+                        "TaxType": "OUTPUT",
+                        "UnitAmount": 180
+                      }
+                    ],
+                    "Reference": "REQ-0001",
+                    "Status": "DRAFT",
+                    "Type": "ACCREC"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "ready": true,
+              "total": 1980
+            },
+            "record": {
+              "invoiceId": "a2220000-0000-4000-8000-000000000201",
+              "invoiceNumber": "INV-0101",
+              "sendPayload": {
+                "body": "Hi Ridgeway University,\n\nPlease find invoice INV-0101 attached. Payment is due by 14 November 2026.\n\nKind regards,\nDemo Company (AU)",
+                "contentType": "Text",
+                "requestRef": "REQ-0001",
+                "subject": "Invoice INV-0101 from Demo Company (AU)",
+                "to": [
+                  "accounts@ridgeway.example"
+                ]
+              }
+            }
           },
           "responses": [
             {
@@ -76,7 +139,7 @@
             "weight": 0.6
           },
           {
-            "criterion": "The email goes only to the client's named contact and names the invoice number.",
+            "criterion": "The email goes only to the customer's named contact and names the invoice number.",
             "weight": 0.4
           }
         ],
@@ -111,6 +174,69 @@
             "gst_registered": true,
             "slug": "demo-company-au",
             "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "draft": {
+              "customer": {
+                "contactId": "c0ffee00-0000-4000-8000-000000000201",
+                "name": "Ridgeway University"
+              },
+              "missing": [],
+              "proposal": {
+                "gst": 200,
+                "lines": [
+                  {
+                    "accountCode": "200",
+                    "description": "Retainer - October 2026",
+                    "quantity": 1,
+                    "taxType": "OUTPUT",
+                    "unitAmount": 2000
+                  }
+                ],
+                "subtotal": 2000,
+                "summary": "Ridgeway University: 1 x 2000.00 to 200 Sales, GST 200.00, total 2200.00 incl GST",
+                "total": 2200,
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000201"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-31",
+                    "DueDate": "2026-11-14",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "200",
+                        "Description": "Retainer - October 2026",
+                        "Quantity": 1,
+                        "TaxType": "OUTPUT",
+                        "UnitAmount": 2000
+                      }
+                    ],
+                    "Reference": "REQ-0002",
+                    "Status": "DRAFT",
+                    "Type": "ACCREC"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "ready": true,
+              "total": 2200
+            },
+            "record": {
+              "invoiceId": "a2220000-0000-4000-8000-000000000202",
+              "invoiceNumber": "INV-0102",
+              "sendPayload": {
+                "body": "Hi Ridgeway University,\n\nPlease find invoice INV-0102 attached. Payment is due by 14 November 2026.\n\nKind regards,\nDemo Company (AU)",
+                "contentType": "Text",
+                "requestRef": "REQ-0002",
+                "subject": "Invoice INV-0102 from Demo Company (AU)",
+                "to": [
+                  "accounts@ridgeway.example"
+                ]
+              }
+            }
           },
           "responses": [
             {
@@ -165,6 +291,56 @@
             "slug": "demo-company-au",
             "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
           },
+          "outputs": {
+            "draft": {
+              "customer": {
+                "contactId": "c0ffee00-0000-4000-8000-000000000202",
+                "name": "Northwind Traders"
+              },
+              "missing": [],
+              "proposal": {
+                "gst": 0,
+                "lines": [
+                  {
+                    "accountCode": "200",
+                    "description": "Work completed - September 2026",
+                    "quantity": 1,
+                    "taxType": "OUTPUT",
+                    "unitAmount": 0
+                  }
+                ],
+                "subtotal": 0,
+                "summary": "Northwind Traders: amount not stated in the request; drafted at 0.00 for the reviewer to confirm or discard",
+                "total": 0,
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000202"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-31",
+                    "DueDate": "2026-11-14",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "200",
+                        "Description": "Work completed - September 2026",
+                        "Quantity": 1,
+                        "TaxType": "OUTPUT",
+                        "UnitAmount": 0
+                      }
+                    ],
+                    "Reference": "REQ-0003",
+                    "Status": "DRAFT",
+                    "Type": "ACCREC"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "ready": true,
+              "total": 0
+            }
+          },
           "responses": [
             {
               "option": "discard",
@@ -206,6 +382,19 @@
             "slug": "demo-company-au",
             "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
           },
+          "outputs": {
+            "draft": {
+              "customer": null,
+              "missing": [
+                "customer",
+                "lines",
+                "amounts"
+              ],
+              "proposal": null,
+              "ready": false,
+              "total": null
+            }
+          },
           "responses": [],
           "xero": {
             "contacts": []
@@ -219,7 +408,7 @@
         "key": "incomplete",
         "rubric": [
           {
-            "criterion": "The missing list names the customer, the lines and the amounts as what is needed.",
+            "criterion": "The missing list names the customer, the lines and the amounts.",
             "weight": 1
           }
         ],

@@ -1,5 +1,5 @@
 {
-  "contentHash": "c98cfa1f5fe926a8984ba5ea14666d74655d6d412e6e3f6d837a92290aaa0455",
+  "contentHash": "de42c6b4601a3b5f322ad8f8ca6d3b7f7c794775beff3906ccf75fa3063b962a",
   "definition": {
     "key": "bill-intake-controls",
     "kind": "evaluation",
@@ -53,6 +53,104 @@
             "supplier": "Ridgeway Office Supplies",
             "total": 352
           },
+          "outputs": {
+            "checks": {
+              "abnStatus": "active",
+              "bankDetailChanged": false,
+              "blocking": [],
+              "checkTags": [],
+              "duplicate": false,
+              "duplicateOf": null,
+              "needsClientApproval": false,
+              "rateVariance": 0
+            },
+            "extract": {
+              "clientQueryEmail": null,
+              "confidence": 0.92,
+              "currency": "AUD",
+              "proposal": {
+                "lines": [
+                  {
+                    "accountCode": "461",
+                    "accountName": "Printing & Stationery",
+                    "confidence": 0.92,
+                    "description": "Copy paper A4 x 10",
+                    "quantity": 10,
+                    "source": "rule",
+                    "taxType": "INPUT",
+                    "unitAmount": 32
+                  }
+                ],
+                "summary": "Ridgeway Office Supplies INV-2041: 10 x 32.00 to 461 Printing & Stationery, GST 32.00, total 352.00",
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000101"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-01",
+                    "DueDate": "2026-10-31",
+                    "InvoiceNumber": "INV-2041",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "461",
+                        "Description": "Copy paper A4 x 10",
+                        "Quantity": 10,
+                        "TaxAmount": 32,
+                        "TaxType": "INPUT",
+                        "UnitAmount": 32
+                      }
+                    ],
+                    "Reference": "bill-intake/INV-2041",
+                    "Status": "DRAFT",
+                    "Type": "ACCPAY"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "name": "Ridgeway Office Supplies"
+              },
+              "total": 352,
+              "warnings": []
+            },
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "supplier_bill",
+              "fileHash": "sha256:9f2c1a7e",
+              "readable": true,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            },
+            "record": {
+              "approvePayload": {
+                "invoiceId": "b1110000-0000-4000-8000-000000000101",
+                "patch": {
+                  "Status": "AUTHORISED"
+                },
+                "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+              },
+              "attached": true,
+              "clientApprovalBrief": {
+                "currency": "AUD",
+                "invoiceNumber": "INV-2041",
+                "supplier": "Ridgeway Office Supplies",
+                "to": "owner@demo.example",
+                "total": 352
+              },
+              "invoiceId": "b1110000-0000-4000-8000-000000000101",
+              "invoiceNumber": "INV-2041"
+            }
+          },
           "responses": [
             {
               "option": "approve",
@@ -86,11 +184,11 @@
         "key": "happyPath",
         "rubric": [
           {
-            "criterion": "The review brief shows supplier, invoice number, total and each line's account code with its source (rule, history or ai) and confidence.",
+            "criterion": "The coded bill shows the supplier, invoice number, total and each line's account code with its source and confidence.",
             "weight": 0.6
           },
           {
-            "criterion": "The draft bill payload reconciles to the document total to the cent and carries the job reference.",
+            "criterion": "The draft bill payload reconciles to the document total (line amount plus GST) and carries a job reference.",
             "weight": 0.4
           }
         ],
@@ -121,7 +219,86 @@
             "supplier": "Ridgeway Office Supplies",
             "total": 352
           },
-          "elapsedBusinessDays": 12,
+          "elapsedBusinessDays": 5,
+          "outputs": {
+            "checks": {
+              "abnStatus": "active",
+              "bankDetailChanged": false,
+              "blocking": [],
+              "checkTags": [],
+              "duplicate": false,
+              "duplicateOf": null,
+              "needsClientApproval": false,
+              "rateVariance": 0
+            },
+            "extract": {
+              "clientQueryEmail": null,
+              "confidence": 0.92,
+              "currency": "AUD",
+              "proposal": {
+                "lines": [
+                  {
+                    "accountCode": "461",
+                    "accountName": "Printing & Stationery",
+                    "confidence": 0.92,
+                    "description": "Copy paper A4 x 10",
+                    "quantity": 10,
+                    "source": "rule",
+                    "taxType": "INPUT",
+                    "unitAmount": 32
+                  }
+                ],
+                "summary": "Ridgeway Office Supplies INV-2041: 10 x 32.00 to 461 Printing & Stationery, GST 32.00, total 352.00",
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000101"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-01",
+                    "DueDate": "2026-10-31",
+                    "InvoiceNumber": "INV-2041",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "461",
+                        "Description": "Copy paper A4 x 10",
+                        "Quantity": 10,
+                        "TaxAmount": 32,
+                        "TaxType": "INPUT",
+                        "UnitAmount": 32
+                      }
+                    ],
+                    "Reference": "bill-intake/INV-2041",
+                    "Status": "DRAFT",
+                    "Type": "ACCPAY"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "name": "Ridgeway Office Supplies"
+              },
+              "total": 352,
+              "warnings": []
+            },
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "supplier_bill",
+              "fileHash": "sha256:9f2c1a7e",
+              "readable": true,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
+          },
           "responses": [],
           "xero": {
             "bills": [],
@@ -140,7 +317,7 @@
         "key": "noPostingWithoutDecision",
         "rubric": [
           {
-            "criterion": "The reviewer is reminded after the reminder days, the manager is escalated to, and the job pauses; elapsed time is never treated as approval.",
+            "criterion": "No bill is created or authorised in Xero while the review is unanswered; the job stops at the review and waits for a person.",
             "weight": 1
           }
         ],
@@ -172,6 +349,93 @@
             "supplier": "Ridgeway Office Supplies",
             "total": 352
           },
+          "outputs": {
+            "checks": {
+              "abnStatus": "active",
+              "bankDetailChanged": false,
+              "blocking": [],
+              "checkTags": [
+                "CHK-001"
+              ],
+              "duplicate": true,
+              "duplicateOf": {
+                "date": "2026-10-01",
+                "invoiceId": "b1110000-0000-4000-8000-000000000001",
+                "invoiceNumber": "INV-2041",
+                "status": "AUTHORISED",
+                "total": 352
+              },
+              "needsClientApproval": false,
+              "rateVariance": 0
+            },
+            "extract": {
+              "clientQueryEmail": null,
+              "confidence": 0.92,
+              "currency": "AUD",
+              "proposal": {
+                "lines": [
+                  {
+                    "accountCode": "461",
+                    "accountName": "Printing & Stationery",
+                    "confidence": 0.92,
+                    "description": "Copy paper A4 x 10",
+                    "quantity": 10,
+                    "source": "rule",
+                    "taxType": "INPUT",
+                    "unitAmount": 32
+                  }
+                ],
+                "summary": "Ridgeway Office Supplies INV-2041: 10 x 32.00 to 461 Printing & Stationery, GST 32.00, total 352.00",
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000101"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-01",
+                    "DueDate": "2026-10-31",
+                    "InvoiceNumber": "INV-2041",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "461",
+                        "Description": "Copy paper A4 x 10",
+                        "Quantity": 10,
+                        "TaxAmount": 32,
+                        "TaxType": "INPUT",
+                        "UnitAmount": 32
+                      }
+                    ],
+                    "Reference": "bill-intake/INV-2041",
+                    "Status": "DRAFT",
+                    "Type": "ACCPAY"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "name": "Ridgeway Office Supplies"
+              },
+              "total": 352,
+              "warnings": []
+            },
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "supplier_bill",
+              "fileHash": "sha256:9f2c1a7e",
+              "readable": true,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
+          },
           "responses": [],
           "xero": {
             "bills": [
@@ -199,7 +463,7 @@
         "key": "duplicate",
         "rubric": [
           {
-            "criterion": "The duplicate note names the existing Xero bill (number and id) and tags [CHK-001].",
+            "criterion": "The duplicate finding names the existing Xero bill by number and id and tags CHK-001.",
             "weight": 1
           }
         ],
@@ -241,6 +505,104 @@
             "supplier": "Acme Fitouts",
             "total": 4840
           },
+          "outputs": {
+            "checks": {
+              "abnStatus": "active",
+              "bankDetailChanged": false,
+              "blocking": [],
+              "checkTags": [],
+              "duplicate": false,
+              "duplicateOf": null,
+              "needsClientApproval": true,
+              "rateVariance": 0
+            },
+            "extract": {
+              "clientQueryEmail": null,
+              "confidence": 0.92,
+              "currency": "AUD",
+              "proposal": {
+                "lines": [
+                  {
+                    "accountCode": "720",
+                    "accountName": "Office Equipment",
+                    "confidence": 0.92,
+                    "description": "Office fitout - stage 2",
+                    "quantity": 1,
+                    "source": "rule",
+                    "taxType": "INPUT",
+                    "unitAmount": 4400
+                  }
+                ],
+                "summary": "Acme Fitouts INV-7788: 1 x 4400.00 to 720 Office Equipment, GST 440.00, total 4840.00",
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000102"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-03",
+                    "DueDate": "2026-11-02",
+                    "InvoiceNumber": "INV-7788",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "720",
+                        "Description": "Office fitout - stage 2",
+                        "Quantity": 1,
+                        "TaxAmount": 440,
+                        "TaxType": "INPUT",
+                        "UnitAmount": 4400
+                      }
+                    ],
+                    "Reference": "bill-intake/INV-7788",
+                    "Status": "DRAFT",
+                    "Type": "ACCPAY"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "supplier": {
+                "abn": "12345678901",
+                "contactId": "c0ffee00-0000-4000-8000-000000000102",
+                "name": "Acme Fitouts"
+              },
+              "total": 4840,
+              "warnings": []
+            },
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "supplier_bill",
+              "fileHash": "sha256:9f2c1a7e",
+              "readable": true,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            },
+            "record": {
+              "approvePayload": {
+                "invoiceId": "b1110000-0000-4000-8000-000000000102",
+                "patch": {
+                  "Status": "AUTHORISED"
+                },
+                "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+              },
+              "attached": true,
+              "clientApprovalBrief": {
+                "currency": "AUD",
+                "invoiceNumber": "INV-7788",
+                "supplier": "Acme Fitouts",
+                "to": "owner@demo.example",
+                "total": 4840
+              },
+              "invoiceId": "b1110000-0000-4000-8000-000000000102",
+              "invoiceNumber": "INV-7788"
+            }
+          },
           "responses": [
             {
               "option": "approve",
@@ -269,13 +631,14 @@
           }
         },
         "inputs": {
+          "clientContactEmail": "owner@demo.example",
           "clientSlug": "demo-company-au",
           "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-03-acme-INV-7788.pdf"
         },
         "key": "aboveThresholdGoesToClient",
         "rubric": [
           {
-            "criterion": "The client approval request names the supplier, invoice number and total and goes only to the client's named contact.",
+            "criterion": "The client approval brief names the supplier, invoice number and total, and the approval request is addressed only to the client's named contact.",
             "weight": 1
           }
         ],
@@ -312,6 +675,88 @@
             "invoiceNumber": "0099",
             "supplier": "Someone Else Pty Ltd",
             "total": 120
+          },
+          "outputs": {
+            "checks": {
+              "abnStatus": "active",
+              "bankDetailChanged": false,
+              "blocking": [],
+              "checkTags": [],
+              "duplicate": false,
+              "duplicateOf": null,
+              "needsClientApproval": false,
+              "rateVariance": 0
+            },
+            "extract": {
+              "clientQueryEmail": null,
+              "confidence": 0.4,
+              "currency": "AUD",
+              "proposal": {
+                "lines": [
+                  {
+                    "accountCode": "429",
+                    "accountName": "General Expenses",
+                    "confidence": 0.92,
+                    "description": "Unknown services",
+                    "quantity": 1,
+                    "source": "rule",
+                    "taxType": "INPUT",
+                    "unitAmount": 109.09
+                  }
+                ],
+                "summary": "Someone Else Pty Ltd 0099: 1 x 109.09 to 429 General Expenses, GST 10.91, total 120.00",
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000101"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-04",
+                    "DueDate": "2026-11-03",
+                    "InvoiceNumber": "0099",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "429",
+                        "Description": "Unknown services",
+                        "Quantity": 1,
+                        "TaxAmount": 10.91,
+                        "TaxType": "INPUT",
+                        "UnitAmount": 109.09
+                      }
+                    ],
+                    "Reference": "bill-intake/0099",
+                    "Status": "DRAFT",
+                    "Type": "ACCPAY"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "supplier": {
+                "abn": null,
+                "contactId": null,
+                "name": "Someone Else Pty Ltd"
+              },
+              "total": 120,
+              "warnings": [
+                "Supplier not found in Xero",
+                "Document may not belong to this client"
+              ]
+            },
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "supplier_bill",
+              "fileHash": "sha256:9f2c1a7e",
+              "readable": true,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
           },
           "responses": [
             {
@@ -351,6 +796,22 @@
           },
           "document": {
             "readable": false
+          },
+          "outputs": {
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "image",
+              "fileHash": "sha256:00aa11bb",
+              "readable": false,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
           },
           "responses": []
         },
@@ -396,6 +857,104 @@
             "invoiceNumber": "INV-2050",
             "supplier": "Ridgeway Office Supplies",
             "total": 110
+          },
+          "outputs": {
+            "checks": {
+              "abnStatus": "active",
+              "bankDetailChanged": false,
+              "blocking": [],
+              "checkTags": [],
+              "duplicate": false,
+              "duplicateOf": null,
+              "needsClientApproval": false,
+              "rateVariance": 0
+            },
+            "extract": {
+              "clientQueryEmail": null,
+              "confidence": 0.92,
+              "currency": "AUD",
+              "proposal": {
+                "lines": [
+                  {
+                    "accountCode": "461",
+                    "accountName": "Printing & Stationery",
+                    "confidence": 0.92,
+                    "description": "Toner cartridge",
+                    "quantity": 1,
+                    "source": "rule",
+                    "taxType": "INPUT",
+                    "unitAmount": 100
+                  }
+                ],
+                "summary": "Ridgeway Office Supplies INV-2050: 1 x 100.00 to 461 Printing & Stationery, GST 10.00, total 110.00",
+                "xeroInvoice": {
+                  "invoice": {
+                    "Contact": {
+                      "ContactID": "c0ffee00-0000-4000-8000-000000000101"
+                    },
+                    "CurrencyCode": "AUD",
+                    "Date": "2026-10-06",
+                    "DueDate": "2026-11-05",
+                    "InvoiceNumber": "INV-2050",
+                    "LineAmountTypes": "Exclusive",
+                    "LineItems": [
+                      {
+                        "AccountCode": "461",
+                        "Description": "Toner cartridge",
+                        "Quantity": 1,
+                        "TaxAmount": 10,
+                        "TaxType": "INPUT",
+                        "UnitAmount": 100
+                      }
+                    ],
+                    "Reference": "bill-intake/INV-2050",
+                    "Status": "DRAFT",
+                    "Type": "ACCPAY"
+                  },
+                  "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+                }
+              },
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "name": "Ridgeway Office Supplies"
+              },
+              "total": 110,
+              "warnings": []
+            },
+            "identify": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "gstRegistered": true,
+                "name": "Demo Company (AU)",
+                "slug": "demo-company-au",
+                "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+              },
+              "documentKind": "supplier_bill",
+              "fileHash": "sha256:7b7b7b7b",
+              "readable": true,
+              "splitNeeded": false,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            },
+            "record": {
+              "approvePayload": {
+                "invoiceId": "b1110000-0000-4000-8000-000000000103",
+                "patch": {
+                  "Status": "AUTHORISED"
+                },
+                "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+              },
+              "attached": true,
+              "clientApprovalBrief": {
+                "currency": "AUD",
+                "invoiceNumber": "INV-2050",
+                "supplier": "Ridgeway Office Supplies",
+                "to": "owner@demo.example",
+                "total": 110
+              },
+              "invoiceId": "b1110000-0000-4000-8000-000000000103",
+              "invoiceNumber": "INV-2050"
+            }
           },
           "responses": [
             {
