@@ -1,0 +1,116 @@
+{
+  "contentHash": "8a1424649ee4c319d45057e9c134a1f27a2be0fc42b8f4896aab449405c787e7",
+  "declaredScopes": [
+    "workq:write",
+    "connectors:xero-payroll-au",
+    "connectors:m365-mail-send"
+  ],
+  "dependencies": [],
+  "description": "Daily, checks every active Xero Payroll AU employee for three milestones landing today: a 6-month probation step-up (6 months after StartDate), a recurring review (every 6 months after that, starting at the 6-month mark), and a junior birthday (turning 18, 19, 20 or 21 — checked against DateOfBirth). Xero has no native field for probation, review dates, or junior pay-rate tiers, so these are all computed from StartDate/DateOfBirth against a fixed 6-month policy, not read from Xero directly. For each milestone found, creates an org-visible WorkQ reminder and sends an email. Never writes anything back to Xero -- this only reminds a human to act.",
+  "flowIr": {
+    "description": "Daily, checks every active Xero Payroll AU employee for three milestones landing today: a 6-month probation step-up, a recurring 6-month review, and a junior birthday (18/19/20/21). Creates a WorkQ reminder and sends an email for each one found. Makes no changes to Xero.",
+    "irVersion": 1,
+    "name": "Rate Step-up & Birthday Reminders",
+    "nodes": [
+      {
+        "code": "import re\nimport calendar\nfrom datetime import date, datetime\n\ndef parse_xero_date(raw):\n    if not raw:\n        return None\n    m = re.search(r\"/Date\\((-?\\d+)\", raw)\n    if not m:\n        return None\n    ms = int(m.group(1))\n    return datetime.utcfromtimestamp(ms / 1000).date()\n\ndef anniversary_today(start, today, n_months):\n    # Is `today` exactly n_months after `start`, accounting for month-end\n    # overflow (e.g. a Jan 31 start's 1-month mark lands on Feb 28/29, not\n    # rolling into March).\n    idx = start.month - 1 + n_months\n    year = start.year + idx // 12\n    month = idx % 12 + 1\n    last_day = calendar.monthrange(year, month)[1]\n    day = min(start.day, last_day)\n    return today.year == year and today.month == month and today.day == day\n\ndef age_on(today, dob):\n    age = today.year - dob.year\n    if (today.month, today.day) < (dob.month, dob.day):\n        age -= 1\n    return age\n\ntoday = date.today()\nmilestones = []\n\nsummary = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"list_employees\", args={\"where\": 'Status==\"ACTIVE\"'})\nemployees = summary.get(\"Employees\") or []\n\nfor emp in employees:\n    employee_id = emp.get(\"EmployeeID\")\n    if not employee_id:\n        continue\n    detail_result = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"get_employee\", args={\"employeeId\": employee_id})\n    details = detail_result.get(\"Employees\") or []\n    if not details:\n        continue\n    detail = details[0]\n    name = (f\"{detail.get('FirstName','')} {detail.get('LastName','')}\").strip() or \"Unknown employee\"\n\n    start = parse_xero_date(detail.get(\"StartDate\"))\n    dob = parse_xero_date(detail.get(\"DateOfBirth\"))\n\n    if start:\n        if anniversary_today(start, today, 6):\n            milestones.append({\n                \"employee_name\": name,\n                \"employee_id\": employee_id,\n                \"milestone_type\": \"probation_step_up\",\n                \"detail_text\": f\"{name} completes their 6-month probation period today ({today.isoformat()}). Confirm their pay rate steps up as agreed.\",\n            })\n        for n in range(6, 241, 6):\n            if anniversary_today(start, today, n):\n                milestones.append({\n                    \"employee_name\": name,\n                    \"employee_id\": employee_id,\n                    \"milestone_type\": \"review_due\",\n                    \"detail_text\": f\"{name} is due for their {n}-month review today ({today.isoformat()}).\",\n                })\n                break\n\n    if dob and (today.month, today.day) == (dob.month, dob.day):\n        age_today = age_on(today, dob)\n        if age_today in (18, 19, 20, 21):\n            milestones.append({\n                \"employee_name\": name,\n                \"employee_id\": employee_id,\n                \"milestone_type\": \"junior_birthday\",\n                \"detail_text\": f\"{name} turns {age_today} today ({today.isoformat()}). If they're on a junior pay rate, check whether it needs to step up.\",\n            })\n\nmilestone_count = len(milestones)\n",
+        "id": "find_milestones",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "One entry per milestone found today: {employee_name, employee_id, milestone_type, detail_text}.",
+            "name": "milestones",
+            "type": "list[dict]"
+          },
+          {
+            "description": "How many milestones were found today, across all employees.",
+            "name": "milestone_count",
+            "type": "int"
+          }
+        ],
+        "params": [],
+        "summary": "Lists active employees, fetches each one's full detail (StartDate/DateOfBirth aren't on the list summary), and flags anyone whose probation step-up, 6-month review, or junior birthday (18/19/20/21) lands on today's date.",
+        "title": "Find today's milestones"
+      },
+      {
+        "code": "m = params[\"m\"]\nreminder_email = params[\"reminder_email\"]\n\ntitle_by_type = {\n    \"probation_step_up\": \"Probation step-up due\",\n    \"review_due\": \"Review due\",\n    \"junior_birthday\": \"Junior birthday -- check pay rate\",\n}\ntitle = f\"{title_by_type.get(m['milestone_type'], 'Payroll reminder')}: {m['employee_name']}\"\n\napi.workq.create(\n    title=title,\n    scope=\"org\",\n    description=m[\"detail_text\"],\n    labels=[\"payroll\", m[\"milestone_type\"]],\n)\n\napi.connectors.invoke(\n    server=\"m365-mail-send\",\n    tool=\"send_email\",\n    args={\n        \"to\": [reminder_email],\n        \"subject\": title,\n        \"body\": m[\"detail_text\"],\n        \"contentType\": \"Text\",\n    },\n)\n\nsent = True\n",
+        "id": "send_one_reminder",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True once the WorkQ item and email for this milestone have both been created.",
+            "name": "sent",
+            "type": "bool"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ item }}",
+            "control": "hidden",
+            "name": "m",
+            "required": true,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.reminder_email }}",
+            "control": "hidden",
+            "name": "reminder_email",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "summary": "Creates an org-visible WorkQ item and sends an email for a single milestone.",
+        "title": "Send one reminder"
+      },
+      {
+        "body": [
+          "send_one_reminder"
+        ],
+        "id": "notify_each_milestone",
+        "itemVar": "item",
+        "items": "{{ steps.find_milestones.outputs.milestones }}",
+        "kind": "foreach",
+        "maxIterations": 500,
+        "title": "Notify for each milestone found"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "Email address that receives probation/review/junior-birthday reminders. Update this after installing -- it ships with a placeholder.",
+        "label": "Reminder recipient email",
+        "name": "reminder_email",
+        "required": true,
+        "type": "str",
+        "value": "payroll-admin@example.com"
+      }
+    ],
+    "rootOrder": [
+      "find_milestones",
+      "notify_each_milestone"
+    ],
+    "triggers": [
+      {
+        "cron": "0 8 * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Rate Step-up & Birthday Reminders",
+  "originKey": "032408c3-b5e6-4f67-a1a9-01cfc786a18c",
+  "tags": [
+    "xero",
+    "payroll",
+    "reminders",
+    "probation",
+    "review",
+    "birthday",
+    "superannuation"
+  ]
+}
