@@ -1,0 +1,332 @@
+{
+  "contentHash": "1654374c9df81287416f48a33032f31f874fa11de7dbda1dea5b33d78b219b81",
+  "definition": {
+    "capabilities": [
+      "records.write"
+    ],
+    "description": "Drafts one social post, article, email, announcement or visual from the confirmed Brand Kit, checks it, and asks the reviewer to approve it. An approved draft is saved in the Knowledge folder for its content type and booked on the WorkQ calendar for its publish date, when the reviewer is asked to post it. Starts when a content piece is created, or from its page. Nothing is ever posted or sent.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "pieceId",
+        "label": "Content piece",
+        "required": true,
+        "type": "record"
+      }
+    ],
+    "key": "content-piece",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 600,
+      "maxSteps": 60,
+      "maxWaitingDays": 120
+    },
+    "modelPolicy": {
+      "brief": "sonnet"
+    },
+    "originKey": "fbcabce2-8aa5-5f29-b39f-6e7e908f2db5",
+    "outcomes": [
+      {
+        "evidence": [
+          "Reviewer's approval",
+          "Approved draft in Knowledge"
+        ],
+        "key": "published",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "Reviewer's decision or the cancelled posting task"
+        ],
+        "key": "skipped",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "What to set up first"
+        ],
+        "key": "needsSetup",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "The agent only drafts. Nothing is posted, published, scheduled or sent; the business posts approved content itself.",
+        "key": "draftOnly"
+      },
+      {
+        "description": "Prices, dates, offers and claims come only from the Brand Kit or the request; anything missing is shown as [[MISSING]].",
+        "key": "noInventedFacts"
+      },
+      {
+        "description": "A draft is filed and booked only after the reviewer approves that exact revision.",
+        "key": "reviewerApproves"
+      }
+    ],
+    "rework": [
+      {
+        "from": "review",
+        "requires": "reviewer",
+        "to": "draft"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "automation": "b5412571-47d2-5098-a6bb-a5ba7887ddf4",
+        "inputs": {
+          "mode": "'context'",
+          "piece_id": "inputs.pieceId"
+        },
+        "key": "context",
+        "kind": "automation",
+        "title": "Prepare the brief and dates"
+      },
+      {
+        "key": "draft",
+        "kind": "agent",
+        "outputs": [
+          "title",
+          "document_markdown",
+          "variants",
+          "missing",
+          "summary"
+        ],
+        "skill": "draft-content",
+        "title": "Draft the piece"
+      },
+      {
+        "artifactKind": "draft",
+        "key": "document",
+        "kind": "output",
+        "template": "content-draft",
+        "title": "Draft document"
+      },
+      {
+        "automation": "b5412571-47d2-5098-a6bb-a5ba7887ddf4",
+        "inputs": {
+          "markdown": "steps.draft.document_markdown",
+          "mode": "'check'",
+          "piece_id": "inputs.pieceId",
+          "variants": "steps.draft.variants"
+        },
+        "key": "check",
+        "kind": "automation",
+        "title": "Brand and compliance checks"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "review",
+        "kind": "decision",
+        "materiality": [
+          "pieceId",
+          "steps.draft.document_markdown"
+        ],
+        "options": [
+          {
+            "effect": "Saves this draft in the Knowledge folder for its content type and books it for its publish date. Nothing is posted for you.",
+            "key": "approve",
+            "label": "Approve",
+            "suggested": true
+          },
+          {
+            "effect": "The agent drafts a new revision using your note. Nothing is saved yet.",
+            "key": "request_changes",
+            "label": "Request changes",
+            "transition": "draft"
+          },
+          {
+            "effect": "Marks the piece skipped. The drafts stay in Outputs; nothing is saved to the folder.",
+            "key": "skip",
+            "label": "Skip this piece"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": 1
+        },
+        "title": "Review the draft",
+        "type": "content_review"
+      },
+      {
+        "automation": "b5412571-47d2-5098-a6bb-a5ba7887ddf4",
+        "inputs": {
+          "draft_version": "steps.document.version",
+          "markdown": "steps.draft.document_markdown",
+          "mode": "'file'",
+          "piece_id": "inputs.pieceId"
+        },
+        "key": "file",
+        "kind": "automation",
+        "title": "Save to Knowledge"
+      },
+      {
+        "key": "publishDay",
+        "kind": "wait",
+        "timer": {
+          "until": "steps.context.publish_at"
+        },
+        "title": "Wait for the publish date"
+      },
+      {
+        "assign": "reviewer",
+        "completion": "statusDone",
+        "key": "post",
+        "kind": "human",
+        "title": "Post it today"
+      },
+      {
+        "automation": "b5412571-47d2-5098-a6bb-a5ba7887ddf4",
+        "inputs": {
+          "mode": "'posted'",
+          "piece_id": "inputs.pieceId"
+        },
+        "key": "posted",
+        "kind": "automation",
+        "title": "Mark published"
+      },
+      {
+        "automation": "b5412571-47d2-5098-a6bb-a5ba7887ddf4",
+        "inputs": {
+          "mode": "'skipped'",
+          "piece_id": "inputs.pieceId"
+        },
+        "key": "markSkipped",
+        "kind": "automation",
+        "title": "Mark skipped"
+      },
+      {
+        "evidence": [
+          "steps.review.responseId",
+          "steps.file.knowledge_path"
+        ],
+        "key": "published",
+        "kind": "gate",
+        "outcome": "published",
+        "requires": [
+          "steps.posted.ok == true"
+        ],
+        "title": "Published"
+      },
+      {
+        "evidence": [
+          "steps.review.responseId",
+          "steps.post.completedBy"
+        ],
+        "key": "skipped",
+        "kind": "gate",
+        "outcome": "skipped",
+        "requires": [
+          "steps.markSkipped.ok == true"
+        ],
+        "title": "Skipped"
+      },
+      {
+        "evidence": [
+          "steps.context.problem"
+        ],
+        "key": "notReady",
+        "kind": "gate",
+        "outcome": "needsSetup",
+        "requires": [
+          "steps.context.ready == false"
+        ],
+        "title": "Needs setup first"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "pieceId"
+      ],
+      "kind": "records.social_content_pieces"
+    },
+    "title": "Draft a content piece",
+    "transitions": [
+      {
+        "from": "context",
+        "to": "draft",
+        "when": "steps.context.ready == true"
+      },
+      {
+        "from": "context",
+        "to": "notReady",
+        "when": "steps.context.ready == false"
+      },
+      {
+        "from": "draft",
+        "to": "document"
+      },
+      {
+        "from": "document",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "to": "review"
+      },
+      {
+        "from": "review",
+        "to": "file",
+        "when": "steps.review.decision == 'approve'"
+      },
+      {
+        "from": "review",
+        "to": "markSkipped",
+        "when": "steps.review.decision == 'skip'"
+      },
+      {
+        "from": "file",
+        "to": "publishDay"
+      },
+      {
+        "from": "publishDay",
+        "to": "post"
+      },
+      {
+        "from": "post",
+        "to": "posted",
+        "when": "steps.post.completed == true"
+      },
+      {
+        "from": "post",
+        "to": "markSkipped",
+        "when": "steps.post.cancelled == true"
+      },
+      {
+        "from": "posted",
+        "to": "published"
+      },
+      {
+        "from": "markSkipped",
+        "to": "skipped"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "record.created",
+        "filter": {
+          "type_slug": "social_content_pieces"
+        },
+        "inputsFrom": {
+          "pieceId": "subject.record_id"
+        },
+        "kind": "event",
+        "subjectFrom": "subject.record_id"
+      }
+    ],
+    "variationPoints": [],
+    "version": "0.1.0"
+  },
+  "kind": "process",
+  "name": "Draft a content piece",
+  "originKey": "fbcabce2-8aa5-5f29-b39f-6e7e908f2db5"
+}
