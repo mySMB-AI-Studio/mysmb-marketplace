@@ -16,11 +16,15 @@ offline_access openid profile email
 payroll.employees payroll.timesheets payroll.payruns payroll.payslip payroll.settings
 ```
 
-### Payroll email intake (automation)
+### Payroll automations (connector requirements)
 
-**Payroll: Email intake (Outlook)** needs the `m365-mail-read` connector (Microsoft 365 extension) connected by the automation's owner. It installs as a draft; an admin reviews the scopes and publishes it.
+Both automations below install as drafts; an admin reviews the scopes and publishes each one.
 
-Settings live in organisation Knowledge:
+**Payroll: Email intake (Outlook)** needs the `m365-mail-read` connector (Microsoft 365 extension) connected by the automation's owner.
+
+**Rate Step-up & Birthday Reminders** needs the `m365-mail-send` connector (Microsoft 365 extension) connected by the automation's owner, to send its reminder emails. Its recipient email address ships with a placeholder (`payroll-admin@example.com`) — edit the automation's `reminder_email` param after installing to point it at your real payroll/HR admin.
+
+Settings for the email intake automation live in organisation Knowledge:
 
 - `Payroll/clients.json` (required): the payroll clients and where their emails come from. Until it exists, the automation reads no mail and opens one "Set up payroll email intake" WorkQ item.
   ```json
@@ -62,9 +66,10 @@ Settings live in organisation Knowledge:
 ### Timesheets (4)
 - `list_timesheets`, `get_timesheet`, `create_timesheet`, `update_timesheet`
 
-## Automations (1)
+## Automations (2)
 
 - **Payroll: Email intake (Outlook)**: every 15 minutes, 6am to 8pm on weekdays (Sydney time), reads new emails in the owner's Outlook mailbox. Nothing in the mailbox is changed. It uses AI to pick out the payroll emails: timesheets ready, pay changes, new starters, leavers, expenses and approvals. Each one is filed under its client's pay run WorkQ item. If there's no open item for that pay run, it opens one; otherwise it adds the email to the open item as a comment. Emails it can't match to exactly one client become a "Payroll email needs a client" item. WorkQ text never includes TFNs, bank details, pay rates or dollar amounts. Clients are matched by sender address or domain first, then by AI from the client names; it never guesses.
+- **Rate Step-up & Birthday Reminders**: daily at 8am (Sydney time), checks every active employee for three milestones landing that day: a probation step-up (6 months after `StartDate`), a recurring review (every 6 months after that), and a junior birthday (turning 18, 19, 20 or 21, from `DateOfBirth`). None of these are fields Xero tracks natively — all three are computed from `StartDate`/`DateOfBirth` against a fixed 6-month policy. For each milestone found, creates an org-visible WorkQ reminder and sends an email; it never writes anything back to Xero, and never knows or sets an actual new pay rate.
 
 ## Destructive / irreversible operations
 

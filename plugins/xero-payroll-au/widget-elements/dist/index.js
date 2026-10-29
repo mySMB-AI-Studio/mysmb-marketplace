@@ -138,6 +138,12 @@ const pay_run_breakdown = (args) => {
 const NON_BOTH_META = {
     missing_from_payroll: { label: 'Missing from payroll', tone: 'warning', icon: 'AlertTriangle' },
     paid_without_timesheet: { label: 'Paid without timesheet', tone: 'destructive', icon: 'AlertTriangle' },
+    // get_hours_reconciliation only: an hourly employee (a real rate-based
+    // earnings line) with no timesheet and zero hours this period -- a real
+    // gap, not the same neutral "nothing to check" state as no_timesheet.
+    // Caught live: this was previously indistinguishable from a salaried
+    // employee because both had zero unit-based payroll hours.
+    missing_timesheet: { label: 'No timesheet · 0h', tone: 'warning', icon: 'AlertTriangle' },
     no_timesheet: { label: 'N/A (salaried)', tone: 'muted', icon: 'Minus' },
 };
 function checkRowMeta(args) {
@@ -174,6 +180,103 @@ const check_row_icon = (args) => checkRowMeta(args).icon;
  * Args: { value: string }
  */
 const title_case = (args) => titleCase(String(args.value ?? ''));
+function hoursReconRowMeta(args) {
+    const category = String(args.category ?? '');
+    if (category !== 'both') {
+        return NON_BOTH_META[category] ?? { label: category || 'Unknown', tone: 'muted', icon: 'HelpCircle' };
+    }
+    const notApproved = Boolean(args.notApproved);
+    const hasVariance = Boolean(args.hasVariance);
+    const hasUnmappedRate = Boolean(args.hasUnmappedRate);
+    const variance = Number(args.variance ?? 0);
+    const issues = [];
+    if (notApproved)
+        issues.push('Not approved');
+    if (hasVariance)
+        issues.push(`${Math.abs(variance)}h variance`);
+    if (hasUnmappedRate)
+        issues.push('Unmapped rate');
+    if (issues.length === 0)
+        return { label: 'Match', tone: 'success', icon: 'CheckCircle2' };
+    const tone = hasVariance || hasUnmappedRate ? 'destructive' : 'warning';
+    const icon = hasVariance || hasUnmappedRate ? 'AlertTriangle' : 'Clock';
+    return { label: issues.join(' · '), tone, icon };
+}
+/** Args: { category, notApproved, hasVariance, hasUnmappedRate, variance } — one employee row. */
+const hours_recon_row_label = (args) => hoursReconRowMeta(args).label;
+/** Args: { category, notApproved, hasVariance, hasUnmappedRate, variance } — one employee row. */
+const hours_recon_row_tone = (args) => hoursReconRowMeta(args).tone;
+/** Args: { category, notApproved, hasVariance, hasUnmappedRate, variance } — one employee row. */
+const hours_recon_row_icon = (args) => hoursReconRowMeta(args).icon;
+function hoursReconSummaryMeta(args) {
+    const approved = Number(args.approvedCount) || 0;
+    const draft = Number(args.draftCount) || 0;
+    const missing = Number(args.missingTimesheetCount) || 0;
+    const allClear = draft === 0 && missing === 0;
+    return {
+        label: `${approved} approved · ${draft} draft · ${missing} missing`,
+        tone: allClear ? 'success' : 'warning',
+        icon: allClear ? 'CheckCircle2' : 'AlertTriangle',
+    };
+}
+/** Args: { approvedCount, draftCount, missingTimesheetCount }. */
+const hours_recon_summary_label = (args) => hoursReconSummaryMeta(args).label;
+/** Args: { approvedCount, draftCount, missingTimesheetCount }. */
+const hours_recon_summary_tone = (args) => hoursReconSummaryMeta(args).tone;
+/** Args: { approvedCount, draftCount, missingTimesheetCount }. */
+const hours_recon_summary_icon = (args) => hoursReconSummaryMeta(args).icon;
+/** One employee's segment (earnings-rate) sub-row — no approval concept at this level, just a hours match/variance. Args: { hasVariance, variance }. */
+const segment_row_label = (args) => args.hasVariance ? `${Math.abs(Number(args.variance ?? 0))}h variance` : 'Match';
+/** Args: { hasVariance }. */
+const segment_row_tone = (args) => (args.hasVariance ? 'destructive' : 'success');
+/**
+ * Flattens get_hours_reconciliation's `employees` array (each with a nested
+ * `segments` array) into a single FLAT list of rows for the Hours
+ * Reconciliation tile: one "employee" row per employee, immediately
+ * followed by one "segment" row per earnings rate on that employee. There's
+ * no nested/relative repeat in this plugin system's widget schema
+ * (repeat.statePath is always an absolute state path) — same reasoning and
+ * pattern already used for the Read.ai Meeting Folders tile's
+ * folder->meetings flattening. The tile's single repeated row template
+ * shows either the employee header or a segment line depending on each
+ * row's own `row_type`, with segment rows additionally gated on matching
+ * the currently-expanded employee id.
+ *
+ * Args: { value: array } — get_hours_reconciliation's raw `employees` array.
+ */
+const flatten_employee_segments = (args) => {
+    const employees = Array.isArray(args.value) ? args.value : [];
+    const rows = [];
+    for (const emp of employees) {
+        const employeeId = String(emp.employeeId ?? '');
+        rows.push({
+            id: employeeId,
+            row_type: 'employee',
+            employee_id: employeeId,
+            name: emp.name,
+            category: emp.category,
+            notApproved: Boolean(emp.notApproved),
+            hasVariance: Boolean(emp.hasVariance),
+            hasUnmappedRate: Boolean(emp.hasUnmappedRate),
+            variance: emp.variance ?? 0,
+            timesheetHours: emp.timesheetHours ?? 0,
+            payrollHours: emp.payrollHours ?? 0,
+        });
+        for (const seg of emp.segments ?? []) {
+            rows.push({
+                id: `${employeeId}:${seg.earningsRateId ?? ''}`,
+                row_type: 'segment',
+                employee_id: employeeId,
+                name: seg.name,
+                timesheetHours: seg.timesheetHours ?? 0,
+                payrollHours: seg.payrollHours ?? 0,
+                variance: seg.variance ?? 0,
+                hasVariance: Boolean(seg.hasVariance),
+            });
+        }
+    }
+    return rows;
+};
 /**
  * Flattens get_payroll_readiness_check's per-employee output into rows for
  * the system Table component. Table cells are single-line by design (see
@@ -238,6 +341,15 @@ const elements = {
         check_row_tone,
         check_row_icon,
         title_case,
+        hours_recon_row_label,
+        hours_recon_row_tone,
+        hours_recon_row_icon,
+        hours_recon_summary_label,
+        hours_recon_summary_tone,
+        hours_recon_summary_icon,
+        segment_row_label,
+        segment_row_tone,
+        flatten_employee_segments,
         payroll_readiness_rows,
         super_reconciliation_status,
     },

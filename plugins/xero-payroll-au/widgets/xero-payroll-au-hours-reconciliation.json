@@ -1,0 +1,383 @@
+{
+  "id": "xero-payroll-au-hours-reconciliation",
+  "title": "Hours Reconciliation",
+  "description": "Compares each employee's total and per-earnings-rate (Ordinary, Overtime, etc.) hours between the approved timesheet and the payslip — proving payroll hours match the approved time source before the pay run is built. Click an employee to see the segment breakdown. Day-level hours aren't available from Xero's API (a payslip's earnings lines have no daily breakdown), so this compares totals and segments only.",
+  "category": "hr",
+  "tags": ["xero", "payroll", "timesheets", "hours", "hr", "reconciliation"],
+  "keywords": ["hours reconciliation", "timesheet reconciliation", "earnings rate", "segment variance", "payroll audit"],
+  "connectorsUsed": ["xero-payroll-au"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "xero-payroll-au",
+    "tool": "get_hours_reconciliation",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/xero-payroll-au/get_hours_reconciliation/employees": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rows",
+                "value": {
+                  "$computed": "xero-payroll-au_flatten_employee_segments",
+                  "args": { "value": { "$state": "/xero-payroll-au/get_hours_reconciliation/employees" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "GitCompareArrows", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Hours Reconciliation", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero Payroll AU" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorBanner", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/xero-payroll-au.get_hours_reconciliation" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "Couldn't load hours reconciliation: ${/_errors/xero-payroll-au.get_hours_reconciliation}" },
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/_errors/xero-payroll-au.get_hours_reconciliation" }
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No pay runs found for this organisation." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_hours_reconciliation", "not": true },
+            { "$state": "/_errors/xero-payroll-au.get_hours_reconciliation", "not": true },
+            { "$state": "/xero-payroll-au/get_hours_reconciliation/hasPayRun", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-payroll-au.get_hours_reconciliation", "not": true },
+            { "$state": "/xero-payroll-au/get_hours_reconciliation/hasPayRun" }
+          ]
+        },
+        "children": ["periodRow", "divider1", "summaryRow", "unmappedRateCaption", "divider2", "employeesList"]
+      },
+
+      "periodRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["periodStack", "statusBadge"]
+      },
+      "periodStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["periodText", "employeeCountCaption"] },
+      "periodText": {
+        "type": "Heading",
+        "props": { "text": { "$state": "/xero-payroll-au/get_hours_reconciliation/payRun/periodText" }, "level": "h3" }
+      },
+      "employeeCountCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} employees in this pay run",
+              "n": { "$state": "/xero-payroll-au/get_hours_reconciliation/payRun/employeeCount" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "xero-payroll-au_title_case",
+            "args": { "value": { "$state": "/xero-payroll-au/get_hours_reconciliation/payRun/status" } }
+          },
+          "tone": "brand"
+        }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "summaryRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["approvedSummary", "matchedSummary"]
+      },
+      "approvedSummary": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "grow": true },
+        "children": ["approvedIcon", "approvedText"]
+      },
+      "approvedIcon": {
+        "type": "Icon",
+        "props": {
+          "name": { "$cond": { "$state": "/xero-payroll-au/get_hours_reconciliation/allApproved" }, "$then": "CheckCircle2", "$else": "AlertTriangle" },
+          "tone": { "$cond": { "$state": "/xero-payroll-au/get_hours_reconciliation/allApproved" }, "$then": "success", "$else": "warning" },
+          "size": "sm"
+        }
+      },
+      "approvedText": {
+        "type": "Text",
+        "props": {
+          "text": { "$cond": { "$state": "/xero-payroll-au/get_hours_reconciliation/allApproved" }, "$then": "All timesheets approved", "$else": "Not all timesheets approved" },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "matchedSummary": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "grow": true },
+        "children": ["matchedIcon", "matchedText"]
+      },
+      "matchedIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$computed": "xero-payroll-au_hours_recon_summary_icon",
+            "args": {
+              "approvedCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/approvedCount" },
+              "draftCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/draftCount" },
+              "missingTimesheetCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/missingTimesheetCount" }
+            }
+          },
+          "tone": {
+            "$computed": "xero-payroll-au_hours_recon_summary_tone",
+            "args": {
+              "approvedCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/approvedCount" },
+              "draftCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/draftCount" },
+              "missingTimesheetCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/missingTimesheetCount" }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "matchedText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "xero-payroll-au_hours_recon_summary_label",
+            "args": {
+              "approvedCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/approvedCount" },
+              "draftCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/draftCount" },
+              "missingTimesheetCount": { "$state": "/xero-payroll-au/get_hours_reconciliation/missingTimesheetCount" }
+            }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "unmappedRateCaption": {
+        "type": "Caption",
+        "props": { "text": "One or more earnings rates aren't in this organisation's pay items — shown as \"Unmapped rate\" below.", "tone": "warning" },
+        "visible": { "$state": "/xero-payroll-au/get_hours_reconciliation/anyUnmappedRate" }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+
+      "employeesList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/rows", "key": "id" }
+      },
+
+      "row": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["employeeRow", "segmentRow"]
+      },
+
+      "employeeRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "clickable": true, "hover": true },
+        "children": ["employeeLeft", "employeeRight"],
+        "visible": { "$item": "row_type", "eq": "employee" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/expandedEmployeeId",
+              "value": {
+                "$cond": { "$item": "employee_id", "eq": { "$state": "/ui/expandedEmployeeId" } },
+                "$then": "",
+                "$else": { "$item": "employee_id" }
+              }
+            }
+          }
+        }
+      },
+      "employeeLeft": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["employeeStatusIcon", "employeeName"]
+      },
+      "employeeStatusIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$computed": "xero-payroll-au_hours_recon_row_icon",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "hasUnmappedRate": { "$item": "hasUnmappedRate" },
+              "variance": { "$item": "variance" }
+            }
+          },
+          "tone": {
+            "$computed": "xero-payroll-au_hours_recon_row_tone",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "hasUnmappedRate": { "$item": "hasUnmappedRate" },
+              "variance": { "$item": "variance" }
+            }
+          },
+          "size": "sm"
+        }
+      },
+      "employeeName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium" }
+      },
+      "employeeRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["employeeHoursCaption", "employeeBadge", "employeeChevron"]
+      },
+      "employeeHoursCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{ts}h source · {pr}h payroll",
+              "ts": { "$item": "timesheetHours" },
+              "pr": { "$item": "payrollHours" }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$item": "category", "eq": "no_timesheet", "not": true }
+      },
+      "employeeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "xero-payroll-au_hours_recon_row_label",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "hasUnmappedRate": { "$item": "hasUnmappedRate" },
+              "variance": { "$item": "variance" }
+            }
+          },
+          "tone": {
+            "$computed": "xero-payroll-au_hours_recon_row_tone",
+            "args": {
+              "category": { "$item": "category" },
+              "notApproved": { "$item": "notApproved" },
+              "hasVariance": { "$item": "hasVariance" },
+              "hasUnmappedRate": { "$item": "hasUnmappedRate" },
+              "variance": { "$item": "variance" }
+            }
+          },
+          "variant": "soft"
+        }
+      },
+      "employeeChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$cond": { "$item": "employee_id", "eq": { "$state": "/ui/expandedEmployeeId" } },
+            "$then": "ChevronDown",
+            "$else": "ChevronRight"
+          },
+          "size": "xs",
+          "tone": "muted"
+        }
+      },
+
+      "segmentRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["segmentName", "segmentRight"],
+        "visible": {
+          "$and": [
+            { "$item": "row_type", "eq": "segment" },
+            { "$item": "employee_id", "eq": { "$state": "/ui/expandedEmployeeId" } }
+          ]
+        }
+      },
+      "segmentName": {
+        "type": "Caption",
+        "props": { "text": { "$item": "name" }, "tone": "muted" }
+      },
+      "segmentRight": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["segmentHoursCaption", "segmentBadge"]
+      },
+      "segmentHoursCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{ts}h · {pr}h",
+              "ts": { "$item": "timesheetHours" },
+              "pr": { "$item": "payrollHours" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "segmentBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "xero-payroll-au_segment_row_label", "args": { "hasVariance": { "$item": "hasVariance" }, "variance": { "$item": "variance" } } },
+          "tone": { "$computed": "xero-payroll-au_segment_row_tone", "args": { "hasVariance": { "$item": "hasVariance" } } },
+          "variant": "soft"
+        }
+      }
+    }
+  }
+}
