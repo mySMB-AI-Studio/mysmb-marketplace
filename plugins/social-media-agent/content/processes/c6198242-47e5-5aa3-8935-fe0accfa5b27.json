@@ -1,5 +1,5 @@
 {
-  "contentHash": "3504416c6890ca16110e5832a28fb31997b3e7300c2ef219d779cd447948aa0f",
+  "contentHash": "45e4e20fb9e158b9cd867eab6b5b6531dc696c7ef3cb6b2a5aefd7a172a6d8a4",
   "definition": {
     "capabilities": [
       "records.write"
@@ -85,12 +85,14 @@
             "effect": "Marks the Brand Kit confirmed, raises its version and saves a copy in Knowledge for the agent. Nothing is published or sent.",
             "key": "confirm",
             "label": "Confirm",
-            "suggested": true
+            "suggested": true,
+            "transition": "finalize"
           },
           {
             "effect": "Nothing changes. Edit the Brand Kit, then start Confirm a Brand Kit again from its page.",
             "key": "needs_changes",
-            "label": "Needs changes"
+            "label": "Needs changes",
+            "transition": "notConfirmed"
           }
         ],
         "separation": "preparerCannotDecide",
@@ -120,8 +122,8 @@
         "kind": "gate",
         "outcome": "confirmed",
         "requires": [
-          "steps.finalize.ok == true",
-          "steps.finalize.version > 0"
+          "steps.finalize.ok",
+          "steps.finalize.knowledge_path"
         ],
         "title": "Brand Kit confirmed"
       },
@@ -133,7 +135,7 @@
         "kind": "gate",
         "outcome": "changesRequested",
         "requires": [
-          "steps.confirm.decision == 'needs_changes'"
+          "steps.confirm.responseId"
         ],
         "title": "Changes requested"
       },
@@ -145,7 +147,7 @@
         "kind": "gate",
         "outcome": "needsAttention",
         "requires": [
-          "steps.check.valid == false"
+          "!steps.check.valid"
         ],
         "title": "Brand Kit needs attention"
       }
@@ -156,27 +158,20 @@
       ],
       "kind": "records.social_brand_kits"
     },
+    "tests": [
+      "cf4ef0e3-16f6-5415-bebe-6c605e45c7a4"
+    ],
     "title": "Confirm a Brand Kit",
     "transitions": [
       {
         "from": "check",
         "to": "confirm",
-        "when": "steps.check.valid == true"
+        "when": "steps.check.valid"
       },
       {
         "from": "check",
         "to": "problems",
-        "when": "steps.check.valid == false"
-      },
-      {
-        "from": "confirm",
-        "to": "finalize",
-        "when": "steps.confirm.decision == 'confirm'"
-      },
-      {
-        "from": "confirm",
-        "to": "notConfirmed",
-        "when": "steps.confirm.decision == 'needs_changes'"
+        "when": "!steps.check.valid"
       },
       {
         "from": "finalize",

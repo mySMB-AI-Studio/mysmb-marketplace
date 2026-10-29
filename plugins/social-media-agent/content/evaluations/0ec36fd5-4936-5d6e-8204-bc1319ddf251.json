@@ -1,0 +1,117 @@
+{
+  "contentHash": "2e5b4bce22574f4c667394e499872bc5272e9f8c1e9cd3c4eaec7fd8fc9824e5",
+  "definition": {
+    "key": "content-piece-core",
+    "kind": "evaluation",
+    "originKey": "0ec36fd5-4936-5d6e-8204-bc1319ddf251",
+    "process": "fbcabce2-8aa5-5f29-b39f-6e7e908f2db5",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "records.write"
+          ],
+          "outcome": "published",
+          "stepsReached": [
+            "context",
+            "draft",
+            "document",
+            "check",
+            "review",
+            "file",
+            "publishDay",
+            "post",
+            "posted",
+            "published"
+          ]
+        },
+        "fixtures": {
+          "steps.post.cancelled": false
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "approvedAndPosted",
+        "title": "An approved draft is filed, waits for its publish date and is marked published once posted"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "skip",
+              "step": "review"
+            }
+          ],
+          "outcome": "skipped",
+          "stepsReached": [
+            "review",
+            "markSkipped",
+            "skipped"
+          ]
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "skippedAtReview",
+        "title": "Skip at review ends the piece without filing it"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "review"
+            }
+          ],
+          "outcome": "skipped",
+          "stepsReached": [
+            "file",
+            "post",
+            "markSkipped",
+            "skipped"
+          ]
+        },
+        "fixtures": {
+          "steps.post.completed": false
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "postingCancelled",
+        "title": "Cancelling the posting task marks the piece skipped"
+      },
+      {
+        "expected": {
+          "outcome": "needsSetup",
+          "stepsReached": [
+            "context",
+            "notReady"
+          ]
+        },
+        "fixtures": {
+          "steps.context.ready": false
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "noBrandKitStopsEarly",
+        "title": "Without a confirmed Brand Kit nothing is drafted"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Draft a content piece: core paths"
+  },
+  "kind": "evaluation",
+  "name": "Draft a content piece: core paths",
+  "originKey": "0ec36fd5-4936-5d6e-8204-bc1319ddf251"
+}
