@@ -1,0 +1,58 @@
+{
+  "contentHash": "0d81522db3b2414e2f4a02f9652f1182d08cd0a611c8425642825829e3a47634",
+  "declaredScopes": [
+    "workq:write",
+    "connectors:xero-payroll-au",
+    "files:read"
+  ],
+  "dependencies": [],
+  "description": "Daily, checks the current Xero Payroll AU pay run for employees whose payroll hours don't match their approved timesheet (via get_hours_reconciliation). For each real variance found, looks up that client's correction policy (revert / next pay run / unscheduled pay run) from organisation Knowledge (Payroll/correction-policy.json, with optional per-employee overrides), and opens a WorkQ item with the full evidence (employee, pay run period, variance by earnings rate) and the policy that applies. Marking the item Done is the approval step. This automation only proposes -- it never changes anything in Xero. A companion automation, Corrections Workflow: Execute, picks up from there once an item is approved.",
+  "flowIr": {
+    "description": "Daily, finds employees whose payroll hours don't match their approved timesheet, looks up the client's correction policy per employee, and opens a WorkQ item proposing the correction with full evidence. Makes no changes to Xero -- this only proposes.",
+    "irVersion": 1,
+    "name": "Corrections Workflow: Propose",
+    "nodes": [
+      {
+        "code": "import json\n\nPOLICY_FILE = \"Payroll/correction-policy.json\"\nDEFAULT_POLICY = \"next_pay_run\"\nVALID_POLICIES = {\"revert\", \"next_pay_run\", \"unscheduled_pay_run\"}\n\ndef pr_read_json(path, default=None):\n    try:\n        raw = api.files.read(file=path)\n    except Exception:\n        return default\n    try:\n        return json.loads(raw)\n    except Exception:\n        return default\n\npolicy_config = pr_read_json(POLICY_FILE) or {}\ndefault_policy = str(policy_config.get(\"default_policy\") or DEFAULT_POLICY)\nif default_policy not in VALID_POLICIES:\n    default_policy = DEFAULT_POLICY\noverrides = policy_config.get(\"employee_overrides\") or {}\n\nrecon = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"get_hours_reconciliation\", args={})\npay_run = recon.get(\"payRun\") or {}\npay_run_period = str(pay_run.get(\"periodText\") or \"\")\nemployees = recon.get(\"employees\") or []\n\nPOLICY_NOTES = {\n    \"revert\": \"This client's policy is to revert the pay run. Xero has no API to unpost a posted pay run, so this needs to be done manually in Xero (or via Xero support if it's already been paid). Mark this item Done once that's handled.\",\n    \"next_pay_run\": \"This client's policy is to correct this in the next pay run. Mark this item Done to confirm -- you'll then get exact instructions for what to adjust, since this automation can't write directly to a Xero payslip yet.\",\n    \"unscheduled_pay_run\": \"This client's policy is to correct this via an unscheduled pay run. Mark this item Done to confirm -- you'll then get exact instructions for what to adjust, since this automation can't write directly to a Xero payslip yet.\",\n}\n\nproposed_count = 0\nfor emp in employees:\n    if emp.get(\"category\") != \"both\" or not emp.get(\"hasVariance\"):\n        continue\n    employee_id = str(emp.get(\"employeeId\") or \"\")\n    employee_name = str(emp.get(\"name\") or \"Unknown employee\")\n    policy = str(overrides.get(employee_id) or default_policy)\n    if policy not in VALID_POLICIES:\n        policy = default_policy\n\n    segments = [s for s in (emp.get(\"segments\") or []) if s.get(\"hasVariance\")]\n    lines = \"\\n\".join(\n        f\"- {s.get('name')}: timesheet {s.get('timesheetHours')}h vs payroll {s.get('payrollHours')}h (variance {s.get('variance')}h)\"\n        for s in segments\n    )\n\n    human_text = (\n        f\"Employee: {employee_name}\\n\"\n        f\"Pay run period: {pay_run_period}\\n\"\n        f\"Total variance: {emp.get('variance')}h (timesheet {emp.get('timesheetHours')}h vs payroll {emp.get('payrollHours')}h)\\n\"\n        f\"By earnings rate:\\n{lines}\\n\\n\"\n        f\"Policy applied: {policy.replace('_', ' ')}\\n{POLICY_NOTES[policy]}\"\n    )\n\n    correction_data = {\n        \"employee_id\": employee_id,\n        \"employee_name\": employee_name,\n        \"pay_run_period\": pay_run_period,\n        \"policy\": policy,\n        \"segments\": segments,\n    }\n    description = human_text + \"\\n---CORRECTION-DATA---\\n\" + json.dumps(correction_data)\n    title = f\"Payroll correction needed: {employee_name} -- {emp.get('variance')}h variance ({policy.replace('_', ' ')})\"\n\n    api.workq.create(\n        title=title,\n        scope=\"org\",\n        description=description,\n        labels=[\"payroll-correction\", policy],\n    )\n    proposed_count += 1\n",
+        "id": "find_and_propose",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "How many correction WorkQ items were opened this run.",
+            "name": "proposed_count",
+            "type": "int"
+          }
+        ],
+        "params": [],
+        "summary": "Calls get_hours_reconciliation, flags every employee with a real hours variance, applies the client's correction policy (from Knowledge, defaulting to next_pay_run), and opens one WorkQ item per employee with the evidence and a machine-readable correction-data block for the Execute automation.",
+        "title": "Find variances and propose corrections"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "find_and_propose"
+    ],
+    "triggers": [
+      {
+        "cron": "0 7 * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Corrections Workflow: Propose",
+  "originKey": "ff843526-3a25-488d-96b9-ab592f1d3420",
+  "tags": [
+    "xero",
+    "payroll",
+    "corrections",
+    "timesheets",
+    "approval",
+    "workq"
+  ]
+}

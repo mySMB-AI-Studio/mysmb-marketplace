@@ -1,0 +1,72 @@
+{
+  "contentHash": "d86c5ed89087c62fb2890aad701425e7157778710e73617d44784879b04ff012",
+  "declaredScopes": [
+    "workq:read",
+    "workq:write"
+  ],
+  "dependencies": [],
+  "description": "Triggers whenever a WorkQ item is marked Done. Checks whether it's one of this plugin's payroll-correction items (the companion Corrections Workflow: Propose automation's own items, identified by its 'payroll-correction' label) and ignores anything else. For a revert-policy item, just confirms there's nothing further to do. For a next-pay-run or unscheduled-pay-run item, posts the exact adjustment to make (employee, pay run, earnings rate, hours) as a comment -- it does NOT write to Xero itself. Xero's Payslip API (needed to adjust a specific payslip's earnings lines) isn't built as a tool yet, so this automation confirms and gives precise manual instructions rather than guessing at a write it can't safely make.",
+  "flowIr": {
+    "description": "Fires when a WorkQ item is marked Done. If it's a payroll-correction item from the Propose automation, posts the confirmed next step as a comment -- manual revert acknowledgement, or exact manual payslip-adjustment instructions for next-pay-run/unscheduled-pay-run policies. Does not write to Xero.",
+    "irVersion": 1,
+    "name": "Corrections Workflow: Execute",
+    "nodes": [
+      {
+        "code": "import json\n\ntodo_id = params[\"todo_id\"]\n\nif not todo_id:\n    result = \"no_todo_id\"\nelse:\n    item = api.workq.get(todo_id=todo_id)\n    if not item:\n        result = \"not_found\"\n    else:\n        labels = item.get(\"labels\") or []\n        if \"payroll-correction\" not in labels:\n            result = \"not_a_correction_item\"\n        else:\n            description = str(item.get(\"description\") or \"\")\n            marker = \"\\n---CORRECTION-DATA---\\n\"\n            if marker not in description:\n                result = \"no_correction_data\"\n            else:\n                human_text, _, raw_json = description.partition(marker)\n                try:\n                    data = json.loads(raw_json)\n                except Exception:\n                    data = {}\n                policy = str(data.get(\"policy\") or \"\")\n                employee_name = str(data.get(\"employee_name\") or \"\")\n                pay_run_period = str(data.get(\"pay_run_period\") or \"\")\n                segments = data.get(\"segments\") or []\n\n                if policy == \"revert\":\n                    note = \"Marked done -- this was a revert-policy correction, which has no automated step. No further action from this automation.\"\n                elif policy in (\"next_pay_run\", \"unscheduled_pay_run\"):\n                    target = \"the next DRAFT pay run\" if policy == \"next_pay_run\" else \"a new unscheduled pay run\"\n                    adjustment_lines = []\n                    for s in segments:\n                        variance = s.get(\"variance\") or 0\n                        direction = \"was overpaid\" if variance > 0 else \"was underpaid\"\n                        adjustment_lines.append(f\"- {s.get('name')}: adjust by {-variance}h ({direction} {abs(variance)}h)\")\n                    note = (\n                        f\"Approved. This automation can't yet write directly to a Xero payslip (that capability \"\n                        f\"isn't built), so apply this manually in {target} for {employee_name} \"\n                        f\"(pay run period: {pay_run_period}):\\n\" + \"\\n\".join(adjustment_lines) +\n                        \"\\n\\nOnce applied in Xero, no further action is needed here.\"\n                    )\n                else:\n                    note = \"Marked done, but this item's policy couldn't be recognized -- please review manually.\"\n\n                api.workq.update(todo_id=todo_id, description=description + \"\\n\\n[Corrections Workflow: Execute]: \" + note)\n                result = \"handled\"\n",
+        "id": "handle_completed_item",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "One of: handled, no_todo_id, not_found, not_a_correction_item, no_correction_data.",
+            "name": "result",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.todo_id ?? params.todo_id }}",
+            "control": "hidden",
+            "name": "todo_id",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "summary": "Reads the completed WorkQ item's full data, ignores it if it isn't one of this plugin's payroll-correction items, and otherwise posts the confirmed next step back onto the item -- a manual acknowledgement for revert, or precise manual adjustment instructions for next-pay-run/unscheduled-pay-run.",
+        "title": "Handle a completed correction item"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "Only used when manually testing this automation. On a real run, the completed WorkQ item's id comes from the triggering event instead.",
+        "label": "WorkQ item id (manual test runs only)",
+        "name": "todo_id",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "handle_completed_item"
+    ],
+    "triggers": [
+      {
+        "eventType": "workq.item.completed",
+        "kind": "event"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Corrections Workflow: Execute",
+  "originKey": "9c92a751-2e32-4511-ae10-c7b06f8d0bbd",
+  "tags": [
+    "xero",
+    "payroll",
+    "corrections",
+    "approval",
+    "workq"
+  ]
+}
