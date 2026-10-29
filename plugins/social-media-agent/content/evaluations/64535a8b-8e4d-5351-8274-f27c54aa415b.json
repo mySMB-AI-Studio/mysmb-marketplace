@@ -1,0 +1,241 @@
+{
+  "contentHash": "1c769d94a2546e6d53b2380013c7d1ce7697632921d027d531585563e428fa93",
+  "definition": {
+    "key": "campaign-plan-core",
+    "kind": "evaluation",
+    "originKey": "64535a8b-8e4d-5351-8274-f27c54aa415b",
+    "process": "e5eb6ac6-8d13-57b5-9912-2bacc74e2c13",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "approvePlan"
+            }
+          ],
+          "outcome": "planned",
+          "stepsReached": [
+            "context",
+            "plan",
+            "check",
+            "preview",
+            "approvePlan",
+            "create",
+            "planned"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "checked": [
+                {
+                  "channels": [
+                    "linkedin"
+                  ],
+                  "content_type": "social_post",
+                  "publish_date": "2026-11-10",
+                  "sequence": "1 of 1",
+                  "title": "Start where you are"
+                }
+              ],
+              "issues": [],
+              "piece_count": 1,
+              "table_markdown": "| # | Piece |",
+              "usable": true
+            },
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "brief_request": {
+                "request": "3 LinkedIn posts in November"
+              },
+              "problem": "",
+              "ready": true,
+              "rules": {
+                "earliest_publish_date": "2026-11-04",
+                "max_pieces": 20
+              }
+            },
+            "create": {
+              "campaign_id": "00000000-0000-4000-8000-000000000002",
+              "created": 1,
+              "existing": 0
+            }
+          },
+          "outputs": {
+            "plan": {
+              "brief": {
+                "question": "Approve this 3-piece campaign plan for Start where you are?",
+                "recommendedOption": "approve"
+              },
+              "campaign": {
+                "channels": [
+                  "linkedin"
+                ],
+                "content_types": [
+                  "social_post"
+                ],
+                "cta": "Start your 4-week trial",
+                "end_date": "2026-11-27",
+                "missing": [],
+                "name": "Start where you are",
+                "start_date": "2026-11-09",
+                "topic": "Workspace trial for small teams"
+              },
+              "missing": [],
+              "pieces": [
+                {
+                  "channels": [
+                    "linkedin"
+                  ],
+                  "content_type": "social_post",
+                  "publish_date": "2026-11-10",
+                  "title": "Start where you are"
+                }
+              ],
+              "summary": "One LinkedIn post a week for three weeks."
+            }
+          }
+        },
+        "inputs": {
+          "request": "Three LinkedIn posts in November promoting the 4-week Workspace trial to small teams."
+        },
+        "key": "approvedCreatesPieces",
+        "title": "An approved plan creates the campaign and its pieces"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "cancel",
+              "step": "approvePlan"
+            }
+          ],
+          "outcome": "cancelled",
+          "stepsReached": [
+            "approvePlan",
+            "cancelled"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "checked": [
+                {
+                  "channels": [
+                    "linkedin"
+                  ],
+                  "content_type": "social_post",
+                  "publish_date": "2026-11-10",
+                  "sequence": "1 of 1",
+                  "title": "Start where you are"
+                }
+              ],
+              "issues": [],
+              "piece_count": 1,
+              "table_markdown": "| # | Piece |",
+              "usable": true
+            },
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "brief_request": {
+                "request": "3 LinkedIn posts in November"
+              },
+              "problem": "",
+              "ready": true,
+              "rules": {
+                "earliest_publish_date": "2026-11-04",
+                "max_pieces": 20
+              }
+            }
+          },
+          "outputs": {
+            "plan": {
+              "brief": {
+                "question": "Approve this 3-piece campaign plan for Start where you are?",
+                "recommendedOption": "approve"
+              },
+              "campaign": {
+                "channels": [
+                  "linkedin"
+                ],
+                "content_types": [
+                  "social_post"
+                ],
+                "cta": "Start your 4-week trial",
+                "end_date": "2026-11-27",
+                "missing": [],
+                "name": "Start where you are",
+                "start_date": "2026-11-09",
+                "topic": "Workspace trial for small teams"
+              },
+              "missing": [],
+              "pieces": [
+                {
+                  "channels": [
+                    "linkedin"
+                  ],
+                  "content_type": "social_post",
+                  "publish_date": "2026-11-10",
+                  "title": "Start where you are"
+                }
+              ],
+              "summary": "One LinkedIn post a week for three weeks."
+            }
+          }
+        },
+        "inputs": {
+          "request": "Three LinkedIn posts in November promoting the 4-week Workspace trial to small teams."
+        },
+        "key": "cancelledCreatesNothing",
+        "title": "Cancelling the plan creates nothing"
+      },
+      {
+        "expected": {
+          "outcome": "needsSetup",
+          "stepsReached": [
+            "context",
+            "notReady"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "brief_request": {
+                "request": "3 LinkedIn posts in November"
+              },
+              "problem": "There is no confirmed Brand Kit yet.",
+              "ready": false,
+              "rules": {
+                "earliest_publish_date": "2026-11-04",
+                "max_pieces": 20
+              }
+            }
+          },
+          "steps.context.ready": false
+        },
+        "inputs": {
+          "request": "Three LinkedIn posts in November promoting the 4-week Workspace trial to small teams."
+        },
+        "key": "noBrandKitStopsEarly",
+        "title": "Without a confirmed Brand Kit nothing is planned"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Plan a campaign: core paths"
+  },
+  "kind": "evaluation",
+  "name": "Plan a campaign: core paths",
+  "originKey": "64535a8b-8e4d-5351-8274-f27c54aa415b"
+}

@@ -1,0 +1,204 @@
+{
+  "contentHash": "0793d6832167ff154c9675c6c3baeede64a92838d7b9108c30657e2c1ecd2373",
+  "declaredScopes": [
+    "records:social_campaigns:read",
+    "records:social_campaigns:write",
+    "records:social_content_pieces:read",
+    "records:social_content_pieces:write",
+    "files:read",
+    "extension_setup:read"
+  ],
+  "dependencies": [],
+  "description": "Run by the campaign-plan process. context: loads the confirmed Brand Kit and the planning rules (content types, channels, earliest publish date). check: tidies the agent's plan (valid types and channels, dates that leave time for review, at most 20 pieces) and builds the preview table. create: after approval, makes the Campaign record and one Content piece per planned piece, each of which starts its own drafting job. Uses no AI and sends nothing.",
+  "flowIr": {
+    "description": "Run by the campaign-plan process. context: loads the confirmed Brand Kit and the planning rules (content types, channels, earliest publish date). check: tidies the agent's plan (valid types and channels, dates that leave time for review, at most 20 pieces) and builds the preview table. create: after approval, makes the Campaign record and one Content piece per planned piece, each of which starts its own drafting job. Uses no AI and sends nothing.",
+    "irVersion": 1,
+    "name": "Social Media Agent: campaign plan steps",
+    "nodes": [
+      {
+        "code": "import json\nimport re\nfrom datetime import date, datetime, timedelta\nfrom zoneinfo import ZoneInfo\n\n# Node params arrive in the `params` dict (sandbox-bootstrap.py), not as variables.\nmode = params[\"mode\"]\nrequest = params.get(\"request\")\nstart_date = params.get(\"start_date\")\nend_date = params.get(\"end_date\")\nplan = params.get(\"plan\")\npieces = params.get(\"pieces\")\n\nCAMPAIGNS = \"social_campaigns\"\nPIECES = \"social_content_pieces\"\nMAX_PIECES = 20\nTYPES = {\"social_post\": \"Social media post\", \"article\": \"Article\", \"email\": \"Email\", \"announcement\": \"Announcement\", \"visual\": \"Visual\"}\nCHANNELS = {\"instagram\": \"Instagram\", \"facebook\": \"Facebook\", \"linkedin\": \"LinkedIn\", \"google_business\": \"Google Business\", \"email\": \"Email\", \"website\": \"Website\", \"print\": \"Print\"}\nSOCIAL_CHANNELS = [\"instagram\", \"facebook\", \"linkedin\", \"google_business\"]\nDEFAULT_SOCIAL = [\"instagram\", \"facebook\", \"linkedin\"]\nOBJECTIVES = [\"awareness\", \"leads\", \"promotion\", \"event\", \"announcement\", \"retention\"]\nCADENCES = [\"even\", \"countdown\", \"front_loaded\"]\n\n\ndef text(value):\n    if value is None:\n        return \"\"\n    if isinstance(value, (list, tuple)):\n        return \", \".join(str(v) for v in value)\n    return str(value).strip()\n\n\ndef as_list(value):\n    if isinstance(value, list):\n        return [str(v).strip() for v in value if str(v).strip()]\n    return [part.strip() for part in text(value).replace(\",\", \"\\n\").splitlines() if part.strip()]\n\n\ndef as_date(value):\n    raw = text(value)[:10]\n    if not raw:\n        return None\n    try:\n        return date.fromisoformat(raw)\n    except ValueError:\n        pass\n    try:\n        return datetime.strptime(raw, \"%d/%m/%Y\").date()\n    except ValueError:\n        return None\n\n\ndef add_business_days(day, count):\n    step = 1 if count >= 0 else -1\n    remaining = abs(count)\n    while remaining > 0:\n        day = day + timedelta(days=step)\n        if day.weekday() < 5:\n            remaining -= 1\n    return day\n\n\ndef keys_in(values, allowed):\n    out = []\n    for value in as_list(values):\n        key = value.lower().replace(\" \", \"_\")\n        if key in allowed and key not in out:\n            out.append(key)\n    return out\n\n\nsettings = api.extension.settings() or {}\nfolder = text(settings.get(\"knowledge_folder\")) or \"Social posts\"\nzone = ZoneInfo(text(settings.get(\"time_zone\")) or \"Australia/Sydney\")\ntry:\n    lead = int(settings.get(\"review_lead_days\") or 2)\nexcept (TypeError, ValueError):\n    lead = 2\ntoday = datetime.now(zone).date()\nearliest = add_business_days(today, lead + 1)\n\n# Every mode assigns every output.\nready = False\nproblem = \"\"\nbrand = {}\nbrief_request = {}\nrules = {}\nusable = False\nissues = []\nchecked = []\ntable_markdown = \"\"\npiece_count = 0\ncampaign_id = \"\"\ncreated = 0\nexisting = 0\n\nif mode == \"context\":\n    try:\n        brand = json.loads(api.files.read(file=f\"{folder}/Brand Kit/brand-kit.json\"))\n    except Exception:\n        brand = {}\n    asked = text(request)\n    if not brand.get(\"company_name\"):\n        problem = \"There is no confirmed Brand Kit yet. Create one under Records > Brand Kits and confirm it, then start the campaign again.\"\n    elif not asked:\n        problem = \"Describe the campaign (what it promotes, when and for whom), then start it again.\"\n    else:\n        ready = True\n    start = as_date(start_date)\n    end = as_date(end_date)\n    brief_request = {\n        \"request\": asked,\n        \"start_date\": start.isoformat() if start else \"\",\n        \"end_date\": end.isoformat() if end else \"\",\n        \"today\": today.isoformat(),\n    }\n    rules = {\n        \"content_types\": TYPES,\n        \"channels\": CHANNELS,\n        \"social_channels\": SOCIAL_CHANNELS,\n        \"default_social_channels\": DEFAULT_SOCIAL,\n        \"objectives\": OBJECTIVES,\n        \"cadences\": CADENCES,\n        \"max_pieces\": MAX_PIECES,\n        \"earliest_publish_date\": earliest.isoformat(),\n        \"review_lead_business_days\": lead,\n        \"default_cta\": text(brand.get(\"default_cta\")) or text(settings.get(\"default_cta\")),\n        \"default_cta_url\": text(brand.get(\"default_cta_url\")),\n    }\n\nelif mode == \"check\":\n    items = [p for p in (pieces or []) if isinstance(p, dict)]\n    if len(items) > MAX_PIECES:\n        issues.append(f\"The plan has {len(items)} pieces; only the first {MAX_PIECES} are kept.\")\n        items = items[:MAX_PIECES]\n    campaign = plan if isinstance(plan, dict) else {}\n    start = as_date(campaign.get(\"start_date\"))\n    end = as_date(campaign.get(\"end_date\"))\n    for index, item in enumerate(items, start=1):\n        title = text(item.get(\"title\"))[:200]\n        content_type = text(item.get(\"content_type\")).lower().replace(\" \", \"_\")\n        if not title or content_type not in TYPES:\n            issues.append(f\"Piece {index} was dropped: it needs a title and one of these content types: {', '.join(TYPES)}.\")\n            continue\n        channels = keys_in(item.get(\"channels\"), CHANNELS)\n        if content_type == \"social_post\":\n            channels = [c for c in channels if c in SOCIAL_CHANNELS] or DEFAULT_SOCIAL\n        publish = as_date(item.get(\"publish_date\"))\n        if publish is None or publish < earliest:\n            issues.append(f\"'{title}' moved to {earliest.strftime('%d/%m/%Y')}: the earliest publish date leaves {lead} business days for review.\")\n            publish = earliest\n        if end and publish > end:\n            issues.append(f\"'{title}' is dated after the campaign ends ({end.strftime('%d/%m/%Y')}).\")\n        checked.append({\n            \"title\": title,\n            \"content_type\": content_type,\n            \"channels\": channels,\n            \"publish_date\": publish.isoformat(),\n            \"topic\": text(item.get(\"topic\"))[:200],\n            \"angle\": text(item.get(\"angle\"))[:2000],\n            \"cta\": text(item.get(\"cta\"))[:200],\n            \"cta_url\": text(item.get(\"cta_url\"))[:500],\n        })\n    checked.sort(key=lambda p: p[\"publish_date\"])\n    total = len(checked)\n    for position, item in enumerate(checked, start=1):\n        item[\"sequence\"] = f\"{position} of {total}\"\n    piece_count = total\n    usable = total > 0\n    if not usable:\n        issues.append(\"The plan has no usable pieces.\")\n    rows = [\"| # | Publish date | Content type | Channels | Piece | Angle |\", \"|---|---|---|---|---|---|\"]\n    for position, item in enumerate(checked, start=1):\n        when = date.fromisoformat(item[\"publish_date\"]).strftime(\"%a %d/%m/%Y\")\n        chans = \", \".join(str(CHANNELS.get(c) or c) for c in item[\"channels\"]) or \"-\"\n        angle = item[\"angle\"].replace(\"|\", \"/\").replace(\"\\n\", \" \")[:160]\n        rows.append(f\"| {position} | {when} | {TYPES[item['content_type']]} | {chans} | {item['title'].replace('|', '/')} | {angle} |\")\n    table_markdown = \"\\n\".join(rows)\n\nelif mode == \"create\":\n    campaign = plan if isinstance(plan, dict) else {}\n    name = text(campaign.get(\"name\"))[:200] or \"Campaign\"\n    start = as_date(campaign.get(\"start_date\"))\n    end = as_date(campaign.get(\"end_date\"))\n    key_day = as_date(campaign.get(\"key_date\"))\n    data = {\n        \"topic\": text(campaign.get(\"topic\"))[:4000],\n        \"audience\": text(campaign.get(\"audience\"))[:4000],\n        \"frequency\": text(campaign.get(\"frequency\"))[:200],\n        \"cta\": text(campaign.get(\"cta\"))[:200],\n        \"offer_details\": text(campaign.get(\"offer_details\"))[:4000],\n        \"offer_terms\": text(campaign.get(\"offer_terms\"))[:4000],\n        \"missing_info\": \"\\n\".join(as_list(campaign.get(\"missing\")))[:4000],\n        \"posts_count\": len([p for p in (pieces or []) if isinstance(p, dict)]),\n        \"channels\": keys_in(campaign.get(\"channels\"), CHANNELS),\n        \"content_types\": keys_in(campaign.get(\"content_types\"), TYPES),\n    }\n    if start:\n        data[\"start_date\"] = start.isoformat()\n    if end:\n        data[\"end_date\"] = end.isoformat()\n    if key_day:\n        data[\"key_date\"] = key_day.isoformat()\n        data[\"key_date_label\"] = text(campaign.get(\"key_date_label\"))[:200]\n    if text(campaign.get(\"objective\")) in OBJECTIVES:\n        data[\"objective\"] = text(campaign.get(\"objective\"))\n    if text(campaign.get(\"cadence\")) in CADENCES:\n        data[\"cadence\"] = text(campaign.get(\"cadence\"))\n    if text(campaign.get(\"cta_url\")).startswith(\"http\"):\n        data[\"cta_url\"] = text(campaign.get(\"cta_url\"))\n    try:\n        brand_version = json.loads(api.files.read(file=f\"{folder}/Brand Kit/brand-kit.json\")).get(\"version\")\n        if isinstance(brand_version, int):\n            data[\"brand_kit_version\"] = brand_version\n    except Exception:\n        pass\n    data = {k: v for k, v in data.items() if v not in (\"\", [], None)}\n\n    # A retried step finds the campaign it already made (same name and start date) instead of making another.\n    listed = api.records.list(type_slug=CAMPAIGNS, q=name, limit=50) or {}\n    for row in listed.get(\"records\") or []:\n        row_data = row.get(\"data\") or {}\n        if text(row.get(\"title\")) == name and text(row_data.get(\"start_date\"))[:10] == text(data.get(\"start_date\")):\n            campaign_id = text(row.get(\"id\"))\n            break\n    if not campaign_id:\n        made = api.records.create(type_slug=CAMPAIGNS, record={\"title\": name, \"stage\": \"planned\", \"data\": data}) or {}\n        campaign_id = text((made.get(\"record\") or made).get(\"id\"))\n    if not campaign_id:\n        raise RuntimeError(\"The campaign record could not be created.\")\n\n    for item in [p for p in (pieces or []) if isinstance(p, dict)]:\n        piece_data = {\n            \"content_type\": item.get(\"content_type\"),\n            \"channels\": item.get(\"channels\") or [],\n            \"origin\": \"campaign\",\n            \"publish_date\": item.get(\"publish_date\"),\n            \"topic\": text(item.get(\"topic\")),\n            \"angle\": text(item.get(\"angle\")),\n            \"brief\": text(campaign.get(\"topic\")),\n            \"cta\": text(item.get(\"cta\")) or text(campaign.get(\"cta\")),\n            \"sequence\": text(item.get(\"sequence\")),\n            \"generate_draft\": True,\n            \"piece_key\": f\"{campaign_id}:{text(item.get('sequence')).split(' ')[0]}\",\n        }\n        link = text(item.get(\"cta_url\")) or text(campaign.get(\"cta_url\"))\n        if link.startswith(\"http\"):\n            piece_data[\"cta_url\"] = link\n        piece_data = {k: v for k, v in piece_data.items() if v not in (\"\", [], None)}\n        try:\n            api.records.create(type_slug=PIECES, record={\"title\": text(item.get(\"title\")), \"stage\": \"planned\", \"data\": piece_data, \"links\": {\"campaign\": [campaign_id]}})\n            created += 1\n        except Exception as error:\n            # The piece key is unique within the table: a retry that already made this piece is refused, not duplicated.\n            if \"unique\" in str(error).lower():\n                existing += 1\n            else:\n                raise\n\nelse:\n    raise RuntimeError(f\"Unknown mode '{mode}'.\")\n",
+        "id": "campaign",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "context: a campaign can be planned.",
+            "name": "ready",
+            "type": "bool"
+          },
+          {
+            "description": "context: why it cannot be planned yet.",
+            "name": "problem",
+            "type": "str"
+          },
+          {
+            "description": "context: the confirmed Brand Kit.",
+            "name": "brand",
+            "type": "dict"
+          },
+          {
+            "description": "context: the request and dates as given.",
+            "name": "brief_request",
+            "type": "dict"
+          },
+          {
+            "description": "context: content types, channels and date rules.",
+            "name": "rules",
+            "type": "dict"
+          },
+          {
+            "description": "check: at least one piece survived the checks.",
+            "name": "usable",
+            "type": "bool"
+          },
+          {
+            "description": "check: what was changed or dropped.",
+            "name": "issues",
+            "type": "list[str]"
+          },
+          {
+            "description": "check: the tidied pieces in date order.",
+            "name": "checked",
+            "type": "list[dict]"
+          },
+          {
+            "description": "check: the plan as a Markdown table.",
+            "name": "table_markdown",
+            "type": "str"
+          },
+          {
+            "description": "check: number of pieces.",
+            "name": "piece_count",
+            "type": "int"
+          },
+          {
+            "description": "create: the Campaign record.",
+            "name": "campaign_id",
+            "type": "str"
+          },
+          {
+            "description": "create: Content pieces made.",
+            "name": "created",
+            "type": "int"
+          },
+          {
+            "description": "create: pieces a retry found already made.",
+            "name": "existing",
+            "type": "int"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.mode }}",
+            "control": "hidden",
+            "label": "context, check or create",
+            "name": "mode",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.request }}",
+            "control": "hidden",
+            "label": "Campaign request",
+            "name": "request",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.start_date }}",
+            "control": "hidden",
+            "label": "Start date",
+            "name": "start_date",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.end_date }}",
+            "control": "hidden",
+            "label": "End date",
+            "name": "end_date",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.plan }}",
+            "control": "hidden",
+            "label": "Campaign plan",
+            "name": "plan",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.pieces }}",
+            "control": "hidden",
+            "label": "Planned pieces",
+            "name": "pieces",
+            "required": false,
+            "type": "list"
+          }
+        ],
+        "summary": "Does one step of the campaign-plan process, chosen by mode.",
+        "title": "Campaign plan step"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "label": "context, check or create",
+        "name": "mode",
+        "required": true,
+        "type": "str",
+        "value": "context"
+      },
+      {
+        "control": "hidden",
+        "label": "Campaign request",
+        "name": "request",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Start date",
+        "name": "start_date",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "End date",
+        "name": "end_date",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Campaign plan",
+        "name": "plan",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Planned pieces",
+        "name": "pieces",
+        "required": false,
+        "type": "list"
+      }
+    ],
+    "rootOrder": [
+      "campaign"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Social Media Agent: campaign plan steps",
+  "originKey": "543ffc44-89fc-5a87-a25e-9c85415d8a9f",
+  "tags": [
+    "social-media-agent"
+  ]
+}

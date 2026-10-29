@@ -1,0 +1,291 @@
+{
+  "contentHash": "de2ca6b9f51c2b22dc58fb98fe87a2d3d48e4d04b58b71f824ee93052dc1fb71",
+  "definition": {
+    "capabilities": [
+      "records.write"
+    ],
+    "description": "Plans a campaign from what you describe: how many pieces, which content types and channels, and a date, topic and angle for each, from the confirmed Brand Kit. The reviewer approves the plan or asks for changes. Approving creates the campaign and one Content piece per planned piece, and each piece then starts its own drafting job. Nothing is ever posted or sent.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "request",
+        "label": "Describe the campaign",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "startDate",
+        "label": "Start date",
+        "required": false,
+        "type": "date"
+      },
+      {
+        "key": "endDate",
+        "label": "End date",
+        "required": false,
+        "type": "date"
+      }
+    ],
+    "key": "campaign-plan",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 400,
+      "maxSteps": 40,
+      "maxWaitingDays": 30
+    },
+    "modelPolicy": {
+      "brief": "sonnet"
+    },
+    "originKey": "e5eb6ac6-8d13-57b5-9912-2bacc74e2c13",
+    "outcomes": [
+      {
+        "evidence": [
+          "Reviewer's approval",
+          "The Campaign record"
+        ],
+        "key": "planned",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "Reviewer's decision"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "Why the plan could not be used"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "What to set up first"
+        ],
+        "key": "needsSetup",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "The agent only plans and drafts. Nothing is posted, published, scheduled or sent; the business posts approved content itself.",
+        "key": "draftOnly"
+      },
+      {
+        "description": "Prices, dates, offers and claims come only from the Brand Kit or the request; anything missing is listed for the reviewer.",
+        "key": "noInventedFacts"
+      },
+      {
+        "description": "No campaign or content piece is created until the reviewer approves the plan.",
+        "key": "reviewerApproves"
+      }
+    ],
+    "rework": [
+      {
+        "from": "approvePlan",
+        "requires": "reviewer",
+        "to": "plan"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "automation": "543ffc44-89fc-5a87-a25e-9c85415d8a9f",
+        "inputs": {
+          "end_date": "inputs.endDate",
+          "mode": "'context'",
+          "request": "inputs.request",
+          "start_date": "inputs.startDate"
+        },
+        "key": "context",
+        "kind": "automation",
+        "title": "Load the Brand Kit and planning rules"
+      },
+      {
+        "key": "plan",
+        "kind": "agent",
+        "outputs": [
+          "campaign",
+          "pieces",
+          "missing",
+          "summary"
+        ],
+        "skill": "plan-campaign",
+        "title": "Plan the campaign"
+      },
+      {
+        "automation": "543ffc44-89fc-5a87-a25e-9c85415d8a9f",
+        "inputs": {
+          "mode": "'check'",
+          "pieces": "steps.plan.pieces",
+          "plan": "steps.plan.campaign"
+        },
+        "key": "check",
+        "kind": "automation",
+        "title": "Check the plan"
+      },
+      {
+        "artifactKind": "plan",
+        "key": "preview",
+        "kind": "output",
+        "template": "campaign-plan",
+        "title": "Campaign plan"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "approvePlan",
+        "kind": "decision",
+        "materiality": [
+          "steps.plan.campaign",
+          "steps.check.checked"
+        ],
+        "options": [
+          {
+            "effect": "Creates the campaign and one Content piece per planned piece. Each piece starts its own drafting job and comes back to you for approval. Nothing is posted for you.",
+            "key": "approve",
+            "label": "Approve the plan",
+            "suggested": true,
+            "transition": "create"
+          },
+          {
+            "effect": "The agent revises the plan using your note. Nothing is created yet.",
+            "key": "adjust",
+            "label": "Ask for changes",
+            "transition": "plan"
+          },
+          {
+            "effect": "Ends this job. Nothing is created; the plan stays in Outputs.",
+            "key": "cancel",
+            "label": "Cancel the campaign",
+            "transition": "cancelled"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": 1
+        },
+        "title": "Review the campaign plan",
+        "type": "campaign_plan_review"
+      },
+      {
+        "automation": "543ffc44-89fc-5a87-a25e-9c85415d8a9f",
+        "inputs": {
+          "mode": "'create'",
+          "pieces": "steps.check.checked",
+          "plan": "steps.plan.campaign"
+        },
+        "key": "create",
+        "kind": "automation",
+        "title": "Create the campaign and its pieces"
+      },
+      {
+        "evidence": [
+          "steps.approvePlan.responseId",
+          "steps.create.campaign_id"
+        ],
+        "key": "planned",
+        "kind": "gate",
+        "outcome": "planned",
+        "requires": [
+          "steps.create.ok"
+        ],
+        "title": "Campaign planned"
+      },
+      {
+        "evidence": [
+          "steps.approvePlan.responseId"
+        ],
+        "key": "cancelled",
+        "kind": "gate",
+        "outcome": "cancelled",
+        "requires": [
+          "steps.approvePlan.responseId"
+        ],
+        "title": "Cancelled"
+      },
+      {
+        "evidence": [
+          "steps.check.issues"
+        ],
+        "key": "unusable",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "!steps.check.usable"
+        ],
+        "title": "Plan could not be used"
+      },
+      {
+        "evidence": [
+          "steps.context.problem"
+        ],
+        "key": "notReady",
+        "kind": "gate",
+        "outcome": "needsSetup",
+        "requires": [
+          "!steps.context.ready"
+        ],
+        "title": "Needs setup first"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [],
+      "kind": "none"
+    },
+    "tests": [
+      "64535a8b-8e4d-5351-8274-f27c54aa415b"
+    ],
+    "title": "Plan a campaign",
+    "transitions": [
+      {
+        "from": "context",
+        "to": "plan",
+        "when": "steps.context.ready"
+      },
+      {
+        "from": "context",
+        "to": "notReady",
+        "when": "!steps.context.ready"
+      },
+      {
+        "from": "plan",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "to": "preview",
+        "when": "steps.check.usable"
+      },
+      {
+        "from": "check",
+        "to": "unusable",
+        "when": "!steps.check.usable"
+      },
+      {
+        "from": "preview",
+        "to": "approvePlan"
+      },
+      {
+        "from": "create",
+        "to": "planned"
+      }
+    ],
+    "triggers": [],
+    "variationPoints": [],
+    "version": "0.1.0"
+  },
+  "kind": "process",
+  "name": "Plan a campaign",
+  "originKey": "e5eb6ac6-8d13-57b5-9912-2bacc74e2c13"
+}
