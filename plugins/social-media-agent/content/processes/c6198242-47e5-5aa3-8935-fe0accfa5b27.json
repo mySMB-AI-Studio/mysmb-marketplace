@@ -1,0 +1,200 @@
+{
+  "contentHash": "45e4e20fb9e158b9cd867eab6b5b6531dc696c7ef3cb6b2a5aefd7a172a6d8a4",
+  "definition": {
+    "capabilities": [
+      "records.write"
+    ],
+    "description": "Checks a Brand Kit (company name, hex colours, links), shows the reviewer a summary, and on confirmation marks it confirmed and saves a copy in Knowledge that the agent drafts from. Starts when a Brand Kit is created, or from the Brand Kit's page. Uses no AI; nothing is published or sent.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "recordId",
+        "label": "Brand Kit",
+        "required": true,
+        "type": "record"
+      }
+    ],
+    "key": "brand-kit-setup",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 1,
+      "maxAiUnits": 50,
+      "maxSteps": 20,
+      "maxWaitingDays": 14
+    },
+    "originKey": "c6198242-47e5-5aa3-8935-fe0accfa5b27",
+    "outcomes": [
+      {
+        "evidence": [
+          "Reviewer's confirmation",
+          "Knowledge copy of the Brand Kit"
+        ],
+        "key": "confirmed",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "Reviewer's decision"
+        ],
+        "key": "changesRequested",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "Check summary listing the problems"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "A Brand Kit is marked confirmed only after the reviewer confirms that exact version; the agent never confirms its own inputs.",
+        "key": "reviewerConfirms"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "automation": "5035f10f-020b-5045-a331-f8d444ae84e2",
+        "inputs": {
+          "mode": "'check'",
+          "record_id": "inputs.recordId"
+        },
+        "key": "check",
+        "kind": "automation",
+        "title": "Check the Brand Kit"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "confirm",
+        "kind": "decision",
+        "materiality": [
+          "recordId",
+          "steps.check.summary"
+        ],
+        "options": [
+          {
+            "effect": "Marks the Brand Kit confirmed, raises its version and saves a copy in Knowledge for the agent. Nothing is published or sent.",
+            "key": "confirm",
+            "label": "Confirm",
+            "suggested": true,
+            "transition": "finalize"
+          },
+          {
+            "effect": "Nothing changes. Edit the Brand Kit, then start Confirm a Brand Kit again from its page.",
+            "key": "needs_changes",
+            "label": "Needs changes",
+            "transition": "notConfirmed"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": 2
+        },
+        "title": "Confirm the Brand Kit",
+        "type": "brand_kit_confirmation"
+      },
+      {
+        "automation": "5035f10f-020b-5045-a331-f8d444ae84e2",
+        "inputs": {
+          "mode": "'confirm'",
+          "record_id": "inputs.recordId"
+        },
+        "key": "finalize",
+        "kind": "automation",
+        "title": "Mark confirmed and save to Knowledge"
+      },
+      {
+        "evidence": [
+          "steps.confirm.responseId",
+          "steps.finalize.knowledge_path"
+        ],
+        "key": "confirmed",
+        "kind": "gate",
+        "outcome": "confirmed",
+        "requires": [
+          "steps.finalize.ok",
+          "steps.finalize.knowledge_path"
+        ],
+        "title": "Brand Kit confirmed"
+      },
+      {
+        "evidence": [
+          "steps.confirm.responseId"
+        ],
+        "key": "notConfirmed",
+        "kind": "gate",
+        "outcome": "changesRequested",
+        "requires": [
+          "steps.confirm.responseId"
+        ],
+        "title": "Changes requested"
+      },
+      {
+        "evidence": [
+          "steps.check.summary"
+        ],
+        "key": "problems",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "!steps.check.valid"
+        ],
+        "title": "Brand Kit needs attention"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "recordId"
+      ],
+      "kind": "records.social_brand_kits"
+    },
+    "tests": [
+      "cf4ef0e3-16f6-5415-bebe-6c605e45c7a4"
+    ],
+    "title": "Confirm a Brand Kit",
+    "transitions": [
+      {
+        "from": "check",
+        "to": "confirm",
+        "when": "steps.check.valid"
+      },
+      {
+        "from": "check",
+        "to": "problems",
+        "when": "!steps.check.valid"
+      },
+      {
+        "from": "finalize",
+        "to": "confirmed"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "record.created",
+        "filter": {
+          "type_slug": "social_brand_kits"
+        },
+        "inputsFrom": {
+          "recordId": "subject.record_id"
+        },
+        "kind": "event",
+        "subjectFrom": "subject.record_id"
+      }
+    ],
+    "variationPoints": [],
+    "version": "0.1.0"
+  },
+  "kind": "process",
+  "name": "Confirm a Brand Kit",
+  "originKey": "c6198242-47e5-5aa3-8935-fe0accfa5b27"
+}

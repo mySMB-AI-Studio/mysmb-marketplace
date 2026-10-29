@@ -1,0 +1,218 @@
+{
+  "contentHash": "98ba6ce6420df1aa0af8ffff5bd1ba9927a38cc138e46894a99f565b83725c98",
+  "definition": {
+    "key": "content-piece-core",
+    "kind": "evaluation",
+    "originKey": "0ec36fd5-4936-5d6e-8204-bc1319ddf251",
+    "process": "fbcabce2-8aa5-5f29-b39f-6e7e908f2db5",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "records.write"
+          ],
+          "outcome": "published",
+          "stepsReached": [
+            "context",
+            "draft",
+            "document",
+            "check",
+            "review",
+            "file",
+            "publishDay",
+            "post",
+            "posted",
+            "published"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "check_summary": "All brand and compliance checks passed.",
+              "flags": []
+            },
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "due_date_set": true,
+              "piece": {
+                "channels": [
+                  "linkedin"
+                ],
+                "content_type": "social_post",
+                "title": "Start where you are"
+              },
+              "problem": "",
+              "publish_at": "2026-11-03T08:00:00+11:00",
+              "publish_date": "2026-11-03",
+              "ready": true,
+              "review_date": "2026-10-30",
+              "rules": {},
+              "type_label": "Social media post"
+            },
+            "file": {
+              "knowledge_path": "Social posts/Social media posts/03-11-2026_start-where-you-are_v1.docx",
+              "version": 1
+            },
+            "posted": {}
+          },
+          "outputs": {
+            "draft": {
+              "brief": {
+                "question": "Approve this social media post for 03/11/2026?",
+                "recommendedOption": "approve"
+              },
+              "document_markdown": "# Start where you are\n\n## LinkedIn\n\nYou do not need a big AI project to get value from AI. Start where you are: pick one task that eats your week and let Workspace take the first pass. Use what helps, add more later.\n\nStart your 4-week trial.",
+              "missing": [],
+              "summary": "A LinkedIn post on starting small with AI.",
+              "title": "Start where you are",
+              "variants": [
+                {
+                  "channel": "linkedin",
+                  "copy": "Start where you are.",
+                  "cta": "Start your 4-week trial",
+                  "hashtags": [
+                    "#SmallBusiness"
+                  ]
+                }
+              ]
+            }
+          },
+          "steps.post.cancelled": false
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "approvedAndPosted",
+        "title": "An approved draft is filed, waits for its publish date and is marked published once posted"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "skip",
+              "step": "review"
+            }
+          ],
+          "outcome": "skipped",
+          "stepsReached": [
+            "review",
+            "markSkipped",
+            "skipped"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "check_summary": "All brand and compliance checks passed.",
+              "flags": []
+            },
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "due_date_set": true,
+              "piece": {
+                "channels": [
+                  "linkedin"
+                ],
+                "content_type": "social_post",
+                "title": "Start where you are"
+              },
+              "problem": "",
+              "publish_at": "2026-11-03T08:00:00+11:00",
+              "publish_date": "2026-11-03",
+              "ready": true,
+              "review_date": "2026-10-30",
+              "rules": {},
+              "type_label": "Social media post"
+            },
+            "markSkipped": {}
+          },
+          "outputs": {
+            "draft": {
+              "brief": {
+                "question": "Approve this social media post for 03/11/2026?",
+                "recommendedOption": "approve"
+              },
+              "document_markdown": "# Start where you are\n\n## LinkedIn\n\nYou do not need a big AI project to get value from AI. Start where you are: pick one task that eats your week and let Workspace take the first pass. Use what helps, add more later.\n\nStart your 4-week trial.",
+              "missing": [],
+              "summary": "A LinkedIn post on starting small with AI.",
+              "title": "Start where you are",
+              "variants": [
+                {
+                  "channel": "linkedin",
+                  "copy": "Start where you are.",
+                  "cta": "Start your 4-week trial",
+                  "hashtags": [
+                    "#SmallBusiness"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "skippedAtReview",
+        "title": "Skip at review ends the piece without filing it"
+      },
+      {
+        "expected": {
+          "outcome": "needsSetup",
+          "stepsReached": [
+            "context",
+            "notReady"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "due_date_set": true,
+              "piece": {
+                "channels": [
+                  "linkedin"
+                ],
+                "content_type": "social_post",
+                "title": "Start where you are"
+              },
+              "problem": "There is no confirmed Brand Kit yet.",
+              "publish_at": "2026-11-03T08:00:00+11:00",
+              "publish_date": "2026-11-03",
+              "ready": false,
+              "review_date": "2026-10-30",
+              "rules": {},
+              "type_label": "Social media post"
+            }
+          },
+          "steps.context.ready": false
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "noBrandKitStopsEarly",
+        "title": "Without a confirmed Brand Kit nothing is drafted"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Draft a content piece: core paths"
+  },
+  "kind": "evaluation",
+  "name": "Draft a content piece: core paths",
+  "originKey": "0ec36fd5-4936-5d6e-8204-bc1319ddf251"
+}
