@@ -14,4 +14,4 @@ Processes (Brand Kit setup, drafting a content piece, planning a campaign) are a
 
 ## Configuration
 
-No configuration variables are required. The agent uses no external connectors: it works only with Workspace Knowledge, WorkQ and its own custom tables.
+No configuration variables are required.
