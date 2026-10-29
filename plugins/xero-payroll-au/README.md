@@ -6,7 +6,36 @@ Access Xero Payroll (Australia) via the myHub-hosted OAuth MCP gateway. Manage e
 
 ## Configuration
 
-No configuration variables are required.
+No environment variables required. Browser OAuth — click Connect in MyHub to sign in and pick an AU Xero org.
+
+The Fortnightly Payroll tile also uses the Xero Accounting connection (`xero-accounting`) to follow the organisation picked in the Xero connector dock.
+
+Scopes requested:
+```
+offline_access openid profile email
+payroll.employees payroll.timesheets payroll.payruns payroll.payslip payroll.settings
+```
+
+### Payroll automations (connector requirements)
+
+Both automations below install as drafts; an admin reviews the scopes and publishes each one.
+
+**Payroll: Email intake (Outlook)** needs the `m365-mail-read` connector (Microsoft 365 extension) connected by the automation's owner.
+
+**Rate Step-up & Birthday Reminders** needs the `m365-mail-send` connector (Microsoft 365 extension) connected by the automation's owner, to send its reminder emails. Its recipient email address ships with a placeholder (`payroll-admin@example.com`) — edit the automation's `reminder_email` param after installing to point it at your real payroll/HR admin.
+
+Settings for the email intake automation live in organisation Knowledge:
+
+- `Payroll/clients.json` (required): the payroll clients and where their emails come from. Until it exists, the automation reads no mail and opens one "Set up payroll email intake" WorkQ item.
+  ```json
+  {
+    "clients": [
+      { "name": "Acme Plumbing", "senders": ["@acme.com.au", "boss@gmail.com"], "other_names": ["Acme"], "assignee_email": "processor@yourpractice.com.au" }
+    ]
+  }
+  ```
+- `Payroll/settings.json` (optional): `owner_email` (who gets emails that need a person), `folders` (Outlook folders to read besides the Inbox), `timezone` (default `Australia/Sydney`).
+- `Payroll/Mail/outlook.json` is written by the automation (where it has read up to, and the pay run items it opened). Don't edit it.
 
 ## Tools (24)
 
