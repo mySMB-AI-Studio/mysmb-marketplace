@@ -1,0 +1,78 @@
+{
+  "contentHash": "37a004f4418d98c8e330f1527c14ee0127b5ffec18273173e743d35ee2757c40",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_organisation"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "xero_tenant_id": {
+          "description": "The Xero organisation (tenant) id from the client's record. Omit to read the connection's default organisation.",
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "key": "xero.organisation.read",
+    "kind": "capability",
+    "originKey": "8196118e-5dd1-4944-9cea-37f4e58c3dd7",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Organisations": {
+          "items": {
+            "properties": {
+              "BaseCurrency": {
+                "type": "string"
+              },
+              "CountryCode": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "OrganisationID": {
+                "type": "string"
+              },
+              "TaxNumber": {
+                "type": "string"
+              },
+              "Timezone": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Organisations"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the connected Xero organisation"
+  },
+  "kind": "capability",
+  "name": "Read the connected Xero organisation",
+  "originKey": "8196118e-5dd1-4944-9cea-37f4e58c3dd7"
+}

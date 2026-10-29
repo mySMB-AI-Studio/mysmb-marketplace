@@ -1,0 +1,41 @@
+{
+  "contentHash": "e09a18b03d24eba13454d3cc6638f664086724efa83c51e0f113068a3ce0ad97",
+  "definition": {
+    "steps": [
+      {
+        "connectors": [
+          {
+            "key": "xero",
+            "label": "Xero",
+            "required": true,
+            "scope": "service",
+            "server": "xero-accounting"
+          },
+          {
+            "key": "mailbox_read",
+            "label": "Intake mailbox (read)",
+            "required": false,
+            "scope": "either",
+            "server": "m365-mail-read"
+          },
+          {
+            "key": "mailbox_send",
+            "label": "Sending mailbox (reviewed client emails)",
+            "required": false,
+            "scope": "service",
+            "server": "m365-mail-send"
+          }
+        ],
+        "description": "Connect the Xero account that holds your client organisations (one connection covers every organisation it can see). A mailbox is optional: the intake mailbox lets the agent file emailed bills, statements and invoice requests; the sending mailbox lets it send reviewed emails to clients. People are named at activation and clients are onboarded afterwards.",
+        "fields": [],
+        "id": "connections",
+        "title": "Connections"
+      }
+    ],
+    "version": 1
+  },
+  "description": "Connections only: connect Xero, and optionally the intake mailbox and a sending mailbox. The manager and reviewer are named when the agent is activated; each client is onboarded afterwards through the agent (its Client onboarding process), and thresholds are the agent's own preferences.",
+  "kind": "setup",
+  "name": "Xero Bookkeeper setup",
+  "originKey": "7aa2c4fe-ed52-4cb9-908e-634e2097f3e2"
+}

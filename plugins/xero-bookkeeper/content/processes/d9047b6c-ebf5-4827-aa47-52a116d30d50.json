@@ -1,0 +1,309 @@
+{
+  "contentHash": "72f9297aa59c469be4ec247ae20d7868e336b2b13466d29e0164ebaaca44934f",
+  "definition": {
+    "capabilities": [
+      "xero.organisation.read",
+      "xero.contacts.read",
+      "xero.bills.read",
+      "email.send_reviewed",
+      "knowledge.read"
+    ],
+    "description": "Reads a filed statement (supplier, customer or bank), matches its lines and closing balance against the client's Xero organisation, and raises the differences for the reviewer. Nothing in Xero changes.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "clientSlug",
+        "label": "Client (slug of the client record)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "documentPath",
+        "label": "Knowledge path of the statement",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "clientContactEmail",
+        "label": "Client contact email (queries go here)",
+        "required": false,
+        "type": "string"
+      }
+    ],
+    "key": "statement-check",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 1,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 200,
+      "maxSteps": 30,
+      "maxWaitingDays": 14
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "d9047b6c-ebf5-4827-aa47-52a116d30d50",
+    "outcomes": [
+      {
+        "evidence": [
+          "closing_balance",
+          "match_result"
+        ],
+        "key": "agreed",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "differences",
+          "decision_record"
+        ],
+        "key": "exceptionsRecorded",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "document_kind"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "The check reads Xero; it never creates, edits or voids anything. Fixes are made by a person in Xero or through Supplier bill intake.",
+        "key": "readOnlyInXero"
+      },
+      {
+        "description": "A query to the client is sent only as the effect of the reviewer's recorded decision.",
+        "key": "noClientEmailWithoutDecision"
+      }
+    ],
+    "rework": [
+      {
+        "from": "followUp",
+        "requires": "reviewer",
+        "to": "match"
+      },
+      {
+        "from": "clientReply",
+        "to": "match"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.read.readable != null",
+        "steps.match.agreed != null"
+      ],
+      "sampleInputs": {
+        "clientSlug": "demo-company-au",
+        "documentPath": "Bookkeeping Inbox/demo-company-au/2026-09-30-supplier-statement.pdf"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "read",
+        "kind": "agent",
+        "outputs": [
+          "statement",
+          "kind",
+          "period",
+          "closingBalance",
+          "readable"
+        ],
+        "skill": "xero-bookkeeper-statement-matching",
+        "title": "Read the statement"
+      },
+      {
+        "key": "match",
+        "kind": "agent",
+        "outputs": [
+          "matched",
+          "differences",
+          "agreed",
+          "clientQueryEmail"
+        ],
+        "skill": "xero-bookkeeper-statement-matching",
+        "title": "Match the statement against Xero"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "review",
+        "kind": "decision",
+        "materiality": [
+          "steps.match.differences",
+          "steps.read.closingBalance"
+        ],
+        "options": [
+          {
+            "effect": "Records the statement as checked with your note. Nothing changes in Xero.",
+            "key": "accept",
+            "label": "Accept: differences explained",
+            "suggested": true
+          },
+          {
+            "effect": "Opens a follow-up item for you to fix the differences in Xero and record what you did.",
+            "key": "investigate",
+            "label": "Investigate in Xero"
+          },
+          {
+            "effect": "Sends your question to the client's named contact and waits for the answer.",
+            "intent": {
+              "capability": "email.send_reviewed",
+              "payloadFrom": "steps.match.clientQueryEmail"
+            },
+            "key": "queryClient",
+            "label": "Ask the client"
+          }
+        ],
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Review the differences",
+        "type": "statement_review"
+      },
+      {
+        "assign": "reviewer",
+        "completion": "statusDone",
+        "key": "followUp",
+        "kind": "human",
+        "title": "Fix the differences and record the outcome"
+      },
+      {
+        "channel": [
+          "email",
+          "portal"
+        ],
+        "expiresAfterDays": 7,
+        "identityLevel": "email_code",
+        "interaction": "short_form",
+        "key": "clientReply",
+        "kind": "external",
+        "onNoResponse": "remindThenEscalate",
+        "recipient": "inputs.clientContactEmail",
+        "title": "Client answers the query"
+      },
+      {
+        "evidence": [
+          "steps.read.closingBalance",
+          "steps.match.matched"
+        ],
+        "key": "agreed",
+        "kind": "gate",
+        "outcome": "agreed",
+        "requires": [
+          "steps.match.agreed == true || steps.review.decision == 'accept'"
+        ],
+        "title": "Statement agrees with Xero"
+      },
+      {
+        "evidence": [
+          "steps.match.differences",
+          "steps.review.responseId"
+        ],
+        "key": "exceptionsRecorded",
+        "kind": "gate",
+        "outcome": "exceptionsRecorded",
+        "requires": [
+          "steps.followUp.completed == true"
+        ],
+        "title": "Differences recorded"
+      },
+      {
+        "evidence": [
+          "steps.read.kind"
+        ],
+        "key": "needsAttention",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "steps.read.readable == false"
+        ],
+        "title": "Statement unreadable"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "clientSlug",
+        "documentPath"
+      ],
+      "kind": "none"
+    },
+    "title": "Supplier statement check (Xero)",
+    "transitions": [
+      {
+        "from": "read",
+        "to": "match",
+        "when": "steps.read.readable == true"
+      },
+      {
+        "from": "read",
+        "to": "needsAttention",
+        "when": "steps.read.readable == false"
+      },
+      {
+        "from": "match",
+        "to": "agreed",
+        "when": "steps.match.agreed == true"
+      },
+      {
+        "from": "match",
+        "to": "review",
+        "when": "steps.match.agreed == false"
+      },
+      {
+        "from": "review",
+        "to": "agreed",
+        "when": "steps.review.decision == 'accept'"
+      },
+      {
+        "from": "review",
+        "to": "followUp",
+        "when": "steps.review.decision == 'investigate'"
+      },
+      {
+        "from": "review",
+        "to": "clientReply",
+        "when": "steps.review.decision == 'queryClient'"
+      },
+      {
+        "from": "followUp",
+        "to": "exceptionsRecorded"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Statement"
+    }
+  },
+  "kind": "process",
+  "name": "Supplier statement check (Xero)",
+  "originKey": "d9047b6c-ebf5-4827-aa47-52a116d30d50"
+}

@@ -1,0 +1,234 @@
+{
+  "contentHash": "3c7332ed924073f4136b211fbb0390be7dbedaebf5cddb6208ae75feaf50600d",
+  "definition": {
+    "capabilities": [
+      "xero.organisation.read",
+      "xero.accounts.read",
+      "xero.contacts.read",
+      "xero.bills.read",
+      "knowledge.read",
+      "artifacts.write",
+      "workq.update"
+    ],
+    "description": "Runs the checks catalogue over each onboarded client's Xero organisation: daily fraud and duplicate checks (changed supplier bank details, duplicate bills, unusual rates), weekly GST, attachment, reconciliation, lock-date and housekeeping checks. Findings go to the checks owner; bank details are fingerprinted, never stored.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "scan",
+          "report"
+        ],
+        "blocks": [
+          "clean"
+        ],
+        "key": "xeroUnavailable"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "cycle",
+        "label": "daily or weekly",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "runDate",
+        "label": "Run date (in the practice timezone)",
+        "required": true,
+        "type": "date"
+      },
+      {
+        "key": "clientSlug",
+        "label": "One client only (every onboarded client when empty)",
+        "required": false,
+        "type": "string"
+      }
+    ],
+    "key": "ledger-checks",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 3,
+      "maxAgentTurnsPerStep": 20,
+      "maxAiUnits": 400,
+      "maxSteps": 20,
+      "maxWaitingDays": 14
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "238217ec-00d8-45b6-bffd-765b72d0d0a8",
+    "outcomes": [
+      {
+        "evidence": [
+          "clients_checked"
+        ],
+        "key": "clean",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "findings_report",
+          "workq_item"
+        ],
+        "key": "findingsOwned",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "Checks read Xero; they never change it. A finding drops off when a person fixes it in Xero.",
+        "key": "readOnlyInXero"
+      },
+      {
+        "description": "Supplier bank details are compared by fingerprint only; the numbers are never written to Knowledge, WorkQ or the report.",
+        "key": "noBankDetailsStored"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "checksOwner": "installation.reviewer",
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.scan.clientsChecked != null",
+        "steps.scan.clean != null"
+      ],
+      "sampleInputs": {
+        "cycle": "daily",
+        "runDate": "2026-10-29"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "scan",
+        "kind": "agent",
+        "outputs": [
+          "findings",
+          "clientsChecked",
+          "clean",
+          "summary"
+        ],
+        "skill": "xero-bookkeeper-ledger-checks",
+        "title": "Run the checks over each client"
+      },
+      {
+        "artifactKind": "ledgerChecks",
+        "key": "report",
+        "kind": "output",
+        "template": "ledger-checks-report",
+        "title": "Publish the findings"
+      },
+      {
+        "assign": "checksOwner",
+        "completion": "statusDone",
+        "key": "followUp",
+        "kind": "human",
+        "title": "Own the findings: fix in Xero, dismiss or snooze"
+      },
+      {
+        "evidence": [
+          "steps.scan.clientsChecked"
+        ],
+        "key": "clean",
+        "kind": "gate",
+        "outcome": "clean",
+        "requires": [
+          "steps.scan.clean == true"
+        ],
+        "title": "No findings"
+      },
+      {
+        "evidence": [
+          "steps.scan.findings",
+          "steps.scan.clientsChecked"
+        ],
+        "key": "findingsOwned",
+        "kind": "gate",
+        "outcome": "findingsOwned",
+        "requires": [
+          "steps.followUp.completed == true"
+        ],
+        "title": "Findings owned"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "cycle",
+        "runDate",
+        "clientSlug"
+      ],
+      "kind": "none"
+    },
+    "title": "Ledger checks (Xero)",
+    "transitions": [
+      {
+        "from": "scan",
+        "to": "report"
+      },
+      {
+        "from": "report",
+        "to": "clean",
+        "when": "steps.scan.clean == true"
+      },
+      {
+        "from": "report",
+        "to": "followUp",
+        "when": "steps.scan.clean == false"
+      },
+      {
+        "from": "followUp",
+        "to": "findingsOwned"
+      }
+    ],
+    "triggers": [
+      {
+        "cron": "0 2 * * 2-6",
+        "inputs": {
+          "cycle": "daily"
+        },
+        "inputsFrom": {
+          "runDate": "fire.date"
+        },
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "cron": "0 3 * * 1",
+        "inputs": {
+          "cycle": "weekly"
+        },
+        "inputsFrom": {
+          "runDate": "fire.date"
+        },
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": "Australia/Sydney",
+        "editableBy": "manager",
+        "key": "checksTimezone",
+        "type": "string"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Checks cycle"
+    }
+  },
+  "kind": "process",
+  "name": "Ledger checks (Xero)",
+  "originKey": "238217ec-00d8-45b6-bffd-765b72d0d0a8"
+}

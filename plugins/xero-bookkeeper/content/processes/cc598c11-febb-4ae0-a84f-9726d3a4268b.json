@@ -1,0 +1,566 @@
+{
+  "contentHash": "6d53e246350a7c5afba89c221aef2b0a1633566ece03716714e8b1da6341042e",
+  "definition": {
+    "capabilities": [
+      "xero.organisation.read",
+      "xero.accounts.read",
+      "xero.contacts.read",
+      "xero.contacts.upsert",
+      "xero.bills.read",
+      "xero.bill.draft_create",
+      "xero.attachment.upload",
+      "xero.bill.approve",
+      "email.send_reviewed",
+      "knowledge.read"
+    ],
+    "description": "A supplier bill (PDF or photo) in a client's inbox folder is read, coded from saved rules, supplier history and the chart of accounts, checked for duplicates, ABN and GST status, rate variance and changed bank details, then raised for the reviewer. Approval creates a DRAFT bill in Xero; authorising it is a second recorded decision, after the client's own approval when the total is above the threshold.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "identify",
+          "needsAttention"
+        ],
+        "blocks": [
+          "review",
+          "authorise"
+        ],
+        "key": "noClientSettings"
+      },
+      {
+        "allowedPaths": [
+          "record",
+          "heldAsDraft",
+          "needsAttention"
+        ],
+        "blocks": [
+          "authorise",
+          "posted"
+        ],
+        "key": "xeroRejectedTheBill"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "clientSlug",
+        "label": "Client (slug of the client record)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "freshness": {
+          "live": true,
+          "maxAgeMinutes": 1440
+        },
+        "key": "documentPath",
+        "label": "Knowledge path of the bill (PDF or image)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "sourceEmailId",
+        "label": "Intake email id (when the bill arrived by email)",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "key": "clientContactEmail",
+        "label": "Client contact email (approvals and queries)",
+        "required": false,
+        "type": "string"
+      }
+    ],
+    "key": "bill-intake",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 2,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 300,
+      "maxSteps": 40,
+      "maxWaitingDays": 21
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "cc598c11-febb-4ae0-a84f-9726d3a4268b",
+    "outcomes": [
+      {
+        "evidence": [
+          "xero_invoice_id",
+          "decision_record",
+          "source_document"
+        ],
+        "key": "posted",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "xero_invoice_id",
+          "decision_record"
+        ],
+        "key": "heldAsDraft",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "rejected",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "duplicate_of"
+        ],
+        "key": "duplicate",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "document_kind"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "A bill is created in Xero only as the effect of the reviewer's recorded approval, and only as a DRAFT.",
+        "key": "noPostingWithoutDecision"
+      },
+      {
+        "description": "A bill becomes payable only as the effect of a second recorded reviewer decision, after the client's approval when the total is above the threshold. Elapsed time is never approval.",
+        "key": "noAuthorisationWithoutDecision"
+      },
+      {
+        "description": "Agent steps read Xero, Knowledge and the mailbox. Every write to Xero and every email is an intent of a recorded decision.",
+        "key": "agentReadsOnly"
+      },
+      {
+        "description": "Every Xero call carries the xero_tenant_id of the job's client record. One job never touches another client's organisation.",
+        "key": "oneClientPerJob"
+      },
+      {
+        "description": "An unreadable document, a PDF holding several invoices, or an unknown client ends as needsAttention; no review is opened on guesses.",
+        "key": "evidenceFirst"
+      }
+    ],
+    "rework": [
+      {
+        "from": "authorise",
+        "requires": "reviewer",
+        "to": "extract"
+      },
+      {
+        "from": "clientQuery",
+        "to": "extract"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.identify.client != null",
+        "steps.extract.proposal != null",
+        "steps.checks.duplicate != null"
+      ],
+      "sampleInputs": {
+        "clientSlug": "demo-company-au",
+        "documentPath": "Bookkeeping Inbox/demo-company-au/2026-10-01-sample-bill.pdf"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "identify",
+        "kind": "agent",
+        "outputs": [
+          "client",
+          "xeroTenantId",
+          "documentKind",
+          "readable",
+          "splitNeeded",
+          "fileHash"
+        ],
+        "skill": "xero-bookkeeper-foundation",
+        "title": "Identify the client and the document"
+      },
+      {
+        "key": "extract",
+        "kind": "agent",
+        "outputs": [
+          "proposal",
+          "supplier",
+          "total",
+          "currency",
+          "confidence",
+          "warnings",
+          "clientQueryEmail"
+        ],
+        "proposalSchema": "billProposal",
+        "skill": "xero-bookkeeper-bill-coding",
+        "title": "Read and code the bill"
+      },
+      {
+        "key": "checks",
+        "kind": "agent",
+        "outputs": [
+          "duplicate",
+          "duplicateOf",
+          "abnStatus",
+          "rateVariance",
+          "bankDetailChanged",
+          "blocking",
+          "needsClientApproval",
+          "checkTags"
+        ],
+        "skill": "xero-bookkeeper-bill-coding",
+        "title": "Run the intake checks"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "review",
+        "kind": "decision",
+        "materiality": [
+          "steps.extract.total",
+          "steps.extract.proposal.lines",
+          "steps.extract.supplier.contactId",
+          "steps.checks.blocking",
+          "steps.checks.bankDetailChanged"
+        ],
+        "options": [
+          {
+            "effect": "Creates the bill in the client's Xero organisation as a DRAFT with this coding and the source document attached. It is not yet payable.",
+            "intent": {
+              "capability": "xero.bill.draft_create",
+              "payloadFrom": "steps.extract.proposal.xeroInvoice"
+            },
+            "key": "approve",
+            "label": "Approve coding and create the draft bill"
+          },
+          {
+            "effect": "Sends the bill back to the agent with your changes and saves them as a rule for this supplier. Nothing is created in Xero.",
+            "key": "changeCoding",
+            "label": "Change the coding",
+            "transition": "extract"
+          },
+          {
+            "effect": "Sends your question to the client's named contact and waits for the answer. Nothing is created in Xero.",
+            "key": "queryClient",
+            "label": "Ask the client",
+            "transition": "clientQuery"
+          },
+          {
+            "effect": "Ends the job and files the document under Failed. Nothing is created in Xero.",
+            "key": "reject",
+            "label": "Reject (not a bill for this client, or already handled)"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Review the coded bill",
+        "type": "bill_review"
+      },
+      {
+        "channel": [
+          "email",
+          "portal"
+        ],
+        "expiresAfterDays": 7,
+        "identityLevel": "email_code",
+        "interaction": "short_form",
+        "key": "clientQuery",
+        "kind": "external",
+        "onNoResponse": "remindThenEscalate",
+        "recipient": "inputs.clientContactEmail",
+        "title": "Client answers the query"
+      },
+      {
+        "key": "record",
+        "kind": "agent",
+        "outputs": [
+          "invoiceId",
+          "invoiceNumber",
+          "attached",
+          "approvePayload",
+          "clientApprovalBrief"
+        ],
+        "skill": "xero-bookkeeper-foundation",
+        "title": "Confirm the draft in Xero and attach the document"
+      },
+      {
+        "channel": [
+          "email",
+          "portal"
+        ],
+        "expiresAfterDays": 7,
+        "identityLevel": "email_code",
+        "interaction": "choice",
+        "key": "clientApproval",
+        "kind": "external",
+        "onNoResponse": "remindThenEscalate",
+        "recipient": "inputs.clientContactEmail",
+        "title": "Client approves the bill"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "authorise",
+        "kind": "decision",
+        "materiality": [
+          "steps.record.invoiceId",
+          "steps.extract.total",
+          "steps.clientApproval.choiceKey"
+        ],
+        "options": [
+          {
+            "effect": "Moves the draft bill to the practice's approved status so it becomes payable. This changes the books; reversing it is a manual step in Xero.",
+            "intent": {
+              "capability": "xero.bill.approve",
+              "payloadFrom": "steps.record.approvePayload"
+            },
+            "key": "authorise",
+            "label": "Authorise in Xero (financial)",
+            "suggested": true
+          },
+          {
+            "effect": "The bill stays a DRAFT in Xero for someone to authorise by hand. The job ends.",
+            "key": "holdDraft",
+            "label": "Leave it as a draft"
+          },
+          {
+            "effect": "The job ends with the bill left as a DRAFT in Xero and a note to delete it there. Nothing becomes payable.",
+            "key": "withdraw",
+            "label": "Withdraw"
+          }
+        ],
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Make the bill payable",
+        "type": "bill_authorise"
+      },
+      {
+        "evidence": [
+          "steps.record.invoiceId",
+          "steps.review.responseId",
+          "steps.authorise.responseId"
+        ],
+        "key": "posted",
+        "kind": "gate",
+        "outcome": "posted",
+        "requires": [
+          "steps.authorise.decision == 'authorise'"
+        ],
+        "title": "Bill approved in Xero"
+      },
+      {
+        "evidence": [
+          "steps.record.invoiceId",
+          "steps.authorise.responseId"
+        ],
+        "key": "heldAsDraft",
+        "kind": "gate",
+        "outcome": "heldAsDraft",
+        "requires": [
+          "steps.authorise.decision == 'holdDraft' || steps.authorise.decision == 'withdraw'"
+        ],
+        "title": "Left as a draft"
+      },
+      {
+        "evidence": [
+          "steps.review.responseId"
+        ],
+        "key": "rejected",
+        "kind": "gate",
+        "outcome": "rejected",
+        "requires": [
+          "steps.review.decision == 'reject'"
+        ],
+        "title": "Rejected"
+      },
+      {
+        "evidence": [
+          "steps.checks.duplicateOf"
+        ],
+        "key": "duplicate",
+        "kind": "gate",
+        "outcome": "duplicate",
+        "requires": [
+          "steps.checks.duplicate == true"
+        ],
+        "title": "Duplicate of a bill already in Xero"
+      },
+      {
+        "evidence": [
+          "steps.identify.documentKind"
+        ],
+        "key": "needsAttention",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "steps.identify.readable == false || steps.identify.splitNeeded == true || steps.identify.client == null"
+        ],
+        "title": "Needs a person"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "clientSlug",
+        "documentPath"
+      ],
+      "kind": "none"
+    },
+    "title": "Supplier bill intake (Xero)",
+    "transitions": [
+      {
+        "from": "identify",
+        "to": "extract",
+        "when": "steps.identify.readable == true && steps.identify.splitNeeded == false && steps.identify.client != null"
+      },
+      {
+        "from": "identify",
+        "to": "needsAttention",
+        "when": "steps.identify.readable == false || steps.identify.splitNeeded == true || steps.identify.client == null"
+      },
+      {
+        "from": "extract",
+        "to": "checks"
+      },
+      {
+        "from": "checks",
+        "to": "duplicate",
+        "when": "steps.checks.duplicate == true"
+      },
+      {
+        "from": "checks",
+        "to": "review",
+        "when": "steps.checks.duplicate == false"
+      },
+      {
+        "from": "review",
+        "to": "record",
+        "when": "steps.review.decision == 'approve'"
+      },
+      {
+        "from": "review",
+        "to": "rejected",
+        "when": "steps.review.decision == 'reject'"
+      },
+      {
+        "from": "record",
+        "to": "clientApproval",
+        "when": "steps.checks.needsClientApproval == true"
+      },
+      {
+        "from": "record",
+        "to": "authorise",
+        "when": "steps.checks.needsClientApproval == false"
+      },
+      {
+        "from": "clientApproval",
+        "to": "authorise"
+      },
+      {
+        "from": "authorise",
+        "to": "posted",
+        "when": "steps.authorise.decision == 'authorise'"
+      },
+      {
+        "from": "authorise",
+        "to": "heldAsDraft",
+        "when": "steps.authorise.decision != 'authorise'"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "knowledge.file_created",
+        "filter": {
+          "folderRoot": "Bookkeeping Inbox",
+          "scope": "org"
+        },
+        "inputsFrom": {
+          "clientSlug": "payload.folder",
+          "documentPath": "payload.path"
+        },
+        "kind": "event"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 1000,
+        "editableBy": "manager",
+        "key": "clientApprovalAbove",
+        "max": 1000000,
+        "min": 0,
+        "type": "number"
+      },
+      {
+        "default": 90,
+        "editableBy": "manager",
+        "key": "duplicateWindowDays",
+        "max": 365,
+        "min": 7,
+        "type": "number"
+      },
+      {
+        "default": 15,
+        "editableBy": "manager",
+        "key": "rateVariancePct",
+        "max": 100,
+        "min": 0,
+        "type": "number"
+      },
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      },
+      {
+        "default": "AUTHORISED",
+        "editableBy": "manager",
+        "key": "approvedStatus",
+        "options": [
+          {
+            "label": "Approved and payable (AUTHORISED)",
+            "value": "AUTHORISED"
+          },
+          {
+            "label": "Awaiting approval in Xero (SUBMITTED)",
+            "value": "SUBMITTED"
+          }
+        ],
+        "type": "select"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Bill"
+    }
+  },
+  "kind": "process",
+  "name": "Supplier bill intake (Xero)",
+  "originKey": "cc598c11-febb-4ae0-a84f-9726d3a4268b"
+}
