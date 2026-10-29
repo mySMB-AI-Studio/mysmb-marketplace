@@ -1,0 +1,113 @@
+{
+  "contentHash": "2ec799308815fbf32c3e70d3fcc17e63c495365473ecc1413dbbdfc6b92eb181",
+  "definition": {
+    "key": "ledger-checks-controls",
+    "kind": "evaluation",
+    "originKey": "5ba9f782-4505-4c57-b25f-92029b02d91d",
+    "process": "238217ec-00d8-45b6-bffd-765b72d0d0a8",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "outcome": "clean",
+          "stepsReached": [
+            "scan",
+            "report",
+            "clean"
+          ]
+        },
+        "fixtures": {
+          "clients": [
+            {
+              "slug": "demo-company-au",
+              "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+            }
+          ],
+          "outputs": {
+            "scan": {
+              "clean": true,
+              "clientsChecked": [
+                "demo-company-au"
+              ],
+              "findings": [],
+              "summary": "1 client checked, no findings"
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "cycle": "daily",
+          "runDate": "2026-10-28"
+        },
+        "key": "clean",
+        "title": "No findings: the run ends clean after the report"
+      },
+      {
+        "expected": {
+          "outcome": "findingsOwned",
+          "stepsReached": [
+            "scan",
+            "report",
+            "followUp",
+            "findingsOwned"
+          ]
+        },
+        "fixtures": {
+          "clients": [
+            {
+              "slug": "demo-company-au",
+              "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+            }
+          ],
+          "outputs": {
+            "scan": {
+              "clean": false,
+              "clientsChecked": [
+                "demo-company-au"
+              ],
+              "findings": [
+                {
+                  "amount": 352,
+                  "client": "demo-company-au",
+                  "code": "CHK-004",
+                  "severity": "medium",
+                  "title": "Bill INV-2041 is 30 days overdue",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000001"
+                },
+                {
+                  "client": "demo-company-au",
+                  "code": "CHK-007",
+                  "severity": "low",
+                  "title": "Contact 'Ridgeway Office Supplies' has no ABN recorded"
+                }
+              ],
+              "summary": "1 client checked, 2 findings (CHK-004, CHK-007)"
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "cycle": "weekly",
+          "runDate": "2026-10-26"
+        },
+        "key": "findingsOwned",
+        "rubric": [
+          {
+            "criterion": "Each finding carries a check code, the client and a one-line title, and nothing is changed in Xero.",
+            "weight": 1
+          }
+        ],
+        "title": "Findings are reported and owned by the checks owner"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Ledger checks: controls"
+  },
+  "kind": "evaluation",
+  "name": "Ledger checks: controls",
+  "originKey": "5ba9f782-4505-4c57-b25f-92029b02d91d"
+}

@@ -1,0 +1,358 @@
+{
+  "contentHash": "0c7e42ebb0b75e6a9ec7d6402b15839f3ea07464cb878e0d875aef625e1e4198",
+  "definition": {
+    "key": "statement-check-controls",
+    "kind": "evaluation",
+    "originKey": "60d250eb-f0a1-46b2-a70b-2f36c29ce177",
+    "process": "d9047b6c-ebf5-4827-aa47-52a116d30d50",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "outcome": "agreed",
+          "stepsReached": [
+            "read",
+            "match",
+            "agreed"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "match": {
+              "agreed": true,
+              "clientQueryEmail": null,
+              "differences": [],
+              "matched": [
+                {
+                  "amount": 352,
+                  "ref": "INV-2041",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000001"
+                },
+                {
+                  "amount": 198,
+                  "ref": "INV-2044",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000002"
+                }
+              ]
+            },
+            "read": {
+              "closingBalance": 550,
+              "kind": "supplier",
+              "period": "2026-09",
+              "readable": true,
+              "statement": {
+                "lines": [
+                  {
+                    "amount": 352,
+                    "date": "2026-09-01",
+                    "ref": "INV-2041"
+                  },
+                  {
+                    "amount": 198,
+                    "date": "2026-09-18",
+                    "ref": "INV-2044"
+                  }
+                ],
+                "supplier": "Ridgeway Office Supplies"
+              }
+            }
+          },
+          "responses": [],
+          "xero": {
+            "bills": [
+              {
+                "Date": "2026-09-01",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000001",
+                "InvoiceNumber": "INV-2041",
+                "Status": "AUTHORISED",
+                "Total": 352
+              },
+              {
+                "Date": "2026-09-18",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000002",
+                "InvoiceNumber": "INV-2044",
+                "Status": "AUTHORISED",
+                "Total": 198
+              }
+            ],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-09-30-ridgeway-statement.pdf"
+        },
+        "key": "agrees",
+        "rubric": [
+          {
+            "criterion": "Each statement line is matched to a Xero bill by number and amount and the closing balance reconciles.",
+            "weight": 1
+          }
+        ],
+        "title": "Every statement line matches Xero: agreed without a review"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "accept",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "outcome": "agreed",
+          "stepsReached": [
+            "read",
+            "match",
+            "review",
+            "agreed"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "match": {
+              "agreed": false,
+              "clientQueryEmail": {
+                "body": "Hi Dana,\n\nRidgeway's September statement lists INV-2050 for $110.00, which we have not received. Could you send it through?\n\nThanks",
+                "contentType": "Text",
+                "requestRef": "stmt-2026-09-ridgeway",
+                "subject": "Ridgeway statement: INV-2050 not in Xero",
+                "to": [
+                  "owner@demo.example"
+                ]
+              },
+              "differences": [
+                {
+                  "note": "On the statement, not in Xero",
+                  "ref": "INV-2050",
+                  "statementAmount": 110,
+                  "xero": null
+                }
+              ],
+              "matched": [
+                {
+                  "amount": 352,
+                  "ref": "INV-2041",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000001"
+                },
+                {
+                  "amount": 198,
+                  "ref": "INV-2044",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000002"
+                }
+              ]
+            },
+            "read": {
+              "closingBalance": 550,
+              "kind": "supplier",
+              "period": "2026-09",
+              "readable": true,
+              "statement": {
+                "lines": [
+                  {
+                    "amount": 352,
+                    "date": "2026-09-01",
+                    "ref": "INV-2041"
+                  },
+                  {
+                    "amount": 198,
+                    "date": "2026-09-18",
+                    "ref": "INV-2044"
+                  }
+                ],
+                "supplier": "Ridgeway Office Supplies"
+              }
+            }
+          },
+          "responses": [
+            {
+              "option": "accept",
+              "step": "review"
+            }
+          ],
+          "xero": {
+            "bills": [
+              {
+                "Date": "2026-09-01",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000001",
+                "InvoiceNumber": "INV-2041",
+                "Status": "AUTHORISED",
+                "Total": 352
+              },
+              {
+                "Date": "2026-09-18",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000002",
+                "InvoiceNumber": "INV-2044",
+                "Status": "AUTHORISED",
+                "Total": 198
+              }
+            ],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-09-30-ridgeway-statement.pdf"
+        },
+        "key": "acceptExplained",
+        "title": "A difference the reviewer accepts ends as agreed; no email goes to the client"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "investigate",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed"
+          ],
+          "outcome": "exceptionsRecorded",
+          "stepsReached": [
+            "read",
+            "match",
+            "review",
+            "followUp",
+            "exceptionsRecorded"
+          ]
+        },
+        "fixtures": {
+          "client": {
+            "slug": "demo-company-au",
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "match": {
+              "agreed": false,
+              "clientQueryEmail": {
+                "body": "Hi Dana,\n\nRidgeway's September statement lists INV-2050 for $110.00, which we have not received. Could you send it through?\n\nThanks",
+                "contentType": "Text",
+                "requestRef": "stmt-2026-09-ridgeway",
+                "subject": "Ridgeway statement: INV-2050 not in Xero",
+                "to": [
+                  "owner@demo.example"
+                ]
+              },
+              "differences": [
+                {
+                  "note": "On the statement, not in Xero",
+                  "ref": "INV-2050",
+                  "statementAmount": 110,
+                  "xero": null
+                }
+              ],
+              "matched": [
+                {
+                  "amount": 352,
+                  "ref": "INV-2041",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000001"
+                },
+                {
+                  "amount": 198,
+                  "ref": "INV-2044",
+                  "xeroInvoiceId": "b1110000-0000-4000-8000-000000000002"
+                }
+              ]
+            },
+            "read": {
+              "closingBalance": 550,
+              "kind": "supplier",
+              "period": "2026-09",
+              "readable": true,
+              "statement": {
+                "lines": [
+                  {
+                    "amount": 352,
+                    "date": "2026-09-01",
+                    "ref": "INV-2041"
+                  },
+                  {
+                    "amount": 198,
+                    "date": "2026-09-18",
+                    "ref": "INV-2044"
+                  }
+                ],
+                "supplier": "Ridgeway Office Supplies"
+              }
+            }
+          },
+          "responses": [
+            {
+              "option": "investigate",
+              "step": "review"
+            }
+          ],
+          "xero": {
+            "bills": [
+              {
+                "Date": "2026-09-01",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000001",
+                "InvoiceNumber": "INV-2041",
+                "Status": "AUTHORISED",
+                "Total": 352
+              },
+              {
+                "Date": "2026-09-18",
+                "InvoiceID": "b1110000-0000-4000-8000-000000000002",
+                "InvoiceNumber": "INV-2044",
+                "Status": "AUTHORISED",
+                "Total": 198
+              }
+            ],
+            "contacts": [
+              {
+                "ContactID": "c0ffee00-0000-4000-8000-000000000101",
+                "Name": "Ridgeway Office Supplies"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientSlug": "demo-company-au",
+          "documentPath": "Bookkeeping Inbox/demo-company-au/2026-09-30-ridgeway-statement.pdf"
+        },
+        "key": "investigate",
+        "rubric": [
+          {
+            "criterion": "The difference names the statement line that is not in Xero with its amount.",
+            "weight": 1
+          }
+        ],
+        "title": "The reviewer investigates and records the outcome"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Statement check: controls"
+  },
+  "kind": "evaluation",
+  "name": "Statement check: controls",
+  "originKey": "60d250eb-f0a1-46b2-a70b-2f36c29ce177"
+}
