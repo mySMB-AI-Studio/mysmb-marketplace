@@ -1,0 +1,100 @@
+<style>
+  .intro { max-width: 40rem; margin: 0; color: var(--muted-foreground); }
+</style>
+<ws-stack gap="5">
+  <p class="intro ws-text-sm">The coach reads your team handbook and goals so its coaching stays on track with how your team works and what it is aiming for. PDF, Word, text and Markdown files count. Files stay inside your workspace.</p>
+
+  <ws-field label="Team handbook and goals" description="Choose one or more files from your computer." required>
+    <ws-file-drop id="drop" multiple accept=".pdf,.docx,.txt,.md" hint="PDF, Word, text or Markdown"></ws-file-drop>
+  </ws-field>
+
+  <ws-row id="loading" gap="2"><ws-spinner label="Loading your files"></ws-spinner><span class="ws-text-sm ws-text-muted">Loading your files</span></ws-row>
+
+  <ws-alert id="error" variant="destructive" heading="Could not load your files" hidden>
+    <ws-stack gap="2">
+      <span id="error-text"></span>
+      <ws-row><ws-button id="retry" variant="outline" size="sm">Load files again</ws-button></ws-row>
+    </ws-stack>
+  </ws-alert>
+
+  <ws-alert id="partial" variant="warning" heading="Some files were not uploaded" hidden>
+    <span id="partial-text"></span>
+  </ws-alert>
+
+  <ws-empty id="empty" heading="No files yet" description="Upload at least one handbook or goals document." hidden></ws-empty>
+
+  <ws-card id="list-card" heading="Uploaded files" hidden>
+    <ws-badge id="met" slot="action" variant="success" hidden>Ready</ws-badge>
+    <ws-stack gap="3">
+      <ws-table id="files" caption="Uploaded files" empty-text="No files yet. Upload at least one handbook or goals document."></ws-table>
+      <p id="not-counted" class="ws-text-sm ws-text-muted" hidden>Files marked No do not count towards setup. Upload a PDF, Word, text or Markdown file instead.</p>
+    </ws-stack>
+  </ws-card>
+
+  <p id="state" class="ws-text-sm ws-text-muted" aria-live="polite"></p>
+</ws-stack>
+<script>
+(() => {
+  const REQUIREMENT = 'team_handbook';
+  const el = (id) => document.getElementById(id);
+  const show = (id, visible) => { el(id).hidden = !visible; };
+  const canContinue = (value) => workspace.wizard.setCanContinue({ value }).catch(() => {});
+  const size = (bytes) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+  async function load() {
+    show('error', false);
+    show('loading', true);
+    canContinue(false);
+    try {
+      const result = await workspace.knowledge.list({ requirement: REQUIREMENT });
+      const files = (result && result.files) || [];
+      const table = el('files');
+      table.columns = [
+        { key: 'name', label: 'Name' },
+        { key: 'size', label: 'Size', align: 'end' },
+        { key: 'counts', label: 'Counts' },
+      ];
+      table.rows = files.map((file) => ({ name: file.name, size: size(file.size || 0), counts: file.counts ? 'Yes' : 'No' }));
+      const met = Boolean(result && result.met);
+      show('empty', files.length === 0);
+      show('list-card', files.length > 0);
+      show('met', met);
+      show('not-counted', files.some((file) => !file.counts));
+      el('state').textContent = met ? '' : 'Upload at least one handbook or goals document to continue.';
+      canContinue(met);
+    } catch (error) {
+      el('error-text').textContent = error && error.message ? `${error.message}. Try again in a moment.` : 'The Workspace did not answer. Try again in a moment.';
+      show('error', true);
+    } finally {
+      show('loading', false);
+    }
+  }
+
+  el('drop').addEventListener('ws-pick', async () => {
+    show('partial', false);
+    const drop = el('drop');
+    drop.setAttribute('disabled', '');
+    el('state').textContent = 'Uploading';
+    try {
+      const result = await workspace.knowledge.upload({ requirement: REQUIREMENT });
+      if (result && result.cancelled) return;
+      const failed = (result && result.failed) || [];
+      if (failed.length > 0) {
+        el('partial-text').textContent = failed.map((f) => `${f.name}: ${f.reason}`).join('. ') + '. Check the file type and size, then upload them again.';
+        show('partial', true);
+      }
+    } catch (error) {
+      if (!(error && error.code === 'cancelled')) {
+        el('partial-text').textContent = error && error.message ? `${error.message}. Check the file type and size, then try again.` : 'The upload did not finish. Try again.';
+        show('partial', true);
+      }
+    } finally {
+      drop.removeAttribute('disabled');
+      await load();
+    }
+  });
+  el('retry').addEventListener('click', () => load());
+
+  load();
+})();
+</script>

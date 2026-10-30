@@ -44,6 +44,61 @@ export const setupDefinitionSchema = z.object({
     }
   }
 });
+/** v2 setup definition ("requirements"): parity with myHubV2 agents/installations/setup-requirements.ts
+ * (setupRequirementsSchema). The settings JSON Schema subset and the per-version support checks stay with the
+ * Workspace installer; here they are checked for shape and key rules only. */
+const requirementLabel = z.string().trim().min(1).max(200);
+const requirementRef = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/).max(80);
+const serverId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/);
+const tenantName = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,79}$/);
+const knowledgeFolder = z.string().max(200).refine((value) => {
+  const match = /^(?:installation|org):(.+)$/.exec(value);
+  if (!match) return false;
+  const segments = match[1]!.split("/");
+  return segments.length <= 8 && segments.every((segment) => /^[A-Za-z0-9_][A-Za-z0-9 ._-]{0,63}$/.test(segment) && !segment.endsWith(" ") && !segment.includes(".."));
+}, 'a folder is installation:<name> or org:<path> (plain names, no "..")');
+const settingsSchema = z.object({
+  type: z.literal("object").optional(),
+  properties: z.record(setupKey, z.record(z.string(), z.unknown())).default({}),
+}).passthrough();
+export const setupRequirementsSchema = z.object({
+  version: z.literal(2),
+  connections: z.array(z.object({
+    key: setupKey, label: requirementLabel, oneOf: z.array(serverId).min(1).max(20).optional(), server: serverId.optional(),
+    scope: z.enum(["personal", "service", "either"]), required: z.boolean().optional(),
+  }).strict().refine((slot) => (slot.oneOf === undefined) !== (slot.server === undefined), 'give exactly one of "oneOf" or "server"')).max(20).default([]),
+  settings: settingsSchema.optional(),
+  knowledge: z.array(z.object({
+    key: setupKey, label: requirementLabel, folder: knowledgeFolder, minFiles: z.number().int().min(1).max(1000).optional(),
+    extensions: z.array(z.string().regex(/^[.]?[A-Za-z0-9]{1,10}$/)).min(1).max(20).optional(),
+  }).strict()).max(20).default([]),
+  tenantSettings: z.array(z.object({
+    flag: tenantName.optional(), setting: tenantName.optional(),
+    value: z.union([z.string().max(500), z.number().finite(), z.boolean()]), label: requirementLabel.optional(),
+  }).strict().refine((entry) => (entry.flag === undefined) !== (entry.setting === undefined), 'give exactly one of "flag" or "setting"')).max(20).default([]),
+  people: z.array(z.object({ role: z.enum(["manager", "backupManager", "reviewer"]), required: z.boolean().optional(), label: requirementLabel.optional() }).strict()).max(3).default([]),
+  tasks: z.array(z.object({
+    key: setupKey, label: requirementLabel, op: z.string().max(120).regex(/^[a-z][A-Za-z0-9]*(?:[.][A-Za-z][A-Za-z0-9_]*)+$/),
+    after: z.array(requirementRef).max(10).optional(), input: z.record(z.string().max(80), z.unknown()).optional(),
+  }).strict()).max(20).default([]),
+}).strict().superRefine((requirements, ctx) => {
+  const owners = new Set<string>();
+  const claim = (name: string) => {
+    if (owners.has(name)) ctx.addIssue({ code: "custom", message: `"${name}" is used twice; every requirement needs its own key` });
+    owners.add(name);
+  };
+  requirements.connections.forEach((slot) => claim(slot.key));
+  Object.keys(requirements.settings?.properties ?? {}).forEach(claim);
+  requirements.knowledge.forEach((entry) => claim(entry.key));
+  requirements.tenantSettings.forEach((entry) => claim((entry.flag ?? entry.setting)!));
+  requirements.people.forEach((entry) => claim(entry.role));
+  requirements.tasks.forEach((task) => claim(task.key));
+  for (const task of requirements.tasks) for (const name of task.after ?? []) {
+    if (name === task.key || !owners.has(name)) ctx.addIssue({ code: "custom", message: `Task ${task.key} waits for "${name}", which is not another requirement in this file` });
+  }
+});
+/** A setup component's definition: v1 steps or v2 requirements, told apart by version (myHubV2 plugins/setup-component.ts). */
+const setupComponentDefinitionSchema = z.union([setupDefinitionSchema, setupRequirementsSchema]);
 const condition = z.object({ field: recordKey, op: z.enum(["eq", "in", "is_closed"]), value: z.unknown().optional() }).strict();
 const rule = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("required_when"), when: condition }).strict(),
@@ -102,7 +157,7 @@ export const proposalTypeSchema = z.object({
 const identity = { originKey: z.string().uuid(), contentHash: z.string().regex(/^[a-f0-9]{64}$/), name: z.string().min(1).max(200) };
 const schemas = {
   record_type: z.object({ kind: z.literal("record_type"), ...identity, definition: proposalTypeSchema }).strict(),
-  setup: z.object({ kind: z.literal("setup"), ...identity, description: z.string().max(4000).optional(), definition: setupDefinitionSchema }).strict(),
+  setup: z.object({ kind: z.literal("setup"), ...identity, description: z.string().max(4000).optional(), definition: setupComponentDefinitionSchema }).strict(),
 };
 export function canonicalJson(value: unknown): string {
   const sortKeys = (input: unknown): unknown => {
@@ -126,5 +181,7 @@ export function validatePortableContent(kind: "record_type" | "setup", raw: unkn
   if (createHash("sha256").update(canonicalJson(content)).digest("hex") !== contentHash) throw new Error("Portable component contentHash does not match its content");
 }
 export function setupKeys(raw: unknown): string[] {
-  return setupDefinitionSchema.parse(raw).steps.flatMap((step) => [...step.fields, ...step.connectors].map((entry) => entry.key));
+  const definition = setupComponentDefinitionSchema.parse(raw);
+  if (definition.version === 2) return [...definition.connections.map((slot) => slot.key), ...Object.keys(definition.settings?.properties ?? {})];
+  return definition.steps.flatMap((step) => [...step.fields, ...step.connectors].map((entry) => entry.key));
 }

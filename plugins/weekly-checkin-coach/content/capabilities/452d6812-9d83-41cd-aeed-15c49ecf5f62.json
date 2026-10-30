@@ -1,0 +1,61 @@
+{
+  "contentHash": "29f7955c11ea13c2fdedceac5b52752cf46869b5f3ed93f63b1c0a3c602cbbca",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "fields.status": "inputs.status",
+          "id": "inputs.recordId",
+          "type_slug": "'check_ins'"
+        },
+        "scopes": [
+          "records:check_ins:write"
+        ],
+        "server": "workspace",
+        "tool": "records.update"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "properties": {
+        "recordId": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "reviewed",
+            "actioned"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "recordId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "key": "checkins.set_status",
+    "kind": "capability",
+    "originKey": "452d6812-9d83-41cd-aeed-15c49ecf5f62",
+    "outputsSchema": {
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "records:check_ins:write"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "write_internal",
+    "title": "Update a check-in's status"
+  },
+  "kind": "capability",
+  "name": "Update a check-in's status",
+  "originKey": "452d6812-9d83-41cd-aeed-15c49ecf5f62"
+}

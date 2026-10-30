@@ -1,0 +1,76 @@
+{
+  "contentHash": "80d4da13efbe1ace35629dd735d6859cb2bfff3b885396bf376afe3de3dbcf90",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "externalRef": "inputs.requestRef",
+          "links.record": "inputs.recordId",
+          "slots.blocker": "inputs.blocker",
+          "slots.manager": "installation.manager",
+          "slots.person": "inputs.person",
+          "slots.week": "inputs.week",
+          "template": "'blocker-raised'"
+        },
+        "scopes": [
+          "workq:write"
+        ],
+        "server": "workspace",
+        "tool": "workq.create_from_template"
+      }
+    ],
+    "idempotency": {
+      "keyParam": "requestRef",
+      "supported": true
+    },
+    "inputsSchema": {
+      "properties": {
+        "blocker": {
+          "type": "string"
+        },
+        "person": {
+          "type": "string"
+        },
+        "recordId": {
+          "description": "The check-in the blocker came from.",
+          "type": "string"
+        },
+        "requestRef": {
+          "description": "Stable key for this blocker, so a retry never raises a second item.",
+          "type": "string"
+        },
+        "week": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "recordId",
+        "person",
+        "week",
+        "blocker",
+        "requestRef"
+      ],
+      "type": "object"
+    },
+    "key": "checkins.raise_blocker",
+    "kind": "capability",
+    "originKey": "86629f09-a8b3-432d-af08-d60657903b5d",
+    "outputsSchema": {
+      "properties": {
+        "workqItemId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "workq:write"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "write_internal",
+    "title": "Raise a blocker for the manager"
+  },
+  "kind": "capability",
+  "name": "Raise a blocker for the manager",
+  "originKey": "86629f09-a8b3-432d-af08-d60657903b5d"
+}

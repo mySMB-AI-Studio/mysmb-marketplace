@@ -1,0 +1,103 @@
+<style>
+  .sentence { max-width: 40rem; margin: 0; color: var(--foreground); }
+</style>
+<ws-stack gap="5">
+  <ws-row id="loading" gap="2"><ws-spinner label="Loading your answers"></ws-spinner><span class="ws-text-sm ws-text-muted">Loading your answers</span></ws-row>
+  <ws-alert id="load-error" variant="destructive" heading="Your earlier answers could not be loaded" hidden>Reload the page to try again. Anything you enter now is still saved.</ws-alert>
+
+  <ws-field id="name-field" label="Team name" description="Used in nudges and at the top of the Friday summary." required>
+    <ws-input id="team_name" maxlength="80" placeholder="Design team" required></ws-input>
+  </ws-field>
+
+  <ws-field id="size-field" label="Team size" description="How many people check in each week." required>
+    <ws-input id="team_size" type="number" min="1" max="200" step="1" inputmode="numeric" placeholder="8" required></ws-input>
+  </ws-field>
+
+  <ws-card heading="Who gets what">
+    <p id="routing" class="sentence" aria-live="polite"></p>
+  </ws-card>
+
+  <p id="save-state" class="ws-text-sm ws-text-muted" aria-live="polite"></p>
+</ws-stack>
+<script>
+(() => {
+  const el = (id) => document.getElementById(id);
+  const nameInput = el('team_name');
+  const sizeInput = el('team_size');
+  const fields = { team_name: el('name-field'), team_size: el('size-field') };
+  const setError = (key, message) => (message ? fields[key].setAttribute('error', message) : fields[key].removeAttribute('error'));
+
+  function problemFor(key) {
+    if (key === 'team_name') {
+      const value = nameInput.value.trim();
+      if (!value) return 'Enter a team name.';
+      if (value.length > 80) return 'Use 80 characters or fewer.';
+      return null;
+    }
+    const raw = String(sizeInput.value).trim();
+    const size = Number(raw);
+    if (raw === '' || !Number.isInteger(size) || size < 1 || size > 200) return 'Enter a whole number from 1 to 200.';
+    return null;
+  }
+  const allValid = () => problemFor('team_name') === null && problemFor('team_size') === null;
+  const allowContinue = () => workspace.wizard.setCanContinue({ value: allValid() }).catch(() => {});
+
+  function personName(got, role) {
+    const people = got && got.people;
+    let entry = null;
+    if (Array.isArray(people)) entry = people.find((p) => p && p.role === role) || null;
+    else if (people && typeof people === 'object') entry = people[role] || null;
+    if (!entry) return null;
+    const person = entry.user || entry;
+    return person.name || person.displayName || person.email || null;
+  }
+  function showRouting(got) {
+    const manager = personName(got, 'manager');
+    const reviewer = personName(got, 'reviewer');
+    let text = `Blockers go to ${manager || 'your manager'}; the Friday summary is approved by ${reviewer || 'your reviewer'}.`;
+    if (!manager || !reviewer) text += ' Go back to People and team to choose them.';
+    el('routing').textContent = text;
+  }
+
+  let pending = 0;
+  async function save(key, value) {
+    const problem = problemFor(key);
+    setError(key, problem);
+    allowContinue();
+    if (problem) return;
+    pending += 1;
+    el('save-state').textContent = 'Saving';
+    try {
+      await workspace.setup.save({ values: { [key]: value } });
+      el('save-state').textContent = pending > 1 ? 'Saving' : 'Saved';
+    } catch (error) {
+      setError(key, error && error.message ? `${error.message}. Try again.` : 'This could not be saved. Try again.');
+      el('save-state').textContent = '';
+      workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    } finally {
+      pending -= 1;
+    }
+  }
+
+  nameInput.addEventListener('input', () => { setError('team_name', null); allowContinue(); });
+  nameInput.addEventListener('change', () => save('team_name', nameInput.value.trim()));
+  sizeInput.addEventListener('input', () => { setError('team_size', null); allowContinue(); });
+  sizeInput.addEventListener('change', () => save('team_size', Number(String(sizeInput.value).trim())));
+
+  (async () => {
+    workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    let got = {};
+    try {
+      got = (await workspace.setup.get()) || {};
+    } catch {
+      el('load-error').hidden = false;
+    }
+    const saved = got.settings || {};
+    nameInput.value = typeof saved.team_name === 'string' ? saved.team_name : '';
+    sizeInput.value = Number.isInteger(saved.team_size) ? String(saved.team_size) : '';
+    showRouting(got);
+    el('loading').hidden = true;
+    allowContinue();
+  })();
+})();
+</script>

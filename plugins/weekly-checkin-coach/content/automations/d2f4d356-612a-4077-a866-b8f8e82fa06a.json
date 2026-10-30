@@ -1,0 +1,76 @@
+{
+  "contentHash": "1cfedfa4851f82e9b47aa59a93cb29ea5b757e776f6df3619f347f3f4abac887",
+  "declaredScopes": [
+    "extension_setup:read",
+    "users:read",
+    "records:check_ins:read",
+    "workq:read",
+    "workq:write",
+    "forms:read"
+  ],
+  "dependencies": [],
+  "description": "Every Monday at 9am in the team's time zone (from setup), finds team members who haven't submitted this week's check-in and sends each one a WorkQ reminder with a link to the Weekly check-in form. Stays inside Workspace and sends nothing outside it.",
+  "flowIr": {
+    "description": "Every 15 minutes it checks the team's local time from setup; at the check-in time (Monday 9:00am by default) it reminds each team member who hasn't submitted this week's check-in, with the Weekly check-in form attached.",
+    "irVersion": 1,
+    "name": "Monday check-in nudge",
+    "nodes": [
+      {
+        "code": "from datetime import datetime, timedelta\nfrom zoneinfo import ZoneInfo\n\nDAYS = [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\", \"saturday\", \"sunday\"]\n\nsettings = api.extension.settings() or {}\nzone_name = settings.get(\"time_zone\") or \"Australia/Sydney\"\ntry:\n    zone = ZoneInfo(zone_name)\nexcept Exception:\n    zone_name = \"Australia/Sydney\"\n    zone = ZoneInfo(zone_name)\n\ncheckin_day = settings.get(\"checkin_day\") if settings.get(\"checkin_day\") in DAYS else \"monday\"\ncheckin_time = settings.get(\"checkin_time\") or \"09:00\"\ntry:\n    due_hour, due_minute = [int(x) for x in checkin_time.split(\":\")]\nexcept Exception:\n    due_hour, due_minute = 9, 0\n\nnow = datetime.now(zone)\nforce = bool(params.get(\"run_now\"))\nis_due = DAYS[now.weekday()] == checkin_day and now.hour == due_hour and (now.minute // 15) == (due_minute // 15)\n\nreminded = []\nskipped_reason = \"\"\n\nif not is_due and not force:\n    skipped_reason = f\"Not check-in time yet in {zone_name}.\"\nelse:\n    week_start = (now - timedelta(days=now.weekday())).date()\n    week_label = week_start.isoformat()\n\n    team_ids = settings.get(\"team_member_ids\")\n    if not isinstance(team_ids, list) or not team_ids:\n        skipped_reason = \"No team members are set in setup, so nobody was reminded.\"\n    else:\n        users = api.users.list() or []\n        by_id = {u.get(\"id\"): u for u in users if isinstance(u, dict)}\n\n        # Who has already checked in this week\n        done = set()\n        cursor = None\n        for _ in range(10):\n            args = {\"type_slug\": \"check_ins\", \"limit\": 200}\n            if cursor is not None:\n                args[\"cursor\"] = cursor\n            page = api.records.list(**args) or {}\n            for r in page.get(\"records\", []):\n                fields = r.get(\"fields\") or r.get(\"values\") or r\n                if str(fields.get(\"week_starting\") or \"\")[:10] == week_label:\n                    done.add(str(fields.get(\"person\") or \"\").strip().lower())\n            cursor = page.get(\"nextCursor\")\n            if cursor is None:\n                break\n\n        for uid in team_ids:\n            user = by_id.get(uid)\n            if not user or user.get(\"is_external\"):\n                continue\n            names = {str(user.get(k) or \"\").strip().lower() for k in (\"name\", \"display_name\", \"email\")} - {\"\"}\n            if names & done:\n                continue\n            person = user.get(\"name\") or user.get(\"display_name\") or user.get(\"email\") or \"there\"\n            title = f\"Your weekly check-in ({week_label})\"\n            existing = api.workq.list(search=title) or []\n            if any(uid in (item.get(\"assignee_ids\") or []) for item in existing if isinstance(item, dict)):\n                continue\n            item = api.workq.create(\n                title=title,\n                scope=\"me\",\n                priority=\"medium\",\n                assignee_ids=[uid],\n                description=(\n                    f\"Hi {person.split(' ')[0]}, your check-in for the week of {week_label} is waiting. \"\n                    \"It takes about a minute: open the Weekly check-in form attached to this item.\"\n                ),\n            )\n            api.workq.attach_form(todo_id=item[\"id\"], form_id=params[\"checkin_form\"])\n            reminded.append(person)\n\nreminded_count = len(reminded)\nsummary = (\n    f\"Reminded {reminded_count}: \" + \", \".join(reminded) if reminded else (skipped_reason or \"Everyone has checked in.\")\n)\n",
+        "id": "nudge",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "How many people were reminded.",
+            "name": "reminded_count",
+            "type": "int"
+          },
+          {
+            "description": "Who was reminded, or why nobody was.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "form-picker",
+            "label": "Weekly check-in form",
+            "name": "checkin_form",
+            "required": true,
+            "type": "uuid",
+            "value": "b79b8127-fa22-4f7c-a1bb-620d2c2cb21c"
+          },
+          {
+            "binding": "{{ trigger.kind == 'manual' }}",
+            "control": "hidden",
+            "label": "Run now (manual runs)",
+            "name": "run_now",
+            "required": false,
+            "type": "bool"
+          }
+        ],
+        "summary": "At the team's check-in time, sends each team member without a check-in this week a WorkQ reminder with the Weekly check-in form.",
+        "title": "Remind people who haven't checked in"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "nudge"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      },
+      {
+        "cron": "0,15,30,45 * * * *",
+        "kind": "schedule",
+        "timezone": "UTC"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Monday check-in nudge",
+  "originKey": "d2f4d356-612a-4077-a866-b8f8e82fa06a",
+  "tags": []
+}

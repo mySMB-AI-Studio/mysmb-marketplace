@@ -1,0 +1,158 @@
+{
+  "contentHash": "87839dddad86a0f9145bbea2c0c4e76452cc688990539067ef5a0fa6e67aeff4",
+  "definition": {
+    "connections": [],
+    "knowledge": [
+      {
+        "extensions": [
+          ".pdf",
+          ".docx",
+          ".txt",
+          ".md"
+        ],
+        "folder": "installation:team-handbook",
+        "key": "team_handbook",
+        "label": "Team handbook and goals",
+        "minFiles": 1
+      }
+    ],
+    "people": [
+      {
+        "label": "Manager (receives blockers)",
+        "required": true,
+        "role": "manager"
+      },
+      {
+        "label": "Reviewer (approves the Friday summary)",
+        "required": true,
+        "role": "reviewer"
+      }
+    ],
+    "settings": {
+      "properties": {
+        "anonymous_summary": {
+          "default": false,
+          "title": "Anonymous summary",
+          "type": "boolean"
+        },
+        "checkin_day": {
+          "enum": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday"
+          ],
+          "title": "Check-in day",
+          "type": "string"
+        },
+        "checkin_time": {
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "title": "Check-in time",
+          "type": "string"
+        },
+        "coaching_style": {
+          "enum": [
+            "listener",
+            "challenger",
+            "cheerleader"
+          ],
+          "title": "Coaching style",
+          "type": "string"
+        },
+        "summary_day": {
+          "enum": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday"
+          ],
+          "title": "Summary day",
+          "type": "string"
+        },
+        "summary_style": {
+          "enum": [
+            "short",
+            "detailed",
+            "wins_first",
+            "blockers_first"
+          ],
+          "title": "Summary style",
+          "type": "string"
+        },
+        "team_member_ids": {
+          "description": "The Workspace users who check in each week.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 200,
+          "title": "Team members",
+          "type": "array"
+        },
+        "team_name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Team name",
+          "type": "string"
+        },
+        "team_size": {
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Team size",
+          "type": "integer"
+        },
+        "time_zone": {
+          "enum": [
+            "Australia/Sydney",
+            "Australia/Melbourne",
+            "Australia/Brisbane",
+            "Australia/Adelaide",
+            "Australia/Darwin",
+            "Australia/Perth",
+            "Australia/Hobart",
+            "Pacific/Auckland",
+            "Asia/Manila",
+            "Asia/Singapore"
+          ],
+          "title": "Time zone",
+          "type": "string"
+        },
+        "tone": {
+          "enum": [
+            "friendly",
+            "professional",
+            "upbeat",
+            "straight_talking"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "use_emoji": {
+          "default": false,
+          "title": "Use emoji",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "team_name",
+        "team_size",
+        "tone",
+        "coaching_style",
+        "time_zone",
+        "checkin_day",
+        "checkin_time",
+        "summary_day",
+        "summary_style"
+      ],
+      "type": "object"
+    },
+    "tasks": [],
+    "tenantSettings": [],
+    "version": 2
+  },
+  "description": "Team name and size, manager and reviewer, the coach's tone and coaching style, at least one team handbook or goals document, the weekly schedule and the Friday summary style.",
+  "kind": "setup",
+  "name": "Weekly Check-in Coach setup",
+  "originKey": "3288a1fb-1787-460a-b041-932547404506"
+}

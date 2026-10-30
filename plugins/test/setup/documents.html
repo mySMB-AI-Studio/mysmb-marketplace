@@ -1,0 +1,85 @@
+<style>
+  .intro { max-width: 40rem; margin: 0; color: var(--muted-foreground); }
+</style>
+<ws-stack gap="5">
+  <p class="intro ws-text-sm">The agent reads these files when it answers questions about your business. PDF, Word, text and Markdown files work. Nothing is shared outside your workspace.</p>
+
+  <ws-field id="drop-field" label="Add documents" description="Choose one or more files from your computer.">
+    <ws-file-drop id="drop" multiple accept=".pdf,.docx,.txt,.md" hint="PDF, Word, text or Markdown"></ws-file-drop>
+  </ws-field>
+
+  <ws-row id="loading" gap="2"><ws-spinner label="Loading your documents"></ws-spinner><span class="ws-text-sm ws-text-muted">Loading your documents</span></ws-row>
+
+  <ws-alert id="error" variant="destructive" heading="Could not load your documents" hidden>
+    <ws-stack gap="2">
+      <span id="error-text"></span>
+      <ws-row><ws-button id="retry" variant="outline" size="sm">Try again</ws-button></ws-row>
+    </ws-stack>
+  </ws-alert>
+
+  <ws-alert id="partial" variant="warning" heading="Some files were not uploaded" hidden>
+    <span id="partial-text"></span>
+  </ws-alert>
+
+  <ws-empty id="empty" heading="No documents yet" description="Add at least one document to continue." hidden></ws-empty>
+
+  <ws-card id="list-card" heading="Uploaded" hidden>
+    <ws-badge id="met" slot="action" variant="success" hidden>Ready</ws-badge>
+    <ws-table id="files" caption="Uploaded documents" empty-text="No documents yet."></ws-table>
+  </ws-card>
+</ws-stack>
+<script>
+(() => {
+  const REQUIREMENT = 'reference_docs';
+  const el = (id) => document.getElementById(id);
+  const show = (id, visible) => { el(id).hidden = !visible; };
+  const canContinue = (value) => workspace.wizard.setCanContinue({ value }).catch(() => {});
+  const size = (bytes) => bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  const when = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }); };
+
+  async function load() {
+    show('error', false);
+    show('loading', true);
+    canContinue(false);
+    try {
+      const result = await workspace.knowledge.list({ requirement: REQUIREMENT });
+      const table = el('files');
+      table.columns = [{ key: 'name', label: 'File' }, { key: 'size', label: 'Size', align: 'end' }, { key: 'added', label: 'Added' }];
+      table.rows = result.files.map((file) => ({ name: file.counts ? file.name : `${file.name} (not counted)`, size: size(file.size), added: when(file.modifiedAt) }));
+      show('empty', result.files.length === 0);
+      show('list-card', result.files.length > 0);
+      show('met', result.met);
+      canContinue(result.met);
+    } catch (error) {
+      el('error-text').textContent = error && error.message ? `${error.message}. Try again in a moment.` : 'The Workspace did not answer. Try again in a moment.';
+      show('error', true);
+    } finally {
+      show('loading', false);
+    }
+  }
+
+  el('drop').addEventListener('ws-pick', async () => {
+    show('partial', false);
+    const drop = el('drop');
+    drop.setAttribute('disabled', '');
+    try {
+      const result = await workspace.knowledge.upload({ requirement: REQUIREMENT });
+      if (result.cancelled) return;
+      if (result.failed.length > 0) {
+        el('partial-text').textContent = result.failed.map((f) => `${f.name}: ${f.reason}`).join('. ') + '. Check the file type and size, then add them again.';
+        show('partial', true);
+      }
+      await load();
+    } catch (error) {
+      if (error && error.code === 'cancelled') return;
+      el('partial-text').textContent = error && error.message ? `${error.message}. Check the file type and size, then try again.` : 'The upload did not finish. Try again.';
+      show('partial', true);
+    } finally {
+      drop.removeAttribute('disabled');
+    }
+  });
+  el('retry').addEventListener('click', () => load());
+
+  load();
+})();
+</script>
