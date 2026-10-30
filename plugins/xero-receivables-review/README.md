@@ -10,6 +10,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Processes:** Review current Xero receivables
 - **Capabilities:** List current Xero sales invoices, Read one Xero invoice, Read the connected Xero organisation
 - **Evaluations:** Receivables review — coordinator controls, Receivables review — model and evidence quality
+- **Agent views:** Setup pages
 - **MCP servers:** xero-accounting
 - **Skills:** 2
 - **Agents:** 1
