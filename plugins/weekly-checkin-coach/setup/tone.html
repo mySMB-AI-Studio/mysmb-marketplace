@@ -18,12 +18,8 @@
     <ws-switch id="use_emoji"></ws-switch>
   </ws-field>
 
-  <ws-field label="Coaching style" description="How the coach follows up on what people tell it." required>
-    <ws-radio-group id="coaching_style" required>
-      <option value="listener">Listener: asks open questions and reflects back</option>
-      <option value="challenger">Challenger: asks what could go further</option>
-      <option value="cheerleader">Cheerleader: celebrates progress, however small</option>
-    </ws-radio-group>
+  <ws-field id="style-field" label="Coaching style" description="How the coach follows up on what people tell it." required>
+    <ws-radio-group id="coaching_style" required></ws-radio-group>
   </ws-field>
 
   <p id="state" class="ws-text-sm ws-text-muted" aria-live="polite">Choose a tone and a coaching style to continue.</p>
@@ -41,9 +37,14 @@
     challenger: 'What is one thing you could push further?',
     cheerleader: 'Tell me one win, however small.',
   };
+  const STYLE_OPTIONS = [
+    { value: 'listener', label: 'Listener', description: 'Asks open questions and reflects back' },
+    { value: 'challenger', label: 'Challenger', description: 'Asks what could go further' },
+    { value: 'cheerleader', label: 'Cheerleader', description: 'Celebrates progress, however small' },
+  ];
   const el = (id) => document.getElementById(id);
   const emojiSwitch = el('use_emoji');
-  const styleGroup = el('coaching_style');
+  let styleControl = el('coaching_style');
   let tone = null;
   let style = null;
   let emoji = false;
@@ -51,6 +52,31 @@
   const sampleFor = (t) => [t.base, STYLES[style]].filter(Boolean).join(' ') + (emoji ? ` ${t.emoji}` : '');
   const valid = () => Boolean(tone && style);
   const allowContinue = () => workspace.wizard.setCanContinue({ value: valid() }).catch(() => {});
+
+  // Give the radio group its options; if this kit version cannot take them, use a kit select instead so the page never dead-ends.
+  async function mountStyleControl() {
+    const ready = await Promise.race([
+      customElements.whenDefined('ws-radio-group').then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 1500)),
+    ]);
+    if (ready && 'options' in styleControl) { styleControl.options = STYLE_OPTIONS; return; }
+    if (ready && 'items' in styleControl) { styleControl.items = STYLE_OPTIONS; return; }
+    const select = document.createElement('ws-select');
+    select.id = 'coaching_style';
+    select.setAttribute('required', '');
+    const blank = document.createElement('option');
+    blank.value = '';
+    blank.textContent = 'Choose a coaching style';
+    select.append(blank);
+    for (const o of STYLE_OPTIONS) {
+      const option = document.createElement('option');
+      option.value = o.value;
+      option.textContent = `${o.label}: ${o.description.toLowerCase()}`;
+      select.append(option);
+    }
+    styleControl.replaceWith(select);
+    styleControl = select;
+  }
 
   function render() {
     const grid = el('grid');
@@ -79,7 +105,7 @@
       card.append(stack);
       grid.append(card);
     }
-    el('state').textContent = valid() ? '' : 'Choose a tone and a coaching style to continue.';
+    el('state').textContent = valid() ? '' : (tone ? 'Choose a coaching style to continue.' : 'Choose a tone and a coaching style to continue.');
   }
 
   async function save(values, undo) {
@@ -103,6 +129,14 @@
     save({ tone: key }, () => { tone = previous; });
   }
 
+  function onStyleChange() {
+    const previous = style;
+    style = STYLES[styleControl.value] ? styleControl.value : null;
+    render();
+    allowContinue();
+    if (style && style !== previous) save({ coaching_style: style }, () => { style = previous; styleControl.value = previous || ''; });
+  }
+
   emojiSwitch.addEventListener('change', () => {
     const previous = emoji;
     emoji = Boolean(emojiSwitch.checked);
@@ -110,15 +144,11 @@
     save({ use_emoji: emoji }, () => { emoji = previous; emojiSwitch.checked = previous; });
   });
 
-  styleGroup.addEventListener('change', () => {
-    const previous = style;
-    style = STYLES[styleGroup.value] ? styleGroup.value : null;
-    render();
-    if (style) save({ coaching_style: style }, () => { style = previous; styleGroup.value = previous || ''; });
-  });
-
   (async () => {
     workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    await mountStyleControl();
+    styleControl.addEventListener('change', onStyleChange);
+    styleControl.addEventListener('input', onStyleChange);
     try {
       const saved = ((await workspace.setup.get()) || {}).settings || {};
       if (TONES.some((t) => t.key === saved.tone)) tone = saved.tone;
@@ -128,7 +158,7 @@
       el('load-error').hidden = false;
     }
     emojiSwitch.checked = emoji;
-    if (style) styleGroup.value = style;
+    if (style) styleControl.value = style;
     el('loading').hidden = true;
     render();
     allowContinue();

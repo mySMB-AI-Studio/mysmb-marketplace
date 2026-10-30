@@ -1,0 +1,88 @@
+{
+  "contentHash": "6e6e8cfa99561d19aed1aa901aacb61ae29943d34b98b8511e74e7e39e908f40",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "filter.week_starting": "inputs.weekStarting",
+          "id": "inputs.recordId",
+          "type_slug": "'check_ins'"
+        },
+        "scopes": [
+          "records:check_ins:read"
+        ],
+        "server": "workspace",
+        "tool": "records.list"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "properties": {
+        "recordId": {
+          "description": "One check-in to read.",
+          "type": "string"
+        },
+        "weekStarting": {
+          "description": "Read every check-in for this week.",
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "key": "checkins.read",
+    "kind": "capability",
+    "originKey": "99a56b50-4087-4a42-acb0-e0b86a762ad7",
+    "outputsSchema": {
+      "properties": {
+        "checkIns": {
+          "items": {
+            "properties": {
+              "blockers": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "mood": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "person": {
+                "type": "string"
+              },
+              "plans": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "week_starting": {
+                "type": "string"
+              },
+              "wins": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "records:check_ins:read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read check-ins"
+  },
+  "kind": "capability",
+  "name": "Read check-ins",
+  "originKey": "99a56b50-4087-4a42-acb0-e0b86a762ad7"
+}

@@ -1,0 +1,70 @@
+{
+  "contentHash": "45cc5673aa28c79267cee750dea338a1239eb2e6a26aab626d6bf06c72b86e81",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "body": "inputs.body",
+          "requestRef": "inputs.summaryRef",
+          "title": "inputs.title",
+          "user_ids": "installation.audience.userIds"
+        },
+        "scopes": [
+          "notify:send"
+        ],
+        "server": "workspace",
+        "tool": "notify.send"
+      }
+    ],
+    "idempotency": {
+      "keyParam": "summaryRef",
+      "supported": true
+    },
+    "inputsSchema": {
+      "properties": {
+        "body": {
+          "description": "The approved summary, in Markdown.",
+          "type": "string"
+        },
+        "summaryRef": {
+          "description": "One key per team per week, so the summary is posted once.",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "weekStarting": {
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "body",
+        "weekStarting",
+        "summaryRef"
+      ],
+      "type": "object"
+    },
+    "key": "checkins.post_summary",
+    "kind": "capability",
+    "originKey": "5f820d5d-d76a-44e7-883d-6817c720bda4",
+    "outputsSchema": {
+      "properties": {
+        "postId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "notify:send"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "publish",
+    "title": "Post the weekly summary to the team"
+  },
+  "kind": "capability",
+  "name": "Post the weekly summary to the team",
+  "originKey": "5f820d5d-d76a-44e7-883d-6817c720bda4"
+}

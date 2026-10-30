@@ -1,0 +1,263 @@
+{
+  "contentHash": "e2647ede9e03bb6c7a4d0247415d52099e701fc3586eab8080dcea10b8d454f3",
+  "definition": {
+    "capabilities": [
+      "checkins.read",
+      "checkins.raise_blocker",
+      "checkins.set_status",
+      "checkins.post_summary"
+    ],
+    "description": "Collect, review, decide on blockers, then summarise for the reviewer to approve.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "weekStarting",
+        "label": "Week starting",
+        "required": false,
+        "type": "date"
+      }
+    ],
+    "key": "weekly-check-in-cycle",
+    "kind": "process",
+    "originKey": "0196800b-256f-48b1-816b-8f49dbaf86b3",
+    "outcomes": [
+      {
+        "evidence": [
+          "The approved summary",
+          "The reviewer's approval"
+        ],
+        "key": "summaryPosted",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "The draft summary",
+          "The reviewer's rejection"
+        ],
+        "key": "summaryRejected",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "The summary is never posted until the reviewer approves it.",
+        "key": "reviewerApproves"
+      },
+      {
+        "description": "Blockers reach the manager exactly as the team member wrote them.",
+        "key": "blockersVerbatim"
+      },
+      {
+        "description": "The summary uses only what the check-ins say.",
+        "key": "noInventedFacts"
+      },
+      {
+        "description": "Everything happens inside Workspace; nothing is sent outside it.",
+        "key": "workspaceOnly"
+      }
+    ],
+    "rework": [
+      {
+        "from": "approveSummary",
+        "requires": "reviewer",
+        "to": "summarise"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "collect",
+        "kind": "wait",
+        "timer": {
+          "businessDays": 1
+        },
+        "title": "Collect check-ins (the Monday nudge sends each person the form)"
+      },
+      {
+        "key": "review",
+        "kind": "agent",
+        "outputs": [
+          "blockers",
+          "hasBlockers",
+          "actionedPayload",
+          "reviewedPayload",
+          "submitted",
+          "expected"
+        ],
+        "skill": "review-check-ins",
+        "title": "Read check-ins and raise blockers"
+      },
+      {
+        "eligible": [
+          "manager"
+        ],
+        "key": "blockerDecision",
+        "kind": "decision",
+        "materiality": [
+          "steps.review.blockers"
+        ],
+        "options": [
+          {
+            "effect": "You step in yourself. The check-in is marked Actioned.",
+            "intent": {
+              "capability": "checkins.set_status",
+              "payloadFrom": "steps.review.actionedPayload"
+            },
+            "key": "help",
+            "label": "Help directly",
+            "transition": "waitSummaryDay"
+          },
+          {
+            "effect": "Someone else takes it on. The check-in is marked Actioned.",
+            "intent": {
+              "capability": "checkins.set_status",
+              "payloadFrom": "steps.review.actionedPayload"
+            },
+            "key": "reassign",
+            "label": "Reassign",
+            "transition": "waitSummaryDay"
+          },
+          {
+            "effect": "It can wait. The check-in is marked Reviewed and stays open for next week.",
+            "intent": {
+              "capability": "checkins.set_status",
+              "payloadFrom": "steps.review.reviewedPayload"
+            },
+            "key": "park",
+            "label": "Park it",
+            "transition": "waitSummaryDay"
+          }
+        ],
+        "sla": {
+          "remindAfterBusinessDays": 2
+        },
+        "title": "Decide what to do about the blocker",
+        "type": "blocker_triage"
+      },
+      {
+        "key": "waitSummaryDay",
+        "kind": "wait",
+        "timer": {
+          "until": "{{settings.summary_day}}"
+        },
+        "title": "Wait for the summary day"
+      },
+      {
+        "key": "summarise",
+        "kind": "agent",
+        "outputs": [
+          "summary"
+        ],
+        "skill": "draft-team-summary",
+        "title": "Draft the team summary"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "approveSummary",
+        "kind": "decision",
+        "materiality": [
+          "steps.summarise.summary"
+        ],
+        "options": [
+          {
+            "effect": "The summary is posted to the team.",
+            "intent": {
+              "capability": "checkins.post_summary",
+              "payloadFrom": "steps.summarise.summary"
+            },
+            "key": "approve",
+            "label": "Approve and post",
+            "suggested": true,
+            "transition": "posted"
+          },
+          {
+            "effect": "Nothing is posted this week.",
+            "key": "reject",
+            "label": "Reject",
+            "transition": "rejected"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "remindAfterBusinessDays": 1
+        },
+        "title": "Approve the team summary",
+        "type": "summary_approval"
+      },
+      {
+        "evidence": [
+          "steps.summarise.summary"
+        ],
+        "key": "posted",
+        "kind": "gate",
+        "outcome": "summaryPosted",
+        "requires": [
+          "steps.approveSummary.decision == 'approve'"
+        ],
+        "title": "Summary posted"
+      },
+      {
+        "evidence": [
+          "steps.summarise.summary"
+        ],
+        "key": "rejected",
+        "kind": "gate",
+        "outcome": "summaryRejected",
+        "requires": [
+          "steps.approveSummary.decision == 'reject'"
+        ],
+        "title": "Summary rejected"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [],
+      "kind": "none"
+    },
+    "title": "Weekly check-in cycle",
+    "transitions": [
+      {
+        "from": "collect",
+        "to": "review"
+      },
+      {
+        "from": "review",
+        "to": "blockerDecision",
+        "when": "steps.review.hasBlockers"
+      },
+      {
+        "from": "review",
+        "to": "waitSummaryDay",
+        "when": "!steps.review.hasBlockers"
+      },
+      {
+        "from": "waitSummaryDay",
+        "to": "summarise"
+      },
+      {
+        "from": "summarise",
+        "to": "approveSummary"
+      }
+    ],
+    "triggers": [
+      {
+        "cron": "0 9 * * 1",
+        "inputsFrom": {
+          "weekStarting": "fire.date"
+        },
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      }
+    ],
+    "variationPoints": [],
+    "version": "0.1.0"
+  },
+  "kind": "process",
+  "name": "Weekly check-in cycle",
+  "originKey": "0196800b-256f-48b1-816b-8f49dbaf86b3"
+}
