@@ -1,0 +1,191 @@
+<ws-stack gap="5">
+  <ws-alert id="page-error" variant="destructive" heading="Your preferences could not be loaded" hidden></ws-alert>
+
+  <ws-field id="folder-field" label="Drafts folder in Knowledge" required>
+    <ws-input id="knowledge_folder" maxlength="100" placeholder="Social posts" required></ws-input>
+    <span slot="description" id="folder-hint">Each content type gets its own subfolder inside it.</span>
+  </ws-field>
+
+  <ws-field id="zone-field" label="Time zone" description="Review and publish dates and reminders use this time zone, whoever asks for the content." required>
+    <ws-select id="time_zone" required>
+      <option value="Australia/Sydney">Sydney, Canberra (AEST/AEDT)</option>
+      <option value="Australia/Melbourne">Melbourne (AEST/AEDT)</option>
+      <option value="Australia/Brisbane">Brisbane (AEST)</option>
+      <option value="Australia/Adelaide">Adelaide (ACST/ACDT)</option>
+      <option value="Australia/Darwin">Darwin (ACST)</option>
+      <option value="Australia/Perth">Perth (AWST)</option>
+      <option value="Australia/Hobart">Hobart (AEST/AEDT)</option>
+    </ws-select>
+  </ws-field>
+  <ws-row id="zone-suggest" hidden>
+    <ws-button id="use-local-zone" variant="link" size="sm"></ws-button>
+  </ws-row>
+
+  <ws-field id="lead-field" label="Review lead time (business days before publishing)" required>
+    <ws-input id="review_lead_days" type="number" min="0" max="20" step="1" inputmode="numeric" required></ws-input>
+    <span slot="description" id="lead-example">The reviewer is asked to approve a draft this many business days before its publish date.</span>
+  </ws-field>
+
+  <ws-stack gap="2">
+    <ws-field id="cta-field" label="Default call to action" description="Used when a request and the Brand Kit give none. Optional.">
+      <ws-input id="default_cta" maxlength="80" placeholder="Book now"></ws-input>
+    </ws-field>
+    <ws-row gap="2" wrap>
+      <ws-button class="cta-pick" variant="outline" size="sm">Book now</ws-button>
+      <ws-button class="cta-pick" variant="outline" size="sm">Learn more</ws-button>
+      <ws-button class="cta-pick" variant="outline" size="sm">Get in touch</ws-button>
+      <ws-button class="cta-pick" variant="outline" size="sm">Shop now</ws-button>
+    </ws-row>
+  </ws-stack>
+
+  <p id="save-state" class="ws-text-sm ws-text-muted" aria-live="polite"></p>
+</ws-stack>
+<script>
+(() => {
+  const ZONES = {
+    'Australia/Sydney': 'Sydney',
+    'Australia/Melbourne': 'Melbourne',
+    'Australia/Brisbane': 'Brisbane',
+    'Australia/Adelaide': 'Adelaide',
+    'Australia/Darwin': 'Darwin',
+    'Australia/Perth': 'Perth',
+    'Australia/Hobart': 'Hobart',
+  };
+  const DEFAULTS = { knowledge_folder: 'Social posts', time_zone: 'Australia/Sydney', review_lead_days: 2, default_cta: '' };
+  const el = (id) => document.getElementById(id);
+  const folder = el('knowledge_folder');
+  const zone = el('time_zone');
+  const lead = el('review_lead_days');
+  const cta = el('default_cta');
+  const fields = { knowledge_folder: el('folder-field'), time_zone: el('zone-field'), review_lead_days: el('lead-field'), default_cta: el('cta-field') };
+  const saveState = el('save-state');
+  const setError = (key, message) => (message ? fields[key].setAttribute('error', message) : fields[key].removeAttribute('error'));
+
+  // ── Checks (the server checks again on every save) ─────────────────────────
+  function problemFor(key) {
+    if (key === 'knowledge_folder') {
+      const value = folder.value.trim();
+      if (!value) return 'Enter a folder name.';
+      if (value.includes('/')) return 'Use one folder name. The agent makes a subfolder inside it for each content type.';
+      return null;
+    }
+    if (key === 'review_lead_days') {
+      const raw = String(lead.value).trim();
+      const days = Number(raw);
+      if (raw === '' || !Number.isInteger(days) || days < 0 || days > 20) return 'Enter a whole number of business days from 0 to 20.';
+      return null;
+    }
+    return null;
+  }
+  const allValid = () => ['knowledge_folder', 'review_lead_days'].every((key) => problemFor(key) === null) && Boolean(zone.value);
+  const allowContinue = () => workspace.wizard.setCanContinue({ value: allValid() }).catch(() => {});
+
+  // ── Live sentences ─────────────────────────────────────────────────────────
+  function showFolderHint() {
+    const name = folder.value.trim() || DEFAULTS.knowledge_folder;
+    el('folder-hint').textContent = name.includes('/')
+      ? 'Each content type gets its own subfolder inside it.'
+      : `Each content type gets its own subfolder inside it, for example ${name}/Articles.`;
+  }
+
+  // Today's calendar date in a time zone, as a UTC date (so the arithmetic below never crosses a daylight change).
+  function todayIn(timeZone) {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const get = (type) => Number(parts.find((part) => part.type === type).value);
+    return new Date(Date.UTC(get('year'), get('month') - 1, get('day')));
+  }
+  const addDays = (date, days) => new Date(date.getTime() + days * 86400000);
+  const isWeekend = (date) => date.getUTCDay() === 0 || date.getUTCDay() === 6;
+  const longDate = (date) => date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+  function showLeadExample() {
+    const example = el('lead-example');
+    const days = Number(String(lead.value).trim());
+    if (problemFor('review_lead_days')) {
+      example.textContent = 'The reviewer is asked to approve a draft this many business days before its publish date.';
+      return;
+    }
+    // A Friday at least a week away, so the example is never in the past.
+    let publish = addDays(todayIn(zone.value || DEFAULTS.time_zone), 7);
+    while (publish.getUTCDay() !== 5) publish = addDays(publish, 1);
+    let review = publish;
+    for (let left = days; left > 0; ) {
+      review = addDays(review, -1);
+      if (!isWeekend(review)) left -= 1;
+    }
+    example.textContent = days === 0
+      ? `A post going out on ${longDate(publish)} goes to the reviewer on the same day.`
+      : `A post going out on ${longDate(publish)} goes to the reviewer on ${longDate(review)}.`;
+  }
+
+  function showZoneSuggestion() {
+    let local = null;
+    try { local = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { local = null; }
+    const row = el('zone-suggest');
+    if (!local || !ZONES[local] || local === zone.value) { row.hidden = true; return; }
+    el('use-local-zone').textContent = `Use ${ZONES[local]}, this computer's time zone`;
+    el('use-local-zone').dataset.zone = local;
+    row.hidden = false;
+  }
+
+  // ── Saving ─────────────────────────────────────────────────────────────────
+  let pending = 0;
+  async function save(key, value) {
+    const problem = problemFor(key);
+    setError(key, problem);
+    allowContinue();
+    if (problem) return;
+    pending += 1;
+    saveState.textContent = 'Saving';
+    try {
+      await workspace.setup.save({ values: { [key]: value } });
+      setError(key, null);
+      saveState.textContent = pending > 1 ? 'Saving' : 'Saved';
+    } catch (error) {
+      setError(key, error && error.message ? error.message : 'This could not be saved. Try again.');
+      saveState.textContent = '';
+      workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    } finally {
+      pending -= 1;
+    }
+  }
+
+  folder.addEventListener('input', () => { showFolderHint(); setError('knowledge_folder', null); allowContinue(); });
+  folder.addEventListener('change', () => save('knowledge_folder', folder.value.trim()));
+  zone.addEventListener('change', () => { showLeadExample(); showZoneSuggestion(); save('time_zone', zone.value); });
+  lead.addEventListener('input', () => { showLeadExample(); setError('review_lead_days', null); allowContinue(); });
+  lead.addEventListener('change', () => save('review_lead_days', Number(String(lead.value).trim())));
+  cta.addEventListener('change', () => save('default_cta', cta.value.trim() || null));
+  el('use-local-zone').addEventListener('click', () => {
+    zone.value = el('use-local-zone').dataset.zone;
+    zone.dispatchEvent(new Event('change'));
+  });
+  for (const button of document.querySelectorAll('.cta-pick')) {
+    button.addEventListener('click', () => {
+      cta.value = button.textContent.trim();
+      save('default_cta', cta.value);
+    });
+  }
+
+  // ── Load ───────────────────────────────────────────────────────────────────
+  (async () => {
+    workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    let saved = {};
+    try {
+      saved = (await workspace.setup.get()).settings || {};
+    } catch (error) {
+      const alert = el('page-error');
+      alert.textContent = 'Reload the page to try again. Your earlier answers are kept.';
+      alert.hidden = false;
+    }
+    folder.value = typeof saved.knowledge_folder === 'string' && saved.knowledge_folder ? saved.knowledge_folder : DEFAULTS.knowledge_folder;
+    zone.value = ZONES[saved.time_zone] ? saved.time_zone : DEFAULTS.time_zone;
+    lead.value = String(Number.isInteger(saved.review_lead_days) ? saved.review_lead_days : DEFAULTS.review_lead_days);
+    cta.value = typeof saved.default_cta === 'string' ? saved.default_cta : DEFAULTS.default_cta;
+    showFolderHint();
+    showLeadExample();
+    showZoneSuggestion();
+    allowContinue();
+  })();
+})();
+</script>
