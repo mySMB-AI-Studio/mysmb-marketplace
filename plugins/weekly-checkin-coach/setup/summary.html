@@ -1,0 +1,132 @@
+<style>
+  .grid { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .grid > ws-card { flex: 1 1 14rem; max-width: 100%; }
+  .grid > ws-card.selected { outline: 0.125rem solid var(--primary); outline-offset: 0.125rem; }
+  .name { margin: 0; font-weight: 600; color: var(--foreground); }
+  .example { margin: 0; color: var(--muted-foreground); }
+</style>
+<ws-stack gap="5">
+  <ws-row id="loading" gap="2"><ws-spinner label="Loading your answers"></ws-spinner><span class="ws-text-sm ws-text-muted">Loading your answers</span></ws-row>
+  <ws-alert id="load-error" variant="destructive" heading="Your earlier answers could not be loaded" hidden>Reload the page to try again. Anything you choose now is still saved.</ws-alert>
+  <ws-alert id="save-error" variant="destructive" heading="Your choice was not saved" hidden><span id="save-error-text"></span></ws-alert>
+
+  <ws-field label="Summary style" description="Each card shows an example summary for a fictional team of seven." required>
+    <div id="grid" class="grid" role="list" aria-label="Summary styles"></div>
+  </ws-field>
+
+  <ws-field label="Anonymous summary" description="Names are left out of the summary; the manager still sees who raised each blocker.">
+    <ws-switch id="anonymous_summary"></ws-switch>
+  </ws-field>
+
+  <p id="state" class="ws-text-sm ws-text-muted" aria-live="polite">Choose a summary style to continue.</p>
+</ws-stack>
+<script>
+(() => {
+  const by = (anon) => (anon ? '' : ', raised by Sam');
+  const STYLES = [
+    { key: 'short', name: 'Short', lines: (a) => [
+      '6 of 7 people checked in this week.',
+      'Win: the Coastal Dental site went live.',
+      `Blocker: brand assets are late${by(a)}.`,
+    ] },
+    { key: 'detailed', name: 'Detailed', lines: (a) => [
+      '6 of 7 people checked in, and the team rated the week 4 out of 5.',
+      'Wins: the Coastal Dental site went live and the onboarding guide is finished.',
+      `Blockers: the client's brand assets are a week late${by(a)}. A WorkQ item is with the manager.`,
+    ] },
+    { key: 'wins_first', name: 'Wins first', lines: (a) => [
+      'Wins: the Coastal Dental site went live and the onboarding guide is finished.',
+      'Check-ins: 6 of 7, and the workload feels manageable.',
+      `Blocker: brand assets are late${by(a)}.`,
+    ] },
+    { key: 'blockers_first', name: 'Blockers first', lines: (a) => [
+      `Blocker: brand assets are a week late${by(a)}. A WorkQ item is with the manager.`,
+      'Wins: the Coastal Dental site went live.',
+      'Check-ins: 6 of 7 people this week.',
+    ] },
+  ];
+  const el = (id) => document.getElementById(id);
+  const anonSwitch = el('anonymous_summary');
+  let selected = null;
+  let anonymous = false;
+
+  const allowContinue = () => workspace.wizard.setCanContinue({ value: Boolean(selected) }).catch(() => {});
+
+  function render() {
+    const grid = el('grid');
+    grid.replaceChildren();
+    for (const s of STYLES) {
+      const chosen = s.key === selected;
+      const card = document.createElement('ws-card');
+      card.setAttribute('role', 'listitem');
+      if (chosen) card.classList.add('selected');
+      const stack = document.createElement('ws-stack');
+      stack.setAttribute('gap', '2');
+      const name = document.createElement('p');
+      name.className = 'name';
+      name.textContent = s.name;
+      stack.append(name);
+      for (const line of s.lines(anonymous)) {
+        const p = document.createElement('p');
+        p.className = 'example ws-text-sm';
+        p.textContent = line;
+        stack.append(p);
+      }
+      const button = document.createElement('ws-button');
+      button.setAttribute('variant', chosen ? 'default' : 'outline');
+      button.setAttribute('size', 'sm');
+      button.setAttribute('aria-pressed', String(chosen));
+      button.setAttribute('aria-label', chosen ? `${s.name} summary, chosen` : `Choose the ${s.name} summary`);
+      button.textContent = chosen ? 'Chosen' : 'Choose';
+      button.addEventListener('click', () => choose(s.key));
+      stack.append(button);
+      card.append(stack);
+      grid.append(card);
+    }
+    el('state').textContent = selected ? '' : 'Choose a summary style to continue.';
+  }
+
+  async function save(values, undo) {
+    el('save-error').hidden = true;
+    try {
+      await workspace.setup.save({ values });
+      allowContinue();
+    } catch (error) {
+      undo();
+      render();
+      el('save-error-text').textContent = error && error.message ? `${error.message}. Choose again.` : 'The Workspace did not answer. Choose again.';
+      el('save-error').hidden = false;
+      allowContinue();
+    }
+  }
+
+  function choose(key) {
+    const previous = selected;
+    selected = key;
+    render();
+    save({ summary_style: key }, () => { selected = previous; });
+  }
+
+  anonSwitch.addEventListener('change', () => {
+    const previous = anonymous;
+    anonymous = Boolean(anonSwitch.checked);
+    render();
+    save({ anonymous_summary: anonymous }, () => { anonymous = previous; anonSwitch.checked = previous; });
+  });
+
+  (async () => {
+    workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    try {
+      const saved = ((await workspace.setup.get()) || {}).settings || {};
+      if (STYLES.some((s) => s.key === saved.summary_style)) selected = saved.summary_style;
+      anonymous = saved.anonymous_summary === true;
+    } catch {
+      el('load-error').hidden = false;
+    }
+    anonSwitch.checked = anonymous;
+    el('loading').hidden = true;
+    render();
+    allowContinue();
+  })();
+})();
+</script>

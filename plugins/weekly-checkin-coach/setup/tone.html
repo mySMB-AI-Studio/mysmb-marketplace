@@ -1,0 +1,137 @@
+<style>
+  .grid { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .grid > ws-card { flex: 1 1 12rem; max-width: 100%; }
+  .grid > ws-card.selected { outline: 0.125rem solid var(--primary); outline-offset: 0.125rem; }
+  .name { margin: 0; font-weight: 600; color: var(--foreground); }
+  .sample { margin: 0; color: var(--muted-foreground); }
+</style>
+<ws-stack gap="5">
+  <ws-row id="loading" gap="2"><ws-spinner label="Loading your answers"></ws-spinner><span class="ws-text-sm ws-text-muted">Loading your answers</span></ws-row>
+  <ws-alert id="load-error" variant="destructive" heading="Your earlier answers could not be loaded" hidden>Reload the page to try again. Anything you choose now is still saved.</ws-alert>
+  <ws-alert id="save-error" variant="destructive" heading="Your choice was not saved" hidden><span id="save-error-text"></span></ws-alert>
+
+  <ws-field label="Tone" description="How the coach sounds when it nudges your team. Each card shows a sample nudge." required>
+    <div id="grid" class="grid" role="list" aria-label="Tones"></div>
+  </ws-field>
+
+  <ws-field label="Use emoji" description="Adds one emoji to the end of each nudge.">
+    <ws-switch id="use_emoji"></ws-switch>
+  </ws-field>
+
+  <ws-field label="Coaching style" description="How the coach follows up on what people tell it." required>
+    <ws-radio-group id="coaching_style" required>
+      <option value="listener">Listener: asks open questions and reflects back</option>
+      <option value="challenger">Challenger: asks what could go further</option>
+      <option value="cheerleader">Cheerleader: celebrates progress, however small</option>
+    </ws-radio-group>
+  </ws-field>
+
+  <p id="state" class="ws-text-sm ws-text-muted" aria-live="polite">Choose a tone and a coaching style to continue.</p>
+</ws-stack>
+<script>
+(() => {
+  const TONES = [
+    { key: 'friendly', name: 'Friendly', base: 'Morning! Got two minutes for your check-in?', emoji: '\u{1F44B}' },
+    { key: 'professional', name: 'Professional', base: 'Good morning. Your weekly check-in is ready when you are.', emoji: '\u{1F4CB}' },
+    { key: 'upbeat', name: 'Upbeat', base: 'New week, fresh start. Your check-in takes two minutes.', emoji: '\u{1F389}' },
+    { key: 'straight_talking', name: 'Straight-talking', base: 'Check-in is open. Two minutes, three questions.', emoji: '\u{23F1}\u{FE0F}' },
+  ];
+  const STYLES = {
+    listener: 'How did the week really feel?',
+    challenger: 'What is one thing you could push further?',
+    cheerleader: 'Tell me one win, however small.',
+  };
+  const el = (id) => document.getElementById(id);
+  const emojiSwitch = el('use_emoji');
+  const styleGroup = el('coaching_style');
+  let tone = null;
+  let style = null;
+  let emoji = false;
+
+  const sampleFor = (t) => [t.base, STYLES[style]].filter(Boolean).join(' ') + (emoji ? ` ${t.emoji}` : '');
+  const valid = () => Boolean(tone && style);
+  const allowContinue = () => workspace.wizard.setCanContinue({ value: valid() }).catch(() => {});
+
+  function render() {
+    const grid = el('grid');
+    grid.replaceChildren();
+    for (const t of TONES) {
+      const chosen = t.key === tone;
+      const card = document.createElement('ws-card');
+      card.setAttribute('role', 'listitem');
+      if (chosen) card.classList.add('selected');
+      const stack = document.createElement('ws-stack');
+      stack.setAttribute('gap', '3');
+      const name = document.createElement('p');
+      name.className = 'name';
+      name.textContent = t.name;
+      const sample = document.createElement('p');
+      sample.className = 'sample ws-text-sm';
+      sample.textContent = `\u201C${sampleFor(t)}\u201D`;
+      const button = document.createElement('ws-button');
+      button.setAttribute('variant', chosen ? 'default' : 'outline');
+      button.setAttribute('size', 'sm');
+      button.setAttribute('aria-pressed', String(chosen));
+      button.setAttribute('aria-label', chosen ? `${t.name} tone, chosen` : `Choose the ${t.name} tone`);
+      button.textContent = chosen ? 'Chosen' : 'Choose';
+      button.addEventListener('click', () => chooseTone(t.key));
+      stack.append(name, sample, button);
+      card.append(stack);
+      grid.append(card);
+    }
+    el('state').textContent = valid() ? '' : 'Choose a tone and a coaching style to continue.';
+  }
+
+  async function save(values, undo) {
+    el('save-error').hidden = true;
+    try {
+      await workspace.setup.save({ values });
+      allowContinue();
+    } catch (error) {
+      undo();
+      render();
+      el('save-error-text').textContent = error && error.message ? `${error.message}. Choose again.` : 'The Workspace did not answer. Choose again.';
+      el('save-error').hidden = false;
+      allowContinue();
+    }
+  }
+
+  function chooseTone(key) {
+    const previous = tone;
+    tone = key;
+    render();
+    save({ tone: key }, () => { tone = previous; });
+  }
+
+  emojiSwitch.addEventListener('change', () => {
+    const previous = emoji;
+    emoji = Boolean(emojiSwitch.checked);
+    render();
+    save({ use_emoji: emoji }, () => { emoji = previous; emojiSwitch.checked = previous; });
+  });
+
+  styleGroup.addEventListener('change', () => {
+    const previous = style;
+    style = STYLES[styleGroup.value] ? styleGroup.value : null;
+    render();
+    if (style) save({ coaching_style: style }, () => { style = previous; styleGroup.value = previous || ''; });
+  });
+
+  (async () => {
+    workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    try {
+      const saved = ((await workspace.setup.get()) || {}).settings || {};
+      if (TONES.some((t) => t.key === saved.tone)) tone = saved.tone;
+      if (STYLES[saved.coaching_style]) style = saved.coaching_style;
+      emoji = saved.use_emoji === true;
+    } catch {
+      el('load-error').hidden = false;
+    }
+    emojiSwitch.checked = emoji;
+    if (style) styleGroup.value = style;
+    el('loading').hidden = true;
+    render();
+    allowContinue();
+  })();
+})();
+</script>
