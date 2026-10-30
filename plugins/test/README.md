@@ -6,7 +6,6 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 
 - **Setup:** Test2 setup (each person reviews their configuration and account bindings)
 - **Agent views:** Setup pages
-- **MCP servers:** xero-accounting
 
 ## Configuration
 

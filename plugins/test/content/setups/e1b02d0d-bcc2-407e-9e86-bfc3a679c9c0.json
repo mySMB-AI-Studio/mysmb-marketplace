@@ -1,18 +1,21 @@
 {
-  "contentHash": "62c7a975cfa2d4964ca8cfe8f6dfb8cc6e276f4079e3c5afe98c1c44c1373d05",
+  "contentHash": "88b6490980014a117c2b032ed71a61bcb61f868208d7b14b12f68567e15f9cdd",
   "definition": {
-    "connections": [
+    "connections": [],
+    "knowledge": [
       {
-        "key": "xero",
-        "label": "Xero",
-        "oneOf": [
-          "xero-accounting"
+        "extensions": [
+          ".pdf",
+          ".docx",
+          ".txt",
+          ".md"
         ],
-        "required": true,
-        "scope": "either"
+        "folder": "installation:reference",
+        "key": "reference_docs",
+        "label": "Reference documents",
+        "minFiles": 1
       }
     ],
-    "knowledge": [],
     "people": [],
     "settings": {
       "properties": {
@@ -34,10 +37,30 @@
           "maxLength": 200,
           "title": "Main contact",
           "type": "string"
+        },
+        "tone": {
+          "description": "How the agent sounds when it writes for you.",
+          "enum": [
+            "friendly",
+            "formal",
+            "plain_spoken",
+            "upbeat",
+            "calm",
+            "witty",
+            "warm",
+            "direct",
+            "expert",
+            "playful",
+            "reassuring",
+            "concise"
+          ],
+          "title": "Writing tone",
+          "type": "string"
         }
       },
       "required": [
-        "business_name"
+        "business_name",
+        "tone"
       ],
       "type": "object"
     },
@@ -45,7 +68,7 @@
     "tenantSettings": [],
     "version": 2
   },
-  "description": "Basic business details and a Xero connection.",
+  "description": "Basic business details, at least one reference document, and the tone the agent writes in.",
   "kind": "setup",
   "name": "Test2 setup",
   "originKey": "e1b02d0d-bcc2-407e-9e86-bfc3a679c9c0"

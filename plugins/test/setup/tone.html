@@ -1,0 +1,123 @@
+<style>
+  .grid { display: flex; flex-wrap: wrap; gap: 1rem; }
+  .grid > ws-card { flex: 1 1 11rem; max-width: 100%; }
+  .grid > ws-card.selected { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .thumb { display: grid; place-items: center; aspect-ratio: 16 / 9; border-radius: 0.75rem; background: var(--muted); color: var(--foreground); font-size: 2.5rem; line-height: 1; }
+  .name { margin: 0; font-weight: 600; color: var(--foreground); }
+  .sample { margin: 0; color: var(--muted-foreground); }
+</style>
+<ws-stack gap="5">
+  <ws-alert id="error" variant="destructive" heading="Your choice was not saved" hidden>
+    <span id="error-text"></span>
+  </ws-alert>
+
+  <div id="grid" class="grid" role="list" aria-label="Writing tones"></div>
+
+  <ws-row gap="3" wrap align="center">
+    <ws-button id="shuffle" variant="outline">Show 5 others</ws-button>
+    <span id="state" class="ws-text-sm ws-text-muted" aria-live="polite">Choose a tone to continue.</span>
+  </ws-row>
+</ws-stack>
+<script>
+(() => {
+  const TONES = [
+    { key: 'friendly', emoji: '\u{1F60A}', name: 'Friendly', sample: 'Thanks for getting in touch. Here is what we can do.' },
+    { key: 'formal', emoji: '\u{1F3A9}', name: 'Formal', sample: 'Thank you for your enquiry. Please find the details below.' },
+    { key: 'plain_spoken', emoji: '\u{1F4AC}', name: 'Plain-spoken', sample: 'Here is the price, and here is when we can start.' },
+    { key: 'upbeat', emoji: '\u{1F389}', name: 'Upbeat', sample: 'Great news: your booking is locked in for Friday.' },
+    { key: 'calm', emoji: '\u{1F33F}', name: 'Calm', sample: 'No rush. When you are ready, here are your options.' },
+    { key: 'witty', emoji: '\u{1F60F}', name: 'Witty', sample: 'Good news: the invoice is smaller than you feared.' },
+    { key: 'warm', emoji: '☀️', name: 'Warm', sample: 'It was lovely to hear from you. Let us sort this out together.' },
+    { key: 'direct', emoji: '\u{1F3AF}', name: 'Direct', sample: 'Your order ships Tuesday. Reply if that does not work.' },
+    { key: 'expert', emoji: '\u{1F393}', name: 'Expert', sample: 'Based on your usage, the annual plan saves about 18%.' },
+    { key: 'playful', emoji: '\u{1F388}', name: 'Playful', sample: 'Your new site is live. Go on, have a click around.' },
+    { key: 'reassuring', emoji: '\u{1F91D}', name: 'Reassuring', sample: 'We have your request and we are on it. You will hear from us today.' },
+    { key: 'concise', emoji: '✂️', name: 'Concise', sample: 'Booked: Fri 10am. Confirm?' },
+  ];
+  const el = (id) => document.getElementById(id);
+  let selected = null;
+  let shown = [];
+
+  // Five at random, always including the current choice so it never disappears.
+  function pickFive() {
+    const pool = TONES.filter((t) => t.key !== selected && !shown.includes(t.key));
+    const rest = pool.length >= 4 ? pool : TONES.filter((t) => t.key !== selected);
+    const shuffled = rest.slice().sort(() => Math.random() - 0.5);
+    const five = shuffled.slice(0, selected ? 4 : 5).map((t) => t.key);
+    if (selected) five.splice(Math.floor(Math.random() * 5), 0, selected);
+    shown = five;
+  }
+
+  function render() {
+    const grid = el('grid');
+    grid.replaceChildren();
+    for (const key of shown) {
+      const tone = TONES.find((t) => t.key === key);
+      const card = document.createElement('ws-card');
+      card.setAttribute('role', 'listitem');
+      if (key === selected) card.classList.add('selected');
+      const stack = document.createElement('ws-stack');
+      stack.setAttribute('gap', '3');
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      thumb.setAttribute('aria-hidden', 'true');
+      thumb.textContent = tone.emoji;
+      const name = document.createElement('p');
+      name.className = 'name';
+      name.textContent = tone.name;
+      const sample = document.createElement('p');
+      sample.className = 'sample ws-text-sm';
+      sample.textContent = `“${tone.sample}”`;
+      const button = document.createElement('ws-button');
+      const isChosen = key === selected;
+      button.setAttribute('variant', isChosen ? 'default' : 'outline');
+      button.setAttribute('size', 'sm');
+      button.setAttribute('aria-pressed', String(isChosen));
+      button.setAttribute('aria-label', isChosen ? `${tone.name} tone, chosen` : `Choose the ${tone.name} tone`);
+      button.textContent = isChosen ? 'Chosen' : 'Choose';
+      button.addEventListener('click', () => choose(key));
+      stack.append(thumb, name, sample, button);
+      card.append(stack);
+      grid.append(card);
+    }
+  }
+
+  async function choose(key) {
+    const previous = selected;
+    selected = key;
+    render();
+    el('error').hidden = true;
+    el('state').textContent = 'Saving';
+    try {
+      await workspace.setup.save({ values: { tone: key } });
+      el('state').textContent = `Saved: ${TONES.find((t) => t.key === key).name}.`;
+      workspace.wizard.setCanContinue({ value: true }).catch(() => {});
+    } catch (error) {
+      selected = previous;
+      render();
+      el('error-text').textContent = error && error.message ? `${error.message}. Choose the tone again.` : 'The Workspace did not answer. Choose the tone again.';
+      el('error').hidden = false;
+      el('state').textContent = previous ? '' : 'Choose a tone to continue.';
+      workspace.wizard.setCanContinue({ value: Boolean(previous) }).catch(() => {});
+    }
+  }
+
+  el('shuffle').addEventListener('click', () => { pickFive(); render(); });
+
+  (async () => {
+    workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    try {
+      const saved = (await workspace.setup.get()).settings || {};
+      if (TONES.some((t) => t.key === saved.tone)) selected = saved.tone;
+    } catch {
+      // Nothing saved yet is fine: the person chooses below.
+    }
+    pickFive();
+    render();
+    if (selected) {
+      el('state').textContent = `Saved: ${TONES.find((t) => t.key === selected).name}.`;
+      workspace.wizard.setCanContinue({ value: true }).catch(() => {});
+    }
+  })();
+})();
+</script>
