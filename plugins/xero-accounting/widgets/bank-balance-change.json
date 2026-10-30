@@ -1,0 +1,803 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {},
+    "tool": "get_xero_bank_balance_difference"
+  },
+  "description": "Each Xero bank balance with the change since the previous business day (Friday on a Monday) — green when up, red when down — and the transactions behind it. Click an account to see why it changed.",
+  "id": "xero-bank-balance-difference",
+  "keywords": [
+    "bank",
+    "cash",
+    "balance",
+    "difference",
+    "change",
+    "movement",
+    "yesterday",
+    "previous day",
+    "daily",
+    "transactions",
+    "accounts"
+  ],
+  "pluginIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 9
+    }
+  },
+  "spec": {
+    "elements": {
+      "allAccounts": {
+        "children": [
+          "allRow"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "allBadge": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/totalBadgeText"
+          },
+          "tone": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/totalTone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "allCaption": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/allAccountsCaption"
+          }
+        },
+        "type": "Caption"
+      },
+      "allLabel": {
+        "children": [
+          "allTitle",
+          "allCaption"
+        ],
+        "props": {
+          "align": "baseline",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "allRow": {
+        "children": [
+          "allLabel",
+          "allBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "allTitle": {
+        "props": {
+          "text": "All accounts",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card",
+        "watch": {
+          "/ui/bbd/selectedId": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbd/view",
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "equals": {
+                    "$state": "/ui/bbd/selectedId"
+                  },
+                  "field": "accountId",
+                  "value": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/get_xero_bank_balance_difference/accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbd/view",
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "equals": {
+                    "$state": "/ui/bbd/selectedId"
+                  },
+                  "field": "accountId",
+                  "value": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/get_xero_bank_balance_difference/defaultAccountId": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbd/selectedId",
+              "value": {
+                "$state": "/xero-accounting/get_xero_bank_balance_difference/defaultAccountId"
+              }
+            }
+          }
+        }
+      },
+      "closing": {
+        "children": [
+          "closingLabel",
+          "closingValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "closingLabel": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/closingLabel"
+          }
+        },
+        "type": "Text"
+      },
+      "closingValue": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/previousBalanceText"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "content": {
+        "children": [
+          "allAccounts",
+          "tiles",
+          "divider1",
+          "why",
+          "divider3",
+          "footer"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0"
+            }
+          ]
+        }
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "divider2": {
+        "type": "Divider"
+      },
+      "divider3": {
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No bank accounts configured in Xero."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/eyebrow"
+          }
+        },
+        "type": "Eyebrow",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+          "not": true
+        }
+      },
+      "footer": {
+        "children": [
+          "footerText",
+          "footerOpen"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "footerOpen": {
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/xeroUrl"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs",
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "footerOpenIcon": {
+        "props": {
+          "name": "ArrowRight",
+          "size": "sm"
+        },
+        "type": "Icon"
+      },
+      "footerOpenText": {
+        "props": {
+          "text": "Open in Xero",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "footerText": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/updatedText"
+          }
+        },
+        "type": "Caption"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sAll",
+          "loadingGrid",
+          "sList"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference"
+        }
+      },
+      "loadingGrid": {
+        "children": [
+          "s1",
+          "s2"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "type": "Grid"
+      },
+      "moneyIn": {
+        "children": [
+          "moneyInLabel",
+          "moneyInValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "moneyInLabel": {
+        "props": {
+          "text": "Money in"
+        },
+        "type": "Text"
+      },
+      "moneyInValue": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/moneyInText"
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/view/0/moneyInText",
+              "eq": "A$0.00"
+            },
+            "$else": "success",
+            "$then": "muted"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "moneyOut": {
+        "children": [
+          "moneyOutLabel",
+          "moneyOutValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "moneyOutLabel": {
+        "props": {
+          "text": "Money out"
+        },
+        "type": "Text"
+      },
+      "moneyOutValue": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/moneyOutText"
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/view/0/moneyOutText",
+              "eq": "A$0.00"
+            },
+            "$else": "destructive",
+            "$then": "muted"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "now": {
+        "children": [
+          "nowLabel",
+          "nowValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "nowLabel": {
+        "props": {
+          "text": "Balance now",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "nowValue": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/balanceText"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "recon": {
+        "children": [
+          "closing",
+          "moneyIn",
+          "moneyOut",
+          "reconDivider",
+          "now"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "reconDivider": {
+        "type": "Divider"
+      },
+      "s1": {
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "s2": {
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sAll": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sList": {
+        "props": {
+          "height": "10rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "tile": {
+        "children": [
+          "tileBox"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbd/selectedId",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "accountId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "clickable": true,
+          "hover": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": {
+                "$item": "accountId"
+              },
+              "b": {
+                "$state": "/ui/bbd/selectedId"
+              }
+            }
+          },
+          "template": "1fr"
+        },
+        "type": "Row"
+      },
+      "tileBadge": {
+        "props": {
+          "text": {
+            "$item": "badgeText"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "tileBadgeRow": {
+        "children": [
+          "tileBadge"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "tileBalance": {
+        "props": {
+          "size": "sm",
+          "value": {
+            "$item": "balanceText"
+          }
+        },
+        "type": "Stat"
+      },
+      "tileBox": {
+        "children": [
+          "tileHeader",
+          "tileBalance",
+          "tileBadgeRow",
+          "tileWas"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "tileHeader": {
+        "children": [
+          "tileIcon",
+          "tileName"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "tileIcon": {
+        "props": {
+          "name": "Banknote",
+          "size": "sm",
+          "tone": "success"
+        },
+        "type": "Icon"
+      },
+      "tileName": {
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "tileWas": {
+        "props": {
+          "text": {
+            "$item": "wasText"
+          }
+        },
+        "type": "Caption"
+      },
+      "tiles": {
+        "children": [
+          "tile"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+        },
+        "type": "Grid"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Bank Balance Change"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Landmark",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "txnAmount": {
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "txnEmpty": {
+        "props": {
+          "message": "No transactions since the previous business day."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/bbd/view/0/transactions/0",
+          "not": true
+        }
+      },
+      "txnList": {
+        "children": [
+          "txnRow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/bbd/view/0/transactions"
+        },
+        "type": "Stack"
+      },
+      "txnMeta": {
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          }
+        },
+        "type": "Caption"
+      },
+      "txnName": {
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "txnRow": {
+        "children": [
+          "txnText",
+          "txnAmount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "url"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "txnText": {
+        "children": [
+          "txnName",
+          "txnMeta"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "why": {
+        "children": [
+          "whyHeader",
+          "txnEmpty",
+          "txnList",
+          "divider2",
+          "recon"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "whyCount": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/transactionCountText"
+          }
+        },
+        "type": "Caption"
+      },
+      "whyHeader": {
+        "children": [
+          "whyTitle",
+          "whyCount"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "whyTitle": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/whyTitle"
+          }
+        },
+        "type": "Eyebrow"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "bank",
+    "accounts",
+    "cash",
+    "finance"
+  ],
+  "title": "Bank Balance Change"
+}
