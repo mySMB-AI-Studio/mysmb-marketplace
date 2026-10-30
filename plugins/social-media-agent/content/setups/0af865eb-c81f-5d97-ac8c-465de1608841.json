@@ -1,77 +1,61 @@
 {
-  "contentHash": "aeedb7b361f30150ad9413af93a83ed974af98dcfa02878a69875e354d4eb6e2",
+  "contentHash": "7b6a052d3e74a3e8a1006a5737807d187993231eae3a595265e4eb584b679ef9",
   "definition": {
-    "steps": [
-      {
-        "connectors": [],
-        "description": "Drafts are saved in Knowledge under this folder, one subfolder per content type. Dates and reminders use the time zone below. Your Brand Kit is set up separately, the first time you use the agent.",
-        "fields": [
-          {
-            "default": "Social posts",
-            "helpText": "Top-level Knowledge folder. Each content type gets its own subfolder inside it, for example Social posts/Articles.",
-            "key": "knowledge_folder",
-            "label": "Drafts folder in Knowledge",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "default": "Australia/Sydney",
-            "helpText": "Review and publish dates and reminders use this time zone, whoever asks for the content.",
-            "key": "time_zone",
-            "label": "Time zone",
-            "options": [
-              {
-                "label": "Sydney, Canberra (AEST/AEDT)",
-                "value": "Australia/Sydney"
-              },
-              {
-                "label": "Melbourne (AEST/AEDT)",
-                "value": "Australia/Melbourne"
-              },
-              {
-                "label": "Brisbane (AEST)",
-                "value": "Australia/Brisbane"
-              },
-              {
-                "label": "Adelaide (ACST/ACDT)",
-                "value": "Australia/Adelaide"
-              },
-              {
-                "label": "Darwin (ACST)",
-                "value": "Australia/Darwin"
-              },
-              {
-                "label": "Perth (AWST)",
-                "value": "Australia/Perth"
-              },
-              {
-                "label": "Hobart (AEST/AEDT)",
-                "value": "Australia/Hobart"
-              }
-            ],
-            "required": true,
-            "type": "select"
-          },
-          {
-            "default": 2,
-            "helpText": "The reviewer is asked to approve a draft this many business days before its publish date.",
-            "key": "review_lead_days",
-            "label": "Review lead time (business days before publishing)",
-            "required": true,
-            "type": "number"
-          },
-          {
-            "helpText": "Used when a request and the Brand Kit give none, for example Book now.",
-            "key": "default_cta",
-            "label": "Default call to action",
-            "type": "string"
-          }
-        ],
-        "id": "preferences",
-        "title": "Preferences"
-      }
-    ],
-    "version": 1
+    "connections": [],
+    "knowledge": [],
+    "people": [],
+    "settings": {
+      "additionalProperties": false,
+      "properties": {
+        "default_cta": {
+          "description": "Used when a request and the Brand Kit give none, for example Book now.",
+          "maxLength": 80,
+          "title": "Default call to action",
+          "type": "string"
+        },
+        "knowledge_folder": {
+          "default": "Social posts",
+          "description": "Top-level Knowledge folder. Each content type gets its own subfolder inside it, for example Social posts/Articles.",
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[^/]+$",
+          "title": "Drafts folder in Knowledge",
+          "type": "string"
+        },
+        "review_lead_days": {
+          "default": 2,
+          "description": "The reviewer is asked to approve a draft this many business days before its publish date.",
+          "maximum": 20,
+          "minimum": 0,
+          "title": "Review lead time (business days before publishing)",
+          "type": "integer"
+        },
+        "time_zone": {
+          "default": "Australia/Sydney",
+          "description": "Review and publish dates and reminders use this time zone, whoever asks for the content.",
+          "enum": [
+            "Australia/Sydney",
+            "Australia/Melbourne",
+            "Australia/Brisbane",
+            "Australia/Adelaide",
+            "Australia/Darwin",
+            "Australia/Perth",
+            "Australia/Hobart"
+          ],
+          "title": "Time zone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "knowledge_folder",
+        "time_zone",
+        "review_lead_days"
+      ],
+      "type": "object"
+    },
+    "tasks": [],
+    "tenantSettings": [],
+    "version": 2
   },
   "description": "Where drafts are saved, the time zone the agent works in and how much review time to leave. People (manager, backup and reviewer) are set when you activate the agent.",
   "kind": "setup",
