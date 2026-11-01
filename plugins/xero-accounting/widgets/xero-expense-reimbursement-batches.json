@@ -1,0 +1,461 @@
+{
+  "id": "xero-expense-reimbursement-batches",
+  "title": "Expense File Transform & Batch",
+  "description": "Groups and totals employee reimbursements, builds a claim batch, and reconciles it to the ledger. Xero's classic Expense Claims/Receipts API was decommissioned 31 July 2025 with no successor API — this works from ordinary Bills instead, the same 'reimbursement = a Bill against a contact' model the Fee & Reimbursement Drafts tile uses. Pick the reimbursement expense account; every AUTHORISED (approved, unpaid) bill coded to it is grouped by employee. Compares the grouped total against that account's actual balance-sheet movement, then — once you also pick a bank account and date — creates a real Xero batch payment for every contributing bill. Nothing is paid until you confirm.",
+  "category": "finance",
+  "tags": ["xero", "accounting", "expenses", "reimbursement", "batch-payment", "employees"],
+  "keywords": ["expense reimbursement", "claim batch", "batch payment", "staff expenses", "employee reimbursement", "ledger reconciliation"],
+  "connectorsUsed": ["xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 7, "rowSpan": 11 },
+    "min": { "colSpan": 5, "rowSpan": 9 },
+    "max": { "colSpan": 12, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "list_accounts",
+    "params": { "where": "Status==\"ACTIVE\"" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer", "infoOverlay", "confirmOverlay"],
+        "watch": {
+          "/xero-accounting/list_accounts/Accounts": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/reimbursementAccountOptions",
+                "value": {
+                  "$computed": "xero-accounting_account_options_by_type",
+                  "args": { "accounts": { "$state": "/xero-accounting/list_accounts/Accounts" }, "types": ["EXPENSE", "DIRECTCOSTS"] }
+                }
+              }
+            }
+          ],
+          "/ui/reimbursementAccountOptions": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bankAccountOptions",
+                "value": {
+                  "$computed": "xero-accounting_account_options_by_type",
+                  "args": { "accounts": { "$state": "/xero-accounting/list_accounts/Accounts" }, "types": ["BANK"] }
+                }
+              }
+            }
+          ],
+          "/ui/form/reimbursementAccountCode": {
+            "action": "xero-accounting.get_expense_reimbursement_batches",
+            "params": { "accountCode": { "$state": "/ui/form/reimbursementAccountCode" } }
+          },
+          "/xero-accounting/get_expense_reimbursement_batches": {
+            "action": "xero-accounting.get_account_movement",
+            "params": { "accountCode": { "$state": "/ui/form/reimbursementAccountCode" } }
+          },
+          "/xero-accounting/get_account_movement": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/status",
+                "value": {
+                  "$computed": "xero-accounting_expense_reimbursement_status",
+                  "args": {
+                    "grandTotal": { "$state": "/xero-accounting/get_expense_reimbursement_batches/grandTotal" },
+                    "movement": { "$state": "/xero-accounting/get_account_movement/movement" },
+                    "accountFound": { "$state": "/xero-accounting/get_account_movement/accountFound" },
+                    "accountName": { "$state": "/xero-accounting/get_account_movement/accountName" }
+                  }
+                }
+              }
+            }
+          ],
+          "/xero-accounting/create_batch_payment/BatchPayments": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/lastCreatedBatchPaymentId", "value": { "$state": "/xero-accounting/create_batch_payment/BatchPayments/0/BatchPaymentID" } }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["titleGroup", "infoBtn"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Receipt", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Expense File Transform & Batch", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero · employee reimbursements" } },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorBanner", "successBanner", "formStack", "resultSection"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/xero-accounting.list_accounts" },
+        "children": ["sk1", "sk2"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "Couldn't load reimbursement bills: ${/_errors/xero-accounting.get_expense_reimbursement_batches}" },
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/_errors/xero-accounting.get_expense_reimbursement_batches" }
+      },
+
+      "successBanner": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["successIcon", "successText", "successLink"],
+        "visible": { "$state": "/ui/lastCreatedBatchPaymentId" }
+      },
+      "successIcon": { "type": "Icon", "props": { "name": "CheckCircle2", "tone": "success", "size": "sm" } },
+      "successText": { "type": "Caption", "props": { "text": "Batch payment created.", "tone": "success" } },
+      "successLink": {
+        "type": "Button",
+        "props": { "label": "View in Xero", "size": "sm", "variant": "ghost", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://go.xero.com/Bank/BatchPayment.aspx", "target": "_blank" } }
+        }
+      },
+
+      "formStack": { "type": "Stack", "props": { "gap": "sm" }, "children": ["reimbursementAccountRow"] },
+      "reimbursementAccountRow": {
+        "type": "FormRow",
+        "props": { "label": "Reimbursement expense account", "hint": "Reimbursement bills coded to this account are grouped by employee" },
+        "children": ["reimbursementAccountSelect"]
+      },
+      "reimbursementAccountSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/form/reimbursementAccountCode" },
+          "options": { "$state": "/ui/reimbursementAccountOptions" },
+          "placeholder": "Select account…",
+          "size": "sm"
+        }
+      },
+
+      "resultSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/ui/form/reimbursementAccountCode" },
+        "children": ["empty", "statusSection", "employeesLabel", "table", "otherChargesCaption", "divider3", "batchFormStack"]
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No outstanding reimbursement bills found on that account." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.get_expense_reimbursement_batches", "not": true },
+            { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees/0", "not": true }
+          ]
+        }
+      },
+
+      "statusSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "visible": { "$state": "/xero-accounting/get_account_movement/accountFound" },
+        "children": ["statusRow", "statusDetailRow"]
+      },
+      "statusRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["statusBadge", "statusAccountName"]
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": { "text": { "$state": "/ui/status/matchLabel" }, "tone": { "$state": "/ui/status/matchTone" }, "variant": "soft" }
+      },
+      "statusAccountName": { "type": "Caption", "props": { "text": { "$state": "/ui/status/accountName" }, "tone": "muted" } },
+      "statusDetailRow": {
+        "type": "Row",
+        "props": { "gap": "lg" },
+        "children": ["groupedStack", "ledgerStack"]
+      },
+      "groupedStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["groupedLabel", "groupedValue"] },
+      "groupedLabel": { "type": "Caption", "props": { "text": "Grouped from bills", "tone": "muted" } },
+      "groupedValue": {
+        "type": "Text",
+        "props": { "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/status/grandTotal" }, "currency": "AUD" } }, "size": "md", "weight": "semibold" }
+      },
+      "ledgerStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["ledgerLabel", "ledgerValue"] },
+      "ledgerLabel": { "type": "Caption", "props": { "text": "Ledger movement", "tone": "muted" } },
+      "ledgerValue": {
+        "type": "Text",
+        "props": { "text": { "$computed": "format_currency", "args": { "value": { "$state": "/ui/status/movement" }, "currency": "AUD" } }, "size": "md", "weight": "semibold" }
+      },
+
+      "employeesLabel": {
+        "type": "Caption",
+        "props": { "text": "Reimbursements by employee", "tone": "muted" },
+        "visible": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees/0" }
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "columns": [
+            { "id": "contactName", "header": "Employee", "field": "contactName", "width": 160 },
+            { "id": "billCount", "header": "Bills", "field": "billCount", "width": 70, "align": "right" },
+            { "id": "total", "header": "Total", "field": "total", "width": 110, "format": "currency" }
+          ],
+          "rows": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees" }
+        },
+        "visible": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees/0" }
+      },
+
+      "otherChargesCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_expense_reimbursement_other_charges_note",
+            "args": { "employees": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees" } }
+          },
+          "tone": "warning"
+        },
+        "visible": {
+          "$computed": "xero-accounting_expense_reimbursement_other_charges_note",
+          "args": { "employees": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees" } }
+        }
+      },
+
+      "divider3": { "type": "Divider", "props": {}, "visible": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees/0" } },
+
+      "batchFormStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees/0" },
+        "children": ["bankAccountRow", "dateRow", "validationRow", "submitRow"]
+      },
+      "bankAccountRow": {
+        "type": "FormRow",
+        "props": { "label": "Pay from" },
+        "children": ["bankAccountSelect"]
+      },
+      "bankAccountSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/form/bankAccountId" },
+          "options": { "$state": "/ui/bankAccountOptions" },
+          "placeholder": "Select bank account…",
+          "size": "sm"
+        }
+      },
+      "dateRow": { "type": "FormRow", "props": { "label": "Batch payment date" }, "children": ["dateInput"] },
+      "dateInput": { "type": "DateInput", "props": { "value": { "$bindState": "/ui/form/date" }, "size": "sm" } },
+
+      "validationRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_expense_reimbursement_validation_message",
+            "args": {
+              "reimbursementAccountCode": { "$state": "/ui/form/reimbursementAccountCode" },
+              "bankAccountId": { "$state": "/ui/form/bankAccountId" },
+              "date": { "$state": "/ui/form/date" },
+              "employeeCount": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employeeCount" }
+            }
+          },
+          "tone": "warning"
+        },
+        "visible": {
+          "$computed": "xero-accounting_expense_reimbursement_is_invalid",
+          "args": {
+            "reimbursementAccountCode": { "$state": "/ui/form/reimbursementAccountCode" },
+            "bankAccountId": { "$state": "/ui/form/bankAccountId" },
+            "date": { "$state": "/ui/form/date" },
+            "employeeCount": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employeeCount" }
+          }
+        }
+      },
+
+      "submitRow": { "type": "Row", "props": { "justify": "end" }, "children": ["submitBtn"] },
+      "submitBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Build Claim Batch",
+          "leadingIcon": "Layers",
+          "tone": "brand",
+          "variant": "primary",
+          "disabled": {
+            "$computed": "xero-accounting_expense_reimbursement_is_invalid",
+            "args": {
+              "reimbursementAccountCode": { "$state": "/ui/form/reimbursementAccountCode" },
+              "bankAccountId": { "$state": "/ui/form/bankAccountId" },
+              "date": { "$state": "/ui/form/date" },
+              "employeeCount": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employeeCount" }
+            }
+          }
+        },
+        "on": {
+          "click": { "action": "setState", "params": { "statePath": "/ui/showConfirm", "value": true } }
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs" },
+        "children": ["viewBatchPaymentsBtn", "openXeroBtn"]
+      },
+      "viewBatchPaymentsBtn": {
+        "type": "Button",
+        "props": { "label": "View Batch Payments", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://go.xero.com/Bank/BatchPayment.aspx", "target": "_blank" } }
+        }
+      },
+      "openXeroBtn": {
+        "type": "Button",
+        "props": { "label": "Open Xero", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://go.xero.com/", "target": "_blank" } }
+        }
+      },
+
+      "confirmOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "26rem" },
+        "children": ["confirmCard"],
+        "visible": { "$state": "/ui/showConfirm" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showConfirm", "value": false } }
+        }
+      },
+      "confirmCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["confirmCloseBtn", "confirmTitleRow", "confirmDivider", "confirmBody", "confirmActionsRow"]
+      },
+      "confirmCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showConfirm", "value": false } } }
+      },
+      "confirmTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["confirmTitleIcon", "confirmTitleText"] },
+      "confirmTitleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "size": "sm", "tone": "warning" } },
+      "confirmTitleText": { "type": "Heading", "props": { "text": "Confirm batch payment", "level": "h2" } },
+      "confirmDivider": { "type": "Divider", "props": {} },
+      "confirmBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["confirmWarningText", "confirmEmployeeCountRow", "confirmTotalRow"]
+      },
+      "confirmWarningText": {
+        "type": "Text",
+        "props": { "text": "This creates a real batch payment in Xero and marks every contributing bill as paid. This isn't a draft — it can't be undone the way a draft bill can.", "size": "sm" }
+      },
+      "confirmEmployeeCountRow": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["confirmEmployeeCountLabel", "confirmEmployeeCountValue"]
+      },
+      "confirmEmployeeCountLabel": { "type": "Caption", "props": { "text": "Employees", "tone": "muted" } },
+      "confirmEmployeeCountValue": { "type": "Text", "props": { "text": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employeeCount" }, "size": "sm", "weight": "semibold" } },
+      "confirmTotalRow": {
+        "type": "Row",
+        "props": { "justify": "between" },
+        "children": ["confirmTotalLabel", "confirmTotalValue"]
+      },
+      "confirmTotalLabel": { "type": "Caption", "props": { "text": "Total to pay", "tone": "muted" } },
+      "confirmTotalValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/xero-accounting/get_expense_reimbursement_batches/grandAmountDueTotal" }, "currency": "AUD" } },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "confirmActionsRow": { "type": "Row", "props": { "justify": "end", "gap": "xs" }, "children": ["confirmCancelBtn", "confirmSubmitBtn"] },
+      "confirmCancelBtn": {
+        "type": "Button",
+        "props": { "label": "Cancel", "variant": "ghost", "size": "sm" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showConfirm", "value": false } } }
+      },
+      "confirmSubmitBtn": {
+        "type": "Button",
+        "props": { "label": "Confirm & Create", "tone": "brand", "variant": "primary", "size": "sm" },
+        "on": {
+          "click": [
+            {
+              "action": "xero-accounting.create_batch_payment",
+              "params": {
+                "batchPayment": {
+                  "$computed": "xero-accounting_expense_reimbursement_build_batch_payment",
+                  "args": {
+                    "employees": { "$state": "/xero-accounting/get_expense_reimbursement_batches/employees" },
+                    "bankAccountId": { "$state": "/ui/form/bankAccountId" },
+                    "date": { "$state": "/ui/form/date" }
+                  }
+                }
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/showConfirm", "value": false } }
+          ]
+        }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } }
+        }
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "How this tile works", "level": "h2" } },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoGapLabel", "infoGapText", "infoHowLabel", "infoHowText"]
+      },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": { "text": "Groups every outstanding reimbursement bill by employee, totals each one, reconciles the total against the ledger, and — once you confirm — creates a real batch payment in Xero for every contributing bill.", "size": "sm" }
+      },
+      "infoGapLabel": { "type": "Caption", "props": { "text": "Why this uses Bills, not Expense Claims", "tone": "muted", "weight": "semibold" } },
+      "infoGapText": {
+        "type": "Text",
+        "props": { "text": "Xero's classic Expense Claims/Receipts API was decommissioned 31 July 2025, with no successor API for the Xero Expenses product that replaced it. This tile treats each reimbursement as an ordinary Bill coded to a nominated expense account, with the employee as the Bill's contact — the same model the Fee & Reimbursement Drafts tile already uses.", "size": "sm" }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Before you confirm", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": { "text": "A batch payment pays each bill's full outstanding amount, not just the reimbursement line — if a bill mixes other charges in, that's flagged before you confirm. Creating the batch marks every bill as paid in Xero immediately; it isn't a draft and can't be undone the way a draft bill can.", "size": "sm" }
+      }
+    }
+  },
+  "status": "published"
+}
