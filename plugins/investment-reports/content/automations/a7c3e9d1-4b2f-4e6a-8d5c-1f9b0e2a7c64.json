@@ -1,0 +1,153 @@
+{
+  "contentHash": "689e791f82d2ca87870b4ac451da14d3c70eeabfa6ab53a90aac7e0935b1b294",
+  "declaredScopes": [
+    "ai:generate",
+    "connectors:m365-sharepoint",
+    "files:read",
+    "files:write"
+  ],
+  "dependencies": [],
+  "description": "Reads every investment summary in a SharePoint folder (Word, Excel, PDF and more: portfolio valuations, adviser reviews, platform reports, broker statements), pulls out each portfolio's figures with AI, and writes one combined report on how all the investments look: total value, each portfolio's value, return and income, the combined asset allocation, points to watch and follow-up actions. Saves it to Knowledge as a Word document and a Markdown copy (Investments/Reports). Paste the folder's SharePoint link when you click Run now. Read-only: it never changes anything in SharePoint.",
+  "flowIr": {
+    "description": "Reads every investment summary in a SharePoint folder (Word, Excel, PDF and more: portfolio valuations, adviser reviews, platform reports, broker statements), pulls out each portfolio's figures with AI, and writes one combined report on how all the investments look: total value, each portfolio's value, return and income, the combined asset allocation, points to watch and follow-up actions. Saves it to Knowledge as a Word document and a Markdown copy (Investments/Reports). Paste the folder's SharePoint link when you click Run now. Read-only: it never changes anything in SharePoint.",
+    "irVersion": 1,
+    "name": "Investments: Combined report from SharePoint",
+    "nodes": [
+      {
+        "code": "# ── Read each investment summary in the SharePoint folder and pull out its figures ──\nimport json\nimport re\n\nSP = \"m365-sharepoint\"\n# File types the SharePoint connector can read as text.\nREADABLE = {\"docx\", \"docm\", \"xlsx\", \"xlsm\", \"pptx\", \"pptm\", \"pdf\", \"doc\", \"xls\", \"ppt\", \"rtf\", \"odt\", \"ods\", \"odp\",\n            \"txt\", \"csv\", \"tsv\", \"md\", \"htm\", \"html\"}\nMAX_FILES = 40\n# Characters of each file sent to AI (the AI step's cap is 32,000 including the prompt).\nMAX_TEXT = 24000\nCLASSES = [\"Australian equities\", \"International equities\", \"Property\", \"Fixed interest\", \"Cash\", \"Alternatives\", \"Other\"]\n\nPROMPT = (\n    \"This is one investment summary (a portfolio valuation, adviser review, platform report or broker statement). \"\n    \"Pull out the figures it states, for the portfolio as a whole. Use only what the document says: put null when a \"\n    \"figure isn't there, and don't estimate. Money is a plain number in dollars (no $ or commas; a loss or outflow is \"\n    \"negative, fees are positive). Percentages are numbers like 2.36 for 2.36%. Dates are YYYY-MM-DD. \"\n    \"net_contributions is money added minus money taken out (contributions, deposits, withdrawals, pension payments) \"\n    \"for the period. allocation uses these asset classes only: \" + \", \".join(CLASSES) + \". top_holdings is the five \"\n    \"largest holdings by value. actions are follow-ups the document asks for (dates, decisions, rollovers, lodgements); \"\n    \"notes are anything else a reviewer should know (big losses, missing data, an allocation off target).\"\n)\nSHAPE = (\n    '{\"entity\": str, \"entity_type\": \"SMSF|Trust|Company|Individual|Partnership|Other\", \"provider\": str|null, '\n    '\"as_at\": \"YYYY-MM-DD\"|null, \"period_start\": \"YYYY-MM-DD\"|null, \"opening_value\": number|null, '\n    '\"closing_value\": number|null, \"net_contributions\": number|null, \"income\": number|null, '\n    '\"franking_credits\": number|null, \"fees\": number|null, \"realised_gain\": number|null, '\n    '\"unrealised_gain\": number|null, \"period_return_pct\": number|null, '\n    '\"allocation\": [{\"asset_class\": str, \"value\": number}], \"top_holdings\": [{\"name\": str, \"code\": str|null, \"value\": number}], '\n    '\"actions\": [str], \"notes\": [str]}'\n)\n\n\ndef _ext(name):\n    m = re.search(r\"\\.([A-Za-z0-9]+)$\", str(name or \"\"))\n    return m.group(1).lower() if m else \"\"\n\n\ndef _err(exc):\n    msg = str(exc)\n    if msg.startswith(\"tool_error: \"):\n        msg = msg[len(\"tool_error: \"):]\n    if \"no usable credential\" in msg or \"credential unavailable\" in msg:\n        return \"the SharePoint connection needs connecting (Settings → Connections → m365-sharepoint)\"\n    return msg[:300]\n\n\ndef _num(v):\n    if isinstance(v, bool) or v is None:\n        return None\n    if isinstance(v, (int, float)):\n        return float(v)\n    s = re.sub(r\"[,$\\s]\", \"\", str(v))\n    neg = s.startswith(\"(\") and s.endswith(\")\")\n    s = s.strip(\"()\")\n    try:\n        n = float(s)\n    except ValueError:\n        return None\n    return -n if neg else n\n\n\ndef _class(name):\n    s = str(name or \"\").lower()\n    if \"international\" in s or \"global\" in s or \"overseas\" in s:\n        return \"International equities\"\n    if \"australian\" in s or \"domestic\" in s or (\"equit\" in s or \"share\" in s):\n        return \"Australian equities\"\n    if \"property\" in s or \"reit\" in s or \"real estate\" in s:\n        return \"Property\"\n    if \"fixed\" in s or \"bond\" in s or \"credit\" in s or \"income\" in s:\n        return \"Fixed interest\"\n    if \"cash\" in s or \"deposit\" in s:\n        return \"Cash\"\n    if \"alternative\" in s or \"private\" in s or \"hedge\" in s or \"infrastructure\" in s or \"commodit\" in s:\n        return \"Alternatives\"\n    return \"Other\"\n\n\ndef _date(v):\n    s = str(v or \"\")\n    return s if re.match(r\"^\\d{4}-\\d{2}-\\d{2}$\", s) else \"\"\n\n\ndef _clean(raw, f):\n    d = raw if isinstance(raw, dict) else {}\n    alloc = {}\n    for a in d.get(\"allocation\") or []:\n        if isinstance(a, dict):\n            v = _num(a.get(\"value\"))\n            if v is not None:\n                c = _class(a.get(\"asset_class\"))\n                alloc[c] = round(alloc.get(c, 0.0) + v, 2)\n    holdings = []\n    for h in d.get(\"top_holdings\") or []:\n        if isinstance(h, dict) and _num(h.get(\"value\")) is not None:\n            holdings.append({\"name\": str(h.get(\"name\") or \"\")[:80], \"code\": str(h.get(\"code\") or \"\")[:12],\n                             \"value\": _num(h.get(\"value\"))})\n    out = {\n        \"file\": str(f.get(\"name\") or \"\"),\n        \"url\": str(f.get(\"webUrl\") or \"\"),\n        \"entity\": str(d.get(\"entity\") or \"\").strip() or str(f.get(\"name\") or \"\"),\n        \"entity_type\": str(d.get(\"entity_type\") or \"Other\"),\n        \"provider\": str(d.get(\"provider\") or \"\"),\n        \"as_at\": _date(d.get(\"as_at\")),\n        \"period_start\": _date(d.get(\"period_start\")),\n        \"allocation\": alloc,\n        \"top_holdings\": holdings[:5],\n        \"actions\": [str(x)[:300] for x in (d.get(\"actions\") or []) if str(x).strip()][:8],\n        \"notes\": [str(x)[:300] for x in (d.get(\"notes\") or []) if str(x).strip()][:8],\n    }\n    for k in (\"opening_value\", \"closing_value\", \"net_contributions\", \"income\", \"franking_credits\", \"fees\",\n              \"realised_gain\", \"unrealised_gain\", \"period_return_pct\"):\n        out[k] = _num(d.get(k))\n    return out\n\n\nlink = str(params.get(\"folder_link\") or \"\").strip()\nportfolios = []\nskipped = []\nfolder_name = \"\"\nproblem = \"\"\n\nif not link:\n    problem = \"No folder link: paste the SharePoint folder's link (Share → Copy link) when you click Run now.\"\nelse:\n    items = []\n    cursor = None\n    try:\n        while True:\n            args = {\"cursor\": cursor} if cursor else {\"url\": link, \"page_size\": 200}\n            page = api.connectors.invoke(server=SP, tool=\"list_sharepoint_folder\", args=args)\n            if not isinstance(page, dict):\n                raise ValueError(\"SharePoint sent back something unexpected\")\n            if not cursor:\n                folder_name = str((page.get(\"folder\") or {}).get(\"name\") or \"\")\n            items.extend(page.get(\"items\") or [])\n            cursor = page.get(\"nextCursor\")\n            if not cursor or len(items) >= 1000:\n                break\n    except Exception as exc:\n        problem = \"Couldn't open the folder: \" + _err(exc)\n\n    for f in sorted(items, key=lambda x: str(x.get(\"name\") or \"\").lower()):\n        name = str(f.get(\"name\") or \"\")\n        if f.get(\"isFolder\"):\n            skipped.append({\"file\": name, \"reason\": \"subfolder (only files directly in the folder are read)\"})\n        elif _ext(name) not in READABLE:\n            skipped.append({\"file\": name, \"reason\": \"not a document type that can be read\"})\n        elif len(portfolios) >= MAX_FILES:\n            skipped.append({\"file\": name, \"reason\": \"over the \" + str(MAX_FILES) + \"-file limit for one run\"})\n        else:\n            try:\n                r = api.connectors.invoke(server=SP, tool=\"read_sharepoint_file\",\n                                          args={\"drive_id\": f.get(\"driveId\"), \"item_id\": f.get(\"id\"), \"max_chars\": MAX_TEXT})\n            except Exception as exc:\n                skipped.append({\"file\": name, \"reason\": _err(exc)})\n                continue\n            text = str((r or {}).get(\"text\") or \"\") if isinstance(r, dict) else \"\"\n            if not text.strip():\n                note = str((r or {}).get(\"note\") or \"\") if isinstance(r, dict) else \"\"\n                skipped.append({\"file\": name, \"reason\": note or \"no text found\"})\n                continue\n            try:\n                raw = api.ai.extract(prompt=PROMPT, input=text[:MAX_TEXT], schema_hint=SHAPE)\n            except Exception as exc:\n                skipped.append({\"file\": name, \"reason\": \"AI couldn't read the figures (\" + str(exc)[:200] + \")\"})\n                continue\n            p = _clean(raw, f)\n            if p[\"closing_value\"] is None:\n                skipped.append({\"file\": name, \"reason\": \"no portfolio value found, so it doesn't look like an investment summary\"})\n                continue\n            if isinstance(r, dict) and r.get(\"truncated\"):\n                p[\"notes\"].append(\"Only the first \" + str(MAX_TEXT) + \" characters of this file were read.\")\n            portfolios.append(p)\n\n    if not problem and not portfolios:\n        problem = \"No investment summaries found in \" + (folder_name or \"the folder\") + \".\"\n\nsummary = (problem + \" \" if problem else \"\") + \"Read \" + str(len(portfolios)) + \" investment summar\" + \\\n    (\"y\" if len(portfolios) == 1 else \"ies\") + (\", skipped \" + str(len(skipped)) if skipped else \"\") + \".\"",
+        "id": "read_summaries",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Each portfolio's figures, as stated in its summary.",
+            "name": "portfolios",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Files that weren't included, with the reason.",
+            "name": "skipped",
+            "type": "list[dict]"
+          },
+          {
+            "description": "The SharePoint folder's name.",
+            "name": "folder_name",
+            "type": "str"
+          },
+          {
+            "description": "Why nothing could be read, when that happens.",
+            "name": "problem",
+            "type": "str"
+          },
+          {
+            "description": "What this step did.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.folder_link }}",
+            "control": "text",
+            "label": "SharePoint folder link",
+            "name": "folder_link",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "summary": "Lists the files in the SharePoint folder, reads each one's text, and uses AI to pull out the portfolio's figures (value, opening value, contributions, income, fees, gains, return, asset allocation, largest holdings and follow-ups). Changes nothing.",
+        "title": "Read the investment summaries"
+      },
+      {
+        "code": "# ── Combine the portfolios and save the report (Word + Markdown) ──\nimport json\nimport datetime\nfrom docx import Document\nfrom docx.shared import Pt\n\nREPORT_DIR = \"Investments/Reports/\"\nMONTHS = [\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\", \"Jun\", \"Jul\", \"Aug\", \"Sep\", \"Oct\", \"Nov\", \"Dec\"]\nCLASSES = [\"Australian equities\", \"International equities\", \"Property\", \"Fixed interest\", \"Cash\", \"Alternatives\", \"Other\"]\n\nCOMMENT_PROMPT = (\n    \"These are the figures from several investment portfolios an accounting practice looks after, plus the combined \"\n    \"totals. Write a short review for the accountant: overview is 3 to 5 plain sentences on how the investments look \"\n    \"overall (total value, movement, income, allocation, which portfolios stand out). watch is up to 6 points that \"\n    \"need attention (losses, a heavy concentration, a large cash balance, missing figures, valuation dates that \"\n    \"differ). actions is up to 8 follow-ups taken from the portfolios' own actions, each starting with the portfolio's \"\n    \"name. Use only these figures; don't give financial advice or predict markets. Money as $1,234 (no cents).\"\n)\nCOMMENT_SHAPE = '{\"overview\": str, \"watch\": [str], \"actions\": [str]}'\n\n\ndef _d(iso):\n    try:\n        d = datetime.date.fromisoformat(str(iso)[:10])\n    except ValueError:\n        return \"\"\n    return \"%02d-%s-%02d\" % (d.day, MONTHS[d.month - 1], d.year % 100)\n\n\ndef _money(v):\n    if v is None:\n        return \"-\"\n    return (\"-\" if v < 0 else \"\") + \"$\" + \"{:,.2f}\".format(abs(v))\n\n\ndef _pct(v):\n    return \"-\" if v is None else \"{:.2f}%\".format(v)\n\n\ndef _sum(rows, key):\n    vals = [r[key] for r in rows if r.get(key) is not None]\n    return round(sum(vals), 2) if vals else None\n\n\ndef _ret(p):\n    if p.get(\"period_return_pct\") is not None:\n        return p[\"period_return_pct\"]\n    o, c = p.get(\"opening_value\"), p.get(\"closing_value\")\n    if o and c is not None:\n        return round((c - o - (p.get(\"net_contributions\") or 0)) / o * 100, 2)\n    return None\n\n\nportfolios = [p for p in (params.get(\"portfolios\") or []) if isinstance(p, dict)]\nskipped = [s for s in (params.get(\"skipped\") or []) if isinstance(s, dict)]\nfolder = str(params.get(\"folder_name\") or \"the SharePoint folder\")\nproblem = str(params.get(\"problem\") or \"\")\ntoday = datetime.date.today()\nstamp = \"%02d-%s-%02d\" % (today.day, MONTHS[today.month - 1], today.year % 100)\n\nreport_file = \"\"\nword_file = \"\"\ntotal_value = 0.0\n\nif not portfolios:\n    summary = problem or \"No investment summaries were read, so no report was written.\"\nelse:\n    portfolios.sort(key=lambda p: -(p.get(\"closing_value\") or 0))\n    total_value = round(sum(p[\"closing_value\"] for p in portfolios), 2)\n    with_open = [p for p in portfolios if p.get(\"opening_value\") is not None]\n    totals = {\n        \"closing_value\": total_value,\n        \"opening_value\": _sum(with_open, \"opening_value\"),\n        \"closing_value_with_opening\": _sum(with_open, \"closing_value\"),\n        \"net_contributions\": _sum(portfolios, \"net_contributions\"),\n        \"income\": _sum(portfolios, \"income\"),\n        \"franking_credits\": _sum(portfolios, \"franking_credits\"),\n        \"fees\": _sum(portfolios, \"fees\"),\n        \"realised_gain\": _sum(portfolios, \"realised_gain\"),\n        \"unrealised_gain\": _sum(portfolios, \"unrealised_gain\"),\n    }\n    alloc = {}\n    for p in portfolios:\n        for c, v in (p.get(\"allocation\") or {}).items():\n            alloc[c] = round(alloc.get(c, 0.0) + v, 2)\n    alloc_total = sum(alloc.values())\n    alloc_rows = [(c, alloc[c], alloc[c] / alloc_total * 100 if alloc_total else 0.0) for c in CLASSES if alloc.get(c)]\n    dates = sorted({p[\"as_at\"] for p in portfolios if p.get(\"as_at\")})\n    as_at = _d(dates[-1]) if len(dates) == 1 else (_d(dates[0]) + \" to \" + _d(dates[-1]) if dates else \"not stated\")\n    movement = None\n    if totals[\"opening_value\"] and totals[\"closing_value_with_opening\"] is not None:\n        movement = round(totals[\"closing_value_with_opening\"] - totals[\"opening_value\"], 2)\n\n    brief = {\n        \"totals\": totals, \"movement_of_portfolios_with_opening\": movement, \"allocation\": alloc,\n        \"valuation_dates\": dates,\n        \"portfolios\": [{k: p.get(k) for k in (\"entity\", \"entity_type\", \"provider\", \"as_at\", \"opening_value\",\n                        \"closing_value\", \"net_contributions\", \"income\", \"fees\", \"realised_gain\", \"unrealised_gain\",\n                        \"allocation\", \"top_holdings\", \"actions\", \"notes\")} | {\"return_pct\": _ret(p)} for p in portfolios],\n    }\n    try:\n        c = api.ai.extract(prompt=COMMENT_PROMPT, input=json.dumps(brief)[:28000], schema_hint=COMMENT_SHAPE)\n    except Exception as exc:\n        c = {\"overview\": \"The AI review couldn't be written this run (\" + str(exc)[:150] + \"); the figures below are complete.\",\n             \"watch\": [], \"actions\": []}\n    c = c if isinstance(c, dict) else {}\n    overview = str(c.get(\"overview\") or \"\").strip()\n    watch = [str(x) for x in (c.get(\"watch\") or []) if str(x).strip()][:6]\n    actions = [str(x) for x in (c.get(\"actions\") or []) if str(x).strip()][:8]\n\n    title = \"Combined Investment Report\"\n    head_rows = [\n        (\"Portfolios\", str(len(portfolios))),\n        (\"Combined value\", _money(total_value)),\n        (\"Valuation date\", as_at),\n        (\"Opening value (\" + str(len(with_open)) + \" with one)\", _money(totals[\"opening_value\"])),\n        (\"Net contributions\", _money(totals[\"net_contributions\"])),\n        (\"Income\", _money(totals[\"income\"])),\n        (\"Franking credits\", _money(totals[\"franking_credits\"])),\n        (\"Fees\", _money(totals[\"fees\"])),\n        (\"Realised gains\", _money(totals[\"realised_gain\"])),\n        (\"Unrealised gains\", _money(totals[\"unrealised_gain\"])),\n    ]\n    pf_head = [\"Portfolio\", \"Type\", \"Provider\", \"As at\", \"Value\", \"Share\", \"Return\", \"Income\"]\n    pf_rows = [[p[\"entity\"], p.get(\"entity_type\") or \"\", p.get(\"provider\") or \"\", _d(p.get(\"as_at\")) or \"-\",\n                _money(p[\"closing_value\"]), _pct(p[\"closing_value\"] / total_value * 100 if total_value else None),\n                _pct(_ret(p)), _money(p.get(\"income\"))] for p in portfolios]\n    al_head = [\"Asset class\", \"Value\", \"Weight\"]\n    al_rows = [[c, _money(v), _pct(w)] for c, v, w in alloc_rows]\n    src_rows = [[p[\"file\"], p[\"entity\"]] for p in portfolios]\n\n    # Markdown\n    def md_table(head, rows):\n        esc = lambda s: str(s).replace(\"|\", \"/\")\n        return \"\\n\".join([\"| \" + \" | \".join(head) + \" |\", \"|\" + \"---|\" * len(head)] +\n                         [\"| \" + \" | \".join(esc(x) for x in r) + \" |\" for r in rows])\n\n    md = [\"# \" + title, \"\", \"Prepared \" + stamp + \" from \" + str(len(portfolios)) + \" investment summaries in \" + folder + \".\", \"\"]\n    if overview:\n        md += [\"## Overview\", \"\", overview, \"\"]\n    md += [\"## Totals\", \"\", md_table([\"Item\", \"Amount\"], [list(r) for r in head_rows]), \"\"]\n    md += [\"## Portfolios\", \"\", md_table(pf_head, pf_rows), \"\"]\n    if al_rows:\n        md += [\"## Combined asset allocation\", \"\", md_table(al_head, al_rows), \"\"]\n    if watch:\n        md += [\"## Points to watch\", \"\"] + [\"- \" + w for w in watch] + [\"\"]\n    if actions:\n        md += [\"## Actions\", \"\"] + [\"- \" + a for a in actions] + [\"\"]\n    md += [\"## Source files\", \"\", md_table([\"File\", \"Portfolio\"], src_rows), \"\"]\n    if skipped:\n        md += [\"## Not included\", \"\"] + [\"- \" + str(s.get(\"file\")) + \": \" + str(s.get(\"reason\")) for s in skipped] + [\"\"]\n    md += [\"_Figures are taken from each summary as written; AI wrote the overview, points to watch and actions. \"\n           \"Check against the source files before relying on them. Not financial advice._\"]\n    report_file = REPORT_DIR + title + \" \" + stamp + \".md\"\n    api.files.put(file=report_file, content=\"\\n\".join(md) + \"\\n\")\n\n    # Word\n    doc = Document()\n    doc.styles[\"Normal\"].font.size = Pt(10)\n    doc.add_heading(title, level=0)\n    doc.add_paragraph(\"Prepared \" + stamp + \" from \" + str(len(portfolios)) + \" investment summaries in \" + folder + \".\")\n\n    def word_table(head, rows):\n        t = doc.add_table(rows=1, cols=len(head))\n        t.style = \"Table Grid\"\n        for i, h in enumerate(head):\n            t.rows[0].cells[i].text = h\n            for run in t.rows[0].cells[i].paragraphs[0].runs:\n                run.bold = True\n        for r in rows:\n            cells = t.add_row().cells\n            for i, v in enumerate(r):\n                cells[i].text = str(v)\n\n    if overview:\n        doc.add_heading(\"Overview\", level=1)\n        doc.add_paragraph(overview)\n    doc.add_heading(\"Totals\", level=1)\n    word_table([\"Item\", \"Amount\"], [list(r) for r in head_rows])\n    doc.add_heading(\"Portfolios\", level=1)\n    word_table(pf_head, pf_rows)\n    if al_rows:\n        doc.add_heading(\"Combined asset allocation\", level=1)\n        word_table(al_head, al_rows)\n    if watch:\n        doc.add_heading(\"Points to watch\", level=1)\n        for w in watch:\n            doc.add_paragraph(w, style=\"List Bullet\")\n    if actions:\n        doc.add_heading(\"Actions\", level=1)\n        for a in actions:\n            doc.add_paragraph(a, style=\"List Bullet\")\n    doc.add_heading(\"Source files\", level=1)\n    word_table([\"File\", \"Portfolio\"], src_rows)\n    if skipped:\n        doc.add_heading(\"Not included\", level=1)\n        for s in skipped:\n            doc.add_paragraph(str(s.get(\"file\")) + \": \" + str(s.get(\"reason\")), style=\"List Bullet\")\n    doc.add_paragraph(\"Figures are taken from each summary as written; AI wrote the overview, points to watch and \"\n                      \"actions. Check against the source files before relying on them. Not financial advice.\").runs[0].italic = True\n    path = api.files.scratch_path(\"report.docx\")\n    doc.save(path)\n    word_file = REPORT_DIR + title + \" \" + stamp + \".docx\"\n    api.files.put(file=word_file, scratch_file=path)\n\n    summary = (\"Combined \" + str(len(portfolios)) + \" portfolios worth \" + _money(total_value) + \" (\" + as_at + \"). Saved \"\n               + word_file + \" and \" + report_file + \".\" + (\" Skipped \" + str(len(skipped)) + \" file(s).\" if skipped else \"\"))",
+        "id": "write_report",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The Markdown report in Knowledge.",
+            "name": "report_file",
+            "type": "str"
+          },
+          {
+            "description": "The Word report in Knowledge.",
+            "name": "word_file",
+            "type": "str"
+          },
+          {
+            "description": "The combined value of all portfolios.",
+            "name": "total_value",
+            "type": "float"
+          },
+          {
+            "description": "What this run did.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.read_summaries.outputs.portfolios }}",
+            "control": "hidden",
+            "label": "Portfolios",
+            "name": "portfolios",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.read_summaries.outputs.skipped }}",
+            "control": "hidden",
+            "label": "Skipped files",
+            "name": "skipped",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.read_summaries.outputs.folder_name }}",
+            "control": "hidden",
+            "label": "Folder",
+            "name": "folder_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.read_summaries.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Adds the portfolios up (value, income, fees, gains, combined asset allocation), has AI write a short overview with points to watch and actions, and saves the report to Knowledge as Investments/Reports/Combined Investment Report <date>.docx and .md.",
+        "title": "Write the combined report"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "The SharePoint folder that holds the investment summaries: open it in SharePoint, then Share → Copy link.",
+        "label": "SharePoint folder link",
+        "name": "folder_link",
+        "required": true,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "read_summaries",
+      "write_report"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Investments: Combined report from SharePoint",
+  "originKey": "a7c3e9d1-4b2f-4e6a-8d5c-1f9b0e2a7c64",
+  "tags": [
+    "investments",
+    "sharepoint",
+    "report"
+  ]
+}
