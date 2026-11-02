@@ -429,8 +429,22 @@
           "variant": "bordered"
         },
         "children": [
-          "tabRow"
+          "tabRow",
+          "tabLine"
         ]
+      },
+      "tabLine": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "info"
+        },
+        "visible": {
+          "$item": "accountId",
+          "eq": {
+            "$state": "/ui/bbd/selectedId"
+          }
+        }
       },
       "tabRow": {
         "type": "Row",
@@ -451,7 +465,17 @@
             "$item": "name"
           },
           "weight": "medium",
-          "truncate": true
+          "truncate": true,
+          "tone": {
+            "$cond": {
+              "$item": "accountId",
+              "eq": {
+                "$state": "/ui/bbd/selectedId"
+              }
+            },
+            "$then": "default",
+            "$else": "muted"
+          }
         }
       },
       "tabBadge": {
@@ -501,7 +525,7 @@
       "prevPill": {
         "type": "Badge",
         "props": {
-          "text": "Prev business day",
+          "text": "PREV BUSINESS DAY",
           "tone": "warning",
           "variant": "soft"
         }
@@ -547,7 +571,7 @@
       "todayPill": {
         "type": "Badge",
         "props": {
-          "text": "Today",
+          "text": "TODAY",
           "tone": "info",
           "variant": "soft"
         }
@@ -572,41 +596,76 @@
       "difference": {
         "type": "Section",
         "props": {
-          "variant": "bordered"
+          "variant": "muted"
         },
         "children": [
+          "diffStack"
+        ]
+      },
+      "diffStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "diffLabel",
           "diffRow"
         ]
+      },
+      "diffLabel": {
+        "type": "Badge",
+        "props": {
+          "text": "DIFFERENCE",
+          "tone": {
+            "$state": "/ui/bbd/view/0/tone"
+          },
+          "variant": "soft"
+        }
       },
       "diffRow": {
         "type": "Row",
         "props": {
           "gap": "sm",
           "align": "center",
-          "justify": "between"
+          "justify": "center"
         },
         "children": [
-          "diffLabel",
-          "diffBadge"
+          "diffIcon",
+          "diffValue"
         ]
       },
-      "diffLabel": {
+      "diffIcon": {
         "type": "Text",
         "props": {
-          "text": "Difference",
-          "weight": "medium"
-        }
-      },
-      "diffBadge": {
-        "type": "Badge",
-        "props": {
           "text": {
-            "$state": "/ui/bbd/view/0/badgeText"
+            "$cond": {
+              "$state": "/ui/bbd/view/0/direction",
+              "eq": "up"
+            },
+            "$then": "▲",
+            "$else": {
+              "$cond": {
+                "$state": "/ui/bbd/view/0/direction",
+                "eq": "down"
+              },
+              "$then": "▼",
+              "$else": "–"
+            }
           },
+          "size": "sm",
+          "weight": "medium",
           "tone": {
             "$state": "/ui/bbd/view/0/tone"
-          },
-          "variant": "soft"
+          }
+        }
+      },
+      "diffValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/bbd/view/0/differenceText"
+          }
         }
       },
       "why": {
@@ -637,7 +696,15 @@
         "type": "Eyebrow",
         "props": {
           "text": {
-            "$state": "/ui/bbd/view/0/whyTitle"
+            "$cond": {
+              "$state": "/ui/bbd/view/0/whyHeading"
+            },
+            "$then": {
+              "$state": "/ui/bbd/view/0/whyHeading"
+            },
+            "$else": {
+              "$state": "/ui/bbd/view/0/whyTitle"
+            }
           }
         }
       },
@@ -678,7 +745,7 @@
       "colHeads": {
         "type": "Row",
         "props": {
-          "template": "6rem 1fr auto",
+          "template": "7.5rem 1fr auto",
           "gap": "sm",
           "align": "center"
         },
@@ -733,8 +800,10 @@
         }
       },
       "hCodeText": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "weight": "medium",
           "text": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
@@ -745,10 +814,10 @@
                 "$state": "/ui/bbd/sortDir",
                 "eq": "desc"
               },
-              "$then": "Acc code ↓ Z–A",
-              "$else": "Acc code ↑ A–Z"
+              "$then": "ACC CODE ↓ Z–A",
+              "$else": "ACC CODE ↑ A–Z"
             },
-            "$else": "Acc code ↕"
+            "$else": "ACC CODE ↕"
           },
           "tone": {
             "$cond": {
@@ -805,8 +874,10 @@
         }
       },
       "hContactText": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "weight": "medium",
           "text": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
@@ -817,10 +888,10 @@
                 "$state": "/ui/bbd/sortDir",
                 "eq": "desc"
               },
-              "$then": "Contact ↓ Z–A",
-              "$else": "Contact ↑ A–Z"
+              "$then": "CONTACT ↓ Z–A",
+              "$else": "CONTACT ↑ A–Z"
             },
-            "$else": "Contact ↕"
+            "$else": "CONTACT ↕"
           },
           "tone": {
             "$cond": {
@@ -878,8 +949,10 @@
         }
       },
       "hAmountText": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "weight": "medium",
           "text": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
@@ -890,10 +963,10 @@
                 "$state": "/ui/bbd/sortDir",
                 "eq": "desc"
               },
-              "$then": "Amount ↓ high–low",
-              "$else": "Amount ↑ low–high"
+              "$then": "AMOUNT ↓ HIGH–LOW",
+              "$else": "AMOUNT ↑ LOW–HIGH"
             },
-            "$else": "Amount ↕"
+            "$else": "AMOUNT ↕"
           },
           "tone": {
             "$cond": {
@@ -924,7 +997,7 @@
       "txnRow": {
         "type": "Row",
         "props": {
-          "template": "6rem 1fr auto",
+          "template": "7.5rem 1fr auto",
           "gap": "sm",
           "align": "start",
           "clickable": true,
@@ -1024,21 +1097,14 @@
       "totalRow": {
         "type": "Row",
         "props": {
-          "template": "6rem 1fr auto",
           "gap": "sm",
-          "align": "center"
+          "align": "center",
+          "justify": "between"
         },
         "children": [
-          "totalSpacer",
           "totalLabel",
           "totalValue"
         ]
-      },
-      "totalSpacer": {
-        "type": "Text",
-        "props": {
-          "text": ""
-        }
       },
       "totalLabel": {
         "type": "Text",
