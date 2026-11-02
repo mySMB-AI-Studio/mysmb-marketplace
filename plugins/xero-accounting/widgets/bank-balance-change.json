@@ -429,20 +429,25 @@
       "tabBox": {
         "type": "Section",
         "props": {
-          "variant": {
-            "$cond": {
-              "$item": "accountId",
-              "eq": {
-                "$state": "/ui/bbd/selectedId"
-              }
-            },
-            "$then": "muted",
-            "$else": "bordered"
-          }
+          "variant": "bordered"
         },
         "children": [
-          "tabRow"
+          "tabRow",
+          "tabLine"
         ]
+      },
+      "tabLine": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "brand"
+        },
+        "visible": {
+          "$item": "accountId",
+          "eq": {
+            "$state": "/ui/bbd/selectedId"
+          }
+        }
       },
       "tabRow": {
         "type": "Row",
