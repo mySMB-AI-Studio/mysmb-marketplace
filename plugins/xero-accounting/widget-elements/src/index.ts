@@ -1893,15 +1893,146 @@ const fee_reimbursement_account_tax_type: ComputedFunction = (args) => {
  * call list_accounts twice with different `where` filters from one widget
  * (a tool's result is keyed by mcp+tool only, so a second call would
  * silently overwrite the first). One fetch, filtered twice client-side.
- * Args: { accounts, types: string[] }
+ *
+ * `valueField` defaults to "Code" (chart-of-accounts selectors, e.g. an
+ * expense account code other tools take as `accountCode`). Pass "AccountID"
+ * for BANK accounts: Xero bank accounts routinely have no Code at all, and
+ * the batch-payment API needs the account's AccountID, not its Code.
+ * Args: { accounts, types: string[], valueField?: "Code" | "AccountID" }
  */
 const account_options_by_type: ComputedFunction = (args) => {
   const accounts = Array.isArray(args.accounts) ? (args.accounts as Record<string, unknown>[]) : [];
   const types = new Set((Array.isArray(args.types) ? (args.types as unknown[]) : []).map((t) => String(t)));
+  const valueField = args.valueField === 'AccountID' ? 'AccountID' : 'Code';
   return accounts
     .filter((a) => types.has(String(a.Type ?? '')))
-    .map((a) => ({ value: String(a.Code ?? ''), label: String(a.Name ?? '') }))
+    .map((a) => ({ value: String(a[valueField] ?? ''), label: String(a.Name ?? '') }))
     .filter((o) => o.value);
+};
+
+// Compares get_expense_reimbursement_batches' grandTotal (sum of the
+// reimbursement-line amounts this tile grouped, coded to the nominated
+// account) against get_account_movement's movement for that SAME account --
+// a real binary-ish status (TILE-DISPLAY-STANDARDS.md §7's restraint model
+// applies): "success" when they match within a cent, meaning nothing else
+// posted to this account outside the bills we found; "destructive" for a
+// real mismatch (something else hit the account, or a bill we don't know
+// about); "muted" only when the account itself couldn't be matched on the
+// balance sheet at all.
+interface ExpenseReimbursementStatusArgs {
+  grandTotal?: unknown;
+  currentDebit?: unknown;
+  currentCredit?: unknown;
+  priorDebit?: unknown;
+  priorCredit?: unknown;
+  accountFound?: unknown;
+  accountName?: unknown;
+}
+
+/**
+ * get_account_movement's own `movement` field is Credit - Debit -- the right
+ * convention for the liability account Provision Journal Drafts reconciles
+ * against, but backwards for an EXPENSE account: expenses are debit-normal,
+ * so a bill posting $X to Cleaning raises its balance via a DEBIT, which
+ * Credit - Debit reports as -$X. Recomputed here from the tool's raw
+ * debit/credit components (Debit - Credit) instead of trusting `movement`,
+ * so a reimbursement bill shows the ledger moving the same direction the
+ * grouped-from-bills total does.
+ */
+const expense_reimbursement_status: ComputedFunction = (args: ExpenseReimbursementStatusArgs) => {
+  const grandTotal = Math.round((Number(args.grandTotal) || 0) * 100) / 100;
+  const currentBalance = (Number(args.currentDebit) || 0) - (Number(args.currentCredit) || 0);
+  const priorBalance = (Number(args.priorDebit) || 0) - (Number(args.priorCredit) || 0);
+  const movement = Math.round((currentBalance - priorBalance) * 100) / 100;
+  const accountFound = Boolean(args.accountFound);
+  const accountName = typeof args.accountName === 'string' ? args.accountName : null;
+  const difference = Math.round((movement - grandTotal) * 100) / 100;
+  const isMatch = accountFound && Math.abs(difference) < 0.01;
+
+  return {
+    accountName,
+    accountFound,
+    grandTotal,
+    movement,
+    difference,
+    matchLabel: !accountFound ? 'Account not found' : isMatch ? 'Reconciled' : 'Mismatch',
+    matchTone: !accountFound ? 'muted' : isMatch ? 'success' : 'destructive',
+  };
+};
+
+/**
+ * True when the batch-payment form is NOT ready to submit -- the
+ * reimbursement account, a bank account to pay from, and a date must all
+ * be set, and there must be at least one employee with bills to pay.
+ * Args: { reimbursementAccountCode, bankAccountId, date, employeeCount }
+ */
+const expense_reimbursement_is_invalid: ComputedFunction = (args) => {
+  const reimbursementAccountCode = String(args.reimbursementAccountCode ?? '').trim();
+  const bankAccountId = String(args.bankAccountId ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const employeeCount = Number(args.employeeCount) || 0;
+  return !reimbursementAccountCode || !bankAccountId || !date || employeeCount === 0;
+};
+
+/** Human-readable reason the batch-payment form can't submit yet, mirroring expense_reimbursement_is_invalid's checks in order. */
+const expense_reimbursement_validation_message: ComputedFunction = (args) => {
+  const reimbursementAccountCode = String(args.reimbursementAccountCode ?? '').trim();
+  const bankAccountId = String(args.bankAccountId ?? '').trim();
+  const date = String(args.date ?? '').trim();
+  const employeeCount = Number(args.employeeCount) || 0;
+  if (!reimbursementAccountCode) return 'Choose the reimbursement expense account';
+  if (employeeCount === 0) return 'No outstanding reimbursement bills found on that account';
+  if (!bankAccountId) return 'Choose the bank account to pay from';
+  if (!date) return 'Set the batch payment date';
+  return '';
+};
+
+interface ReimbursementBill {
+  invoiceId?: string;
+  amountDue?: number;
+  hasOtherCharges?: boolean;
+}
+interface ReimbursementEmployee {
+  contactName?: string;
+  bills?: ReimbursementBill[];
+  hasOtherCharges?: boolean;
+}
+
+/**
+ * Builds the raw Xero BatchPayment body create_batch_payment expects --
+ * one Payment per contributing bill, paying its real amountDue (the
+ * invoice's actual outstanding balance), NOT the narrower reimbursement
+ * line amount -- a batch payment pays off a whole invoice, not one line
+ * item, so using the line amount on a bill with other charges mixed in
+ * would short-pay it.
+ * Args: { employees, bankAccountId, date }
+ */
+const expense_reimbursement_build_batch_payment: ComputedFunction = (args) => {
+  const employees = Array.isArray(args.employees) ? (args.employees as ReimbursementEmployee[]) : [];
+  const date = String(args.date ?? '').trim();
+  const payments = employees.flatMap((e) =>
+    (e.bills ?? [])
+      .filter((b) => b.invoiceId)
+      .map((b) => ({ Invoice: { InvoiceID: b.invoiceId }, Amount: Math.round((Number(b.amountDue) || 0) * 100) / 100 })),
+  );
+  return {
+    Account: { AccountID: String(args.bankAccountId ?? '') },
+    ...(date ? { Date: date } : {}),
+    Payments: payments,
+  };
+};
+
+/**
+ * Names the employees whose reimbursement bill(s) mix in other charges
+ * (amountDue > the reimbursement line amount) so the confirm step can warn
+ * before batch-paying them -- empty string when nothing needs flagging.
+ * Args: { employees }
+ */
+const expense_reimbursement_other_charges_note: ComputedFunction = (args) => {
+  const employees = Array.isArray(args.employees) ? (args.employees as ReimbursementEmployee[]) : [];
+  const names = employees.filter((e) => e.hasOtherCharges).map((e) => e.contactName || 'Unknown contact');
+  if (names.length === 0) return '';
+  return `${names.join(', ')} ${names.length === 1 ? 'has a bill' : 'have bills'} with other charges mixed in -- the full bill amount will be paid, not just the reimbursement portion.`;
 };
 
 /**
@@ -2595,6 +2726,11 @@ const elements: PluginElementsModule = {
     leave_provision_validation_message,
     leave_provision_build_journal,
     account_options_by_type,
+    expense_reimbursement_status,
+    expense_reimbursement_is_invalid,
+    expense_reimbursement_validation_message,
+    expense_reimbursement_build_batch_payment,
+    expense_reimbursement_other_charges_note,
   },
 };
 
