@@ -1,16 +1,15 @@
 {
-  "category": "finance",
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "xero-accounting",
-    "params": {},
-    "tool": "get_xero_bank_balance_difference"
-  },
-  "description": "Each Xero bank balance with the change since the previous business day (Friday on a Monday) — green when up, red when down — and the transactions behind it. Click an account to see why it changed.",
   "id": "xero-bank-balance-difference",
+  "title": "Bank Balance Change",
+  "description": "Each Xero bank account's balance on the previous business day (Friday on a Monday) next to today's, the difference (green when up, red when down), and the transactions behind it with account code, contact and amount. Click a column heading to sort; switch accounts with the tabs.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "bank",
+    "accounts",
+    "cash",
+    "finance"
+  ],
   "keywords": [
     "bank",
     "cash",
@@ -22,100 +21,70 @@
     "previous day",
     "daily",
     "transactions",
-    "accounts"
+    "accounts",
+    "account code",
+    "sort",
+    "reconcile"
   ],
-  "pluginIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 12,
-      "rowSpan": 14
-    },
-    "min": {
-      "colSpan": 6,
-      "rowSpan": 6
-    },
     "preferred": {
       "colSpan": 6,
-      "rowSpan": 9
+      "rowSpan": 11
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 8
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 16
     }
   },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {},
+    "tool": "get_xero_bank_balance_difference"
+  },
   "spec": {
+    "root": "card",
     "elements": {
-      "allAccounts": {
-        "children": [
-          "allRow"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section"
-      },
-      "allBadge": {
-        "props": {
-          "text": {
-            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/totalBadgeText"
-          },
-          "tone": {
-            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/totalTone"
-          },
-          "variant": "soft"
-        },
-        "type": "Badge"
-      },
-      "allCaption": {
-        "props": {
-          "text": {
-            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/allAccountsCaption"
-          }
-        },
-        "type": "Caption"
-      },
-      "allLabel": {
-        "children": [
-          "allTitle",
-          "allCaption"
-        ],
-        "props": {
-          "align": "baseline",
-          "gap": "xs"
-        },
-        "type": "Row"
-      },
-      "allRow": {
-        "children": [
-          "allLabel",
-          "allBadge"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "allTitle": {
-        "props": {
-          "text": "All accounts",
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "body": {
-        "children": [
-          "loading",
-          "empty",
-          "content"
-        ],
-        "type": "Body"
-      },
       "card": {
+        "type": "Card",
         "children": [
           "header",
           "body"
         ],
-        "type": "Card",
         "watch": {
+          "/xero-accounting/get_xero_bank_balance_difference/defaultAccountId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/selectedId",
+                "value": {
+                  "$state": "/xero-accounting/get_xero_bank_balance_difference/defaultAccountId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortField",
+                "value": "contact"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortDir",
+                "value": "asc"
+              }
+            }
+          ],
           "/ui/bbd/selectedId": {
             "action": "setState",
             "params": {
@@ -152,85 +121,218 @@
               }
             }
           },
-          "/xero-accounting/get_xero_bank_balance_difference/defaultAccountId": {
+          "/ui/bbd/view": {
             "action": "setState",
             "params": {
-              "statePath": "/ui/bbd/selectedId",
+              "statePath": "/ui/bbd/rows",
               "value": {
-                "$state": "/xero-accounting/get_xero_bank_balance_difference/defaultAccountId"
+                "$computed": "sort_by_priority",
+                "args": {
+                  "value": {
+                    "$state": "/ui/bbd/view/0/transactions"
+                  },
+                  "by": [
+                    {
+                      "field": {
+                        "$state": "/ui/bbd/sortField"
+                      },
+                      "direction": {
+                        "$state": "/ui/bbd/sortDir"
+                      }
+                    },
+                    {
+                      "field": "contact"
+                    },
+                    {
+                      "field": "amount"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "/ui/bbd/sortField": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbd/rows",
+              "value": {
+                "$computed": "sort_by_priority",
+                "args": {
+                  "value": {
+                    "$state": "/ui/bbd/view/0/transactions"
+                  },
+                  "by": [
+                    {
+                      "field": {
+                        "$state": "/ui/bbd/sortField"
+                      },
+                      "direction": {
+                        "$state": "/ui/bbd/sortDir"
+                      }
+                    },
+                    {
+                      "field": "contact"
+                    },
+                    {
+                      "field": "amount"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "/ui/bbd/sortDir": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbd/rows",
+              "value": {
+                "$computed": "sort_by_priority",
+                "args": {
+                  "value": {
+                    "$state": "/ui/bbd/view/0/transactions"
+                  },
+                  "by": [
+                    {
+                      "field": {
+                        "$state": "/ui/bbd/sortField"
+                      },
+                      "direction": {
+                        "$state": "/ui/bbd/sortDir"
+                      }
+                    },
+                    {
+                      "field": "contact"
+                    },
+                    {
+                      "field": "amount"
+                    }
+                  ]
+                }
               }
             }
           }
         }
       },
-      "closing": {
+      "header": {
+        "type": "Header",
         "children": [
-          "closingLabel",
-          "closingValue"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
+          "titleGroup"
+        ]
       },
-      "closingLabel": {
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Landmark",
+          "size": "sm",
+          "tone": "accent"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "subtitle"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": "Bank Balance Change"
+        }
+      },
+      "subtitle": {
+        "type": "Caption",
         "props": {
           "text": {
-            "$state": "/ui/bbd/view/0/closingLabel"
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/subtitle"
           }
         },
-        "type": "Text"
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+          "not": true
+        }
       },
-      "closingValue": {
-        "props": {
-          "text": {
-            "$state": "/ui/bbd/view/0/previousBalanceText"
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "content": {
+      "body": {
+        "type": "Body",
         "children": [
-          "allAccounts",
-          "tiles",
-          "divider1",
-          "why",
-          "divider3",
-          "footer"
-        ],
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
         "props": {
           "gap": "md"
         },
-        "type": "Stack",
+        "children": [
+          "sTabs",
+          "sBalances",
+          "sList"
+        ],
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
-              "not": true
-            },
-            {
-              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0"
-            }
-          ]
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference"
         }
       },
-      "divider1": {
-        "type": "Divider"
+      "sTabs": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
       },
-      "divider2": {
-        "type": "Divider"
+      "sBalances": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "children": [
+          "s1",
+          "s2"
+        ]
       },
-      "divider3": {
-        "type": "Divider"
+      "s1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "s2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sList": {
+        "type": "Skeleton",
+        "props": {
+          "height": "10rem",
+          "rounded": "md"
+        }
       },
       "empty": {
+        "type": "Empty",
         "props": {
           "message": "No bank accounts configured in Xero."
         },
-        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -244,253 +346,63 @@
           ]
         }
       },
-      "eyebrow": {
+      "content": {
+        "type": "Stack",
         "props": {
-          "text": {
-            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/eyebrow"
-          }
+          "gap": "md"
         },
-        "type": "Eyebrow",
+        "children": [
+          "tabs",
+          "balances",
+          "difference",
+          "why",
+          "divider2",
+          "footer"
+        ],
         "visible": {
-          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
-          "not": true
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0"
+            }
+          ]
         }
       },
-      "footer": {
-        "children": [
-          "footerText",
-          "footerOpen"
-        ],
+      "tabs": {
+        "type": "Grid",
         "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
+          "cols": 2,
+          "gap": "sm"
         },
-        "type": "Row"
-      },
-      "footerOpen": {
+        "repeat": {
+          "statePath": "/xero-accounting/get_xero_bank_balance_difference/accounts",
+          "key": "accountId"
+        },
         "children": [
-          "footerOpenText",
-          "footerOpenIcon"
-        ],
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "target": "_blank",
-              "url": {
-                "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/xeroUrl"
+          "tab"
+        ]
+      },
+      "tab": {
+        "type": "Row",
+        "props": {
+          "template": "1fr",
+          "clickable": true,
+          "hover": true,
+          "selected": {
+            "$computed": "equals",
+            "args": {
+              "a": {
+                "$item": "accountId"
+              },
+              "b": {
+                "$state": "/ui/bbd/selectedId"
               }
             }
           }
         },
-        "props": {
-          "align": "center",
-          "clickable": true,
-          "gap": "xs",
-          "hover": true
-        },
-        "type": "Row"
-      },
-      "footerOpenIcon": {
-        "props": {
-          "name": "ArrowRight",
-          "size": "sm"
-        },
-        "type": "Icon"
-      },
-      "footerOpenText": {
-        "props": {
-          "text": "Open in Xero",
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "footerText": {
-        "props": {
-          "text": {
-            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/updatedText"
-          }
-        },
-        "type": "Caption"
-      },
-      "header": {
-        "children": [
-          "titleGroup"
-        ],
-        "type": "Header"
-      },
-      "loading": {
-        "children": [
-          "sAll",
-          "loadingGrid",
-          "sList"
-        ],
-        "props": {
-          "gap": "md"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference"
-        }
-      },
-      "loadingGrid": {
-        "children": [
-          "s1",
-          "s2"
-        ],
-        "props": {
-          "cols": 2,
-          "gap": "md"
-        },
-        "type": "Grid"
-      },
-      "moneyIn": {
-        "children": [
-          "moneyInLabel",
-          "moneyInValue"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "moneyInLabel": {
-        "props": {
-          "text": "Money in"
-        },
-        "type": "Text"
-      },
-      "moneyInValue": {
-        "props": {
-          "text": {
-            "$state": "/ui/bbd/view/0/moneyInText"
-          },
-          "tone": {
-            "$cond": {
-              "$state": "/ui/bbd/view/0/moneyInText",
-              "eq": "A$0.00"
-            },
-            "$else": "success",
-            "$then": "muted"
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "moneyOut": {
-        "children": [
-          "moneyOutLabel",
-          "moneyOutValue"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "moneyOutLabel": {
-        "props": {
-          "text": "Money out"
-        },
-        "type": "Text"
-      },
-      "moneyOutValue": {
-        "props": {
-          "text": {
-            "$state": "/ui/bbd/view/0/moneyOutText"
-          },
-          "tone": {
-            "$cond": {
-              "$state": "/ui/bbd/view/0/moneyOutText",
-              "eq": "A$0.00"
-            },
-            "$else": "destructive",
-            "$then": "muted"
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "now": {
-        "children": [
-          "nowLabel",
-          "nowValue"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "nowLabel": {
-        "props": {
-          "text": "Balance now",
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "nowValue": {
-        "props": {
-          "text": {
-            "$state": "/ui/bbd/view/0/balanceText"
-          },
-          "weight": "medium"
-        },
-        "type": "Text"
-      },
-      "recon": {
-        "children": [
-          "closing",
-          "moneyIn",
-          "moneyOut",
-          "reconDivider",
-          "now"
-        ],
-        "props": {
-          "gap": "xs"
-        },
-        "type": "Stack"
-      },
-      "reconDivider": {
-        "type": "Divider"
-      },
-      "s1": {
-        "props": {
-          "height": "6rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "s2": {
-        "props": {
-          "height": "6rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "sAll": {
-        "props": {
-          "height": "2.5rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "sList": {
-        "props": {
-          "height": "10rem",
-          "rounded": "md"
-        },
-        "type": "Skeleton"
-      },
-      "tile": {
-        "children": [
-          "tileBox"
-        ],
         "on": {
           "click": {
             "action": "setState",
@@ -507,25 +419,43 @@
             }
           }
         },
-        "props": {
-          "clickable": true,
-          "hover": true,
-          "selected": {
-            "$computed": "equals",
-            "args": {
-              "a": {
-                "$item": "accountId"
-              },
-              "b": {
-                "$state": "/ui/bbd/selectedId"
-              }
-            }
-          },
-          "template": "1fr"
-        },
-        "type": "Row"
+        "children": [
+          "tabBox"
+        ]
       },
-      "tileBadge": {
+      "tabBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "tabRow"
+        ]
+      },
+      "tabRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "tabName",
+          "tabBadge"
+        ]
+      },
+      "tabName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "tabBadge": {
+        "type": "Badge",
         "props": {
           "text": {
             "$item": "badgeText"
@@ -534,184 +464,472 @@
             "$item": "tone"
           },
           "variant": "soft"
-        },
-        "type": "Badge"
+        }
       },
-      "tileBadgeRow": {
-        "children": [
-          "tileBadge"
-        ],
+      "balances": {
+        "type": "Grid",
         "props": {
-          "gap": "xs"
+          "cols": 2,
+          "gap": "sm"
         },
-        "type": "Row"
+        "children": [
+          "prevBox",
+          "todayBox"
+        ]
       },
-      "tileBalance": {
+      "prevBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "prevStack"
+        ]
+      },
+      "prevStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "prevPill",
+          "prevValue",
+          "prevDate"
+        ]
+      },
+      "prevPill": {
+        "type": "Badge",
+        "props": {
+          "text": "Prev business day",
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "prevValue": {
+        "type": "Stat",
         "props": {
           "size": "sm",
           "value": {
-            "$item": "balanceText"
+            "$state": "/ui/bbd/view/0/previousBalanceText"
           }
-        },
-        "type": "Stat"
+        }
       },
-      "tileBox": {
+      "prevDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/previousDayText"
+          }
+        }
+      },
+      "todayBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
         "children": [
-          "tileHeader",
-          "tileBalance",
-          "tileBadgeRow",
-          "tileWas"
-        ],
+          "todayStack"
+        ]
+      },
+      "todayStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "todayPill",
+          "todayValue",
+          "todayDate"
+        ]
+      },
+      "todayPill": {
+        "type": "Badge",
+        "props": {
+          "text": "Today",
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "todayValue": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/bbd/view/0/balanceText"
+          }
+        }
+      },
+      "todayDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/todayText"
+          }
+        }
+      },
+      "difference": {
+        "type": "Section",
         "props": {
           "variant": "bordered"
         },
-        "type": "Section"
-      },
-      "tileHeader": {
         "children": [
-          "tileIcon",
-          "tileName"
-        ],
+          "diffRow"
+        ]
+      },
+      "diffRow": {
+        "type": "Row",
         "props": {
+          "gap": "sm",
           "align": "center",
-          "gap": "sm"
+          "justify": "between"
         },
-        "type": "Row"
+        "children": [
+          "diffLabel",
+          "diffBadge"
+        ]
       },
-      "tileIcon": {
+      "diffLabel": {
+        "type": "Text",
         "props": {
-          "name": "Banknote",
-          "size": "sm",
-          "tone": "success"
-        },
-        "type": "Icon"
-      },
-      "tileName": {
-        "props": {
-          "text": {
-            "$item": "name"
-          },
-          "truncate": true,
+          "text": "Difference",
           "weight": "medium"
-        },
-        "type": "Text"
+        }
       },
-      "tileWas": {
+      "diffBadge": {
+        "type": "Badge",
         "props": {
           "text": {
-            "$item": "wasText"
-          }
-        },
-        "type": "Caption"
-      },
-      "tiles": {
-        "children": [
-          "tile"
-        ],
-        "props": {
-          "cols": 2,
-          "gap": "md"
-        },
-        "repeat": {
-          "key": "accountId",
-          "statePath": "/xero-accounting/get_xero_bank_balance_difference/accounts"
-        },
-        "type": "Grid"
-      },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "Bank Balance Change"
-        },
-        "type": "Heading"
-      },
-      "titleGroup": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
-        "props": {
-          "align": "start",
-          "gap": "sm"
-        },
-        "type": "Row"
-      },
-      "titleIcon": {
-        "props": {
-          "name": "Landmark",
-          "size": "sm",
-          "tone": "accent"
-        },
-        "type": "Icon"
-      },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
-      },
-      "txnAmount": {
-        "props": {
-          "text": {
-            "$item": "amountText"
+            "$state": "/ui/bbd/view/0/badgeText"
           },
           "tone": {
-            "$item": "tone"
+            "$state": "/ui/bbd/view/0/tone"
           },
-          "weight": "medium"
+          "variant": "soft"
+        }
+      },
+      "why": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
         },
-        "type": "Text"
+        "children": [
+          "whyHeader",
+          "txnEmpty",
+          "txnTable",
+          "check"
+        ]
+      },
+      "whyHeader": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "whyTitle",
+          "whyCount"
+        ]
+      },
+      "whyTitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/whyTitle"
+          }
+        }
+      },
+      "whyCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/transactionCountText"
+          }
+        }
       },
       "txnEmpty": {
+        "type": "Empty",
         "props": {
           "message": "No transactions since the previous business day."
         },
-        "type": "Empty",
         "visible": {
           "$state": "/ui/bbd/view/0/transactions/0",
           "not": true
         }
       },
-      "txnList": {
-        "children": [
-          "txnRow"
-        ],
+      "txnTable": {
+        "type": "Stack",
         "props": {
-          "gap": "none"
+          "gap": "xs"
+        },
+        "children": [
+          "colHeads",
+          "divider0",
+          "txnList",
+          "divider1",
+          "totalRow"
+        ],
+        "visible": {
+          "$state": "/ui/bbd/view/0/transactions/0"
+        }
+      },
+      "colHeads": {
+        "type": "Row",
+        "props": {
+          "template": "6rem 1fr auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hCode",
+          "hContact",
+          "hAmount"
+        ]
+      },
+      "hCode": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "clickable": true,
+          "hover": true
+        },
+        "children": [
+          "hCodeText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbd/sortField",
+                    "eq": "accountCode"
+                  },
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbd/sortDir",
+                      "eq": "asc"
+                    },
+                    "$then": "desc",
+                    "$else": "asc"
+                  },
+                  "$else": "asc"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortField",
+                "value": "accountCode"
+              }
+            }
+          ]
+        }
+      },
+      "hCodeText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbd/sortField",
+              "eq": "accountCode"
+            },
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbd/sortDir",
+                "eq": "desc"
+              },
+              "$then": "Acc code ↓ Z–A",
+              "$else": "Acc code ↑ A–Z"
+            },
+            "$else": "Acc code ↕"
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/sortField",
+              "eq": "accountCode"
+            },
+            "$then": "default",
+            "$else": "muted"
+          }
+        }
+      },
+      "hContact": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "clickable": true,
+          "hover": true
+        },
+        "children": [
+          "hContactText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbd/sortField",
+                    "eq": "contact"
+                  },
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbd/sortDir",
+                      "eq": "asc"
+                    },
+                    "$then": "desc",
+                    "$else": "asc"
+                  },
+                  "$else": "asc"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortField",
+                "value": "contact"
+              }
+            }
+          ]
+        }
+      },
+      "hContactText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbd/sortField",
+              "eq": "contact"
+            },
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbd/sortDir",
+                "eq": "desc"
+              },
+              "$then": "Contact ↓ Z–A",
+              "$else": "Contact ↑ A–Z"
+            },
+            "$else": "Contact ↕"
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/sortField",
+              "eq": "contact"
+            },
+            "$then": "default",
+            "$else": "muted"
+          }
+        }
+      },
+      "hAmount": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "clickable": true,
+          "hover": true,
+          "justify": "end"
+        },
+        "children": [
+          "hAmountText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbd/sortField",
+                    "eq": "amount"
+                  },
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbd/sortDir",
+                      "eq": "asc"
+                    },
+                    "$then": "desc",
+                    "$else": "asc"
+                  },
+                  "$else": "asc"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbd/sortField",
+                "value": "amount"
+              }
+            }
+          ]
+        }
+      },
+      "hAmountText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbd/sortField",
+              "eq": "amount"
+            },
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbd/sortDir",
+                "eq": "desc"
+              },
+              "$then": "Amount ↓ high–low",
+              "$else": "Amount ↑ low–high"
+            },
+            "$else": "Amount ↕"
+          },
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/sortField",
+              "eq": "amount"
+            },
+            "$then": "default",
+            "$else": "muted"
+          }
+        }
+      },
+      "divider0": {
+        "type": "Divider"
+      },
+      "txnList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
         },
         "repeat": {
-          "key": "id",
-          "statePath": "/ui/bbd/view/0/transactions"
+          "statePath": "/ui/bbd/rows",
+          "key": "id"
         },
-        "type": "Stack"
-      },
-      "txnMeta": {
-        "props": {
-          "text": {
-            "$item": "subtitle"
-          }
-        },
-        "type": "Caption"
-      },
-      "txnName": {
-        "props": {
-          "text": {
-            "$item": "title"
-          },
-          "truncate": true,
-          "weight": "medium"
-        },
-        "type": "Text"
+        "children": [
+          "txnRow"
+        ]
       },
       "txnRow": {
-        "children": [
-          "txnText",
-          "txnAmount"
-        ],
+        "type": "Row",
+        "props": {
+          "template": "6rem 1fr auto",
+          "gap": "sm",
+          "align": "start",
+          "clickable": true,
+          "hover": true
+        },
         "on": {
           "click": {
             "action": "open_url",
@@ -728,76 +946,216 @@
             }
           }
         },
+        "children": [
+          "cCode",
+          "cContact",
+          "cAmount"
+        ]
+      },
+      "cCode": {
+        "type": "Stack",
         "props": {
+          "gap": "none"
+        },
+        "children": [
+          "cCodeText",
+          "cCodeName"
+        ]
+      },
+      "cCodeText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "accountCode"
+          },
+          "weight": "medium"
+        }
+      },
+      "cCodeName": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "accountName"
+          }
+        }
+      },
+      "cContact": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "cContactText",
+          "cDetail"
+        ]
+      },
+      "cContactText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "contact"
+          },
+          "truncate": true
+        }
+      },
+      "cDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "detail"
+          }
+        }
+      },
+      "cAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountDisplay"
+          },
+          "tone": {
+            "$item": "amountTone"
+          },
+          "weight": "medium"
+        }
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "totalRow": {
+        "type": "Row",
+        "props": {
+          "template": "6rem 1fr auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "totalSpacer",
+          "totalLabel",
+          "totalValue"
+        ]
+      },
+      "totalSpacer": {
+        "type": "Text",
+        "props": {
+          "text": ""
+        }
+      },
+      "totalLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Total",
+          "weight": "medium"
+        }
+      },
+      "totalValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/totalText"
+          },
+          "weight": "medium",
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbd/view/0/direction",
+              "eq": "down"
+            },
+            "$then": "destructive",
+            "$else": "default"
+          }
+        }
+      },
+      "check": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "checkIcon",
+          "checkText"
+        ],
+        "visible": {
+          "$state": "/ui/bbd/view/0/transactions/0"
+        }
+      },
+      "checkIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CircleCheck",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "checkText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbd/view/0/checkText"
+          },
+          "tone": "success"
+        }
+      },
+      "divider2": {
+        "type": "Divider"
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerText",
+          "footerOpen"
+        ]
+      },
+      "footerText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/updatedText"
+          }
+        }
+      },
+      "footerOpen": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
           "align": "center",
           "clickable": true,
-          "gap": "sm",
-          "hover": true,
-          "justify": "between"
+          "hover": true
         },
-        "type": "Row"
-      },
-      "txnText": {
-        "children": [
-          "txnName",
-          "txnMeta"
-        ],
-        "props": {
-          "gap": "none",
-          "grow": true
-        },
-        "type": "Stack"
-      },
-      "why": {
-        "children": [
-          "whyHeader",
-          "txnEmpty",
-          "txnList",
-          "divider2",
-          "recon"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "type": "Stack"
-      },
-      "whyCount": {
-        "props": {
-          "text": {
-            "$state": "/ui/bbd/view/0/transactionCountText"
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/xero-accounting/get_xero_bank_balance_difference/summary/xeroUrl"
+              }
+            }
           }
         },
-        "type": "Caption"
-      },
-      "whyHeader": {
         "children": [
-          "whyTitle",
-          "whyCount"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
+          "footerOpenText",
+          "footerOpenIcon"
+        ]
       },
-      "whyTitle": {
+      "footerOpenText": {
+        "type": "Text",
         "props": {
-          "text": {
-            "$state": "/ui/bbd/view/0/whyTitle"
-          }
-        },
-        "type": "Eyebrow"
+          "text": "Open in Xero",
+          "weight": "medium"
+        }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "sm"
+        }
       }
-    },
-    "root": "card"
-  },
-  "tags": [
-    "xero",
-    "bank",
-    "accounts",
-    "cash",
-    "finance"
-  ],
-  "title": "Bank Balance Change"
+    }
+  }
 }
