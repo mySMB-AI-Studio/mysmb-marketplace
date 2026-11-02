@@ -636,24 +636,25 @@
         ]
       },
       "diffIcon": {
-        "type": "Icon",
+        "type": "Text",
         "props": {
-          "name": {
+          "text": {
             "$cond": {
               "$state": "/ui/bbd/view/0/direction",
               "eq": "up"
             },
-            "$then": "ArrowUp",
+            "$then": "▲",
             "$else": {
               "$cond": {
                 "$state": "/ui/bbd/view/0/direction",
                 "eq": "down"
               },
-              "$then": "ArrowDown",
-              "$else": "Minus"
+              "$then": "▼",
+              "$else": "–"
             }
           },
-          "size": "lg",
+          "size": "sm",
+          "weight": "medium",
           "tone": {
             "$state": "/ui/bbd/view/0/tone"
           }
