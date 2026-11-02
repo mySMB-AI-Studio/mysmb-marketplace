@@ -426,7 +426,16 @@
       "tabBox": {
         "type": "Section",
         "props": {
-          "variant": "bordered"
+          "variant": {
+            "$cond": {
+              "$item": "accountId",
+              "eq": {
+                "$state": "/ui/bbd/selectedId"
+              }
+            },
+            "$then": "muted",
+            "$else": "bordered"
+          }
         },
         "children": [
           "tabRow"
@@ -440,9 +449,46 @@
           "justify": "between"
         },
         "children": [
-          "tabName",
+          "tabLeft",
           "tabBadge"
         ]
+      },
+      "tabLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "tabMark",
+          "tabName"
+        ]
+      },
+      "tabMark": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$cond": {
+              "$item": "accountId",
+              "eq": {
+                "$state": "/ui/bbd/selectedId"
+              }
+            },
+            "$then": "CircleDot",
+            "$else": "Circle"
+          },
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$item": "accountId",
+              "eq": {
+                "$state": "/ui/bbd/selectedId"
+              }
+            },
+            "$then": "default",
+            "$else": "muted"
+          }
+        }
       },
       "tabName": {
         "type": "Text",
@@ -451,7 +497,17 @@
             "$item": "name"
           },
           "weight": "medium",
-          "truncate": true
+          "truncate": true,
+          "tone": {
+            "$cond": {
+              "$item": "accountId",
+              "eq": {
+                "$state": "/ui/bbd/selectedId"
+              }
+            },
+            "$then": "default",
+            "$else": "muted"
+          }
         }
       },
       "tabBadge": {
