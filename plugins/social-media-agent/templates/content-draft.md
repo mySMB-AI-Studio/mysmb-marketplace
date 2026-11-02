@@ -1,5 +1,3 @@
-# {{ steps.draft.title }}
-
 {{ steps.draft.document_markdown }}
 
 ---
