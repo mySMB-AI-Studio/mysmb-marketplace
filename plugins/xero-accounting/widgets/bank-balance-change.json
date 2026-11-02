@@ -605,8 +605,7 @@
         },
         "children": [
           "diffLabel",
-          "diffValue",
-          "diffBadge"
+          "diffRow"
         ]
       },
       "diffLabel": {
@@ -615,36 +614,48 @@
           "text": "Difference"
         }
       },
+      "diffRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "center"
+        },
+        "children": [
+          "diffIcon",
+          "diffValue"
+        ]
+      },
+      "diffIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$cond": {
+              "$state": "/ui/bbd/view/0/direction",
+              "eq": "up"
+            },
+            "$then": "ArrowUp",
+            "$else": {
+              "$cond": {
+                "$state": "/ui/bbd/view/0/direction",
+                "eq": "down"
+              },
+              "$then": "ArrowDown",
+              "$else": "Minus"
+            }
+          },
+          "size": "lg",
+          "tone": {
+            "$state": "/ui/bbd/view/0/tone"
+          }
+        }
+      },
       "diffValue": {
         "type": "Stat",
         "props": {
           "value": {
             "$state": "/ui/bbd/view/0/differenceText"
           }
-        }
-      },
-      "diffBadge": {
-        "type": "Badge",
-        "props": {
-          "text": {
-            "$cond": {
-              "$state": "/ui/bbd/view/0/direction",
-              "eq": "up"
-            },
-            "$then": "▲ Up",
-            "$else": {
-              "$cond": {
-                "$state": "/ui/bbd/view/0/direction",
-                "eq": "down"
-              },
-              "$then": "▼ Down",
-              "$else": "No change"
-            }
-          },
-          "tone": {
-            "$state": "/ui/bbd/view/0/tone"
-          },
-          "variant": "soft"
         }
       },
       "why": {
