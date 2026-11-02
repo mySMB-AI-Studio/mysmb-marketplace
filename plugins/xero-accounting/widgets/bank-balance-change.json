@@ -29,6 +29,9 @@
   "connectorsUsed": [
     "xero-accounting"
   ],
+  "branding": {
+    "color": "#13b5ea"
+  },
   "popularity": 0,
   "sizing": {
     "preferred": {
@@ -690,7 +693,15 @@
         "type": "Eyebrow",
         "props": {
           "text": {
-            "$state": "/ui/bbd/view/0/whyTitle"
+            "$cond": {
+              "$state": "/ui/bbd/view/0/whyHeading"
+            },
+            "$then": {
+              "$state": "/ui/bbd/view/0/whyHeading"
+            },
+            "$else": {
+              "$state": "/ui/bbd/view/0/whyTitle"
+            }
           }
         }
       },
@@ -786,8 +797,10 @@
         }
       },
       "hCodeText": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "weight": "medium",
           "text": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
@@ -798,17 +811,17 @@
                 "$state": "/ui/bbd/sortDir",
                 "eq": "desc"
               },
-              "$then": "Acc code ↓ Z–A",
-              "$else": "Acc code ↑ A–Z"
+              "$then": "ACC CODE ↓ Z–A",
+              "$else": "ACC CODE ↑ A–Z"
             },
-            "$else": "Acc code ↕"
+            "$else": "ACC CODE ↕"
           },
           "tone": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
               "eq": "accountCode"
             },
-            "$then": "default",
+            "$then": "brand",
             "$else": "muted"
           }
         }
@@ -858,8 +871,10 @@
         }
       },
       "hContactText": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "weight": "medium",
           "text": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
@@ -870,17 +885,17 @@
                 "$state": "/ui/bbd/sortDir",
                 "eq": "desc"
               },
-              "$then": "Contact ↓ Z–A",
-              "$else": "Contact ↑ A–Z"
+              "$then": "CONTACT ↓ Z–A",
+              "$else": "CONTACT ↑ A–Z"
             },
-            "$else": "Contact ↕"
+            "$else": "CONTACT ↕"
           },
           "tone": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
               "eq": "contact"
             },
-            "$then": "default",
+            "$then": "brand",
             "$else": "muted"
           }
         }
@@ -931,8 +946,10 @@
         }
       },
       "hAmountText": {
-        "type": "Caption",
+        "type": "Text",
         "props": {
+          "size": "xs",
+          "weight": "medium",
           "text": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
@@ -943,17 +960,17 @@
                 "$state": "/ui/bbd/sortDir",
                 "eq": "desc"
               },
-              "$then": "Amount ↓ high–low",
-              "$else": "Amount ↑ low–high"
+              "$then": "AMOUNT ↓ HIGH–LOW",
+              "$else": "AMOUNT ↑ LOW–HIGH"
             },
-            "$else": "Amount ↕"
+            "$else": "AMOUNT ↕"
           },
           "tone": {
             "$cond": {
               "$state": "/ui/bbd/sortField",
               "eq": "amount"
             },
-            "$then": "default",
+            "$then": "brand",
             "$else": "muted"
           }
         }
