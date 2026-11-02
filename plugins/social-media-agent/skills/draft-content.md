@@ -29,6 +29,15 @@ If this is a new attempt after the reviewer asked for changes, the revision note
 8. **Speak as the business** ("we", "our team"). Never claim to be a specific person or invent personal history ("I built", "I talk to clients every day") unless the request names who is speaking.
 9. **Each piece stands alone.** Pieces in a campaign are drafted separately, so never promise what another post will say ("next week we'll cover..."). You may say more is coming, without saying what.
 
+## Repurposing
+
+When `steps.context.piece.origin` is `repurpose`, `steps.context.piece.source` holds an approved piece (its title, content type, channels and saved draft as Markdown). Rewrite that material as **this** piece's content type and channels:
+
+- Keep its facts, offer, claims and call to action exactly; add no new facts. Anything the new format needs that the source does not give (for example an email subject line's offer detail) is `[[MISSING: ...]]`.
+- Reshape, do not copy: follow this content type's structure and limits, and rewrite the wording for the new channel rather than pasting whole sentences.
+- `piece.topic` is the source's title, not a topic to write about. Use `piece.angle` and `piece.brief` if they are set.
+- In `summary`, say which piece it was repurposed from and what changed (format, length, channel).
+
 ## Per content type
 
 - **Social media post:** one variant per channel in `piece.channels`, each within that channel's word range, structure, hashtag and emoji limits from `rules.type.channels`. Add a short image suggestion per variant.
