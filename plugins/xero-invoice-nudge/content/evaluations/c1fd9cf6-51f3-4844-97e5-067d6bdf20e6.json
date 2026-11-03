@@ -1,5 +1,5 @@
 {
-  "contentHash": "98ea0d1f4804e322bbbfe71491b9c15ca09b858fc2e25fdfcc9f084f4a564810",
+  "contentHash": "df8340aa385a4f93c6597212fda9b8e7197e05315efda15264f5c70aa2ace16a",
   "definition": {
     "key": "overdue-invoice-chase-suite",
     "kind": "evaluation",
@@ -24,21 +24,24 @@
           ]
         },
         "fixtures": {
-          "xero.invoices.list_overdue": {
-            "invoices": [
-              {
-                "AmountDue": 1200,
-                "DueDate": "2026-10-01",
-                "InvoiceID": "inv-1",
-                "InvoiceNumber": "INV-0001"
-              },
-              {
-                "AmountDue": 350,
-                "DueDate": "2026-10-15",
-                "InvoiceID": "inv-2",
-                "InvoiceNumber": "INV-0002"
-              }
-            ]
+          "outputs": {
+            "scan": {
+              "chaseSummary": "2 invoices, $1,550 overdue, oldest 33 days",
+              "overdueList": [
+                {
+                  "AmountDue": 1200,
+                  "DaysOverdue": 33,
+                  "InvoiceID": "inv-1",
+                  "InvoiceNumber": "INV-0001"
+                },
+                {
+                  "AmountDue": 350,
+                  "DaysOverdue": 19,
+                  "InvoiceID": "inv-2",
+                  "InvoiceNumber": "INV-0002"
+                }
+              ]
+            }
           }
         },
         "inputs": {
@@ -60,9 +63,13 @@
           ]
         },
         "fixtures": {
-          "xero.invoices.list_overdue": {
-            "invoices": []
-          }
+          "outputs": {
+            "scan": {
+              "chaseSummary": "Nothing overdue today",
+              "overdueList": []
+            }
+          },
+          "steps.scan.overdueList": false
         },
         "inputs": {
           "runDate": "2026-11-03"
