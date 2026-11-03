@@ -1,5 +1,5 @@
 {
-  "contentHash": "df8340aa385a4f93c6597212fda9b8e7197e05315efda15264f5c70aa2ace16a",
+  "contentHash": "56285b9f64a41120704fed46536693e379ddc6b03c995fe24a80bc1f1f135571",
   "definition": {
     "key": "overdue-invoice-chase-suite",
     "kind": "evaluation",
@@ -24,9 +24,23 @@
           ]
         },
         "fixtures": {
+          "connections": {
+            "xero.invoice.add_note": "connected",
+            "xero.invoice.email": "connected",
+            "xero.invoices.list_overdue": "connected"
+          },
           "outputs": {
             "scan": {
+              "chase": {
+                "amountDue": 1200,
+                "contactEmail": "client@example.com",
+                "idempotencyKey": "chase-inv-1-2026-11-03",
+                "invoiceId": "inv-1",
+                "invoiceNumber": "INV-0001",
+                "note": "Chased by Invoice Nudge on 2026-11-03"
+              },
               "chaseSummary": "2 invoices, $1,550 overdue, oldest 33 days",
+              "hasOverdue": true,
               "overdueList": [
                 {
                   "AmountDue": 1200,
@@ -65,11 +79,13 @@
         "fixtures": {
           "outputs": {
             "scan": {
+              "chase": {},
               "chaseSummary": "Nothing overdue today",
+              "hasOverdue": false,
               "overdueList": []
             }
           },
-          "steps.scan.overdueList": false
+          "steps.scan.hasOverdue": false
         },
         "inputs": {
           "runDate": "2026-11-03"

@@ -1,8 +1,9 @@
 {
-  "contentHash": "253e6760918e8d46bc39c4b5bd505843e66bfa47695b5514986351da2d8f1706",
+  "contentHash": "10bda21dd9234d9fb88c23036f93c59f776490417cb747a2ecd930fb1081fd8e",
   "definition": {
     "capabilities": [
       "xero.invoices.list_overdue",
+      "email.send_reviewed",
       "records.write",
       "workq.create",
       "notifications.send"
@@ -84,7 +85,7 @@
         "expiresAfterDays": 7,
         "form": "c5ccb8ea-a4be-4e29-91e3-5c45b3bc9381",
         "identityLevel": "link",
-        "interaction": "form",
+        "interaction": "short_form",
         "key": "confirm",
         "kind": "external",
         "onNoResponse": "remindThenEscalate",
@@ -99,9 +100,9 @@
         "key": "waitDate",
         "kind": "wait",
         "timer": {
-          "until": "steps.confirm.formResponse.promised_date"
+          "businessDays": 5
         },
-        "title": "Wait until the promised date"
+        "title": "Give the client time to pay"
       },
       {
         "automation": "c441793d-837b-4f87-b9eb-3a814b7e5d44",

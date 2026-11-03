@@ -14,12 +14,12 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Setup:** Invoice Nudge setup (each person reviews their configuration and account bindings)
 - **Pages:** Invoice Nudge (installed as Draft — publish in the installing workspace)
 - **Processes:** Chase overdue invoices, Follow up a payment promise
-- **Capabilities:** Add a note to a Xero invoice, Email an invoice reminder from Xero, List overdue Xero invoices
+- **Capabilities:** Add a note to a Xero invoice, Email an invoice reminder from Xero, List overdue Xero invoices, Send a reviewed email to a client
 - **Evaluations:** Chase overdue invoices: release gate, Follow up a payment promise: release gate
 - **Agent views:** Overview, Setup
 - **Widgets:** Invoices to nudge
 - **Reports:** Overdue invoice chase (templates — "Use this report" copies one into the workspace)
-- **MCP servers:** xero-accounting
+- **MCP servers:** xero-accounting, m365-mail-send
 - **Skills:** 1
 - **Agents:** 1
 

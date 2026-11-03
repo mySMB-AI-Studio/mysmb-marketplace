@@ -1,5 +1,5 @@
 {
-  "contentHash": "e778bf29d69a016244d7d4fae3068fd072c35106b35069df60c686de8070ec83",
+  "contentHash": "07ecfdea7c31e556996e43b225551b435859c2559a52d85fc1ace472395be25b",
   "definition": {
     "capabilities": [
       "xero.invoices.list_overdue",
@@ -51,9 +51,7 @@
         "terminal": true
       },
       {
-        "evidence": [
-          "steps.scan.chaseSummary"
-        ],
+        "evidence": [],
         "key": "skipped",
         "terminal": true
       }
@@ -81,7 +79,9 @@
         "key": "scan",
         "kind": "agent",
         "outputs": [
+          "hasOverdue",
           "overdueList",
+          "chase",
           "chaseSummary"
         ],
         "skill": "find-overdue-invoices",
@@ -94,34 +94,34 @@
         "key": "approve",
         "kind": "decision",
         "materiality": [
-          "steps.scan.overdueList",
+          "steps.scan.chase",
           "inputs.overdueTotal"
         ],
         "options": [
           {
-            "effect": "Xero emails each listed invoice to its contact.",
+            "effect": "Xero emails the invoice to its contact.",
             "intent": {
               "capability": "xero.invoice.email",
-              "payloadFrom": "steps.scan.overdueList"
+              "payloadFrom": "steps.scan.chase"
             },
             "key": "emailReminder",
             "label": "Email a reminder from Xero",
             "suggested": true
           },
           {
-            "effect": "Adds a 'chased by Invoice Nudge' note to each invoice. Nothing is sent.",
+            "effect": "Adds a 'chased by Invoice Nudge' note to the invoice. Nothing is sent.",
             "intent": {
               "capability": "xero.invoice.add_note",
-              "payloadFrom": "steps.scan.overdueList"
+              "payloadFrom": "steps.scan.chase"
             },
             "key": "noteOnly",
             "label": "Just add a note in Xero"
           },
           {
-            "effect": "Creates a Payment promise record per invoice, which starts the follow-up process.",
+            "effect": "Creates a Payment promise record for the invoice, which starts the follow-up process.",
             "intent": {
               "capability": "records.write",
-              "payloadFrom": "steps.scan.overdueList"
+              "payloadFrom": "steps.scan.chase"
             },
             "key": "askForDate",
             "label": "Ask the client for a payment date"
@@ -138,7 +138,7 @@
           "expireAfterBusinessDays": 5,
           "remindAfterBusinessDays": "{{reminderDays}}"
         },
-        "title": "Manager picks how to chase",
+        "title": "Manager picks how to chase the oldest overdue invoice",
         "type": "chase_approval"
       },
       {
@@ -181,12 +181,12 @@
       {
         "from": "scan",
         "to": "approve",
-        "when": "steps.scan.overdueList"
+        "when": "steps.scan.hasOverdue"
       },
       {
         "from": "scan",
         "to": "skipped",
-        "when": "!steps.scan.overdueList"
+        "when": "!steps.scan.hasOverdue"
       },
       {
         "from": "approve",
