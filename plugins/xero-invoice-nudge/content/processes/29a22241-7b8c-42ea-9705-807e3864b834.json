@@ -1,5 +1,5 @@
 {
-  "contentHash": "f365ef6fd6b5b19bcfb50e20353995279f5535b4048b52df3c8fd1aadcdd9c0e",
+  "contentHash": "253e6760918e8d46bc39c4b5bd505843e66bfa47695b5514986351da2d8f1706",
   "definition": {
     "capabilities": [
       "xero.invoices.list_overdue",
@@ -82,6 +82,7 @@
           "email"
         ],
         "expiresAfterDays": 7,
+        "form": "c5ccb8ea-a4be-4e29-91e3-5c45b3bc9381",
         "identityLevel": "link",
         "interaction": "form",
         "key": "confirm",
@@ -103,13 +104,13 @@
         "title": "Wait until the promised date"
       },
       {
+        "automation": "c441793d-837b-4f87-b9eb-3a814b7e5d44",
+        "inputs": {
+          "invoice_number": "inputs.invoiceNumber",
+          "record_id": "inputs.recordId"
+        },
         "key": "check",
-        "kind": "agent",
-        "outputs": [
-          "paid",
-          "status"
-        ],
-        "skill": "find-overdue-invoices",
+        "kind": "automation",
         "title": "Check Xero: was it paid?"
       },
       {
@@ -117,6 +118,7 @@
         "completion": "statusDone",
         "key": "call",
         "kind": "human",
+        "template": "f9c0c232-b3cc-4ba4-8f48-860743e673b8",
         "title": "Call the client about the missed date"
       },
       {
