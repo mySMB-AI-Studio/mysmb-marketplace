@@ -1,0 +1,331 @@
+{
+  "contentHash": "dbdee32a9a0a5de92b1bb1688a5a34c75e04e52a621d28627ba150a1701b3fcf",
+  "declaredScopes": [
+    "ai:generate",
+    "connectors:m365-mail-send",
+    "connectors:m365-sharepoint",
+    "connectors:xero-accounting",
+    "files:read",
+    "files:write"
+  ],
+  "dependencies": [],
+  "description": "Builds a one-page summary of a single investment for family members from its SharePoint folder of tax statements, dividend statements, investor updates, annual reports and correspondence (subfolders included). AI reads each document for the investment's terms, dividends, valuations and milestones and writes a plain-English overview. The dividends are checked against the receipts in the Xero bank accounts. The result is a PDF with invested capital, carrying value, dividends, MOIC and IRR, a value-created chart, dividends by financial year, key terms, milestones and the source documents. It's saved to Knowledge (Investments/Reports) and emailed as an attachment. Read-only in SharePoint and Xero.",
+  "flowIr": {
+    "description": "Builds a one-page summary of a single investment for family members from its SharePoint folder of tax statements, dividend statements, investor updates, annual reports and correspondence (subfolders included). AI reads each document for the investment's terms, dividends, valuations and milestones and writes a plain-English overview. The dividends are checked against the receipts in the Xero bank accounts. The result is a PDF with invested capital, carrying value, dividends, MOIC and IRR, a value-created chart, dividends by financial year, key terms, milestones and the source documents. It's saved to Knowledge (Investments/Reports) and emailed as an attachment. Read-only in SharePoint and Xero.",
+    "irVersion": 1,
+    "name": "Investments: One-page summary from SharePoint",
+    "nodes": [
+      {
+        "code": "# ── Read one investment's SharePoint folder (and its subfolders) and pull the facts out of each document ──\nimport re\n\nSP = \"m365-sharepoint\"\n# File types the SharePoint connector can read as text.\nREADABLE = {\"docx\", \"docm\", \"xlsx\", \"xlsm\", \"pptx\", \"pptm\", \"pdf\", \"doc\", \"xls\", \"ppt\", \"rtf\", \"odt\", \"ods\", \"odp\",\n            \"txt\", \"csv\", \"tsv\", \"md\", \"htm\", \"html\"}\nMAX_READ = 50\nMAX_DEPTH = 4\nMAX_ITEMS = 1500\n# Characters of each file sent to AI (the AI step's cap is 32,000 including the prompt).\nMAX_TEXT = 12000\n# Source-document groups, in the order the report lists them, with the words that identify each\nCATEGORIES = [\n    (\"Tax statements\", [\"tax\"]),\n    (\"Dividend statements\", [\"dividend\", \"distribution\", \"payment advice\"]),\n    (\"Annual reports\", [\"annual report\", \"annual\", \"financial statement\", \"financial report\", \"accounts\"]),\n    (\"Investor updates\", [\"update\", \"newsletter\", \"quarterly\", \"investor\", \"shareholder\", \"report\", \"presentation\"]),\n    (\"Correspondence\", [\"correspondence\", \"letter\", \"email\", \"notice\", \"agreement\", \"subscription\", \"minutes\",\n                        \"application\", \"certificate\", \"deed\"]),\n]\nDOC_TYPES = {\n    \"tax statement\": \"Tax statements\",\n    \"dividend statement\": \"Dividend statements\",\n    \"annual report\": \"Annual reports\",\n    \"investor update\": \"Investor updates\",\n    \"correspondence\": \"Correspondence\",\n    \"investment agreement\": \"Correspondence\",\n}\n# Read the documents most likely to hold the investment's terms first, then dividends, then the rest\nREAD_ORDER = [\"Correspondence\", \"Dividend statements\", \"Annual reports\", \"Investor updates\", \"Tax statements\",\n              \"Other documents\"]\n\nPROMPT = (\n    \"This is one document from a family's records about a single private investment (a company they hold shares \"\n    \"in). Pull out only what this document states; put null or [] when it doesn't say, and never estimate. Money is \"\n    \"a plain number in dollars (no $ or commas). Dates are YYYY-MM-DD. \"\n    \"doc_type is one of: tax statement, dividend statement, annual report, investor update, correspondence, \"\n    \"investment agreement, valuation, other. company is the company invested in; holder is the entity that owns \"\n    \"the shares. new_investment is ONLY when this document records money being invested (a subscription, \"\n    \"purchase or capital call): its date and amount. dividends lists ONLY payments this document itself pays or \"\n    \"advises (a dividend statement or payment advice): payment date, cash amount and franked percentage (100 for \"\n    \"fully franked). dividend_year_totals is for documents that total a year's dividends instead (tax \"\n    \"statements): year_ending and amount. valuation is the value this document puts on the whole holding (e.g. a \"\n    \"directors' valuation), with its date and basis in a few words. milestones are up to 3 dated events for the \"\n    \"company or the investment (expansions, new sites, funding rounds, first dividend). business, investment and \"\n    \"rationale are short plain sentences (at most 40 words each): what the company does, what the holding is, \"\n    \"and why it was bought, only if this document says so.\"\n)\nSHAPE = (\n    '{\"doc_type\": str, \"doc_date\": \"YYYY-MM-DD\"|null, \"company\": str|null, \"holder\": str|null, '\n    '\"instrument\": str|null, \"shares\": number|null, \"price_per_share\": number|null, \"ownership_pct\": number|null, '\n    '\"new_investment\": {\"date\": \"YYYY-MM-DD\", \"amount\": number}|null, '\n    '\"dividends\": [{\"date\": \"YYYY-MM-DD\", \"amount\": number, \"franked_pct\": number|null}], '\n    '\"dividend_year_totals\": [{\"year_ending\": \"YYYY-MM-DD\", \"amount\": number}], '\n    '\"valuation\": {\"amount\": number, \"date\": \"YYYY-MM-DD\", \"basis\": str}|null, '\n    '\"milestones\": [{\"date\": \"YYYY-MM-DD\", \"text\": str}], \"website\": str|null, \"board\": str|null, '\n    '\"status\": \"active|exited|written off|unknown\", \"business\": str|null, \"investment\": str|null, '\n    '\"rationale\": str|null}'\n)\n\n\ndef _ext(name):\n    m = re.search(r\"\\.([A-Za-z0-9]+)$\", str(name or \"\"))\n    return m.group(1).lower() if m else \"\"\n\n\ndef _err(exc):\n    msg = str(exc)\n    if msg.startswith(\"tool_error: \"):\n        msg = msg[len(\"tool_error: \"):]\n    if \"no usable credential\" in msg or \"credential unavailable\" in msg:\n        return \"the SharePoint connection needs connecting (Settings → Connections → m365-sharepoint)\"\n    return msg[:300]\n\n\ndef _num(v):\n    if isinstance(v, bool) or v is None:\n        return None\n    if isinstance(v, (int, float)):\n        return float(v)\n    s = re.sub(r\"[,$\\s]\", \"\", str(v))\n    neg = s.startswith(\"(\") and s.endswith(\")\")\n    try:\n        n = float(s.strip(\"()\"))\n    except ValueError:\n        return None\n    return -n if neg else n\n\n\ndef _date(v):\n    s = str(v or \"\")[:10]\n    return s if re.match(r\"^\\d{4}-\\d{2}-\\d{2}$\", s) else \"\"\n\n\ndef _text(v, limit=400):\n    s = re.sub(r\"\\s+\", \" \", str(v or \"\")).strip()\n    return s[:limit] if s and s.lower() not in (\"null\", \"none\", \"n/a\") else \"\"\n\n\ndef _category(path):\n    s = path.lower()\n    for name, words in CATEGORIES:\n        if any(w in s for w in words):\n            return name\n    return \"Other documents\"\n\n\ndef _year(name, modified):\n    \"\"\"The year a file is about: FY24 / 2024 in its name, else the year it was last changed.\"\"\"\n    m = re.search(r\"\\bFY ?(\\d{4}|\\d{2})\\b\", name, re.I)\n    if m:\n        y = int(m.group(1))\n        return {\"year\": y + 2000 if y < 100 else y, \"fy\": True}\n    m = re.search(r\"(?<!\\d)((?:19|20)\\d{2})(?!\\d)\", name)\n    if m:\n        return {\"year\": int(m.group(1)), \"fy\": False}\n    d = _date(modified)\n    return {\"year\": int(d[:4]) if d else None, \"fy\": False}\n\n\ndef _list(args):\n    out = []\n    folder = {}\n    cursor = None\n    while True:\n        page = api.connectors.invoke(server=SP, tool=\"list_sharepoint_folder\",\n                                     args={\"cursor\": cursor} if cursor else dict(args, page_size=200))\n        if not isinstance(page, dict):\n            raise ValueError(\"SharePoint sent back something unexpected\")\n        if not cursor:\n            folder = page.get(\"folder\") or {}\n        out.extend(page.get(\"items\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor or len(out) >= MAX_ITEMS:\n            return folder, out\n\n\ndef _clean(raw):\n    d = raw if isinstance(raw, dict) else {}\n    inv = d.get(\"new_investment\")\n    inv = inv if isinstance(inv, dict) else {}\n    val = d.get(\"valuation\")\n    val = val if isinstance(val, dict) else {}\n    out = {\n        \"doc_type\": _text(d.get(\"doc_type\"), 40).lower(),\n        \"doc_date\": _date(d.get(\"doc_date\")),\n        \"company\": _text(d.get(\"company\"), 120),\n        \"holder\": _text(d.get(\"holder\"), 120),\n        \"instrument\": _text(d.get(\"instrument\"), 80),\n        \"shares\": _num(d.get(\"shares\")),\n        \"price_per_share\": _num(d.get(\"price_per_share\")),\n        \"ownership_pct\": _num(d.get(\"ownership_pct\")),\n        \"new_investment\": None,\n        \"valuation\": None,\n        \"dividends\": [],\n        \"dividend_year_totals\": [],\n        \"milestones\": [],\n        \"website\": _text(d.get(\"website\"), 120),\n        \"board\": _text(d.get(\"board\"), 120),\n        \"status\": _text(d.get(\"status\"), 20).lower(),\n        \"business\": _text(d.get(\"business\")),\n        \"investment\": _text(d.get(\"investment\")),\n        \"rationale\": _text(d.get(\"rationale\")),\n    }\n    amount = _num(inv.get(\"amount\"))\n    if _date(inv.get(\"date\")) and amount:\n        out[\"new_investment\"] = {\"date\": _date(inv.get(\"date\")), \"amount\": abs(amount)}\n    amount = _num(val.get(\"amount\"))\n    if _date(val.get(\"date\")) and amount:\n        out[\"valuation\"] = {\"date\": _date(val.get(\"date\")), \"amount\": amount, \"basis\": _text(val.get(\"basis\"), 80)}\n    for x in d.get(\"dividends\") or []:\n        amount = _num(x.get(\"amount\")) if isinstance(x, dict) else None\n        if isinstance(x, dict) and _date(x.get(\"date\")) and amount:\n            out[\"dividends\"].append({\"date\": _date(x.get(\"date\")), \"amount\": abs(amount),\n                                     \"franked_pct\": _num(x.get(\"franked_pct\"))})\n    for x in d.get(\"dividend_year_totals\") or []:\n        amount = _num(x.get(\"amount\")) if isinstance(x, dict) else None\n        if isinstance(x, dict) and _date(x.get(\"year_ending\")) and amount is not None:\n            out[\"dividend_year_totals\"].append({\"year_ending\": _date(x.get(\"year_ending\")), \"amount\": abs(amount)})\n    for x in (d.get(\"milestones\") or [])[:3]:\n        if isinstance(x, dict) and _date(x.get(\"date\")) and _text(x.get(\"text\")):\n            out[\"milestones\"].append({\"date\": _date(x.get(\"date\")), \"text\": _text(x.get(\"text\"), 120)})\n    return out\n\n\nlink = str(params.get(\"folder_link\") or \"\").strip()\npick = str(params.get(\"investment_name\") or \"\").strip().lower()\ndocs = []\nfiles = []\nfolder_name = \"\"\nfolder_url = \"\"\nproblem = \"\"\n\nif not link:\n    problem = \"No folder link: paste the investment folder's SharePoint link (Share → Copy link) when you click Run now.\"\nelse:\n    try:\n        top, items = _list({\"url\": link})\n        folder_name = str(top.get(\"name\") or \"\")\n        folder_url = str(top.get(\"webUrl\") or link)\n        # A link to the folder of all investments (\"Shares\") plus an investment name: open that investment's folder\n        if pick:\n            match = [i for i in items if i.get(\"isFolder\") and pick in str(i.get(\"name\") or \"\").lower()]\n            if match:\n                folder_name = str(match[0].get(\"name\") or \"\")\n                folder_url = str(match[0].get(\"webUrl\") or folder_url)\n                _, items = _list({\"drive_id\": match[0].get(\"driveId\"), \"item_id\": match[0].get(\"id\")})\n        queue = [(i, \"\", 1) for i in items]\n        while queue:\n            item, parent, depth = queue.pop(0)\n            name = str(item.get(\"name\") or \"\")\n            path = (parent + \"/\" + name) if parent else name\n            if item.get(\"isFolder\"):\n                if depth < MAX_DEPTH and len(files) < MAX_ITEMS:\n                    _, sub = _list({\"drive_id\": item.get(\"driveId\"), \"item_id\": item.get(\"id\")})\n                    queue.extend((s, path, depth + 1) for s in sub)\n                continue\n            f = {\n                \"name\": name,\n                \"path\": path,\n                \"folder\": parent,\n                \"url\": str(item.get(\"webUrl\") or \"\"),\n                \"id\": item.get(\"id\"),\n                \"driveId\": item.get(\"driveId\"),\n                \"category\": _category(path),\n                \"readable\": _ext(name) in READABLE,\n            }\n            f.update(_year(name, item.get(\"lastModifiedDateTime\")))\n            files.append(f)\n    except Exception as exc:\n        problem = \"Couldn't open the folder: \" + _err(exc)\n\n    to_read = sorted([f for f in files if f[\"readable\"]],\n                     key=lambda f: (READ_ORDER.index(f[\"category\"]), -(f[\"year\"] or 0), f[\"name\"].lower()))\n    for f in to_read[:MAX_READ]:\n        try:\n            r = api.connectors.invoke(server=SP, tool=\"read_sharepoint_file\",\n                                      args={\"drive_id\": f[\"driveId\"], \"item_id\": f[\"id\"], \"max_chars\": MAX_TEXT})\n        except Exception as exc:\n            f[\"skipped\"] = _err(exc)\n            continue\n        text = str(r.get(\"text\") or \"\") if isinstance(r, dict) else \"\"\n        if not text.strip():\n            f[\"skipped\"] = (str(r.get(\"note\") or \"\") if isinstance(r, dict) else \"\") or \"no text found\"\n            continue\n        try:\n            d = _clean(api.ai.extract(prompt=PROMPT, input=\"File: \" + f[\"path\"] + \"\\n\\n\" + text[:MAX_TEXT],\n                                      schema_hint=SHAPE))\n        except Exception as exc:\n            f[\"skipped\"] = \"AI couldn't read it (\" + str(exc)[:200] + \")\"\n            continue\n        # The AI's view of the document type beats the folder name\n        if DOC_TYPES.get(d[\"doc_type\"]):\n            f[\"category\"] = DOC_TYPES[d[\"doc_type\"]]\n        if d[\"doc_date\"] and not f[\"fy\"]:\n            f[\"year\"] = int(d[\"doc_date\"][:4])\n        f[\"read\"] = True\n        docs.append(dict(d, file=f[\"name\"], url=f[\"url\"], category=f[\"category\"]))\n    for f in to_read[MAX_READ:]:\n        f[\"skipped\"] = \"over the \" + str(MAX_READ) + \"-file limit for one run (still counted)\"\n    for f in files:\n        f.pop(\"id\", None)\n        f.pop(\"driveId\", None)\n\n    if not problem and not docs:\n        problem = \"No documents could be read in \" + (folder_name or \"the folder\") + \".\"\n\nsummary = (problem + \" \" if problem else \"\") + \"Found \" + str(len(files)) + \" file\" + \\\n    (\"\" if len(files) == 1 else \"s\") + \", read \" + str(len(docs)) + \".\"",
+        "id": "read_documents",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Facts pulled from each document that was read.",
+            "name": "docs",
+            "type": "list[dict]"
+          },
+          {
+            "description": "Every file in the folder, grouped for the source-documents list.",
+            "name": "files",
+            "type": "list[dict]"
+          },
+          {
+            "description": "The investment folder's name.",
+            "name": "folder_name",
+            "type": "str"
+          },
+          {
+            "description": "The investment folder's link.",
+            "name": "folder_url",
+            "type": "str"
+          },
+          {
+            "description": "Why nothing could be read, when that happens.",
+            "name": "problem",
+            "type": "str"
+          },
+          {
+            "description": "What this step did.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.folder_link }}",
+            "control": "text",
+            "label": "SharePoint folder link",
+            "name": "folder_link",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.investment_name }}",
+            "control": "text",
+            "label": "Investment name",
+            "name": "investment_name",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Lists the investment's SharePoint folder and its subfolders, reads up to 50 documents, and uses AI to pull out each one's facts: amounts invested, dividends paid, valuations, milestones and what the company does. Changes nothing.",
+        "title": "Read the investment's documents"
+      },
+      {
+        "code": "# ── Put one investment's facts together from its documents, and have AI write the family-friendly overview ──\nimport json\nimport re\nfrom collections import Counter\n\nMAX_SNIPPETS = 10\n\nWRITE_PROMPT = (\n    \"You are writing the overview on a one-page investment summary for members of a family who have no prior \"\n    \"knowledge of this investment. Use only the facts and notes given. Write in plain, warm, factual English, \"\n    \"Australian spelling, no jargon, no advice, no hype. business: what the company does and who its customers \"\n    \"are (at most 50 words). investment: what the family holds, when and for how much (at most 45 words). \"\n    \"rationale: why the family invested, as the notes say (at most 45 words); if the notes don't say, write what \"\n    \"the documents show about the opportunity at the time, without guessing. milestones: pick the 5 most \"\n    \"meaningful dated events from the candidates, oldest first, each at most 8 words, keeping the given dates.\"\n)\nWRITE_SHAPE = '{\"business\": str, \"investment\": str, \"rationale\": str, \"milestones\": [{\"date\": \"YYYY-MM-DD\", \"text\": str}]}'\n\n\ndef _common(values):\n    vals = [v for v in values if v]\n    return Counter(vals).most_common(1)[0][0] if vals else \"\"\n\n\ndef _latest(docs, key):\n    \"\"\"The value from the most recent document that states it.\"\"\"\n    best = None\n    for d in docs:\n        if d.get(key) not in (None, \"\", \"unknown\") and (best is None or (d.get(\"doc_date\") or \"\") >= (best.get(\"doc_date\") or \"\")):\n            best = d\n    return best.get(key) if best else None\n\n\ndef _mkey(date, text):\n    return date[:7] + re.sub(r\"[^a-z]\", \"\", text.lower())[:24]\n\n\ndocs = params.get(\"docs\") or []\nfiles = params.get(\"files\") or []\nproblem = str(params.get(\"problem\") or \"\")\nfacts = {}\n\nif docs and not problem:\n    company = _common(d.get(\"company\") for d in docs) or str(params.get(\"investment_name\") or \"\") or \\\n        str(params.get(\"folder_name\") or \"\")\n\n    # Money invested: each subscription or purchase once, even when several documents mention it\n    tranches = {}\n    for d in docs:\n        t = d.get(\"new_investment\")\n        if t:\n            tranches.setdefault((t[\"date\"], round(t[\"amount\"])), t)\n    tranches = sorted(tranches.values(), key=lambda t: t[\"date\"])\n\n    # Dividends: each payment once, from the dividend statements\n    paid = {}\n    for d in docs:\n        for x in d.get(\"dividends\") or []:\n            paid.setdefault((x[\"date\"], round(x[\"amount\"], 2)), x)\n    dividends = sorted(paid.values(), key=lambda x: x[\"date\"])\n    # Year totals (tax statements) fill in years with no individual statements\n    year_totals = {}\n    for d in docs:\n        for y in d.get(\"dividend_year_totals\") or []:\n            year_totals[y[\"year_ending\"]] = y[\"amount\"]\n\n    valuations = sorted([d[\"valuation\"] for d in docs if d.get(\"valuation\")], key=lambda v: v[\"date\"])\n\n    milestones = {}\n    for d in docs:\n        for m in d.get(\"milestones\") or []:\n            milestones.setdefault(_mkey(m[\"date\"], m[\"text\"]), m)\n    # The investment and the first dividend, unless a document already marks that month\n    months = {m[\"date\"][:7] for m in milestones.values()}\n    if tranches and tranches[0][\"date\"][:7] not in months:\n        milestones[\"inv\"] = {\"date\": tranches[0][\"date\"], \"text\": \"Investment made\"}\n    if dividends and dividends[0][\"date\"][:7] not in months:\n        milestones[\"div1\"] = {\"date\": dividends[0][\"date\"], \"text\": \"First dividend paid\"}\n    candidates = sorted(milestones.values(), key=lambda m: m[\"date\"])[:40]\n\n    def snippets(key):\n        seen = []\n        for d in sorted(docs, key=lambda d: d.get(\"doc_date\") or \"\", reverse=True):\n            s = d.get(key)\n            if s and s not in seen:\n                seen.append(s)\n        return seen[:MAX_SNIPPETS]\n\n    facts = {\n        \"company\": company,\n        \"holder\": _common(d.get(\"holder\") for d in docs),\n        \"instrument\": _latest(docs, \"instrument\") or \"\",\n        \"shares\": _latest(docs, \"shares\"),\n        \"price_per_share\": _common(d.get(\"price_per_share\") for d in docs if d.get(\"price_per_share\")) or None,\n        \"ownership_pct\": _latest(docs, \"ownership_pct\"),\n        \"website\": _common(d.get(\"website\") for d in docs),\n        \"board\": _latest(docs, \"board\") or \"\",\n        \"status\": _latest(docs, \"status\") or \"\",\n        \"tranches\": tranches,\n        \"dividends\": dividends,\n        \"year_totals\": year_totals,\n        \"valuation\": valuations[-1] if valuations else None,\n        \"milestones\": candidates[:5],\n        \"business\": \"\",\n        \"investment\": \"\",\n        \"rationale\": \"\",\n    }\n\n    brief = {k: facts[k] for k in (\"company\", \"holder\", \"instrument\", \"shares\", \"ownership_pct\", \"tranches\",\n                                   \"valuation\", \"status\", \"website\")}\n    brief[\"dividends_received\"] = {\"payments\": len(dividends), \"total\": round(sum(x[\"amount\"] for x in dividends), 2)}\n    brief[\"notes_on_business\"] = snippets(\"business\")\n    brief[\"notes_on_investment\"] = snippets(\"investment\")\n    brief[\"notes_on_rationale\"] = snippets(\"rationale\")\n    brief[\"milestone_candidates\"] = candidates\n    try:\n        w = api.ai.extract(prompt=WRITE_PROMPT, input=json.dumps(brief)[:28000], schema_hint=WRITE_SHAPE)\n    except Exception:\n        w = {}\n    w = w if isinstance(w, dict) else {}\n    for k in (\"business\", \"investment\", \"rationale\"):\n        facts[k] = re.sub(r\"\\s+\", \" \", str(w.get(k) or \"\")).strip() or (snippets(k)[:1] or [\"\"])[0]\n    picked = [m for m in (w.get(\"milestones\") or [])\n              if isinstance(m, dict) and re.match(r\"^\\d{4}-\\d{2}-\\d{2}$\", str(m.get(\"date\") or \"\")) and m.get(\"text\")]\n    if picked:\n        facts[\"milestones\"] = sorted([{\"date\": m[\"date\"], \"text\": str(m[\"text\"])[:60]} for m in picked],\n                                     key=lambda m: m[\"date\"])[:5]\n\nsummary = problem or (\"Put together \" + (facts.get(\"company\") or \"the investment\") + \" from \" + str(len(docs)) +\n                      \" documents: \" + str(len(facts.get(\"dividends\") or [])) + \" dividend payments, \" +\n                      str(len(facts.get(\"tranches\") or [])) + \" investment(s).\")",
+        "id": "combine_facts",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The investment's combined facts and the written overview.",
+            "name": "facts",
+            "type": "dict"
+          },
+          {
+            "description": "What this step did.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.read_documents.outputs.docs }}",
+            "control": "hidden",
+            "label": "Documents",
+            "name": "docs",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.files }}",
+            "control": "hidden",
+            "label": "Files",
+            "name": "files",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.folder_name }}",
+            "control": "hidden",
+            "label": "Folder",
+            "name": "folder_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.investment_name }}",
+            "control": "hidden",
+            "label": "Investment name",
+            "name": "investment_name",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Puts the facts together (each investment and dividend counted once, the latest valuation) and has AI write the business, investment and rationale paragraphs for family members, and pick the key milestones.",
+        "title": "Combine the facts and write the overview"
+      },
+      {
+        "code": "# ── Find the investment's receipts in the Xero bank accounts and compare them with the dividend statements ──\nimport re\n\nXERO = \"xero-accounting\"\nMAX_PAGES = 30\n# Words that don't identify a company on their own\nGENERIC = {\"pty\", \"ltd\", \"limited\", \"proprietary\", \"holdings\", \"group\", \"the\", \"and\", \"co\", \"company\", \"inc\",\n           \"trust\", \"trustee\", \"for\", \"investments\", \"australia\", \"australian\"}\n\n\ndef _err(exc):\n    msg = str(exc)\n    if msg.startswith(\"tool_error: \"):\n        msg = msg[len(\"tool_error: \"):]\n    if \"no usable credential\" in msg or \"credential unavailable\" in msg:\n        return \"the Xero connection needs connecting (Settings → Connections → xero-accounting)\"\n    return msg[:200]\n\n\ndef _xero_date(v):\n    s = str(v or \"\")\n    m = re.search(r\"/Date\\((\\d+)\", s)\n    if m:\n        from datetime import datetime, timezone\n        return datetime.fromtimestamp(int(m.group(1)) / 1000, tz=timezone.utc).strftime(\"%Y-%m-%d\")\n    return s[:10] if re.match(r\"^\\d{4}-\\d{2}-\\d{2}\", s) else \"\"\n\n\ndef _terms(facts, extra):\n    if extra.strip():\n        return [t.strip().lower() for t in extra.split(\",\") if t.strip()]\n    words = [w for w in re.findall(r\"[a-z0-9&']+\", str(facts.get(\"company\") or \"\").lower()) if w not in GENERIC]\n    # The first two distinctive words together (\"greenfield cold\"), so a common word alone doesn't match\n    return [\" \".join(words[:2])] if words else []\n\n\ndef _fy(date):\n    return int(date[:4]) + (1 if int(date[5:7]) >= 7 else 0)\n\n\nfacts = params.get(\"facts\") or {}\nextra = str(params.get(\"xero_match\") or \"\")\nxero = {\"checked\": False, \"receipts\": [], \"total\": 0.0, \"note\": \"\", \"terms\": []}\n\nterms = _terms(facts, extra)\nxero[\"terms\"] = terms\nstart = (facts.get(\"tranches\") or [{}])[0].get(\"date\") or \"\"\nif not facts:\n    xero[\"note\"] = \"\"\nelif not terms:\n    xero[\"note\"] = \"Xero not checked: no company name to look for.\"\nelse:\n    where = 'Type==\"RECEIVE\"&&Status==\"AUTHORISED\"'\n    if start:\n        where += \"&&Date>=DateTime(\" + \",\".join(str(int(x)) for x in start.split(\"-\")) + \")\"\n    found = []\n    try:\n        for page in range(1, MAX_PAGES + 1):\n            res = api.connectors.invoke(server=XERO, tool=\"list_bank_transactions\",\n                                        args={\"where\": where, \"order\": \"Date\", \"page\": page})\n            batch = (res or {}).get(\"BankTransactions\") or [] if isinstance(res, dict) else []\n            for t in batch:\n                lines = t.get(\"LineItems\") or []\n                text = \" \".join([str((t.get(\"Contact\") or {}).get(\"Name\") or \"\"), str(t.get(\"Reference\") or \"\")] +\n                                [str(li.get(\"Description\") or \"\") for li in lines]).lower()\n                if any(term in text for term in terms):\n                    found.append({\n                        \"date\": _xero_date(t.get(\"Date\")),\n                        \"amount\": round(float(t.get(\"Total\") or 0), 2),\n                        \"contact\": str((t.get(\"Contact\") or {}).get(\"Name\") or \"\"),\n                        \"reference\": str(t.get(\"Reference\") or \"\")[:80],\n                        \"account\": str((t.get(\"BankAccount\") or {}).get(\"Name\") or \"\"),\n                    })\n            if len(batch) < 100:\n                break\n        xero[\"checked\"] = True\n    except Exception as exc:\n        xero[\"note\"] = \"Xero not checked: \" + _err(exc) + \".\"\n\n    if xero[\"checked\"]:\n        found = [r for r in found if r[\"date\"]]\n        xero[\"receipts\"] = found\n        xero[\"total\"] = round(sum(r[\"amount\"] for r in found), 2)\n        statements = facts.get(\"dividends\") or []\n        stated = round(sum(x[\"amount\"] for x in statements), 2)\n        label = \" or \".join('\"' + t + '\"' for t in terms)\n        if not found:\n            xero[\"note\"] = \"Xero check: no bank receipts mention \" + label + \".\"\n        elif not statements:\n            xero[\"note\"] = (\"Xero check: \" + str(len(found)) + \" bank receipts mention \" + label +\n                            \"; there are no dividend statements to compare them with.\")\n        elif abs(xero[\"total\"] - stated) < 1:\n            xero[\"note\"] = (\"Xero check: the \" + str(len(found)) + \" bank receipts match the dividend statements (A$\" +\n                            format(xero[\"total\"], \",.2f\") + \").\")\n        else:\n            by_fy = {}\n            for x in statements:\n                by_fy[_fy(x[\"date\"])] = by_fy.get(_fy(x[\"date\"]), 0) + x[\"amount\"]\n            for r in found:\n                by_fy[_fy(r[\"date\"])] = by_fy.get(_fy(r[\"date\"]), 0) - r[\"amount\"]\n            off = [\"FY\" + str(y)[2:] for y, v in sorted(by_fy.items()) if abs(v) >= 1]\n            xero[\"note\"] = (\"Xero check: bank receipts total A$\" + format(xero[\"total\"], \",.2f\") + \" against A$\" +\n                            format(stated, \",.2f\") + \" in the dividend statements\" +\n                            ((\" (differs in \" + \", \".join(off[:6]) + \")\") if off else \"\") + \".\")\n\nsummary = xero[\"note\"] or \"Xero not checked.\"",
+        "id": "check_xero",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Matching Xero bank receipts and how they compare with the dividend statements.",
+            "name": "xero",
+            "type": "dict"
+          },
+          {
+            "description": "What this step did.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.combine_facts.outputs.facts }}",
+            "control": "hidden",
+            "label": "Facts",
+            "name": "facts",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.xero_match }}",
+            "control": "text",
+            "label": "Xero contact or reference to match",
+            "name": "xero_match",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Looks through the Xero bank receipts since the investment was made for ones naming the company, and compares them with the dividend statements by financial year. Read-only.",
+        "title": "Check the dividends in Xero"
+      },
+      {
+        "code": "# ── Draw the one-page investment summary PDF, save it to Knowledge and email it ──\nimport base64\nimport hashlib\nimport re\nfrom datetime import date\nfrom typing import Any\n\nfrom fpdf import FPDF\n\nMAIL = \"m365-mail-send\"\nFOLDER = \"Investments/Reports\"\nDEFAULT_TO = \"sean.baker@mysmb.com\"\nMONTHS = [\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\", \"Jun\", \"Jul\", \"Aug\", \"Sep\", \"Oct\", \"Nov\", \"Dec\"]\nCATEGORY_ORDER = [\"Tax statements\", \"Dividend statements\", \"Investor updates\", \"Annual reports\", \"Correspondence\",\n                  \"Other documents\"]\n\nNAVY = (22, 37, 64)\nGOLD = (176, 141, 87)\nTEAL = (70, 130, 112)\nINK = (33, 37, 41)\nGREY = (110, 114, 120)\nLINE = (222, 220, 214)\nPAPER = (244, 242, 237)\nWHITE = (255, 255, 255)\n\n\n# -- Formatting --------------------------------------------------------------------------------------------\n\ndef d_fmt(iso):\n    \"\"\"dd-Mmm-yy\"\"\"\n    if not iso:\n        return \"\"\n    y, m, d = iso[:10].split(\"-\")\n    return d + \"-\" + MONTHS[int(m) - 1] + \"-\" + y[2:]\n\n\ndef m_fmt(iso):\n    \"\"\"Mmm yyyy, for milestones\"\"\"\n    return MONTHS[int(iso[5:7]) - 1] + \" \" + iso[:4] if iso else \"\"\n\n\ndef money(n, dp=0):\n    return (\"-\" if n < 0 else \"\") + \"A$\" + format(abs(n), \",.\" + str(dp) + \"f\")\n\n\ndef short(n):\n    \"\"\"A$250k / A$1.2m\"\"\"\n    a = abs(n)\n    s = (\"%.1fm\" % (a / 1e6)).replace(\".0m\", \"m\") if a >= 1e6 else (\"%.1fk\" % (a / 1e3)).replace(\".0k\", \"k\")\n    return (\"-\" if n < 0 else \"\") + \"A$\" + s\n\n\ndef fy(iso):\n    return int(iso[:4]) + (1 if int(iso[5:7]) >= 7 else 0)\n\n\ndef held(start, end):\n    if not start or not end:\n        return \"\"\n    months = (int(end[:4]) - int(start[:4])) * 12 + int(end[5:7]) - int(start[5:7])\n    if int(end[8:10]) < int(start[8:10]):\n        months -= 1\n    y, m = divmod(max(months, 0), 12)\n    return (str(y) + \" yr\" + (\"s\" if y != 1 else \"\") + \" \" if y else \"\") + str(m) + \" mth\" + (\"s\" if m != 1 else \"\")\n\n\ndef safe(s):\n    \"\"\"Core PDF fonts are Latin-1 only.\"\"\"\n    s = str(s or \"\")\n    for a, b in ((\"–\", \"-\"), (\"—\", \"-\"), (\"‘\", \"'\"), (\"’\", \"'\"), (\"“\", '\"'), (\"”\", '\"'), (\"•\", \"-\"),\n                 (\"…\", \"...\"), (\"→\", \"->\"), (\"≈\", \"~\"), (\" \", \" \")):\n        s = s.replace(a, b)\n    return s.encode(\"latin-1\", \"ignore\").decode(\"latin-1\")\n\n\ndef xirr(flows):\n    \"\"\"Annualised return for dated cash flows [(iso, amount)], or None.\"\"\"\n    if len(flows) < 2 or not any(a < 0 for _, a in flows) or not any(a > 0 for _, a in flows):\n        return None\n    t0 = date.fromisoformat(min(d for d, _ in flows))\n    pts = [((date.fromisoformat(d) - t0).days / 365.0, a) for d, a in flows]\n\n    def npv(r):\n        return sum(a / (1 + r) ** t for t, a in pts)\n\n    lo, hi = -0.99, 10.0\n    if npv(lo) * npv(hi) > 0:\n        return None\n    for _ in range(200):\n        mid = (lo + hi) / 2\n        if npv(lo) * npv(mid) <= 0:\n            hi = mid\n        else:\n            lo = mid\n    return (lo + hi) / 2\n\n\n# -- Inputs ------------------------------------------------------------------------------------------------\n\nfacts = params.get(\"facts\") or {}\nfiles = params.get(\"files\") or []\nxero = params.get(\"xero\") or {}\nproblem = str(params.get(\"problem\") or \"\")\nfolder_name = str(params.get(\"folder_name\") or \"\")\nfolder_url = str(params.get(\"folder_url\") or \"\")\nto = [a.strip() for a in re.split(r\"[,;\\s]+\", str(params.get(\"email_to\") or DEFAULT_TO)) if \"@\" in a]\nbrand = str(params.get(\"family_name\") or \"\").strip()\nreport_file = \"\"\nemailed_to = \"\"\nsent = \"\"\n\nif problem or not facts:\n    summary = problem or \"Nothing to report.\"\nelse:\n    today = date.today().isoformat()\n    company = facts.get(\"company\") or folder_name or \"Investment\"\n    # \"Greenfield Cold Chain Pty Ltd\" -> \"Greenfield Cold Chain\" for the heading\n    title = re.sub(r\"s*((|,)?s*(pty.?s*ltd.?|pty.?s*limited|limited|ltd.?|inc.?))?s*$\", \"\", company, flags=re.I) or company\n    holder = facts.get(\"holder\") or \"\"\n    brand = brand or \" \".join(holder.split()[:2]) or \"Investment summary\"\n    tranches = facts.get(\"tranches\") or []\n    invested = round(sum(t[\"amount\"] for t in tranches), 2)\n    start = tranches[0][\"date\"] if tranches else \"\"\n\n    dividends = list(facts.get(\"dividends\") or [])\n    div_source = \"the dividend statements\"\n    if not dividends and xero.get(\"receipts\"):\n        dividends = [{\"date\": r[\"date\"], \"amount\": r[\"amount\"], \"franked_pct\": None} for r in xero[\"receipts\"]]\n        div_source = \"Xero bank receipts\"\n    by_fy = {}\n    for x in dividends:\n        by_fy[fy(x[\"date\"])] = by_fy.get(fy(x[\"date\"]), 0) + x[\"amount\"]\n    # Years with only a tax-statement total\n    for ye, amt in (facts.get(\"year_totals\") or {}).items():\n        by_fy.setdefault(fy(ye), amt)\n    div_total = round(sum(by_fy.values()), 2)\n    franks = [float(x[\"franked_pct\"]) for x in dividends if x.get(\"franked_pct\") is not None]\n    franking = (\"fully franked\" if franks and all(f >= 99.5 for f in franks) else\n                \"unfranked\" if franks and all(f <= 0.5 for f in franks) else \"partly franked\" if franks else \"\")\n\n    val = facts.get(\"valuation\") or {}\n    value = val.get(\"amount\")\n    report_date = val.get(\"date\") or today\n    total_value = (value or 0) + div_total\n    moic = total_value / invested if invested and value is not None else None\n    flows = [(t[\"date\"], -t[\"amount\"]) for t in tranches] + [(x[\"date\"], x[\"amount\"]) for x in dividends]\n    if value is not None and val.get(\"date\"):\n        flows.append((val[\"date\"], value))\n    irr = xirr(flows) if value is not None and invested else None\n\n    status = (facts.get(\"status\") or \"active\").upper()\n    if status == \"UNKNOWN\":\n        status = \"ACTIVE\"\n    initials = \"\".join(w[0] for w in brand.split()[:3]).upper() or \"INV\"\n    ref = initials + \"-INV-\" + today[:4] + \"-\" + str(int(hashlib.sha256(company.encode()).hexdigest(), 16) % 1000).zfill(3)\n\n    # -- Drawing helpers ----------------------------------------------------------------------------------\n    pdf = FPDF(format=\"A4\", unit=\"mm\")\n    pdf.set_auto_page_break(False)\n    pdf.set_margins(0, 0, 0)\n    pdf.add_page()\n    pdf.c_margin = 0\n    W = 210\n    L = 10\n    CW = W - 2 * L\n\n    def font(size, style: Any = \"\", face=\"Helvetica\", color=INK):\n        pdf.set_font(face, style, size)\n        pdf.set_text_color(*color)\n\n    def box(x, y, w, h, fill=WHITE, border=LINE):\n        pdf.set_fill_color(*fill)\n        pdf.set_draw_color(*border)\n        pdf.set_line_width(0.2)\n        pdf.rect(x, y, w, h, style=\"DF\")\n\n    def label(x, y, text, color=GREY, size=6.5):\n        font(size, \"B\", color=color)\n        pdf.set_char_spacing(0.6)\n        pdf.text(x, y, safe(text.upper()))\n        pdf.set_char_spacing(0)\n\n    def write(x, y, w, text, size=7.5, lh=3.4, color=INK, style=\"\", max_lines=None, align=\"L\"):\n        font(size, style, color=color)\n        pdf.set_xy(x, y)\n        lines = pdf.multi_cell(w, lh, safe(text), align=align, dry_run=True, output=\"LINES\")\n        if max_lines and len(lines) > max_lines:\n            lines = lines[:max_lines]\n            lines[-1] = lines[-1].rstrip(\" .,;\") + \"...\"\n        for i, ln in enumerate(lines):\n            pdf.set_xy(x, y + i * lh)\n            pdf.cell(w, lh, ln, align=align)\n        return y + len(lines) * lh\n\n    def fit(text, w, size, style: Any = \"\"):\n        pdf.set_font(pdf.font_family, style, size)\n        t = safe(text)\n        if pdf.get_string_width(t) <= w:\n            return t\n        while t and pdf.get_string_width(t + \"...\") > w:\n            t = t[:-1]\n        return t.rstrip() + \"...\"\n\n    # -- Page --------------------------------------------------------------------------------------------\n    pdf.set_fill_color(*PAPER)\n    pdf.rect(0, 0, W, 297, style=\"F\")\n\n    # Header band\n    pdf.set_fill_color(*NAVY)\n    pdf.rect(L, 10, CW, 50, style=\"F\")\n    font(13, \"B\", color=WHITE)\n    pdf.set_char_spacing(2.2)\n    pdf.text(L + 7, 21, safe(brand.upper()))\n    pdf.set_char_spacing(0)\n    pdf.set_fill_color(*GOLD)\n    pdf.rect(L + 7, 24, 22, 0.7, style=\"F\")\n    font(6.5, \"\", color=(196, 204, 218))\n    pdf.set_char_spacing(0.8)\n    tag = \"INVESTMENT SUMMARY   |   PRIVATE & CONFIDENTIAL\"\n    pdf.text(L + CW - 7 - pdf.get_string_width(tag), 20, tag)\n    pdf.set_char_spacing(0)\n    font(24, \"B\", \"Times\", WHITE)\n    pdf.text(L + 7, 38, fit(title, CW - 50, 24, \"B\"))\n    font(8.5, \"\", color=(214, 220, 230))\n    sub = \" | \".join(s for s in [facts.get(\"instrument\") or \"\", (\"Held by \" + holder) if holder else \"\"] if s)\n    pdf.text(L + 7, 45, safe(sub))\n    # Status pill\n    font(7, \"B\", color=NAVY)\n    sw = pdf.get_string_width(status) + 9\n    pdf.set_fill_color(225, 238, 228)\n    pdf.rect(L + CW - 7 - sw, 39.5, sw, 5.5, style=\"F\")\n    pdf.set_fill_color(46, 125, 80)\n    pdf.ellipse(L + CW - 7 - sw + 2.4, 41.5, 1.6, 1.6, style=\"F\")\n    pdf.text(L + CW - 7 - sw + 5.2, 43.3, status)\n    # Meta line\n    x = L + 7\n    for k, v in [(\"Reporting date\", d_fmt(report_date)), (\"Prepared\", d_fmt(today)),\n                 (\"Holding period\", held(start, report_date)), (\"Ref\", ref)]:\n        if not v:\n            continue\n        font(7, \"\", color=(170, 180, 198))\n        pdf.text(x, 53, k)\n        x += pdf.get_string_width(k) + 1.5\n        font(7, \"B\", color=WHITE)\n        pdf.text(x, 53, safe(v))\n        x += pdf.get_string_width(v) + 6\n\n    # KPI strip\n    y = 63\n    kw = CW / 5\n    count_note = str(len(dividends)) + \" payment\" + (\"s\" if len(dividends) != 1 else \"\") + \\\n        (\", \" + franking if franking else \"\")\n    kpis = [\n        (\"Invested capital\", money(invested) if invested else \"-\", d_fmt(start)),\n        (\"Carrying value 1\", money(value) if value is not None else \"-\", (val.get(\"basis\") or \"\")[:34]),\n        (\"Dividends 2\", money(div_total) if div_total else \"-\", count_note if dividends else \"\"),\n        (\"MOIC 3\", (\"%.2fx\" % moic) if moic else \"-\", (\"Total value \" + money(total_value)) if moic else \"\"),\n        (\"IRR 4\", (\"%.1f%% p.a.\" % (irr * 100)) if irr is not None else \"-\", \"Since inception\" if irr is not None else \"\"),\n    ]\n    box(L, y, CW, 22)\n    for i, (k, v, s) in enumerate(kpis):\n        x = L + i * kw\n        if i:\n            pdf.set_draw_color(*LINE)\n            pdf.line(x, y + 3, x, y + 19)\n        head, _, sup = k.rpartition(\" \") if k[-1].isdigit() else (k, \"\", \"\")\n        label(x + 4, y + 6, head)\n        if sup:\n            font(6.5, \"B\")\n            lw = pdf.get_string_width(head.upper()) + 0.6 * 25.4 / 72 * len(head)\n            font(4.8, \"B\", color=GREY)\n            pdf.text(x + 4 + lw + 0.6, y + 4.8, sup)\n        font(14, \"B\", color=NAVY)\n        pdf.text(x + 4, y + 13.5, fit(v, kw - 6, 14, \"B\"))\n        font(6.2, \"\", color=GREY)\n        pdf.text(x + 4, y + 18, fit(s, kw - 6, 6.2))\n\n    # Charts\n    y = 89\n    hw = (CW - 4) / 2\n    box(L, y, hw, 64)\n    box(L + hw + 4, y, hw, 64)\n    label(L + 4, y + 6, \"Value created\")\n    font(6.2, color=GREY)\n    pdf.text(L + 4, y + 9.5, safe(\"Since inception to \" + d_fmt(report_date) + \", A$ thousands\"))\n    label(L + hw + 8, y + 6, \"Dividends by financial year\")\n    font(6.2, color=GREY)\n    pdf.text(L + hw + 8, y + 9.5, safe(\"A$ thousands, years ending 30 June. Total \" + short(div_total)))\n\n    # Waterfall: invested -> change in value -> dividends -> total value\n    cx, cy, ch, cwid = L + 6, y + 15, 38, hw - 12\n    if invested and value is not None:\n        steps = [(\"Invested\", 0, invested, NAVY), (\"Change in value\", invested, value, TEAL if value >= invested else (190, 80, 70)),\n                 (\"Dividends\", value, value + div_total, GOLD), (\"Total value\", 0, total_value, NAVY)]\n        top = max(max(a, b) for _, a, b, _ in steps) * 1.12\n        bw = cwid / len(steps) * 0.55\n        base = cy + ch\n        pdf.set_draw_color(*LINE)\n        pdf.line(cx, base, cx + cwid, base)\n        for i, (name, a, b, col) in enumerate(steps):\n            bx = cx + (i + 0.5) * cwid / len(steps) - bw / 2\n            y1, y2 = base - max(a, b) / top * ch, base - min(a, b) / top * ch\n            pdf.set_fill_color(*col)\n            pdf.rect(bx, y1, bw, max(y2 - y1, 0.4), style=\"F\")\n            delta = b - a if i in (1, 2) else b\n            txt = (\"+\" if i in (1, 2) and delta >= 0 else \"\") + short(delta)\n            font(6.5, \"B\", color=INK)\n            pdf.text(bx + bw / 2 - pdf.get_string_width(txt) / 2, y1 - 1.5, txt)\n            font(6, color=GREY)\n            pdf.set_xy(bx - 6, base + 1.5)\n            pdf.multi_cell(bw + 12, 2.6, name, align=\"C\")\n    else:\n        write(cx, cy + 15, cwid, \"Needs both the amount invested and a current valuation.\", color=GREY, align=\"C\")\n\n    # Dividends by FY\n    cx = L + hw + 4 + 6\n    if by_fy:\n        years = list(range(min(by_fy), max(by_fy) + 1))[-12:]\n        top = max(by_fy.values()) * 1.18\n        slot = cwid / len(years)\n        bw = slot * 0.62\n        base = cy + ch\n        pdf.set_draw_color(*LINE)\n        pdf.line(cx, base, cx + cwid, base)\n        for i, yr in enumerate(years):\n            v = by_fy.get(yr, 0)\n            bx = cx + i * slot + (slot - bw) / 2\n            h = v / top * ch\n            pdf.set_fill_color(*(GOLD if i == len(years) - 1 else NAVY))\n            if v:\n                pdf.rect(bx, base - h, bw, h, style=\"F\")\n            txt = (\"%.1f\" % (v / 1000)) if v else \"-\"\n            font(5.8, \"B\", color=INK)\n            pdf.text(bx + bw / 2 - pdf.get_string_width(txt) / 2, base - h - 1.3, txt)\n            font(5.8, color=GREY)\n            lab = \"FY\" + str(yr)[2:]\n            pdf.text(bx + bw / 2 - pdf.get_string_width(lab) / 2, base + 4, lab)\n    else:\n        write(cx, cy + 15, cwid, \"No dividends found in the documents.\", color=GREY, align=\"C\")\n\n    # Business overview\n    y = 157\n    box(L, y, CW, 44)\n    label(L + 4, y + 6, \"Business overview\")\n    colw = (CW - 16) / 3\n    for i, (head, key) in enumerate([(\"The business\", \"business\"), (\"The investment\", \"investment\"),\n                                     (\"Investment rationale\", \"rationale\")]):\n        x = L + 4 + i * (colw + 4)\n        font(11, \"B\", \"Times\", NAVY)\n        pdf.text(x, y + 14, head)\n        write(x, y + 16.5, colw, facts.get(key) or \"Not stated in the documents.\", size=7.4, lh=3.35, max_lines=9)\n\n    # Key terms / milestones / source documents\n    y = 205\n    tw = (CW - 8) / 3\n    for i in range(3):\n        box(L + i * (tw + 4), y, tw, 56)\n    # Key terms\n    x = L\n    label(x + 4, y + 6, \"Key terms\")\n    own = facts.get(\"ownership_pct\")\n    shares = facts.get(\"shares\")\n    pps = facts.get(\"price_per_share\")\n    terms = [\n        (\"Instrument\", facts.get(\"instrument\") or \"\"),\n        (\"Shares held\", (format(shares, \",.0f\") + (\" at A$%.2f\" % pps if pps else \"\")) if shares else \"\"),\n        (\"Ownership\", (\"%.1f%%\" % own) if own else \"\"),\n        (\"Invested\", d_fmt(start)),\n        (\"Board\", facts.get(\"board\") or \"\"),\n        (\"Website\", facts.get(\"website\") or \"\"),\n    ]\n    ry = y + 12\n    for k, v in terms:\n        if not v:\n            continue\n        font(7, color=GREY)\n        pdf.text(x + 4, ry, k)\n        font(7, \"B\", color=INK)\n        pdf.text(x + 25, ry, fit(v, tw - 28, 7, \"B\"))\n        pdf.set_draw_color(*LINE)\n        pdf.line(x + 4, ry + 2, x + tw - 4, ry + 2)\n        ry += 6.5\n    # Milestones\n    x = L + tw + 4\n    label(x + 4, y + 6, \"Key milestones\")\n    ms = facts.get(\"milestones\") or []\n    if ms:\n        pdf.set_fill_color(*GOLD)\n        pdf.rect(x + 5, y + 10, 0.6, min(len(ms), 5) * 8.6 - 2, style=\"F\")\n    for j, m in enumerate(ms[:5]):\n        my = y + 12.5 + j * 8.6\n        font(7, \"B\", color=NAVY)\n        pdf.text(x + 8, my, m_fmt(m[\"date\"]))\n        font(6.8, color=INK)\n        pdf.text(x + 8, my + 3.4, fit(m[\"text\"], tw - 12, 6.8))\n    # Source documents\n    x = L + 2 * (tw + 4)\n    label(x + 4, y + 6, \"Source documents\")\n    groups = {}\n    docs_on_record = [f for f in files if f.get(\"readable\")]\n    for f in docs_on_record:\n        g = groups.setdefault(f.get(\"category\") or \"Other documents\", {\"n\": 0, \"years\": [], \"fy\": False, \"url\": \"\", \"folders\": set()})\n        g[\"n\"] += 1\n        if f.get(\"year\"):\n            g[\"years\"].append(f[\"year\"])\n        g[\"fy\"] = g[\"fy\"] or bool(f.get(\"fy\"))\n        g[\"folders\"].add(f.get(\"folder\") or \"\")\n        g[\"url\"] = g[\"url\"] or f.get(\"url\") or \"\"\n    ry = y + 12\n    step = min(7.4, 37.0 / max(len(groups), 1))\n    for name in CATEGORY_ORDER:\n        g = groups.get(name)\n        if not g:\n            continue\n        yrs = sorted(g[\"years\"])\n        span = \"\"\n        if yrs:\n            fmt = (lambda v: \"FY\" + str(v)[2:]) if g[\"fy\"] else str\n            span = fmt(yrs[0]) if yrs[0] == yrs[-1] else fmt(yrs[0]) + \" to \" + fmt(yrs[-1])\n        font(7, \"B\", color=INK)\n        pdf.set_xy(x + 4, ry - 2.6)\n        pdf.cell(tw - 18, 3.4, name, link=g[\"url\"] or folder_url)\n        font(7, \"B\", color=NAVY)\n        n = str(g[\"n\"])\n        pdf.text(x + tw - 4 - pdf.get_string_width(n), ry, n)\n        font(6, color=GREY)\n        pdf.text(x + 4, ry + 3, span)\n        pdf.set_draw_color(*LINE)\n        pdf.line(x + 4, ry + 4.6, x + tw - 4, ry + 4.6)\n        ry += step\n    font(7, \"B\", color=INK)\n    pdf.set_xy(x + 4, y + 50)\n    pdf.cell(tw - 18, 3.4, \"Total on record\", link=folder_url)\n    tn = str(len(docs_on_record))\n    pdf.text(x + tw - 4 - pdf.get_string_width(tn), y + 52.6, tn)\n\n    # Notes and important information\n    y = 266\n    label(L, y, \"Notes\")\n    notes = [\n        \"Carrying value is the \" + ((val.get(\"basis\") or \"valuation\") + \" at \" + d_fmt(val.get(\"date\")) if val else\n                                    \"latest valuation in the documents\") +\n        \". It is not a market price and may differ from the amount achievable on sale.\",\n        \"Dividends are the cash amounts in \" + div_source + \".\" + (\" \" + xero[\"note\"] if xero.get(\"note\") else \"\"),\n        \"MOIC is total value (carrying value plus dividends received) divided by invested capital.\",\n        \"IRR is the annualised return on the actual cash flow dates, assuming realisation at carrying value on \" +\n        (d_fmt(val.get(\"date\")) or \"the reporting date\") + \". Both exclude franking credits.\",\n    ]\n    ny = y + 2\n    for i, n in enumerate(notes):\n        ny = write(L, ny, CW / 2 - 4, str(i + 1) + \". \" + n, size=5.6, lh=2.5, color=GREY, max_lines=3) + 0.3\n    label(L + CW / 2 + 2, y, \"Important information\")\n    write(L + CW / 2 + 2, y + 2, CW / 2 - 2,\n          \"This summary has been prepared by \" + (holder or brand) + \" for members of the family group for \"\n          \"information only. It is not financial product advice and does not take into account any person's \"\n          \"objectives, financial situation or needs. Figures are taken from \" + str(len(docs_on_record)) + \" source documents \"\n          \"with the help of AI and are unaudited unless stated: check them against the documents before relying on \"\n          \"them. Past performance is not a reliable indicator of future performance.\",\n          size=5.6, lh=2.5, color=GREY, max_lines=8)\n\n    # -- Save and send ------------------------------------------------------------------------------------\n    data = bytes(pdf.output())\n    clean = re.sub(r'[\\\\/:*?\"<>|]+', \" \", company).strip()\n    report_file = FOLDER + \"/\" + clean + \" Investment Summary \" + d_fmt(today) + \".pdf\"\n    path = api.files.scratch_path(\"summary.pdf\")\n    with open(path, \"wb\") as fh:\n        fh.write(data)\n    api.files.put(file=report_file, scratch_file=path)\n\n    if to:\n        body = \"\\n\".join([\n            \"Hi,\",\n            \"\",\n            \"Attached is the one-page investment summary for \" + company + \".\",\n            \"\",\n            \"Invested: \" + (money(invested) if invested else \"not found\") + (\" (\" + d_fmt(start) + \")\" if start else \"\"),\n            \"Carrying value: \" + (money(value) if value is not None else \"not found\"),\n            \"Dividends received: \" + (money(div_total) + \" over \" + str(len(dividends)) + \" payments\" if div_total else \"none found\"),\n            \"MOIC: \" + (\"%.2fx\" % moic if moic else \"-\") + \"   IRR: \" + (\"%.1f%% p.a.\" % (irr * 100) if irr is not None else \"-\"),\n            xero.get(\"note\") or \"\",\n            \"\",\n            \"It was put together from \" + str(len(docs_on_record)) + \" documents in the SharePoint folder \" +\n            (folder_name or \"\") + \". A copy is saved in Knowledge at \" + report_file + \".\",\n            \"Figures are taken from the documents with the help of AI. Please check them before sharing.\",\n        ])\n        try:\n            api.connectors.invoke(server=MAIL, tool=\"send_email\", args={\n                \"to\": to,\n                \"subject\": \"Investment summary: \" + company + \" (\" + d_fmt(today) + \")\",\n                \"body\": body,\n                \"attachments\": [{\"name\": clean + \" Investment Summary.pdf\", \"contentBase64\": base64.b64encode(data).decode(),\n                                 \"contentType\": \"application/pdf\"}],\n            })\n            emailed_to = \", \".join(to)\n            sent = \" and emailed it to \" + emailed_to\n        except Exception as exc:\n            msg = str(exc).replace(\"tool_error: \", \"\")[:200]\n            sent = \", but couldn't email it (\" + msg + \")\"\n\n    summary = \"Saved \" + report_file + sent + \".\"",
+        "id": "write_and_send",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The PDF in Knowledge.",
+            "name": "report_file",
+            "type": "str"
+          },
+          {
+            "description": "Who the PDF was emailed to.",
+            "name": "emailed_to",
+            "type": "str"
+          },
+          {
+            "description": "What this run did.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ steps.combine_facts.outputs.facts }}",
+            "control": "hidden",
+            "label": "Facts",
+            "name": "facts",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.files }}",
+            "control": "hidden",
+            "label": "Files",
+            "name": "files",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ steps.check_xero.outputs.xero }}",
+            "control": "hidden",
+            "label": "Xero check",
+            "name": "xero",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.problem }}",
+            "control": "hidden",
+            "label": "Problem",
+            "name": "problem",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.folder_name }}",
+            "control": "hidden",
+            "label": "Folder",
+            "name": "folder_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ steps.read_documents.outputs.folder_url }}",
+            "control": "hidden",
+            "label": "Folder link",
+            "name": "folder_url",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.email_to }}",
+            "control": "text",
+            "label": "Email to",
+            "name": "email_to",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.family_name }}",
+            "control": "text",
+            "label": "Name on the report",
+            "name": "family_name",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Works out invested capital, carrying value, dividends, MOIC and IRR, draws the one-page PDF, saves it to Knowledge as Investments/Reports/<company> Investment Summary <date>.pdf and emails it as an attachment.",
+        "title": "Write the PDF and email it"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "The investment's SharePoint folder: open it in SharePoint, then Share → Copy link. A link to the folder of all investments works too if you fill in the investment name.",
+        "label": "SharePoint folder link",
+        "name": "folder_link",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "Optional. When the link is to the folder holding every investment, the subfolder whose name contains this is used.",
+        "label": "Investment name",
+        "name": "investment_name",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "Who gets the PDF. Separate several addresses with commas.",
+        "label": "Email to",
+        "name": "email_to",
+        "required": false,
+        "type": "str",
+        "value": "sean.baker@mysmb.com"
+      },
+      {
+        "control": "text",
+        "description": "Shown at the top of the report.",
+        "label": "Name on the report",
+        "name": "family_name",
+        "required": false,
+        "type": "str",
+        "value": "Future Now"
+      },
+      {
+        "control": "text",
+        "description": "Optional. Words that identify the dividends in Xero (contact or reference), separated by commas. Leave blank to match the company's name.",
+        "label": "Xero contact or reference to match",
+        "name": "xero_match",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "read_documents",
+      "combine_facts",
+      "check_xero",
+      "write_and_send"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Investments: One-page summary from SharePoint",
+  "originKey": "aa216c11-5bf2-4ad7-92e2-d70681fee53e",
+  "tags": [
+    "investments",
+    "sharepoint",
+    "xero",
+    "report",
+    "pdf"
+  ]
+}
