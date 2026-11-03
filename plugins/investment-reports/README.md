@@ -22,7 +22,7 @@ Turns the investment documents in SharePoint into reports for the family. It's r
    - key terms
    - milestones
    - what the company does and why it was bought
-3. It puts the facts together, counting each investment and each dividend once, and takes the latest valuation. AI writes a plain-English overview for family members.
+3. It puts the facts together, counting each investment and each dividend once, and takes the latest valuation. Only the holder's own money is counted: amounts that belong to the whole fund or company — total fund size, net assets, the investments the fund itself made, unit prices — are left out, and so is every amount in an investor update, a quarterly report or a due diligence paper. Those documents still provide the story: the business, the milestones and why the investment was made. When a capital account or wealth statement is there, its stated contributions, distributions and closing value settle the totals, with the capital calls supplying the dates the money moved. AI writes a plain-English overview for family members.
 4. It looks for bank receipts in Xero that name the company and compares them with the dividend statements by financial year. The result is noted on the report and in the email.
 5. It draws a one-page PDF with:
    - invested capital, carrying value, dividends, MOIC and IRR
