@@ -1,0 +1,706 @@
+{
+  "id": "xero-rate-variance-check",
+  "title": "Rate-Variance Check",
+  "description": "Flags supplier bill lines billed above or below the supplier's usual rate for the same item (6-month median), sorted by dollar impact, so price creep is caught before bills are approved.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "bills",
+    "suppliers",
+    "rates",
+    "pricing",
+    "accounts-payable"
+  ],
+  "keywords": [
+    "xero",
+    "rate variance",
+    "price creep",
+    "overcharge",
+    "supplier rates",
+    "usual rate",
+    "unit price",
+    "bill review",
+    "price check",
+    "accounts payable"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "list_xero_rate_variance",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/xero-accounting/list_xero_rate_variance/lines": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/rv",
+              "value": {
+                "$computed": "xero-accounting_rate_variance_rows",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_xero_rate_variance/lines"
+                  },
+                  "tolerance": {
+                    "$state": "/xero-accounting/list_xero_rate_variance/summary/tolerancePct"
+                  },
+                  "limit": 5
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpDown",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Rate-Variance Check",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_xero_rate_variance"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk4": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "Not enough bill history to compare supplier rates yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_rate_variance",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_rate_variance/lines/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "summary",
+          "summaryDivider",
+          "chart",
+          "legend",
+          "footerDivider",
+          "footerRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_rate_variance",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_rate_variance/lines/0"
+            }
+          ]
+        }
+      },
+      "summary": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "summaryTop",
+          "overCounts"
+        ]
+      },
+      "summaryTop": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "baseline"
+        },
+        "children": [
+          "overAmount",
+          "overLabel"
+        ]
+      },
+      "overAmount": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/list_xero_rate_variance/summary/overAmount"
+              },
+              "currency": "AUD"
+            }
+          }
+        }
+      },
+      "overLabel": {
+        "type": "Text",
+        "props": {
+          "text": "over usual rates",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "overCounts": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_rate_variance/summary/summaryText"
+          },
+          "tone": "muted"
+        }
+      },
+      "summaryDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "chart": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "axisRow",
+          "lineList"
+        ]
+      },
+      "axisRow": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "template": "minmax(0,2fr) 0.5rem minmax(0,1.5fr) 1px minmax(0,1.5fr) 0.5rem 5.25rem"
+        },
+        "children": [
+          "axisSp1",
+          "axisSp2",
+          "axisMinCell",
+          "axisZeroCell",
+          "axisMaxCell",
+          "axisSp3",
+          "axisSp4"
+        ]
+      },
+      "axisSp1": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisSp2": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisSp3": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisSp4": {
+        "type": "Stack",
+        "props": {}
+      },
+      "axisMinCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "start"
+        },
+        "children": [
+          "axisMin"
+        ]
+      },
+      "axisZeroCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "axisZero"
+        ]
+      },
+      "axisMaxCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "axisMax"
+        ]
+      },
+      "axisMin": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/rv/axisMin"
+          },
+          "tone": "muted"
+        }
+      },
+      "axisZero": {
+        "type": "Caption",
+        "props": {
+          "text": "0",
+          "tone": "muted"
+        }
+      },
+      "axisMax": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/rv/axisMax"
+          },
+          "tone": "muted"
+        }
+      },
+      "lineList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "lineRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/rv/rows",
+          "key": "id"
+        }
+      },
+      "lineRow": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "template": "minmax(0,2fr) 0.5rem minmax(0,1.5fr) 1px minmax(0,1.5fr) 0.5rem 5.25rem",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "lineLabel",
+          "linePadL",
+          "barLeft",
+          "lineZero",
+          "barRight",
+          "linePadR",
+          "lineValues"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "reviewUrl"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "lineLabel": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "lineName",
+          "lineItem"
+        ]
+      },
+      "lineName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "contactName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "lineItem": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "itemLabel"
+          },
+          "tone": "muted"
+        }
+      },
+      "linePadL": {
+        "type": "Stack",
+        "props": {}
+      },
+      "linePadR": {
+        "type": "Stack",
+        "props": {}
+      },
+      "lineZero": {
+        "type": "Divider",
+        "props": {
+          "vertical": true
+        }
+      },
+      "barLeft": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "template": {
+            "$item": "leftTemplate"
+          }
+        },
+        "children": [
+          "barLeftSpace",
+          "barLeftBand",
+          "barUnder"
+        ]
+      },
+      "barLeftSpace": {
+        "type": "Stack",
+        "props": {}
+      },
+      "barLeftBand": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "muted"
+        }
+      },
+      "barUnder": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "info"
+        }
+      },
+      "barRight": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center",
+          "template": {
+            "$item": "rightTemplate"
+          }
+        },
+        "children": [
+          "barOver",
+          "barRightBand",
+          "barRightSpace"
+        ]
+      },
+      "barOver": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "warning"
+        }
+      },
+      "barRightBand": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "muted"
+        }
+      },
+      "barRightSpace": {
+        "type": "Stack",
+        "props": {}
+      },
+      "lineValues": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "linePct",
+          "lineImpact"
+        ]
+      },
+      "linePct": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "variancePctText"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "lineImpact": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "impactText"
+          },
+          "tone": "muted"
+        }
+      },
+      "legend": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "legOver",
+          "legUnder",
+          "legTol"
+        ]
+      },
+      "legOver": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legOverDot",
+          "legOverText"
+        ]
+      },
+      "legOverDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "legOverText": {
+        "type": "Caption",
+        "props": {
+          "text": "Above usual rate",
+          "tone": "muted"
+        }
+      },
+      "legUnder": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legUnderDot",
+          "legUnderText"
+        ]
+      },
+      "legUnderDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "info"
+        }
+      },
+      "legUnderText": {
+        "type": "Caption",
+        "props": {
+          "text": "Below usual rate",
+          "tone": "muted"
+        }
+      },
+      "legTol": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legTolDot",
+          "legTolText"
+        ]
+      },
+      "legTolDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "muted"
+        }
+      },
+      "legTolText": {
+        "type": "Caption",
+        "props": {
+          "text": "±5% tolerance",
+          "tone": "muted"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerBaseline",
+          "footerOpen"
+        ]
+      },
+      "footerBaseline": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_rate_variance/baselineText"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerOpen": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/xero-accounting/list_xero_rate_variance/billsUrl"
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "footerOpenText": {
+        "type": "Text",
+        "props": {
+          "text": "Review in Xero",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "info"
+        }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "xs",
+          "tone": "info"
+        }
+      }
+    }
+  }
+}
