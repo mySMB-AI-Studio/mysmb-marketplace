@@ -29,7 +29,7 @@ Turns the investment documents in SharePoint into reports for the family. It's r
    - a value-created chart and dividends by financial year
    - key terms, milestones and the source documents (with links)
    - notes and important information
-6. It saves the PDF to Knowledge as `Investments/Reports/<company> Investment Summary <dd-Mmm-yy>.pdf` and emails it to the "Email to" address.
+6. It puts the PDF in **Reports**, visible to everyone in the workspace, files a copy in Knowledge as `Investments/Reports/<company> Investment Summary <dd-Mmm-yy>.pdf`, and emails it to the "Email to" address. The email carries the attachment and a link to the report.
 
 ### Automation: Combined report from SharePoint
 
@@ -58,7 +58,7 @@ No environment variables are required.
 
 **Scopes:**
 
-- The one-page summary needs `connectors:m365-sharepoint`, `connectors:xero-accounting`, `connectors:m365-mail-send`, `ai:generate`, `files:read` and `files:write`.
+- The one-page summary needs `connectors:m365-sharepoint`, `connectors:xero-accounting`, `connectors:m365-mail-send`, `ai:generate`, `artifacts:write`, `files:read` and `files:write`.
 - The combined report needs `connectors:m365-sharepoint`, `ai:generate`, `files:read` and `files:write`.
 
 ## Limits
