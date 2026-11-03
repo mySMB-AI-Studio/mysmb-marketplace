@@ -1,0 +1,77 @@
+{
+  "contentHash": "9068c23579a5e7d1be496381dfcc9c0b4a0775a41e5ede255cb30812d2272162",
+  "definition": {
+    "steps": [
+      {
+        "connectors": [
+          {
+            "key": "ledger",
+            "label": "Xero organisation",
+            "required": true,
+            "scope": "service",
+            "server": "xero-accounting"
+          },
+          {
+            "key": "mailbox",
+            "label": "Mailbox that emails clients",
+            "required": true,
+            "scope": "service",
+            "server": "m365-mail-send"
+          }
+        ],
+        "description": "Invoice Nudge reads overdue invoices through Xero, and emails clients from your Microsoft 365 mailbox when it asks for a payment date.",
+        "fields": [],
+        "id": "connect_xero",
+        "title": "Connect Xero and a mailbox"
+      },
+      {
+        "connectors": [],
+        "fields": [
+          {
+            "default": 7,
+            "key": "min_days_overdue",
+            "label": "Chase invoices overdue by at least (days)",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "default": "friendly",
+            "key": "tone",
+            "label": "Reminder tone",
+            "options": [
+              {
+                "label": "Friendly",
+                "value": "friendly"
+              },
+              {
+                "label": "Firm",
+                "value": "firm"
+              }
+            ],
+            "type": "select"
+          },
+          {
+            "default": true,
+            "key": "call_on_broken_promise",
+            "label": "Create a call activity when a client misses their date",
+            "type": "boolean"
+          },
+          {
+            "helpText": "Shown at the bottom of the note added in Xero.",
+            "key": "sender_name",
+            "label": "Sign reminders as",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "id": "preferences",
+        "title": "How should it chase?"
+      }
+    ],
+    "version": 1
+  },
+  "description": "Connect Xero and choose how Invoice Nudge chases.",
+  "kind": "setup",
+  "name": "Invoice Nudge setup",
+  "originKey": "251975a7-9b9f-4344-873d-1c084f190910"
+}

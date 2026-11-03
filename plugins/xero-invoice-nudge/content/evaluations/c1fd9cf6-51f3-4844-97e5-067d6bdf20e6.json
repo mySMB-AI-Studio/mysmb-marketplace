@@ -1,0 +1,106 @@
+{
+  "contentHash": "56285b9f64a41120704fed46536693e379ddc6b03c995fe24a80bc1f1f135571",
+  "definition": {
+    "key": "overdue-invoice-chase-suite",
+    "kind": "evaluation",
+    "originKey": "c1fd9cf6-51f3-4844-97e5-067d6bdf20e6",
+    "process": "a3a38303-b437-4825-ad13-fabb1e29acae",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "emailReminder",
+              "step": "approve"
+            }
+          ],
+          "outcome": "chased",
+          "stepsReached": [
+            "scan",
+            "approve",
+            "report",
+            "chased"
+          ]
+        },
+        "fixtures": {
+          "connections": {
+            "xero.invoice.add_note": "connected",
+            "xero.invoice.email": "connected",
+            "xero.invoices.list_overdue": "connected"
+          },
+          "outputs": {
+            "scan": {
+              "chase": {
+                "amountDue": 1200,
+                "contactEmail": "client@example.com",
+                "idempotencyKey": "chase-inv-1-2026-11-03",
+                "invoiceId": "inv-1",
+                "invoiceNumber": "INV-0001",
+                "note": "Chased by Invoice Nudge on 2026-11-03"
+              },
+              "chaseSummary": "2 invoices, $1,550 overdue, oldest 33 days",
+              "hasOverdue": true,
+              "overdueList": [
+                {
+                  "AmountDue": 1200,
+                  "DaysOverdue": 33,
+                  "InvoiceID": "inv-1",
+                  "InvoiceNumber": "INV-0001"
+                },
+                {
+                  "AmountDue": 350,
+                  "DaysOverdue": 19,
+                  "InvoiceID": "inv-2",
+                  "InvoiceNumber": "INV-0002"
+                }
+              ]
+            }
+          }
+        },
+        "inputs": {
+          "runDate": "2026-11-03"
+        },
+        "key": "twoOverdueApproved",
+        "title": "Two overdue invoices, manager approves the email"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.invoice.email",
+            "xero.invoice.add_note"
+          ],
+          "outcome": "skipped",
+          "stepsReached": [
+            "scan",
+            "skipped"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "scan": {
+              "chase": {},
+              "chaseSummary": "Nothing overdue today",
+              "hasOverdue": false,
+              "overdueList": []
+            }
+          },
+          "steps.scan.hasOverdue": false
+        },
+        "inputs": {
+          "runDate": "2026-11-03"
+        },
+        "key": "nothingOverdue",
+        "title": "Nothing overdue: the run skips and sends nothing"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Chase overdue invoices: release gate"
+  },
+  "kind": "evaluation",
+  "name": "Chase overdue invoices: release gate",
+  "originKey": "c1fd9cf6-51f3-4844-97e5-067d6bdf20e6"
+}

@@ -1,0 +1,93 @@
+{
+  "contentHash": "48c7b0f662d57b0b58a27d6d91a88d57445212dbdfe1704af6957550e2a045fb",
+  "definition": {
+    "key": "payment-promise-followup-suite",
+    "kind": "evaluation",
+    "originKey": "5bb8180f-944a-4a4c-996b-8ae15279f196",
+    "process": "29a22241-7b8c-42ea-9705-807e3864b834",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "outcome": "kept",
+          "stepsReached": [
+            "confirm",
+            "waitDate",
+            "check",
+            "paid"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "paid": true,
+              "status": "PAID"
+            }
+          },
+          "connections": {
+            "email.send_reviewed": "connected"
+          },
+          "responses": [
+            {
+              "answer": "I'll pay on 10 November",
+              "step": "confirm"
+            }
+          ],
+          "steps.check.paid": true
+        },
+        "inputs": {
+          "contactEmail": "client@example.com",
+          "invoiceNumber": "INV-0001",
+          "promisedDate": "2026-11-10"
+        },
+        "key": "promiseKept",
+        "title": "Client pays by the promised date"
+      },
+      {
+        "expected": {
+          "outcome": "broken",
+          "stepsReached": [
+            "confirm",
+            "waitDate",
+            "check",
+            "call",
+            "escalated"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "paid": false,
+              "status": "AUTHORISED"
+            }
+          },
+          "connections": {
+            "email.send_reviewed": "connected"
+          },
+          "responses": [
+            {
+              "answer": "Next Friday",
+              "step": "confirm"
+            }
+          ],
+          "steps.check.paid": false
+        },
+        "inputs": {
+          "contactEmail": "client@example.com",
+          "invoiceNumber": "INV-0002",
+          "promisedDate": "2026-11-10"
+        },
+        "key": "promiseBroken",
+        "title": "Client misses the date: the manager gets a call activity"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Follow up a payment promise: release gate"
+  },
+  "kind": "evaluation",
+  "name": "Follow up a payment promise: release gate",
+  "originKey": "5bb8180f-944a-4a4c-996b-8ae15279f196"
+}

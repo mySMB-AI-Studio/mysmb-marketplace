@@ -1,0 +1,220 @@
+{
+  "contentHash": "10bda21dd9234d9fb88c23036f93c59f776490417cb747a2ecd930fb1081fd8e",
+  "definition": {
+    "capabilities": [
+      "xero.invoices.list_overdue",
+      "email.send_reviewed",
+      "records.write",
+      "workq.create",
+      "notifications.send"
+    ],
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "call",
+          "escalated"
+        ],
+        "blocks": [
+          "waitDate"
+        ],
+        "key": "clientNeverAnswered"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "invoiceNumber",
+        "label": "Xero invoice number",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "contactEmail",
+        "label": "Client email",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "recordId",
+        "label": "Payment promise record",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "key": "promisedDate",
+        "label": "Promised date",
+        "required": false,
+        "type": "date"
+      }
+    ],
+    "key": "payment-promise-followup",
+    "kind": "process",
+    "originKey": "29a22241-7b8c-42ea-9705-807e3864b834",
+    "outcomes": [
+      {
+        "evidence": [
+          "steps.check.status"
+        ],
+        "key": "kept",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "steps.call.completed"
+        ],
+        "key": "broken",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "Only the client sets the promised date; the agent never invents one.",
+        "key": "clientConfirmsOwnDate"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "channel": [
+          "email"
+        ],
+        "expiresAfterDays": 7,
+        "form": "c5ccb8ea-a4be-4e29-91e3-5c45b3bc9381",
+        "identityLevel": "link",
+        "interaction": "short_form",
+        "key": "confirm",
+        "kind": "external",
+        "onNoResponse": "remindThenEscalate",
+        "recipient": "inputs.contactEmail",
+        "title": "Ask the client when they will pay"
+      },
+      {
+        "event": {
+          "correlate": "inputs.recordId",
+          "eventType": "record.stage_changed"
+        },
+        "key": "waitDate",
+        "kind": "wait",
+        "timer": {
+          "businessDays": 5
+        },
+        "title": "Give the client time to pay"
+      },
+      {
+        "automation": "c441793d-837b-4f87-b9eb-3a814b7e5d44",
+        "inputs": {
+          "invoice_number": "inputs.invoiceNumber",
+          "record_id": "inputs.recordId"
+        },
+        "key": "check",
+        "kind": "automation",
+        "title": "Check Xero: was it paid?"
+      },
+      {
+        "assign": "manager",
+        "completion": "statusDone",
+        "key": "call",
+        "kind": "human",
+        "template": "f9c0c232-b3cc-4ba4-8f48-860743e673b8",
+        "title": "Call the client about the missed date"
+      },
+      {
+        "evidence": [
+          "steps.check.status"
+        ],
+        "key": "paid",
+        "kind": "gate",
+        "outcome": "kept",
+        "requires": [
+          "steps.check.paid"
+        ],
+        "title": "Paid as promised"
+      },
+      {
+        "evidence": [
+          "steps.call.completed"
+        ],
+        "key": "escalated",
+        "kind": "gate",
+        "outcome": "broken",
+        "requires": [
+          "steps.call.completed"
+        ],
+        "title": "Promise broken, client called"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "invoice_number"
+      ],
+      "kind": "records.payment_promise"
+    },
+    "title": "Follow up a payment promise",
+    "transitions": [
+      {
+        "from": "confirm",
+        "to": "waitDate"
+      },
+      {
+        "from": "waitDate",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "to": "paid",
+        "when": "steps.check.paid"
+      },
+      {
+        "from": "check",
+        "to": "call",
+        "when": "!steps.check.paid"
+      },
+      {
+        "from": "call",
+        "to": "escalated"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "record.created",
+        "filter": {
+          "type_slug": "payment_promise"
+        },
+        "inputsFrom": {
+          "contactEmail": "payload.contact_email",
+          "invoiceNumber": "payload.invoice_number",
+          "recordId": "subject.record_id"
+        },
+        "kind": "event",
+        "subjectFrom": "subject.record_id"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 1,
+        "editableBy": "manager",
+        "key": "graceDays",
+        "max": 14,
+        "min": 0,
+        "type": "number"
+      },
+      {
+        "default": true,
+        "editableBy": "reviewer",
+        "key": "callOnBrokenPromise",
+        "type": "boolean"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "payment promise"
+    }
+  },
+  "kind": "process",
+  "name": "Follow up a payment promise",
+  "originKey": "29a22241-7b8c-42ea-9705-807e3864b834"
+}

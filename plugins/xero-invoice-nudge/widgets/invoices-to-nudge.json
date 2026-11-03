@@ -1,0 +1,282 @@
+{
+  "branding": {
+    "color": "#13B5EA"
+  },
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "DueDate ASC",
+      "statuses": "AUTHORISED",
+      "where": "Type==\"ACCREC\" AND AmountDue>0"
+    },
+    "tool": "list_invoices"
+  },
+  "description": "Overdue Xero invoices, oldest first, each tagged Nudge now / Nudge soon / Watch.",
+  "id": "invoices-to-nudge",
+  "keywords": [
+    "overdue",
+    "chase",
+    "nudge",
+    "receivables"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
+    }
+  },
+  "spec": {
+    "elements": {
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "CurrencyCode"
+              },
+              "value": {
+                "$item": "AmountDue"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card"
+      },
+      "count": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              },
+              "pattern": "{n} unpaid"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "empty": {
+        "props": {
+          "message": "Nobody owes you anything overdue."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "idBottom": {
+        "props": {
+          "text": {
+            "$item": "InvoiceNumber"
+          }
+        },
+        "type": "Caption"
+      },
+      "idTop": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "identity": {
+        "children": [
+          "idTop",
+          "idBottom"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "list": {
+        "children": [
+          "row"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "InvoiceID",
+          "statePath": "/xero-accounting/list_invoices/Invoices"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices"
+        }
+      },
+      "nudge": {
+        "props": {
+          "text": {
+            "$computed": "xero-invoice-nudge_nudge_label",
+            "args": {
+              "due": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-invoice-nudge_nudge_tone",
+            "args": {
+              "due": {
+                "$item": "DueDate"
+              }
+            }
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "row": {
+        "children": [
+          "identity",
+          "amount",
+          "nudge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "minmax(0, 1fr) 6rem 8rem"
+        },
+        "type": "Row"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Invoices to nudge"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "BellRing",
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "count"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "invoices",
+    "receivables",
+    "invoice-nudge"
+  ],
+  "title": "Invoices to nudge"
+}

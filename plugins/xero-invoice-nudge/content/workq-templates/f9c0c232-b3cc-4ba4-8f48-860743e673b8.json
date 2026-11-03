@@ -1,0 +1,68 @@
+{
+  "body": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "description": "They ({{contact_email}}) promised to pay by {{promised_date}}. Xero still shows it unpaid. Call them, agree a new date, and log what happened.",
+        "dueOffset": {
+          "anchorVarRef": "promised_date",
+          "businessDays": true,
+          "days": 1
+        },
+        "id": "call",
+        "labels": [
+          "invoice-nudge"
+        ],
+        "priority": "high",
+        "roleVarRef": "manager",
+        "scope": "me",
+        "subtasks": [
+          {
+            "id": "phone",
+            "label": "Call the client"
+          },
+          {
+            "id": "log",
+            "label": "Log the new date or the reason"
+          },
+          {
+            "id": "status",
+            "label": "Update the promise status"
+          }
+        ],
+        "title": "Call the client about {{invoice_number}}"
+      }
+    ]
+  },
+  "contentHash": "6ebfdd3af74869e3336cd8f18f04bc672f21c67f9ea4e61194b997c0c997310d",
+  "kind": "workq_template",
+  "level": "org",
+  "name": "Call client about a missed promise",
+  "originKey": "f9c0c232-b3cc-4ba4-8f48-860743e673b8",
+  "slots": [
+    {
+      "displayName": "Invoice number",
+      "logicalName": "invoice_number",
+      "type": "text"
+    },
+    {
+      "displayName": "Client email",
+      "logicalName": "contact_email",
+      "type": "text"
+    },
+    {
+      "displayName": "Promised date",
+      "logicalName": "promised_date",
+      "type": "date"
+    },
+    {
+      "config": {
+        "allow": "user"
+      },
+      "displayName": "Manager",
+      "logicalName": "manager",
+      "type": "principal"
+    }
+  ],
+  "tags": []
+}

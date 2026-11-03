@@ -1,0 +1,66 @@
+{
+  "contentHash": "0f1e0ee0163106aa312a9c32a241be1b4e3734ce992235b9ec22da9ee28a896a",
+  "declaredScopes": [
+    "connectors:xero-accounting",
+    "records:payment_promise:read",
+    "records:payment_promise:write"
+  ],
+  "dependencies": [],
+  "description": "Given invoiceNumber and recordId: look up the Xero invoice with the xero-accounting list_invoices tool (invoiceNumbers filter). Return paid = true when its Status is PAID or AmountDue is 0, plus status. Then move the Payment promise record recordId to stage kept if paid, otherwise broken.",
+  "flowIr": {
+    "description": "Looks up one Xero invoice by number. If it is paid, moves the Payment promise to Paid as promised; if not, to Promise broken. Returns paid and the Xero status.",
+    "irVersion": 1,
+    "name": "Check Xero invoice paid",
+    "nodes": [
+      {
+        "code": "number = str(params.get(\"invoice_number\") or \"\").strip()\nresult = api.connectors.invoke(\n    server=\"xero-accounting\",\n    tool=\"list_invoices\",\n    args={\"invoiceNumbers\": number},\n) if number else {}\n\ninvoices = []\nif isinstance(result, dict):\n    invoices = result.get(\"Invoices\") or result.get(\"invoices\") or []\n\nif invoices:\n    inv = invoices[0]\n    status = str(inv.get(\"Status\") or \"UNKNOWN\")\n    amount_due = float(inv.get(\"AmountDue\") or 0)\n    paid = status == \"PAID\" or amount_due <= 0\nelse:\n    status = \"NOT_FOUND\"\n    paid = False\n\nrecord_id = params.get(\"record_id\")\nif record_id:\n    api.records.update(\n        type_slug=\"payment_promise\",\n        record_id=record_id,\n        record={\"stage\": \"kept\" if paid else \"broken\"},\n    )\n",
+        "id": "check",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when Xero shows the invoice as paid.",
+            "name": "paid",
+            "type": "bool"
+          },
+          {
+            "description": "The invoice status in Xero, or NOT_FOUND.",
+            "name": "status",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "control": "text",
+            "label": "Xero invoice number",
+            "name": "invoice_number",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "control": "text",
+            "label": "Payment promise record",
+            "name": "record_id",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Finds the invoice in Xero by number, says whether it is paid, and moves the Payment promise to kept or broken.",
+        "title": "Check the invoice in Xero"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "check"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Check Xero invoice paid",
+  "originKey": "c441793d-837b-4f87-b9eb-3a814b7e5d44",
+  "tags": []
+}

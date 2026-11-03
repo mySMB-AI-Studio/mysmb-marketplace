@@ -1,0 +1,57 @@
+{
+  "contentHash": "5caf6ff3629e59cbce21445719019199c8da37d74330abf7ed828acee6d1806b",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "statuses": "AUTHORISED",
+          "summaryOnly": "true",
+          "where": "inputs.dueBeforeFilter"
+        },
+        "scopes": [
+          "accounting.transactions.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_invoices"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "properties": {
+        "minDaysOverdue": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "key": "xero.invoices.list_overdue",
+    "kind": "capability",
+    "originKey": "5e1cbd6e-2242-4673-b670-56049ccaa2e3",
+    "outputsSchema": {
+      "properties": {
+        "invoices": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "invoices"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "List overdue Xero invoices"
+  },
+  "kind": "capability",
+  "name": "List overdue Xero invoices",
+  "originKey": "5e1cbd6e-2242-4673-b670-56049ccaa2e3"
+}

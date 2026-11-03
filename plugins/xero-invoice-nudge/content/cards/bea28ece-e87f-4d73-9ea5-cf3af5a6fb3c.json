@@ -1,0 +1,76 @@
+{
+  "contentHash": "ea6d190454782301e1ae68a5d900222054f85819dfb1ce0abb70ba438d950e1f",
+  "definition": {
+    "actions": [
+      {
+        "key": "save",
+        "kind": "confirm",
+        "label": "Log promise",
+        "tone": "primary"
+      },
+      {
+        "key": "later",
+        "kind": "snooze",
+        "label": "Later",
+        "snoozeDays": 1
+      }
+    ],
+    "audience": {
+      "kind": "role",
+      "role": "user"
+    },
+    "blocks": [
+      {
+        "kind": "text",
+        "text": "Saving this creates a Payment promise, which starts the follow-up process.",
+        "tone": "info"
+      }
+    ],
+    "deadline": {
+      "expiresInHours": 72
+    },
+    "description": "A client told you when they will pay. Log it and Invoice Nudge follows it up.",
+    "fields": [
+      {
+        "key": "invoice_number",
+        "kind": "text",
+        "label": "Xero invoice number",
+        "placeholder": "INV-0001",
+        "required": true
+      },
+      {
+        "key": "contact_email",
+        "kind": "text",
+        "label": "Client email",
+        "required": true
+      },
+      {
+        "key": "amount_due",
+        "kind": "number",
+        "label": "Amount due",
+        "min": 0,
+        "required": false
+      },
+      {
+        "key": "promised_date",
+        "kind": "date",
+        "label": "Promised date",
+        "required": true
+      }
+    ],
+    "key": "invoice_nudge.log_promise",
+    "kind": "card",
+    "originKey": "bea28ece-e87f-4d73-9ea5-cf3af5a6fb3c",
+    "schemaVersion": 1,
+    "sink": {
+      "kind": "custom_table",
+      "typeSlug": "payment_promise"
+    },
+    "title": "Log a payment promise",
+    "version": "0.1.0"
+  },
+  "dependencies": [],
+  "kind": "card",
+  "originKey": "bea28ece-e87f-4d73-9ea5-cf3af5a6fb3c",
+  "title": "Log a payment promise"
+}

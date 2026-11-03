@@ -1,0 +1,252 @@
+{
+  "contentHash": "07ecfdea7c31e556996e43b225551b435859c2559a52d85fc1ace472395be25b",
+  "definition": {
+    "capabilities": [
+      "xero.invoices.list_overdue",
+      "xero.invoice.email",
+      "xero.invoice.add_note",
+      "records.write",
+      "artifacts.write"
+    ],
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "skipped"
+        ],
+        "blocks": [
+          "approve",
+          "report"
+        ],
+        "key": "xeroDisconnected"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "runDate",
+        "label": "Run date",
+        "required": true,
+        "type": "date"
+      },
+      {
+        "freshness": {
+          "live": true,
+          "maxAgeMinutes": 60
+        },
+        "key": "overdueTotal",
+        "label": "Total overdue",
+        "required": false,
+        "type": "money"
+      }
+    ],
+    "key": "overdue-invoice-chase",
+    "kind": "process",
+    "originKey": "a3a38303-b437-4825-ad13-fabb1e29acae",
+    "outcomes": [
+      {
+        "evidence": [
+          "steps.approve.decision",
+          "steps.report.artifactId"
+        ],
+        "key": "chased",
+        "terminal": true
+      },
+      {
+        "evidence": [],
+        "key": "skipped",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "No reminder email is sent to a client until the manager approves the chase decision.",
+        "key": "neverEmailWithoutApproval"
+      }
+    ],
+    "rework": [
+      {
+        "from": "approve",
+        "requires": "manager",
+        "to": "scan"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "scan",
+        "kind": "agent",
+        "outputs": [
+          "hasOverdue",
+          "overdueList",
+          "chase",
+          "chaseSummary"
+        ],
+        "skill": "find-overdue-invoices",
+        "title": "Find overdue invoices in Xero"
+      },
+      {
+        "eligible": [
+          "manager"
+        ],
+        "key": "approve",
+        "kind": "decision",
+        "materiality": [
+          "steps.scan.chase",
+          "inputs.overdueTotal"
+        ],
+        "options": [
+          {
+            "effect": "Xero emails the invoice to its contact.",
+            "intent": {
+              "capability": "xero.invoice.email",
+              "payloadFrom": "steps.scan.chase"
+            },
+            "key": "emailReminder",
+            "label": "Email a reminder from Xero",
+            "suggested": true
+          },
+          {
+            "effect": "Adds a 'chased by Invoice Nudge' note to the invoice. Nothing is sent.",
+            "intent": {
+              "capability": "xero.invoice.add_note",
+              "payloadFrom": "steps.scan.chase"
+            },
+            "key": "noteOnly",
+            "label": "Just add a note in Xero"
+          },
+          {
+            "effect": "Creates a Payment promise record for the invoice, which starts the follow-up process.",
+            "intent": {
+              "capability": "records.write",
+              "payloadFrom": "steps.scan.chase"
+            },
+            "key": "askForDate",
+            "label": "Ask the client for a payment date"
+          },
+          {
+            "effect": "Nothing changes. The run closes as skipped.",
+            "key": "skip",
+            "label": "Skip today",
+            "transition": "skipped"
+          }
+        ],
+        "sla": {
+          "escalateTo": "reviewer",
+          "expireAfterBusinessDays": 5,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Manager picks how to chase the oldest overdue invoice",
+        "type": "chase_approval"
+      },
+      {
+        "artifactKind": "document",
+        "key": "report",
+        "kind": "output",
+        "template": "xero-overdue-chase",
+        "title": "Write the chase report"
+      },
+      {
+        "evidence": [
+          "steps.approve.decision",
+          "steps.report.artifactId"
+        ],
+        "key": "chased",
+        "kind": "gate",
+        "outcome": "chased",
+        "requires": [
+          "steps.approve.decision",
+          "steps.report.artifactId"
+        ],
+        "title": "Chase recorded"
+      },
+      {
+        "key": "skipped",
+        "kind": "gate",
+        "outcome": "skipped",
+        "requires": [
+          "steps.scan"
+        ],
+        "title": "Skipped"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [],
+      "kind": "none"
+    },
+    "title": "Chase overdue invoices",
+    "transitions": [
+      {
+        "from": "scan",
+        "to": "approve",
+        "when": "steps.scan.hasOverdue"
+      },
+      {
+        "from": "scan",
+        "to": "skipped",
+        "when": "!steps.scan.hasOverdue"
+      },
+      {
+        "from": "approve",
+        "to": "report"
+      },
+      {
+        "from": "report",
+        "to": "chased"
+      }
+    ],
+    "triggers": [
+      {
+        "cron": "0 9 * * 1-5",
+        "inputsFrom": {
+          "runDate": "fire.date"
+        },
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 7,
+        "editableBy": "manager",
+        "key": "minDaysOverdue",
+        "max": 90,
+        "min": 1,
+        "type": "number"
+      },
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      },
+      {
+        "default": "friendly",
+        "editableBy": "manager",
+        "key": "tone",
+        "options": [
+          {
+            "label": "Friendly",
+            "value": "friendly"
+          },
+          {
+            "label": "Firm",
+            "value": "firm"
+          }
+        ],
+        "type": "select"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "invoice run"
+    }
+  },
+  "kind": "process",
+  "name": "Chase overdue invoices",
+  "originKey": "a3a38303-b437-4825-ad13-fabb1e29acae"
+}
