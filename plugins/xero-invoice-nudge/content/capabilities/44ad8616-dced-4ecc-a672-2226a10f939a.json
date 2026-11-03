@@ -1,0 +1,60 @@
+{
+  "contentHash": "c3c7823a285850d0b60085c919cda6b2b4654b6129f8e24a4e10f52f3ec8838a",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoiceId": "inputs.invoiceId"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "email_invoice"
+      }
+    ],
+    "idempotency": {
+      "keyParam": "idempotencyKey",
+      "supported": true
+    },
+    "inputsSchema": {
+      "properties": {
+        "idempotencyKey": {
+          "type": "string"
+        },
+        "invoiceId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "invoiceId",
+        "idempotencyKey"
+      ],
+      "type": "object"
+    },
+    "key": "xero.invoice.email",
+    "kind": "capability",
+    "originKey": "44ad8616-dced-4ecc-a672-2226a10f939a",
+    "outputsSchema": {
+      "properties": {
+        "sent": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "xero:send"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "list_history"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "send",
+    "title": "Email an invoice reminder from Xero"
+  },
+  "kind": "capability",
+  "name": "Email an invoice reminder from Xero",
+  "originKey": "44ad8616-dced-4ecc-a672-2226a10f939a"
+}

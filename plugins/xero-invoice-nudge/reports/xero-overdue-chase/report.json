@@ -1,0 +1,40 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "aged",
+        "params": {
+          "date": {
+            "kind": "context",
+            "source": "now.date"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_aged_receivables_by_contact"
+        }
+      },
+      {
+        "id": "overdue",
+        "params": {
+          "statuses": {
+            "kind": "static",
+            "value": "AUTHORISED"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        }
+      }
+    ],
+    "inputs": []
+  },
+  "description": "Who owes what in Xero right now, by client, with a total.",
+  "tags": [
+    "xero",
+    "receivables",
+    "invoice-nudge"
+  ],
+  "title": "Overdue invoice chase"
+}

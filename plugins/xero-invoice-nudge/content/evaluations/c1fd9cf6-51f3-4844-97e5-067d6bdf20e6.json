@@ -1,0 +1,83 @@
+{
+  "contentHash": "98ea0d1f4804e322bbbfe71491b9c15ca09b858fc2e25fdfcc9f084f4a564810",
+  "definition": {
+    "key": "overdue-invoice-chase-suite",
+    "kind": "evaluation",
+    "originKey": "c1fd9cf6-51f3-4844-97e5-067d6bdf20e6",
+    "process": "a3a38303-b437-4825-ad13-fabb1e29acae",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "emailReminder",
+              "step": "approve"
+            }
+          ],
+          "outcome": "chased",
+          "stepsReached": [
+            "scan",
+            "approve",
+            "report",
+            "chased"
+          ]
+        },
+        "fixtures": {
+          "xero.invoices.list_overdue": {
+            "invoices": [
+              {
+                "AmountDue": 1200,
+                "DueDate": "2026-10-01",
+                "InvoiceID": "inv-1",
+                "InvoiceNumber": "INV-0001"
+              },
+              {
+                "AmountDue": 350,
+                "DueDate": "2026-10-15",
+                "InvoiceID": "inv-2",
+                "InvoiceNumber": "INV-0002"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "runDate": "2026-11-03"
+        },
+        "key": "twoOverdueApproved",
+        "title": "Two overdue invoices, manager approves the email"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.invoice.email",
+            "xero.invoice.add_note"
+          ],
+          "outcome": "skipped",
+          "stepsReached": [
+            "scan",
+            "skipped"
+          ]
+        },
+        "fixtures": {
+          "xero.invoices.list_overdue": {
+            "invoices": []
+          }
+        },
+        "inputs": {
+          "runDate": "2026-11-03"
+        },
+        "key": "nothingOverdue",
+        "title": "Nothing overdue: the run skips and sends nothing"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Chase overdue invoices: release gate"
+  },
+  "kind": "evaluation",
+  "name": "Chase overdue invoices: release gate",
+  "originKey": "c1fd9cf6-51f3-4844-97e5-067d6bdf20e6"
+}

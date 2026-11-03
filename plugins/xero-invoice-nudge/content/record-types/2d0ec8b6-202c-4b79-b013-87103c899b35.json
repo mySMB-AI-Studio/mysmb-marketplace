@@ -1,0 +1,109 @@
+{
+  "contentHash": "af9161c98bb2b7c1c313619bc92b39056cf5d62778f20614c657eb543b74b463",
+  "definition": {
+    "color": null,
+    "description": "A client's promise to pay an overdue Xero invoice by a date. Creating one starts the follow-up process.",
+    "fields": [
+      {
+        "groupLabel": null,
+        "key": "invoice_number",
+        "kind": "text",
+        "label": "Invoice number",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "contact_email",
+        "kind": "email",
+        "label": "Client email",
+        "position": 1,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "amount_due",
+        "kind": "money",
+        "label": "Amount due",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "promised_date",
+        "kind": "date",
+        "label": "Promised date",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "stages": [
+            {
+              "key": "requested",
+              "label": "Date requested",
+              "state": "open"
+            },
+            {
+              "key": "promised",
+              "label": "Promised",
+              "state": "open"
+            },
+            {
+              "key": "kept",
+              "label": "Paid as promised",
+              "state": "closed"
+            },
+            {
+              "key": "broken",
+              "label": "Promise broken",
+              "state": "closed"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "status",
+        "kind": "pipeline",
+        "label": "Status",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Payment promises",
+    "labelSingular": "Payment promise",
+    "settings": {
+      "portalAccess": {
+        "editableFields": [],
+        "enabled": false,
+        "operations": [
+          "read"
+        ],
+        "visibleFields": [
+          "invoice_number"
+        ]
+      }
+    },
+    "slug": "payment_promise",
+    "titleFieldKey": "invoice_number"
+  },
+  "kind": "record_type",
+  "name": "Payment promises",
+  "originKey": "2d0ec8b6-202c-4b79-b013-87103c899b35"
+}

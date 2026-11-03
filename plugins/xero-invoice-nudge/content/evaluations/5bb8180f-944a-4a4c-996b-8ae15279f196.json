@@ -1,0 +1,69 @@
+{
+  "contentHash": "694e342056749c293f60bad087123c2b7af1bdff0be5e951e6b5ab10ba914f3e",
+  "definition": {
+    "key": "payment-promise-followup-suite",
+    "kind": "evaluation",
+    "originKey": "5bb8180f-944a-4a4c-996b-8ae15279f196",
+    "process": "29a22241-7b8c-42ea-9705-807e3864b834",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "outcome": "kept",
+          "stepsReached": [
+            "confirm",
+            "waitDate",
+            "check",
+            "paid"
+          ]
+        },
+        "fixtures": {
+          "automation.check": {
+            "paid": true,
+            "status": "PAID"
+          }
+        },
+        "inputs": {
+          "contactEmail": "client@example.com",
+          "invoiceNumber": "INV-0001",
+          "promisedDate": "2026-11-10"
+        },
+        "key": "promiseKept",
+        "title": "Client pays by the promised date"
+      },
+      {
+        "expected": {
+          "outcome": "broken",
+          "stepsReached": [
+            "confirm",
+            "waitDate",
+            "check",
+            "call",
+            "escalated"
+          ]
+        },
+        "fixtures": {
+          "automation.check": {
+            "paid": false,
+            "status": "AUTHORISED"
+          }
+        },
+        "inputs": {
+          "contactEmail": "client@example.com",
+          "invoiceNumber": "INV-0002",
+          "promisedDate": "2026-11-10"
+        },
+        "key": "promiseBroken",
+        "title": "Client misses the date: the manager gets a call activity"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Follow up a payment promise: release gate"
+  },
+  "kind": "evaluation",
+  "name": "Follow up a payment promise: release gate",
+  "originKey": "5bb8180f-944a-4a4c-996b-8ae15279f196"
+}

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Overdue invoice chase</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 24px; color: var(--foreground, inherit); }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted-foreground, inherit); margin: 0 0 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border, currentColor); }
+  td.num, th.num { text-align: right; }
+  tfoot td { font-weight: 600; }
+  .empty { padding: 24px 0; }
+</style>
+</head>
+<body>
+<h1>Overdue invoice chase</h1>
+<p class="sub" id="asof">Loading from Xero…</p>
+<table>
+  <thead><tr><th>Invoice</th><th>Client</th><th>Due</th><th class="num">Days overdue</th><th class="num">Amount due</th></tr></thead>
+  <tbody id="rows"></tbody>
+  <tfoot><tr><td colspan="4">Total overdue</td><td class="num" id="total">–</td></tr></tfoot>
+</table>
+<script>
+  function money(n) { return Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'AUD' }); }
+  function parseXeroDate(v) {
+    if (!v) return null;
+    var m = /\/Date\((\d+)/.exec(v);
+    return m ? new Date(Number(m[1])) : new Date(v);
+  }
+  MyHubReport.onData(function () {
+    var data = MyHubReport.getData('overdue') || {};
+    var invoices = (data.Invoices || data.invoices || []);
+    var today = new Date();
+    var rows = invoices
+      .map(function (inv) {
+        var due = parseXeroDate(inv.DueDate || inv.DueDateString);
+        var days = due ? Math.floor((today - due) / 86400000) : 0;
+        return { no: inv.InvoiceNumber, client: (inv.Contact && inv.Contact.Name) || '', due: due, days: days, amount: inv.AmountDue };
+      })
+      .filter(function (r) { return r.days > 0 && r.amount > 0; })
+      .sort(function (a, b) { return b.days - a.days; });
+    var tbody = document.getElementById('rows');
+    tbody.innerHTML = '';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">Nothing overdue. Nice.</td></tr>';
+    }
+    var total = 0;
+    rows.forEach(function (r) {
+      total += Number(r.amount || 0);
+      var tr = document.createElement('tr');
+      [r.no, r.client, r.due ? r.due.toLocaleDateString() : '', String(r.days), money(r.amount)].forEach(function (text, i) {
+        var td = document.createElement('td');
+        td.textContent = text;
+        if (i >= 3) td.className = 'num';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    document.getElementById('total').textContent = money(total);
+    document.getElementById('asof').textContent = 'As of ' + today.toLocaleDateString() + ' · ' + rows.length + ' overdue invoices';
+  });
+</script>
+</body>
+</html>

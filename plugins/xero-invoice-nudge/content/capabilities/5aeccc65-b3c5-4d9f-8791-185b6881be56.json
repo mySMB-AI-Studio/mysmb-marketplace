@@ -1,0 +1,67 @@
+{
+  "contentHash": "2263c67a9a43e69263de266873bfc2a7e1fcec0b7262ef8287644f7baa831507",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "details": "inputs.note",
+          "hostId": "inputs.invoiceId",
+          "hostType": "invoices"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "add_note"
+      }
+    ],
+    "idempotency": {
+      "keyParam": "idempotencyKey",
+      "supported": true
+    },
+    "inputsSchema": {
+      "properties": {
+        "idempotencyKey": {
+          "type": "string"
+        },
+        "invoiceId": {
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 2500,
+          "type": "string"
+        }
+      },
+      "required": [
+        "invoiceId",
+        "note",
+        "idempotencyKey"
+      ],
+      "type": "object"
+    },
+    "key": "xero.invoice.add_note",
+    "kind": "capability",
+    "originKey": "5aeccc65-b3c5-4d9f-8791-185b6881be56",
+    "outputsSchema": {
+      "properties": {
+        "noted": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "xero:write"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "list_history"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "write_external",
+    "title": "Add a note to a Xero invoice"
+  },
+  "kind": "capability",
+  "name": "Add a note to a Xero invoice",
+  "originKey": "5aeccc65-b3c5-4d9f-8791-185b6881be56"
+}
