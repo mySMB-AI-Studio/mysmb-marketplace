@@ -1,21 +1,21 @@
 {
   "id": "monday-my-boards",
-  "title": "My Boards",
-  "description": "All monday.com boards in your workspace.",
+  "title": "Boards",
+  "description": "Your monday.com boards in a sortable table — name, type, status, and a one-click link to each.",
   "category": "work-management",
-  "tags": ["monday", "boards", "work-management", "tasks", "projects"],
-  "keywords": ["board", "boards", "workspace", "monday", "project", "task"],
+  "tags": ["monday", "boards", "work-management", "tasks", "projects", "table"],
+  "keywords": ["board", "boards", "workspace", "monday", "project", "task", "overview", "table"],
   "connectorsUsed": ["monday"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 5 },
-    "min":       { "colSpan": 3, "rowSpan": 3 },
-    "max":       { "colSpan": 8, "rowSpan": 10 }
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
   },
   "dataProvider": {
     "mcp": "monday",
     "tool": "get_board_info",
-    "params": {}
+    "params": { "limit": 20 }
   },
   "spec": {
     "root": "card",
@@ -24,13 +24,13 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["titleRow", "statSection", "loading", "empty", "list"]
+        "children": ["titleRow", "statSection", "tableBody"]
       },
 
       "titleRow": {
         "type": "Row",
         "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup", "countBadge"]
+        "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
@@ -39,7 +39,7 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "Layout", "tone": "accent", "size": "sm" }
+        "props": { "name": "LayoutGrid", "tone": "accent", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -48,25 +48,19 @@
       },
       "title": {
         "type": "Heading",
-        "props": { "text": "My Boards", "level": "h2" }
+        "props": { "text": "Boards", "level": "h2" }
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "monday.com" }
-      },
-      "countBadge": {
-        "type": "Badge",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} boards",
+              "pattern": "monday.com · {n} boards",
               "n": { "$state": "/monday/get_board_info/count" }
             }
-          },
-          "tone": "accent"
-        },
-        "visible": { "$state": "/monday/get_board_info/count" }
+          }
+        }
       },
 
       "statSection": {
@@ -76,33 +70,66 @@
         "visible": { "$state": "/_loading/monday.get_board_info", "not": true }
       },
       "statRow": {
-        "type": "Stack",
-        "props": { "gap": "none", "align": "center" },
-        "children": ["statVal", "statLabel"]
+        "type": "Row",
+        "props": { "gap": "lg" },
+        "children": ["activeStat", "archivedStat"]
       },
-      "statVal": {
+      "activeStat": {
+        "type": "Stack",
+        "props": { "gap": "none", "grow": true, "align": "center" },
+        "children": ["activeVal", "activeLabel"]
+      },
+      "activeVal": {
         "type": "Stat",
         "props": {
-          "value": { "$state": "/monday/get_board_info/count" },
-          "tone": "accent"
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/monday/get_board_info/boards" },
+                  "field": "state",
+                  "equals": "active"
+                }
+              }
+            }
+          },
+          "tone": "success"
         }
       },
-      "statLabel": {
-        "type": "Caption",
-        "props": { "text": "Total Boards" }
-      },
-
-      "loading": {
+      "activeLabel": { "type": "Caption", "props": { "text": "Active" } },
+      "archivedStat": {
         "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["s1", "s2", "s3", "s4"],
-        "visible": { "$state": "/_loading/monday.get_board_info" }
+        "props": { "gap": "none", "grow": true, "align": "center" },
+        "children": ["archivedVal", "archivedLabel"]
       },
-      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "s4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "archivedVal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "count",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/monday/get_board_info/boards" },
+                  "field": "state",
+                  "equals": "archived"
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "archivedLabel": { "type": "Caption", "props": { "text": "Archived" } },
 
+      "tableBody": {
+        "type": "Body",
+        "props": {},
+        "children": ["table", "empty"]
+      },
       "empty": {
         "type": "Empty",
         "props": { "message": "No boards found." },
@@ -113,88 +140,25 @@
           ]
         }
       },
-
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["row"],
-        "repeat": {
-          "statePath": "/monday/get_board_info/boards",
-          "key": "id"
-        },
-        "visible": { "$state": "/_loading/monday.get_board_info", "not": true }
-      },
-
-      "row": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
-        "children": ["rowLeft", "openBtn"],
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://monday.com/boards/{id}",
-                  "id": { "$item": "id" }
-                }
-              }
+      "table": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/monday.get_board_info" },
+          "skeletonRows": 5,
+          "rows": { "$state": "/monday/get_board_info/boards" },
+          "rowAction": [
+            {
+              "action": "open_url",
+              "params": { "url": "https://monday.com/boards/{boardId}", "target": "_blank" },
+              "fromRow": { "boardId": "id" }
             }
-          }
-        }
-      },
-      "rowLeft": {
-        "type": "Stack",
-        "props": { "gap": "xs", "grow": true },
-        "children": ["rowName", "rowBadges"]
-      },
-      "rowName": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
-      },
-      "rowBadges": {
-        "type": "Row",
-        "props": { "gap": "xs" },
-        "children": ["kindBadge", "stateBadge"]
-      },
-      "kindBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "board_kind" },
-          "tone": "accent",
-          "variant": "soft"
-        }
-      },
-      "stateBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "state" },
-          "tone": "neutral",
-          "variant": "soft"
-        }
-      },
-      "openBtn": {
-        "type": "IconButton",
-        "props": { "icon": "ExternalLink", "tone": "muted", "ariaLabel": "Open in monday.com" },
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "url": {
-                "$computed": "fmt",
-                "args": {
-                  "pattern": "https://monday.com/boards/{id}",
-                  "id": { "$item": "id" }
-                }
-              }
-            }
-          }
+          ],
+          "columns": [
+            { "id": "name",       "header": "Board",  "field": "name",       "priority": 1 },
+            { "id": "board_kind", "header": "Type",    "field": "board_kind", "width": 90,  "priority": 2 },
+            { "id": "state",      "header": "Status",  "field": "state",      "width": 90,  "priority": 2 },
+            { "id": "workspace",  "header": "Workspace", "field": "workspace.name", "width": 140, "priority": 3 }
+          ]
         }
       }
 
