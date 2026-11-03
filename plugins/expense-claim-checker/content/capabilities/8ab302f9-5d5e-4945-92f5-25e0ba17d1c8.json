@@ -1,0 +1,151 @@
+{
+  "contentHash": "7505461e84933b2d51229c2d25272104c9f6cbe7797f180c245395e75f290eb8",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "contactIDs": "contactIDs",
+          "invoiceNumbers": "invoiceNumbers",
+          "order": "order",
+          "page": "page",
+          "searchTerm": "searchTerm",
+          "summaryOnly": "summaryOnly",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_invoices"
+      },
+      {
+        "argMap": {
+          "invoiceId": "invoiceId",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_invoice"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "contactIDs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "invoiceId": {
+          "description": "Read one invoice or bill by id.",
+          "type": "string"
+        },
+        "invoiceNumbers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "order": {
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "searchTerm": {
+          "type": "string"
+        },
+        "summaryOnly": {
+          "type": "boolean"
+        },
+        "where": {
+          "description": "Xero filter, e.g. Type==\"ACCPAY\" AND Status==\"DRAFT\".",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bills.read",
+    "kind": "capability",
+    "originKey": "8ab302f9-5d5e-4945-92f5-25e0ba17d1c8",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "properties": {
+              "AmountDue": {
+                "type": "number"
+              },
+              "Contact": {
+                "type": "object"
+              },
+              "CurrencyCode": {
+                "type": "string"
+              },
+              "Date": {
+                "type": "string"
+              },
+              "DueDate": {
+                "type": "string"
+              },
+              "InvoiceID": {
+                "type": "string"
+              },
+              "InvoiceNumber": {
+                "type": "string"
+              },
+              "LineItems": {
+                "type": "array"
+              },
+              "Reference": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "Total": {
+                "type": "number"
+              },
+              "Type": {
+                "type": "string"
+              },
+              "UpdatedDateUTC": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Invoices"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read Xero bills and sales invoices"
+  },
+  "kind": "capability",
+  "name": "Read Xero bills and sales invoices",
+  "originKey": "8ab302f9-5d5e-4945-92f5-25e0ba17d1c8"
+}
