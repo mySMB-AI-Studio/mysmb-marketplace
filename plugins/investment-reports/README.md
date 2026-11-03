@@ -14,11 +14,11 @@ Turns the investment documents in SharePoint into reports for the family. It's r
 
 "Investments: One-page summary from SharePoint" runs on Run now only.
 
-1. It goes through one investment's folder and its subfolders. The subfolders are tax statements, dividend statements, investor updates, annual reports and correspondence.
-2. It reads up to 50 documents. AI pulls out the facts each one states:
-   - money invested
+1. It goes through one investment's folder and its subfolders, up to eight levels down, so folders that sit inside a wrapper folder are still reached. Documents are grouped by their own file name first and the folders above them second: capital calls, valuations (capital account and wealth statements), dividend and distribution statements, tax statements, annual reports, investor updates (including quarterly reports), terms and deeds (applications, subscriptions, trust deeds), due diligence and correspondence.
+2. It reads up to 50 documents. The investment can be shares in a company or an interest in a fund, trust or limited partnership. AI pulls out the facts each one states:
+   - money invested, including capital calls and drawdowns
    - dividends paid
-   - valuations
+   - valuations, capital account balances and net asset values
    - key terms
    - milestones
    - what the company does and why it was bought
@@ -51,7 +51,7 @@ No environment variables are required.
 
 **Run the one-page summary:** publish the automation, click **Run now** and paste the investment folder's link (open the folder in SharePoint, then Share → Copy link). These fields are optional:
 
-- **Investment name:** use it when the link is to the folder that holds every investment. The subfolder whose name contains it is used.
+- **Investment name:** use it when the link is to the folder that holds every investment. The folder whose name contains it is used, wherever it sits below the link, so you can paste the top folder and type "Fund 1".
 - **Email to:** defaults to the address set in the automation. Separate several addresses with commas.
 - **Name on the report:** defaults to Future Now.
 - **Xero contact or reference to match:** use it when the dividends in Xero don't name the company, for example a share registry's name.
@@ -63,7 +63,8 @@ No environment variables are required.
 
 ## Limits
 
-- **Documents read per run:** 50, taking the first 12,000 characters of each. The terms documents are read first, then dividend statements, annual reports, updates and tax statements. Anything past 50 is still counted in the source documents.
+- **Documents read per run:** 50, taking the first 12,000 characters of each. Terms and deeds are read first, then capital calls, valuations, dividend statements, annual reports, investor updates, tax statements, due diligence and correspondence. Anything past 50 is still counted in the source documents.
 - **Scanned PDFs:** images of pages have no text, so they're counted but not read.
 - **Email attachment:** the PDF has to be 3 MB or less. A one-page summary is well under that.
+- **Source documents on the report:** the seven largest groups are listed; the rest are counted under Other documents so the summary stays on one page.
 - **Figures:** they're taken from the documents as written, with the help of AI. The report says so. Check it against the source documents before sharing. It isn't financial advice.
