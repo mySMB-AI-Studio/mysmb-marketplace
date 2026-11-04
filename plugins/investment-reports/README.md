@@ -52,7 +52,7 @@ No environment variables are required.
 
 **Run the one-page summary:** publish the automation, click **Run now** and paste the investment folder's link (open the folder in SharePoint, then Share → Copy link). These fields are optional:
 
-- **Investment name:** use it when the link is to the folder that holds every investment. The folder whose name contains it is used, wherever it sits below the link, so you can paste the top folder and type "Fund 1".
+- **Investment name:** use it when the link is to the folder that holds every investment. The folder whose name contains it is used, wherever it sits below the link, so you can paste the top folder and type "Fund 1". If nothing matches, the run stops and lists the folders that are there rather than reading them all as one investment.
 - **Email to:** defaults to the address set in the automation. Separate several addresses with commas.
 - **Name on the report:** defaults to Future Now.
 - **Xero contact or reference to match:** use it when the dividends in Xero don't name the company, for example a share registry's name.
