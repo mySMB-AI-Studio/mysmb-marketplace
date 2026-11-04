@@ -1,0 +1,493 @@
+{
+  "id": "fyi-open-tasks-due-soon",
+  "title": "Open tasks due soon",
+  "description": "Open FYI tasks that are overdue, due today or due in the next 7 days, with who they're assigned to.",
+  "category": "operations",
+  "tags": [
+    "fyi",
+    "tasks",
+    "deadlines"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "tasks due",
+    "overdue tasks",
+    "my tasks",
+    "task deadlines",
+    "due this week"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_tasks_overview",
+    "params": {
+      "due_soon_days": 7,
+      "list_limit": 5
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_tasks_overview/upcoming": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/tasks",
+              "value": {
+                "$computed": "fyi_tasks_dashboard",
+                "args": {
+                  "totals": {
+                    "$state": "/fyi/get_tasks_overview/totals"
+                  },
+                  "upcoming": {
+                    "$state": "/fyi/get_tasks_overview/upcoming"
+                  },
+                  "due_soon_days": {
+                    "$state": "/fyi/get_tasks_overview/due_soon_days"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_tasks_overview/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ListChecks",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Open tasks due soon",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · Next 7 days"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_tasks_overview"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_tasks_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_tasks_overview"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_tasks_overview"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No open tasks in FYI."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_tasks_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_tasks_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_tasks_overview/totals/open",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "cards",
+          "listTitle",
+          "tkList",
+          "allClear",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_tasks_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_tasks_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_tasks_overview/totals/open"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/tasks/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/tasks/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "cards": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "cardCell"
+        ],
+        "repeat": {
+          "statePath": "/ui/tasks/cards",
+          "key": "key"
+        }
+      },
+      "cardCell": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "cardStack"
+        ]
+      },
+      "cardStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "cardValue",
+          "cardLabelRow"
+        ]
+      },
+      "cardValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$item": "value"
+          }
+        }
+      },
+      "cardLabelRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "cardDot",
+          "cardLabel"
+        ]
+      },
+      "cardDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "xs"
+        }
+      },
+      "cardLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "tone": "muted"
+        }
+      },
+      "listTitle": {
+        "type": "Text",
+        "props": {
+          "text": "Overdue and coming up",
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$state": "/ui/tasks/hasRows"
+        }
+      },
+      "allClear": {
+        "type": "Caption",
+        "props": {
+          "text": "Nothing overdue or due this week.",
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/tasks/hasRows",
+          "not": true
+        }
+      },
+      "tkList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "tkRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/tasks/rows",
+          "key": "id"
+        }
+      },
+      "tkRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "12px minmax(0,1fr) 96px"
+        },
+        "children": [
+          "tkDot",
+          "tkText",
+          "tkValue"
+        ]
+      },
+      "tkDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "xs"
+        }
+      },
+      "tkText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "tkTitle",
+          "tkSub"
+        ]
+      },
+      "tkTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "tkSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          },
+          "tone": "muted"
+        }
+      },
+      "tkValue": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "dueText"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "weight": "medium",
+          "align": "right"
+        }
+      }
+    }
+  }
+}

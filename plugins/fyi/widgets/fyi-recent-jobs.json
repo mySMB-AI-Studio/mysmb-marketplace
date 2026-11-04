@@ -1,0 +1,455 @@
+{
+  "id": "fyi-recent-jobs",
+  "title": "Recent jobs",
+  "description": "The FYI jobs updated most recently, with customer, manager, job state and due date.",
+  "category": "operations",
+  "tags": [
+    "fyi",
+    "jobs",
+    "activity"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "recent jobs",
+    "job activity",
+    "latest jobs",
+    "job updates"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_jobs_overview",
+    "params": {
+      "list_limit": 6
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_jobs_overview/recent": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/recent",
+              "value": {
+                "$computed": "fyi_recent_jobs_dashboard",
+                "args": {
+                  "recent": {
+                    "$state": "/fyi/get_jobs_overview/recent"
+                  },
+                  "jobs_read": {
+                    "$state": "/fyi/get_jobs_overview/jobs_read"
+                  },
+                  "truncated": {
+                    "$state": "/fyi/get_jobs_overview/truncated"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_jobs_overview/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "History",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Recent jobs",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · Recently updated"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_jobs_overview"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_jobs_overview"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No jobs in FYI yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_jobs_overview/recent/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "listHead",
+          "list",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_jobs_overview/recent/0"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/recent/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/recent/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "listHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "template": "minmax(0,1fr) 110px 72px",
+          "padded": true
+        },
+        "children": [
+          "hJob",
+          "hState",
+          "hUpdated"
+        ]
+      },
+      "hJob": {
+        "type": "Caption",
+        "props": {
+          "text": "Job",
+          "tone": "muted",
+          "weight": "medium"
+        }
+      },
+      "hState": {
+        "type": "Caption",
+        "props": {
+          "text": "State",
+          "tone": "muted",
+          "weight": "medium"
+        }
+      },
+      "hUpdated": {
+        "type": "Caption",
+        "props": {
+          "text": "Updated",
+          "tone": "muted",
+          "weight": "medium",
+          "align": "right"
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/ui/recent/rows",
+          "key": "id"
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0,1fr) 110px 72px",
+          "padded": true
+        },
+        "children": [
+          "rowText",
+          "rowState",
+          "rowUpdated"
+        ]
+      },
+      "rowText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowTitle",
+          "rowSub"
+        ]
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          },
+          "tone": "muted"
+        }
+      },
+      "rowState": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowStateText",
+          "rowDue"
+        ]
+      },
+      "rowStateText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "state"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "rowDue": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "dueText"
+          },
+          "tone": {
+            "$item": "dueTone"
+          }
+        }
+      },
+      "rowUpdated": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "updated"
+          },
+          "tone": "muted",
+          "align": "right"
+        }
+      }
+    }
+  }
+}

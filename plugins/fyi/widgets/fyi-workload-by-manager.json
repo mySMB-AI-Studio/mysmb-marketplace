@@ -1,0 +1,525 @@
+{
+  "id": "fyi-workload-by-manager",
+  "title": "Workload by manager",
+  "description": "Open FYI jobs per job manager, split into overdue, due this week and other open work.",
+  "category": "operations",
+  "tags": [
+    "fyi",
+    "jobs",
+    "workload",
+    "chart"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "workload",
+    "capacity",
+    "jobs per manager",
+    "manager workload",
+    "team load"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_jobs_overview",
+    "params": {
+      "list_limit": 1
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_jobs_overview/by_manager": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/load",
+              "value": {
+                "$computed": "fyi_workload_dashboard",
+                "args": {
+                  "by_manager": {
+                    "$state": "/fyi/get_jobs_overview/by_manager"
+                  },
+                  "totals": {
+                    "$state": "/fyi/get_jobs_overview/totals"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_jobs_overview/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Workload by manager",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · Open jobs by manager"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_jobs_overview"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_jobs_overview"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No open jobs in FYI."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_jobs_overview/by_manager/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "heroSub",
+          "list",
+          "legend",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_jobs_overview/by_manager/0"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/load/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/load/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/load/heroSub"
+          },
+          "tone": "muted"
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/ui/load/rows",
+          "key": "key"
+        }
+      },
+      "row": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "rowHead",
+          "rowBar"
+        ]
+      },
+      "rowHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0,1fr) auto auto"
+        },
+        "children": [
+          "rowName",
+          "rowOverdue",
+          "rowOpen"
+        ]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowOverdue": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "overdueText"
+          },
+          "tone": "destructive"
+        }
+      },
+      "rowOpen": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "openText"
+          },
+          "tone": "muted",
+          "align": "right"
+        }
+      },
+      "rowBar": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "template": {
+            "$item": "template"
+          }
+        },
+        "children": [
+          "segOverdue",
+          "segSoon",
+          "segOther"
+        ]
+      },
+      "segOverdue": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "destructive"
+        },
+        "visible": {
+          "$item": "showOverdue"
+        }
+      },
+      "segSoon": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "warning"
+        },
+        "visible": {
+          "$item": "showSoon"
+        }
+      },
+      "segOther": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "brand"
+        },
+        "visible": {
+          "$item": "showOther"
+        }
+      },
+      "legend": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "lg1",
+          "lg2",
+          "lg3"
+        ]
+      },
+      "lg1": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "lg1d",
+          "lg1t"
+        ]
+      },
+      "lg1d": {
+        "type": "Dot",
+        "props": {
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "lg1t": {
+        "type": "Caption",
+        "props": {
+          "text": "Overdue",
+          "tone": "muted"
+        }
+      },
+      "lg2": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "lg2d",
+          "lg2t"
+        ]
+      },
+      "lg2d": {
+        "type": "Dot",
+        "props": {
+          "tone": "warning",
+          "size": "xs"
+        }
+      },
+      "lg2t": {
+        "type": "Caption",
+        "props": {
+          "text": "Due this week",
+          "tone": "muted"
+        }
+      },
+      "lg3": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "lg3d",
+          "lg3t"
+        ]
+      },
+      "lg3d": {
+        "type": "Dot",
+        "props": {
+          "tone": "brand",
+          "size": "xs"
+        }
+      },
+      "lg3t": {
+        "type": "Caption",
+        "props": {
+          "text": "Other open",
+          "tone": "muted"
+        }
+      }
+    }
+  }
+}

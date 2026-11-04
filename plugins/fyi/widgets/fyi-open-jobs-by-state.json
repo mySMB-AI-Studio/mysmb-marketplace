@@ -1,0 +1,520 @@
+{
+  "id": "fyi-open-jobs-by-state",
+  "title": "Open jobs by state",
+  "description": "How many open FYI jobs sit in each job state, plus the most overdue jobs, so a partner sees where work is piling up.",
+  "category": "operations",
+  "tags": [
+    "fyi",
+    "jobs",
+    "workflow",
+    "chart"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "job states",
+    "open jobs",
+    "pipeline",
+    "overdue jobs",
+    "work in progress"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_jobs_overview",
+    "params": {
+      "list_limit": 4
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_jobs_overview/by_state": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobs",
+              "value": {
+                "$computed": "fyi_jobs_state_dashboard",
+                "args": {
+                  "totals": {
+                    "$state": "/fyi/get_jobs_overview/totals"
+                  },
+                  "by_state": {
+                    "$state": "/fyi/get_jobs_overview/by_state"
+                  },
+                  "overdue": {
+                    "$state": "/fyi/get_jobs_overview/overdue"
+                  },
+                  "jobs_read": {
+                    "$state": "/fyi/get_jobs_overview/jobs_read"
+                  },
+                  "truncated": {
+                    "$state": "/fyi/get_jobs_overview/truncated"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_jobs_overview/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Briefcase",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Open jobs by state",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · All open jobs"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_jobs_overview"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_jobs_overview"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No open jobs in FYI."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_jobs_overview/totals/open",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "heroDivider",
+          "overdue",
+          "onTrack",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_jobs_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_jobs_overview/totals/open"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "hero": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "template": "minmax(0,1fr) auto"
+        },
+        "children": [
+          "heroText",
+          "ring"
+        ]
+      },
+      "heroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heroCaption",
+          "heroValue",
+          "heroSub"
+        ]
+      },
+      "heroCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "OPEN JOBS",
+          "tone": "muted",
+          "weight": "medium"
+        }
+      },
+      "heroValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/jobs/open"
+          }
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/heroSub"
+          },
+          "tone": "muted"
+        }
+      },
+      "ring": {
+        "type": "Donut",
+        "props": {
+          "segments": {
+            "$state": "/ui/jobs/ring"
+          },
+          "centerLabel": "open",
+          "size": 88,
+          "thickness": 9
+        }
+      },
+      "heroDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "overdue": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "overdueHead",
+          "odList"
+        ],
+        "visible": {
+          "$state": "/ui/jobs/hasOverdue"
+        }
+      },
+      "overdueHead": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "overdueIcon",
+          "overdueTitle"
+        ]
+      },
+      "overdueIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "overdueTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/overdueTitle"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "odList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "odRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/jobs/overdueRows",
+          "key": "id"
+        }
+      },
+      "odRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "12px minmax(0,1fr) 96px"
+        },
+        "children": [
+          "odDot",
+          "odText",
+          "odValue"
+        ]
+      },
+      "odDot": {
+        "type": "Dot",
+        "props": {
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "odText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "odTitle",
+          "odSub"
+        ]
+      },
+      "odTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "odSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          },
+          "tone": "muted"
+        }
+      },
+      "odValue": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "valueText"
+          },
+          "tone": "destructive",
+          "weight": "medium",
+          "align": "right"
+        }
+      },
+      "onTrack": {
+        "type": "Caption",
+        "props": {
+          "text": "No open jobs are past their due date.",
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/jobs/hasOverdue",
+          "not": true
+        }
+      }
+    }
+  }
+}

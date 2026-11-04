@@ -1,0 +1,552 @@
+{
+  "id": "fyi-recently-filed-documents",
+  "title": "Recently filed documents",
+  "description": "Documents filed into FYI over the last 7 days: a per-day count and the latest documents with customer and type.",
+  "category": "operations",
+  "tags": [
+    "fyi",
+    "documents",
+    "activity",
+    "chart"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "documents filed",
+    "recent documents",
+    "filing",
+    "emails filed",
+    "document activity"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_recent_documents",
+    "params": {
+      "days": 7,
+      "list_limit": 5
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_recent_documents/by_day": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/docs",
+              "value": {
+                "$computed": "fyi_documents_dashboard",
+                "args": {
+                  "totals": {
+                    "$state": "/fyi/get_recent_documents/totals"
+                  },
+                  "by_day": {
+                    "$state": "/fyi/get_recent_documents/by_day"
+                  },
+                  "by_type": {
+                    "$state": "/fyi/get_recent_documents/by_type"
+                  },
+                  "recent": {
+                    "$state": "/fyi/get_recent_documents/recent"
+                  },
+                  "days": {
+                    "$state": "/fyi/get_recent_documents/days"
+                  },
+                  "truncated": {
+                    "$state": "/fyi/get_recent_documents/truncated"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_recent_documents/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Recently filed documents",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · Last 7 days"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_recent_documents"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_recent_documents",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_recent_documents"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_recent_documents"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No documents filed in FYI in the last 7 days."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_recent_documents",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_recent_documents",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_recent_documents/totals/filed",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "heroDivider",
+          "listTitle",
+          "list",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_recent_documents",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_recent_documents",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_recent_documents/totals/filed"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/docs/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/docs/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "hero": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "template": "minmax(0,1fr) minmax(0,1.6fr)"
+        },
+        "children": [
+          "heroText",
+          "strip"
+        ]
+      },
+      "heroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heroCaption",
+          "heroValue",
+          "heroSub"
+        ]
+      },
+      "heroCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "FILED THIS WEEK",
+          "tone": "muted",
+          "weight": "medium"
+        }
+      },
+      "heroValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/docs/filed"
+          }
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/docs/heroSub"
+          },
+          "tone": "muted"
+        }
+      },
+      "strip": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "end",
+          "template": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "repeat({n}, minmax(0, 1fr))",
+              "n": {
+                "$state": "/ui/docs/dayCount"
+              }
+            }
+          }
+        },
+        "children": [
+          "dayCol"
+        ],
+        "repeat": {
+          "statePath": "/ui/docs/days",
+          "key": "key"
+        }
+      },
+      "dayCol": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "stretch"
+        },
+        "children": [
+          "dayCount",
+          "dayBarWrap",
+          "dayLabelToday",
+          "dayLabel"
+        ]
+      },
+      "dayBarWrap": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "dayBar"
+        ]
+      },
+      "dayCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "count"
+          },
+          "align": "center",
+          "weight": "medium",
+          "tone": "default"
+        }
+      },
+      "dayBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": "brand"
+        }
+      },
+      "dayLabelToday": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "dayLabel"
+          },
+          "align": "center",
+          "weight": "medium",
+          "tone": "default"
+        },
+        "visible": {
+          "$item": "isToday"
+        }
+      },
+      "dayLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "dayLabel"
+          },
+          "align": "center",
+          "tone": "muted"
+        },
+        "visible": {
+          "$item": "isToday",
+          "not": true
+        }
+      },
+      "heroDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "listTitle": {
+        "type": "Text",
+        "props": {
+          "text": "Latest",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/ui/docs/rows",
+          "key": "id"
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0,1fr) 72px"
+        },
+        "children": [
+          "rowText",
+          "rowSaved"
+        ]
+      },
+      "rowText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "rowTitle",
+          "rowSub"
+        ]
+      },
+      "rowTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "rowSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          },
+          "tone": "muted"
+        }
+      },
+      "rowSaved": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "savedText"
+          },
+          "tone": "muted",
+          "align": "right"
+        }
+      }
+    }
+  }
+}
