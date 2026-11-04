@@ -1,0 +1,133 @@
+{
+  "id": "monday-board-activity",
+  "title": "Board Activity",
+  "description": "Pick a monday.com board to see its recent activity log — items created, columns changed, updates posted.",
+  "category": "work-management",
+  "tags": ["monday", "activity", "audit log", "boards", "work-management"],
+  "keywords": ["board", "activity", "audit log", "recent changes", "monday", "feed"],
+  "connectorsUsed": ["monday"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "max":       { "colSpan": 6, "rowSpan": 9 }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "get_board_info",
+    "params": { "limit": 50 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider1", "pickerRow", "body"],
+        "watch": {
+          "/monday/get_board_activity": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activity",
+                "value": {
+                  "$computed": "monday_flatten_activity",
+                  "args": { "value": { "$state": "/monday/get_board_activity" } }
+                }
+              }
+            }
+          ],
+          "/ui/selectedBoardId": [
+            {
+              "action": "monday.get_board_activity",
+              "params": { "board_id": { "$state": "/ui/selectedBoardId" }, "limit": 20 }
+            }
+          ]
+        }
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Activity", "tone": "warning", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Board Activity", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "monday.com · pick a board" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "pickerRow": { "type": "FormRow", "props": { "label": "Board" }, "children": ["boardSelect"] },
+      "boardSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedBoardId" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/monday/get_board_info/boards" },
+              "valueField": "id",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select a board…",
+          "size": "sm"
+        }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["promptEmpty", "loading", "activityEmpty", "activityList"] },
+
+      "promptEmpty": {
+        "type": "Empty",
+        "props": { "message": "Select a board to see its activity." },
+        "visible": { "$state": "/ui/selectedBoardId", "not": true }
+      },
+
+      "loading": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["loadingSpinner"],
+        "visible": { "$state": "/_loading/monday.get_board_activity" }
+      },
+      "loadingSpinner": { "type": "Spinner", "props": { "size": "sm", "label": "Loading activity…" } },
+
+      "activityEmpty": {
+        "type": "Empty",
+        "props": { "message": "No recent activity on this board." },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/selectedBoardId" },
+            { "$state": "/_loading/monday.get_board_activity", "not": true },
+            { "$state": "/ui/activity/0", "not": true }
+          ]
+        }
+      },
+
+      "activityList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["activityRow"],
+        "repeat": { "statePath": "/ui/activity", "key": "id" },
+        "visible": { "$state": "/_loading/monday.get_board_activity", "not": true }
+      },
+      "activityRow": {
+        "type": "ActivityItem",
+        "props": {
+          "initials": { "$computed": "initials", "args": { "value": { "$item": "actor_name" } } },
+          "title": { "$item": "actor_name" },
+          "subtitle": { "$item": "action_text" },
+          "timestamp": { "$computed": "relative_time", "args": { "value": { "$item": "created_at" } } }
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
