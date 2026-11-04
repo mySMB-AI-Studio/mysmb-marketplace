@@ -1,5 +1,5 @@
 {
-  "contentHash": "f42747a2b380b8c48b9a815453319f4b7590c94a377b29408b0a7091790543aa",
+  "contentHash": "7750fd99c186d13788ac20b000876611ba44b92412c2589202e80ef9ea436bd5",
   "definition": {
     "capabilities": [
       "records.write"
@@ -209,7 +209,9 @@
       {
         "evidence": [
           "steps.review.responseId",
-          "steps.file.knowledge_path"
+          "steps.file.knowledge_path",
+          "steps.post.completedBy",
+          "steps.post.completed"
         ],
         "key": "published",
         "kind": "gate",
@@ -259,7 +261,12 @@
       {
         "from": "context",
         "to": "draft",
-        "when": "steps.context.ready"
+        "when": "steps.context.ready && steps.context.draft_wanted"
+      },
+      {
+        "from": "context",
+        "to": "publishDay",
+        "when": "steps.context.ready && !steps.context.draft_wanted"
       },
       {
         "from": "context",
@@ -319,7 +326,7 @@
       }
     ],
     "variationPoints": [],
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "kind": "process",
   "name": "Draft a content piece",

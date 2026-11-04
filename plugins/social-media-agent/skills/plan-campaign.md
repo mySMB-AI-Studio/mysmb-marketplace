@@ -52,7 +52,7 @@ Return **only** this JSON object, with no prose around it:
     "missing": ["facts the drafts will need that nobody has given yet"]
   },
   "pieces": [
-    {"title": "Short working title", "content_type": "social_post", "channels": ["linkedin", "facebook"], "publish_date": "YYYY-MM-DD", "topic": "What this piece covers", "angle": "The angle and the one point it makes", "cta": "", "cta_url": ""}
+    {"title": "Short working title", "content_type": "social_post", "channels": ["linkedin", "facebook"], "publish_date": "YYYY-MM-DD", "topic": "What this piece covers", "angle": "The angle and the one point it makes", "cta": "", "cta_url": "", "draft": true}
   ],
   "missing": ["the same list as campaign.missing"],
   "summary": "Two or three sentences: the shape of the plan, the defaults you chose and anything the reviewer should check.",
@@ -67,7 +67,7 @@ Return **only** this JSON object, with no prose around it:
 }
 ```
 
-Leave a piece's `cta` empty to use the campaign's. If the request is too thin to plan well, still return a small plan (2 or 3 pieces) and say in `summary` and `brief.recommendation` what you need to know.
+Leave a piece's `cta` empty to use the campaign's. Set a piece's `draft` to `false` only when the request says the team will write that piece themselves (for example "we'll write the event-day post"); it then goes on the calendar with a posting task but no draft or review. Every other piece is `true`. If the request is too thin to plan well, still return a small plan (2 or 3 pieces) and say in `summary` and `brief.recommendation` what you need to know.
 
 ## Plan my month
 
