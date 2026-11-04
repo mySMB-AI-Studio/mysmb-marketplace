@@ -1,0 +1,63 @@
+{
+  "contentHash": "e0baa55a35f77f5819c0fa9f8840c263514cd499a01b5da79113bd2e595af54b",
+  "declaredScopes": [
+    "workq:read",
+    "workq:write",
+    "extension_setup:read"
+  ],
+  "dependencies": [],
+  "description": "Every Monday at 9:00 (Sydney time) looks 3 to 6 weeks ahead for an Australian occasion (New Year, Valentine's Day, Easter, Mother's Day, end of financial year, Father's Day, Small Business Month, Black Friday, Christmas) and, once per occasion and year, raises a WorkQ item suggesting a campaign with a ready-to-paste request for Plan a campaign. Anzac Day and Australia Day are left out on purpose. Uses no AI and posts nothing.",
+  "flowIr": {
+    "description": "Every Monday at 9:00 (Sydney time) looks 3 to 6 weeks ahead for an Australian occasion (New Year, Valentine's Day, Easter, Mother's Day, end of financial year, Father's Day, Small Business Month, Black Friday, Christmas) and, once per occasion and year, raises a WorkQ item suggesting a campaign with a ready-to-paste request for Plan a campaign. Anzac Day and Australia Day are left out on purpose. Uses no AI and posts nothing.",
+    "irVersion": 1,
+    "name": "Social Media Agent: seasonal prompts",
+    "nodes": [
+      {
+        "code": "from datetime import date, datetime, timedelta\nfrom zoneinfo import ZoneInfo\n\nNEWLINE = chr(10)\nLEAD_MIN_DAYS = 21\nLEAD_MAX_DAYS = 42\n\n\ndef text(value):\n    if value is None:\n        return \"\"\n    return str(value).strip()\n\n\ndef easter_sunday(year):\n    # Anonymous Gregorian algorithm (Meeus/Jones/Butcher).\n    a = year % 19\n    b = year // 100\n    c = year % 100\n    d = b // 4\n    e = b % 4\n    f = (b + 8) // 25\n    g = (b - f + 1) // 3\n    h = (19 * a + b - d - g + 15) % 30\n    i = c // 4\n    k = c % 4\n    l = (32 + 2 * e + 2 * i - h - k) % 7\n    m = (a + 11 * h + 22 * l) // 451\n    month = (h + l - 7 * m + 114) // 31\n    day = ((h + l - 7 * m + 114) % 31) + 1\n    return date(year, month, day)\n\n\ndef nth_weekday(year, month, weekday, n):\n    first = date(year, month, 1)\n    shift = (weekday - first.weekday()) % 7\n    return first + timedelta(days=shift + 7 * (n - 1))\n\n\ndef occasions(year):\n    # Australian national, commercially safe occasions. Anzac Day is left out on purpose: commercial use of\n    # \"Anzac\" is restricted by law. Australia Day is left out as a sensitive marketing date.\n    thanksgiving = nth_weekday(year, 11, 3, 4)\n    return [\n        (\"New Year\", date(year, 1, 1), \"a fresh start for the year ahead\"),\n        (\"Valentine's Day\", date(year, 2, 14), \"appreciation and the people you work with\"),\n        (\"Easter\", easter_sunday(year) - timedelta(days=2), \"the Easter long weekend and opening hours\"),\n        (\"Mother's Day\", nth_weekday(year, 5, 6, 2), \"celebrating mums\"),\n        (\"End of financial year\", date(year, 6, 30), \"getting ready for EOFY and the new financial year\"),\n        (\"Father's Day\", nth_weekday(year, 9, 6, 1), \"celebrating dads\"),\n        (\"Australian Small Business Month\", date(year, 10, 1), \"small business month in October\"),\n        (\"Black Friday\", thanksgiving + timedelta(days=1), \"Black Friday, only if there is a real offer to share\"),\n        (\"Christmas\", date(year, 12, 25), \"the Christmas and holiday period, including closing dates\"),\n    ]\n\n\nsettings = api.extension.settings() or {}\nzone = ZoneInfo(text(settings.get(\"time_zone\")) or \"Australia/Sydney\")\ntoday = datetime.now(zone).date()\n\nupcoming = []\nfor year in (today.year, today.year + 1):\n    for name, when, angle in occasions(year):\n        days = (when - today).days\n        if LEAD_MIN_DAYS <= days <= LEAD_MAX_DAYS:\n            upcoming.append((when, name, angle))\nupcoming.sort()\n\nraised = []\nskipped = []\nfor when, name, angle in upcoming:\n    title = \"Seasonal idea: \" + name + \" on \" + when.strftime(\"%d/%m/%Y\")\n    if [t for t in (api.workq.list(search=title) or []) if text(t.get(\"title\")) == title]:\n        skipped.append(title)\n        continue\n    start = max(today + timedelta(days=5), when - timedelta(days=21))\n    request = (name + \" is on \" + when.strftime(\"%A %d/%m/%Y\") + \". Plan 2 to 3 social posts between \" + start.strftime(\"%d/%m/%Y\")\n               + \" and \" + when.strftime(\"%d/%m/%Y\") + \" about \" + angle + \", tied to our Brand Kit's key messages. \"\n               + \"Do not mention an offer, discount or opening hours unless we confirm them.\")\n    body = NEWLINE.join([\n        name + \" is \" + str((when - today).days) + \" days away (\" + when.strftime(\"%d/%m/%Y\") + \"). Want a short campaign for it?\",\n        \"\",\n        \"**To plan it:** Agents > Social Media Agent > Start a process > Plan a campaign, and paste this into \\\"Describe the campaign\\\":\",\n        \"\",\n        \"> \" + request,\n        \"\",\n        \"Add any real offer or detail you want included. The plan comes back to you for approval before anything is drafted, and nothing is ever posted for you.\",\n        \"\",\n        \"**Not this time?** Mark this item done or cancelled; it will not be suggested again this year.\",\n    ])\n    made = api.workq.create(title=title, scope=\"org\", description=body, due_date=start.isoformat(), labels=[\"social-media-agent\"])\n    raised.append(text((made or {}).get(\"id\")) or title)\n\nraised_count = len(raised)\n",
+        "id": "seasonal",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Suggestions raised this run.",
+            "name": "raised_count",
+            "type": "int"
+          },
+          {
+            "description": "WorkQ items raised.",
+            "name": "raised",
+            "type": "list[str]"
+          },
+          {
+            "description": "Occasions already suggested.",
+            "name": "skipped",
+            "type": "list[str]"
+          }
+        ],
+        "params": [],
+        "summary": "Finds occasions 3 to 6 weeks away and raises one suggestion per occasion and year.",
+        "title": "Suggest upcoming occasions"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "seasonal"
+    ],
+    "triggers": [
+      {
+        "cron": "0 9 * * 1",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Social Media Agent: seasonal prompts",
+  "originKey": "655c53f7-b122-525f-8a38-2cb2b75d0e9e",
+  "tags": [
+    "social-media-agent"
+  ]
+}
