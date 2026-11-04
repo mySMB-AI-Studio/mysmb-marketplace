@@ -1,5 +1,5 @@
 {
-  "contentHash": "84383357dac7478e1cc107dd02844eb354c5ff8beaf15ad1afdff9c04a7ec6a8",
+  "contentHash": "0d26b7c5cd12eae6a0a78abff25e661dd8771e58696a22d7c31418843b369d89",
   "definition": {
     "key": "content-piece-core",
     "kind": "evaluation",
@@ -42,6 +42,7 @@
               "brand": {
                 "company_name": "mySMB"
               },
+              "draft_wanted": true,
               "due_date_set": true,
               "piece": {
                 "channels": [
@@ -119,6 +120,7 @@
               "brand": {
                 "company_name": "mySMB"
               },
+              "draft_wanted": true,
               "due_date_set": true,
               "piece": {
                 "channels": [
@@ -168,6 +170,51 @@
       },
       {
         "expected": {
+          "outcome": "published",
+          "stepsReached": [
+            "context",
+            "publishDay",
+            "post",
+            "posted",
+            "published"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "context": {
+              "brand": {
+                "company_name": "mySMB"
+              },
+              "draft_wanted": false,
+              "due_date_set": true,
+              "piece": {
+                "channels": [
+                  "linkedin"
+                ],
+                "content_type": "social_post",
+                "title": "Start where you are"
+              },
+              "problem": "",
+              "publish_at": "2026-11-03T08:00:00+11:00",
+              "publish_date": "2026-11-03",
+              "ready": true,
+              "review_date": "2026-10-30",
+              "rules": {},
+              "type_label": "Social media post"
+            },
+            "posted": {}
+          },
+          "steps.context.draft_wanted": false,
+          "steps.post.cancelled": false
+        },
+        "inputs": {
+          "pieceId": "00000000-0000-4000-8000-000000000001"
+        },
+        "key": "calendarOnlySkipsDrafting",
+        "title": "A calendar-only campaign piece skips drafting and review and is marked published once posted"
+      },
+      {
+        "expected": {
           "outcome": "needsSetup",
           "stepsReached": [
             "context",
@@ -180,6 +227,7 @@
               "brand": {
                 "company_name": "mySMB"
               },
+              "draft_wanted": true,
               "due_date_set": true,
               "piece": {
                 "channels": [
