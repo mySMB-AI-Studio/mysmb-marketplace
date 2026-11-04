@@ -1,0 +1,155 @@
+{
+  "id": "zoho-crm-lead-inbox",
+  "title": "Lead Inbox",
+  "description": "This week's new Zoho CRM leads, newest first, with each lead's company, source and status. Highlights how many are still awaiting first contact.",
+  "category": "crm",
+  "tags": ["zoho", "zoho-crm", "crm", "leads", "inbox", "sales"],
+  "keywords": ["leads", "new leads", "lead status", "not contacted", "first contact", "follow up", "zoho crm"],
+  "connectorsUsed": ["zoho-crm"],
+  "popularity": 0,
+  "branding": { "color": "#1A73E8" },
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-crm",
+    "tool": "coql_query",
+    "params": {
+      "select_query": "select Full_Name, First_Name, Last_Name, Company, Lead_Source, Lead_Status, Created_Time from Leads where Created_Time is not null order by Created_Time desc limit 200"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/zoho-crm/coql_query/data": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/inbox",
+              "value": {
+                "$computed": "zoho-crm_lead_inbox_dashboard",
+                "args": {
+                  "value": { "$state": "/zoho-crm/coql_query/data" },
+                  "moreRecords": { "$state": "/zoho-crm/coql_query/info/more_records" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Mail", "tone": "brand", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Lead Inbox", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Zoho CRM" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "error", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skHero", "skRow1", "skRow2", "skRow3"],
+        "visible": { "$state": "/_loading/zoho-crm.coql_query" }
+      },
+      "skHero": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "skRow1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "skRow2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "skRow3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "error": {
+        "type": "Empty",
+        "props": { "message": "Couldn't load leads from Zoho CRM. Please try again." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoho-crm.coql_query", "not": true },
+            { "$state": "/_errors/zoho-crm.coql_query" }
+          ]
+        }
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No new leads this week." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoho-crm.coql_query", "not": true },
+            { "$state": "/_errors/zoho-crm.coql_query", "not": true },
+            { "$state": "/ui/inbox/leads/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["hero", "divider", "leadList", "footer"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoho-crm.coql_query", "not": true },
+            { "$state": "/_errors/zoho-crm.coql_query", "not": true },
+            { "$state": "/ui/inbox/leads/0" }
+          ]
+        }
+      },
+
+      "hero": { "type": "Stack", "props": { "gap": "xs" }, "children": ["awaitingValue", "heroCaption"] },
+      "awaitingValue": { "type": "Stat", "props": { "value": { "$state": "/ui/inbox/awaitingCount" }, "size": "lg" } },
+      "heroCaption": { "type": "Text", "props": { "text": { "$state": "/ui/inbox/heroCaption" }, "tone": "muted" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "leadList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["leadRow"],
+        "repeat": { "statePath": "/ui/inbox/leads", "key": "id" }
+      },
+      "leadRow": {
+        "type": "Row",
+        "props": { "template": "auto minmax(0, 1fr) auto", "gap": "sm", "align": "center" },
+        "children": ["leadAvatar", "leadMain", "leadSide"]
+      },
+      "leadAvatar": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "avatarTone" }, "size": "lg" }
+      },
+      "leadMain": { "type": "Stack", "props": { "gap": "none" }, "children": ["leadName", "leadMeta"] },
+      "leadName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold", "truncate": true } },
+      "leadMeta": { "type": "Text", "props": { "text": { "$item": "meta" }, "tone": "muted", "truncate": true } },
+      "leadSide": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["leadStatus", "leadWhen"] },
+      "leadStatus": {
+        "type": "Badge",
+        "props": { "text": { "$item": "statusLabel" }, "tone": { "$item": "statusTone" }, "variant": "soft" }
+      },
+      "leadWhen": { "type": "Caption", "props": { "text": { "$item": "when" } } },
+
+      "footer": { "type": "Stack", "props": { "gap": "xs" }, "children": ["divider2", "coverageNote", "footerActions"] },
+      "divider2": { "type": "Divider", "props": {} },
+      "coverageNote": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/inbox/coverageText" } },
+        "visible": { "$state": "/ui/inbox/truncated" }
+      },
+      "footerActions": { "type": "Row", "props": { "justify": "end", "align": "center" }, "children": ["openButton"] },
+      "openButton": {
+        "type": "Button",
+        "props": { "label": "View all leads", "size": "sm", "variant": "primary", "tone": "brand", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://crm.zoho.com/crm/tab/Leads", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}
