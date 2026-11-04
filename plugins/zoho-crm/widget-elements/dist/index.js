@@ -117,10 +117,113 @@ const pipeline_snapshot_dashboard = (args) => {
         coverageText: truncated ? `Showing the first ${dealCount} open deals` : '',
     };
 };
+/**
+ * Lead status colours — a recorded decision to match the Lead Inbox mock (see
+ * the tile's PR), which puts `Attempted to Contact` on `destructive` where
+ * TILE-DISPLAY-STANDARDS §7 would use `info`. Statuses the mock doesn't show
+ * follow §7. Unknown (custom) statuses fall back to `info`.
+ */
+const LEAD_STATUS_TONES = {
+    'Not Contacted': 'warning',
+    'Attempted to Contact': 'destructive',
+    'Contacted': 'success',
+    'Contact in Future': 'info',
+    'Pre-Qualified': 'success',
+    'Not Qualified': 'muted',
+    'Lost Lead': 'muted',
+    'Junk Lead': 'muted',
+};
+/**
+ * Decorative avatar colours (§10 categorical); a name always gets the same one.
+ * Brand blue stands in for pink `chart-4`, at the requester's preference.
+ */
+const AVATAR_TONES = ['chart-1', 'chart-2', 'chart-3', 'brand', 'chart-5'];
+const MAX_LEAD_ROWS = 20;
+function hashTone(name) {
+    let h = 0;
+    for (const ch of name)
+        h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return AVATAR_TONES[h % AVATAR_TONES.length];
+}
+function initialsOf(first, last, full) {
+    const f = String(first ?? '').trim();
+    const l = String(last ?? '').trim();
+    if (f || l)
+        return `${f.charAt(0)}${l.charAt(0)}`.toUpperCase() || '·';
+    const parts = full.split(/\s+/).filter(Boolean);
+    return parts.map((p) => p.charAt(0)).slice(0, 2).join('').toUpperCase() || '·';
+}
+/** Local Monday 00:00 of the current week. */
+function weekStart(now) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+}
+/** `2 days ago`, `1 day ago`, `5 hours ago` — spelled out, per the mock. */
+function timeAgo(ms, now) {
+    const min = Math.floor((now - ms) / 60000);
+    if (min < 1)
+        return 'just now';
+    if (min < 60)
+        return `${min} ${min === 1 ? 'minute' : 'minutes'} ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24)
+        return `${hr} ${hr === 1 ? 'hour' : 'hours'} ago`;
+    const day = Math.floor(hr / 24);
+    return `${day} ${day === 1 ? 'day' : 'days'} ago`;
+}
+/**
+ * This week's new Zoho CRM leads (rows from `coql_query`, newest first) for the
+ * Lead Inbox tile: how many still await first contact, the week's total, and
+ * up to 20 display-ready rows. "This week" is Monday 00:00 local time to now.
+ *
+ * Args:
+ *   value       — the COQL `data` array: `{ id, Full_Name, First_Name, Last_Name, Company, Lead_Source, Lead_Status, Created_Time }[]`
+ *   moreRecords — COQL `info.more_records`; true when the 200-row limit cut the list
+ *
+ * Spec: `{ "$computed": "zoho-crm_lead_inbox_dashboard", "args": { "value": { "$state": "/zoho-crm/coql_query/data" } } }`
+ */
+const lead_inbox_dashboard = (args) => {
+    const rows = Array.isArray(args.value) ? args.value : [];
+    const now = Date.now();
+    const since = weekStart(new Date(now)).getTime();
+    const week = rows
+        .map((r) => ({ r, ms: Date.parse(String(r.Created_Time ?? '')) }))
+        .filter(({ ms }) => Number.isFinite(ms) && ms >= since)
+        .sort((a, b) => b.ms - a.ms);
+    const total = week.length;
+    const awaitingCount = week.filter(({ r }) => r.Lead_Status === 'Not Contacted').length;
+    // Every fetched row is from this week and Zoho has more: the week's count is a floor.
+    const cutBySource = args.moreRecords === true && total === rows.length && total > 0;
+    const shown = week.slice(0, MAX_LEAD_ROWS);
+    const leads = shown.map(({ r, ms }) => {
+        const name = String(r.Full_Name ?? '').trim() || 'Unnamed lead';
+        const status = String(r.Lead_Status ?? '').trim();
+        return {
+            id: String(r.id ?? name),
+            name,
+            initials: initialsOf(r.First_Name, r.Last_Name, name),
+            avatarTone: hashTone(name),
+            meta: [r.Company, r.Lead_Source].map((v) => String(v ?? '').trim()).filter(Boolean).join(' · '),
+            statusLabel: status || 'No Status',
+            statusTone: status ? (LEAD_STATUS_TONES[status] ?? 'info') : 'muted',
+            when: timeAgo(ms, now),
+        };
+    });
+    const truncated = cutBySource || total > shown.length;
+    return {
+        awaitingCount,
+        heroCaption: `Awaiting first contact · ${total}${cutBySource ? '+' : ''} total ${total === 1 ? 'lead' : 'leads'} this week`,
+        leads,
+        truncated,
+        coverageText: truncated ? `Showing ${shown.length} of ${total}${cutBySource ? '+' : ''} leads this week` : '',
+    };
+};
 const elements = {
     slug: 'zoho-crm',
     functions: {
         pipeline_snapshot_dashboard,
+        lead_inbox_dashboard,
     },
 };
 export default elements;
