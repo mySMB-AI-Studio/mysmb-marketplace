@@ -24,12 +24,12 @@ Turns the investment documents in SharePoint into reports for the family. It's r
    - what the company does and why it was bought
 3. It puts the facts together, counting each investment and each dividend once, and takes the latest valuation. Only the holder's own money is counted: amounts that belong to the whole fund or company — total fund size, net assets, the investments the fund itself made, unit prices — are left out, and so is every amount in an investor update, a quarterly report or a due diligence paper. Those documents still provide the story: the business and why the investment was made. When a capital account or wealth statement is there, its stated contributions, distributions and closing value settle the totals, with the capital calls supplying the dates the money moved. AI writes a plain-English overview for family members.
 4. It looks for bank receipts in Xero that name the company and compares them with the dividend statements by financial year. The result is noted on the report and in the email.
-5. It draws the one page twice - as a PDF and as a web page - following the Option A tear sheet the family marked up:
-   - invested capital, carrying value, dividends, MOIC and IRR
-   - a value-created chart and a total returns chart
-   - the business, the investment and why it was bought
-   - key terms: investor entity, investment into, asset type, asset, shares held, ownership, commitment and unfunded commitment, first investment, holding period, tax status, liquidity, currency and website - each row appears only when the documents state it
-   - important information and the confidentiality notice
+5. It draws the one page twice - as a PDF and as a web page - laid out as the Option A tear sheet the family marked up:
+   - a masthead over the reporting date, prepared date, investor entity and currency
+   - key terms down the left: investor entity, investment into, asset type, asset, shares held, ownership, commitment and unfunded commitment, first investment, holding period, tax status, liquidity, currency and website - each row appears only when the documents state it
+   - on the right, an executive summary paragraph, then invested capital, distributions, carrying value, total value, net gain, MOIC and IRR, then the business, the investment and why it was bought
+   - a value-created chart and a total returns chart beneath
+   - important information, the confidentiality notice, and the reference number in the page footer
 6. It puts the web page in **Reports**, visible to everyone in the workspace, files the PDF in Knowledge as `Investments/Reports/<company> Investment Summary <dd-Mmm-yy>.pdf`, and emails that PDF to the "Email to" address. The email carries the attachment and a link to the report. Reports lists HTML reports only, which is why the page that goes there is a web page rather than the PDF.
 
 ### Automation: Combined report from SharePoint
@@ -52,7 +52,7 @@ No environment variables are required.
 
 **Run the one-page summary:** publish the automation, click **Run now** and paste the investment folder's link (open the folder in SharePoint, then Share → Copy link). These fields are optional:
 
-- **Investment name:** use it when the link is to the folder that holds every investment. The folder whose name contains it is used, wherever it sits below the link, so you can paste the top folder and type "Fund 1".
+- **Investment name:** use it when the link is to the folder that holds every investment. The folder whose name contains it is used, wherever it sits below the link, so you can paste the top folder and type "Fund 1". If nothing matches, the run stops and lists the folders that are there rather than reading them all as one investment.
 - **Email to:** defaults to the address set in the automation. Separate several addresses with commas.
 - **Name on the report:** defaults to Future Now.
 - **Xero contact or reference to match:** use it when the dividends in Xero don't name the company, for example a share registry's name.
