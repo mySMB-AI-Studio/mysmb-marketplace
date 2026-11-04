@@ -6,12 +6,7 @@ Browser OAuth — no API keys, no env vars. Each user authorises individually; t
 
 ## Configuration
 
-No environment variables required on the client side. On first use, the browser redirects to monday.com's OAuth flow — sign in, grant the requested scopes, and subsequent calls flow over the authorised session.
-
-### Prerequisites
-
-- A monday.com account on a plan that allows API access.
-- Account admin must install the **monday MCP** app from the [monday marketplace](https://monday.com/marketplace) before individual users can authorise.
+No configuration variables are required.
 
 ## Tool categories
 

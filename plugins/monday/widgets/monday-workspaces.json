@@ -1,139 +1,247 @@
 {
-  "id": "monday-workspaces",
-  "title": "Workspaces",
-  "description": "All monday.com workspaces you have access to.",
   "category": "work-management",
-  "tags": ["monday", "workspaces", "work-management", "organization"],
-  "keywords": ["workspace", "workspaces", "monday", "organization", "space"],
-  "connectorsUsed": ["monday"],
+  "connectorsUsed": [
+    "monday"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "monday",
+    "params": {},
+    "tool": "list_workspaces"
+  },
+  "description": "All monday.com workspaces you have access to.",
+  "id": "monday-workspaces",
+  "keywords": [
+    "workspace",
+    "workspaces",
+    "monday",
+    "organization",
+    "space"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 3, "rowSpan": 4 },
-    "min":       { "colSpan": 2, "rowSpan": 3 },
-    "max":       { "colSpan": 6, "rowSpan": 8 }
-  },
-  "dataProvider": {
-    "mcp": "monday",
-    "tool": "list_workspaces",
-    "params": {}
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 2,
+      "rowSpan": 3
+    },
+    "preferred": {
+      "colSpan": 3,
+      "rowSpan": 4
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
       "card": {
-        "type": "Card",
+        "children": [
+          "titleRow",
+          "loading",
+          "empty",
+          "list"
+        ],
         "props": {},
-        "children": ["titleRow", "loading", "empty", "list"]
+        "type": "Card"
       },
-
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "Grid", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "Workspaces", "level": "h2" }
+      "empty": {
+        "props": {
+          "message": "No workspaces found."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/monday.list_workspaces",
+              "not": true
+            },
+            {
+              "$state": "/monday/list_workspaces/workspaces/0",
+              "not": true
+            }
+          ]
+        }
       },
       "eyebrow": {
-        "type": "Eyebrow",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "monday.com · {n} workspaces",
-              "n": { "$state": "/monday/list_workspaces/count" }
+              "n": {
+                "$state": "/monday/list_workspaces/count"
+              },
+              "pattern": "monday.com · {n} workspaces"
             }
           }
-        }
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["s1", "s2", "s3"],
-        "visible": { "$state": "/_loading/monday.list_workspaces" }
-      },
-      "s1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "s2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "s3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No workspaces found." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/monday.list_workspaces", "not": true },
-            { "$state": "/monday/list_workspaces/workspaces/0", "not": true }
-          ]
-        }
-      },
-
-      "list": {
-        "type": "Stack",
-        "props": { "gap": "xs" },
-        "children": ["wsRow"],
-        "repeat": {
-          "statePath": "/monday/list_workspaces/workspaces",
-          "key": "id"
         },
-        "visible": { "$state": "/_loading/monday.list_workspaces", "not": true }
+        "type": "Eyebrow"
       },
-
-      "wsRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true },
-        "children": ["wsLeft", "kindBadge"]
-      },
-      "wsLeft": {
-        "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["wsName", "wsDesc"]
-      },
-      "wsName": {
-        "type": "Text",
+      "kindBadge": {
         "props": {
-          "text": { "$item": "name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
+          "text": {
+            "$item": "kind"
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "list": {
+        "children": [
+          "wsRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/monday/list_workspaces/workspaces"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/monday.list_workspaces",
+          "not": true
         }
+      },
+      "loading": {
+        "children": [
+          "s1",
+          "s2",
+          "s3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/monday.list_workspaces"
+        }
+      },
+      "s1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "s2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "s3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Workspaces"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Grid",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       },
       "wsDesc": {
-        "type": "Text",
         "props": {
-          "text": { "$item": "description" },
           "size": "xs",
+          "text": {
+            "$item": "description"
+          },
           "tone": "muted",
           "truncate": true
         },
-        "visible": { "$item": "description" }
-      },
-      "kindBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "kind" },
-          "tone": "info",
-          "variant": "soft"
+        "type": "Text",
+        "visible": {
+          "$item": "description"
         }
+      },
+      "wsLeft": {
+        "children": [
+          "wsName",
+          "wsDesc"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "wsName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "wsRow": {
+        "children": [
+          "wsLeft",
+          "kindBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "monday",
+    "workspaces",
+    "work-management",
+    "organization"
+  ],
+  "title": "Workspaces"
 }

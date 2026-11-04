@@ -1,153 +1,259 @@
 {
-  "id": "monday-my-profile",
-  "title": "My Profile",
-  "description": "Your monday.com user profile and account details.",
   "category": "work-management",
-  "tags": ["monday", "profile", "user", "account", "me"],
-  "keywords": ["profile", "me", "account", "user", "monday", "identity"],
-  "connectorsUsed": ["monday"],
+  "connectorsUsed": [
+    "monday"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "monday",
+    "params": {},
+    "tool": "get_user_context"
+  },
+  "description": "Your monday.com user profile and account details.",
+  "id": "monday-my-profile",
+  "keywords": [
+    "profile",
+    "me",
+    "account",
+    "user",
+    "monday",
+    "identity"
+  ],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 3, "rowSpan": 3 },
-    "min":       { "colSpan": 2, "rowSpan": 2 },
-    "max":       { "colSpan": 6, "rowSpan": 6 }
-  },
-  "dataProvider": {
-    "mcp": "monday",
-    "tool": "get_user_context",
-    "params": {}
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 2,
+      "rowSpan": 2
+    },
+    "preferred": {
+      "colSpan": 3,
+      "rowSpan": 3
+    }
   },
   "spec": {
-    "root": "card",
     "elements": {
-
-      "card": {
-        "type": "Card",
-        "props": {},
-        "children": ["titleRow", "loading", "content"]
-      },
-
-      "titleRow": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["titleGroup"]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIcon", "titleStack"]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": { "name": "User", "tone": "accent", "size": "sm" }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["title", "eyebrow"]
-      },
-      "title": {
-        "type": "Heading",
-        "props": { "text": "My Profile", "level": "h2" }
-      },
-      "eyebrow": {
-        "type": "Eyebrow",
-        "props": { "text": "monday.com" }
-      },
-
-      "loading": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["s1", "s2"],
-        "visible": { "$state": "/_loading/monday.get_user_context" }
-      },
-      "s1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "full" } },
-      "s2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-
-      "content": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["profileRow", "divider", "accountKV", "openBtn"],
-        "visible": { "$state": "/_loading/monday.get_user_context", "not": true }
-      },
-
-      "profileRow": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["avatar", "userInfo"]
+      "accountKV": {
+        "props": {
+          "label": "Account",
+          "value": {
+            "$state": "/monday/get_user_context/account/name"
+          }
+        },
+        "type": "KeyValue",
+        "visible": {
+          "$state": "/monday/get_user_context/account/name"
+        }
       },
       "avatar": {
-        "type": "Avatar",
         "props": {
           "initials": {
             "$computed": "initials",
-            "args": { "value": { "$state": "/monday/get_user_context/name" } }
+            "args": {
+              "value": {
+                "$state": "/monday/get_user_context/name"
+              }
+            }
           }
-        }
+        },
+        "type": "Avatar"
       },
-      "userInfo": {
+      "card": {
+        "children": [
+          "titleRow",
+          "loading",
+          "content"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "content": {
+        "children": [
+          "profileRow",
+          "divider",
+          "accountKV",
+          "openBtn"
+        ],
+        "props": {
+          "gap": "sm"
+        },
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["userName", "userEmail", "userTitle"]
-      },
-      "userName": {
-        "type": "Text",
-        "props": {
-          "text": { "$state": "/monday/get_user_context/name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
+        "visible": {
+          "$state": "/_loading/monday.get_user_context",
+          "not": true
         }
       },
-      "userEmail": {
-        "type": "Text",
+      "divider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
         "props": {
-          "text": { "$state": "/monday/get_user_context/email" },
-          "size": "xs",
-          "tone": "muted",
-          "truncate": true
+          "text": "monday.com"
+        },
+        "type": "Eyebrow"
+      },
+      "loading": {
+        "children": [
+          "s1",
+          "s2"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/monday.get_user_context"
         }
       },
-      "userTitle": {
-        "type": "Text",
-        "props": {
-          "text": { "$state": "/monday/get_user_context/title" },
-          "size": "xs",
-          "tone": "muted",
-          "truncate": true
-        },
-        "visible": { "$state": "/monday/get_user_context/title" }
-      },
-
-      "divider": { "type": "Divider", "props": {} },
-
-      "accountKV": {
-        "type": "KeyValue",
-        "props": {
-          "label": "Account",
-          "value": { "$state": "/monday/get_user_context/account/name" }
-        },
-        "visible": { "$state": "/monday/get_user_context/account/name" }
-      },
-
       "openBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Open monday.com",
-          "tone": "accent",
-          "variant": "ghost",
-          "size": "sm",
-          "leadingIcon": "ExternalLink"
-        },
         "on": {
           "click": {
             "action": "open_url",
-            "params": { "url": "https://monday.com" }
+            "params": {
+              "url": "https://monday.com"
+            }
           }
+        },
+        "props": {
+          "label": "Open monday.com",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "accent",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "profileRow": {
+        "children": [
+          "avatar",
+          "userInfo"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "s1": {
+        "props": {
+          "height": "3rem",
+          "rounded": "full"
+        },
+        "type": "Skeleton"
+      },
+      "s2": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "My Profile"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "User",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "userEmail": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$state": "/monday/get_user_context/email"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "userInfo": {
+        "children": [
+          "userName",
+          "userEmail",
+          "userTitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "userName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/monday/get_user_context/name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "userTitle": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$state": "/monday/get_user_context/title"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Text",
+        "visible": {
+          "$state": "/monday/get_user_context/title"
         }
       }
-
-    }
+    },
+    "root": "card"
   },
-  "status": "published"
+  "tags": [
+    "monday",
+    "profile",
+    "user",
+    "account",
+    "me"
+  ],
+  "title": "My Profile"
 }
