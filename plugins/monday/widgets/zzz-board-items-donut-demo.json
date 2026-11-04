@@ -1,0 +1,114 @@
+{
+  "id": "monday-board-items-donut-demo",
+  "title": "Board Items (DEMO — mock data)",
+  "description": "Visual reference only — renders the status-breakdown donut against mock data so it can be reviewed without a board that has items. Not a real tile: do not surface this in any catalog, and strip it before any promotion to master/production.",
+  "category": "work-management",
+  "tags": ["monday", "demo"],
+  "keywords": ["demo", "mock"],
+  "connectorsUsed": ["monday"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
+    "max":       { "colSpan": 10, "rowSpan": 10 }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "get_board_info",
+    "params": { "limit": 1 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "divider1", "statusSection", "table"],
+        "watch": {
+          "/monday/get_board_info": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/monday/get_board_items_page/items",
+                "value": [
+                  { "id": "1", "name": "Design onboarding flow", "state": "active", "updated_at": "2026-10-28T09:12:00Z", "group": { "id": "g1", "title": "To Do" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Not Started", "value": "{}" }] },
+                  { "id": "2", "name": "Fix invoice export bug", "state": "active", "updated_at": "2026-11-01T14:40:00Z", "group": { "id": "g2", "title": "In Progress" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Working on it", "value": "{}" }] },
+                  { "id": "3", "name": "Update pricing page copy", "state": "active", "updated_at": "2026-11-02T11:05:00Z", "group": { "id": "g2", "title": "In Progress" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Working on it", "value": "{}" }] },
+                  { "id": "4", "name": "Migrate billing to v2 API", "state": "active", "updated_at": "2026-10-20T08:00:00Z", "group": { "id": "g2", "title": "In Progress" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Stuck", "value": "{}" }] },
+                  { "id": "5", "name": "Vendor contract review", "state": "active", "updated_at": "2026-10-15T16:30:00Z", "group": { "id": "g2", "title": "In Progress" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Stuck", "value": "{}" }] },
+                  { "id": "6", "name": "Launch referral program", "state": "active", "updated_at": "2026-11-03T10:00:00Z", "group": { "id": "g3", "title": "Done" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Done", "value": "{}" }] },
+                  { "id": "7", "name": "Q3 retro write-up", "state": "active", "updated_at": "2026-10-05T13:20:00Z", "group": { "id": "g3", "title": "Done" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Done", "value": "{}" }] },
+                  { "id": "8", "name": "Renew SSL certificates", "state": "active", "updated_at": "2026-09-30T07:45:00Z", "group": { "id": "g3", "title": "Done" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Done", "value": "{}" }] },
+                  { "id": "9", "name": "Customer advisory board prep", "state": "active", "updated_at": "2026-09-22T12:00:00Z", "group": { "id": "g3", "title": "Done" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Done", "value": "{}" }] },
+                  { "id": "10", "name": "Security audit follow-ups", "state": "active", "updated_at": "2026-11-02T17:10:00Z", "group": { "id": "g1", "title": "To Do" },
+                    "column_values": [{ "id": "status", "title": "Status", "type": "color", "text": "Blocked", "value": "{}" }] }
+                ]
+              }
+            }
+          ]
+        }
+      },
+
+      "titleRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ListChecks", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Board Items", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "DEMO · mock data, not live" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "statusSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statusLabel", "statusDonut"]
+      },
+      "statusLabel": { "type": "Eyebrow", "props": { "text": "Status breakdown" } },
+      "statusDonut": {
+        "type": "Donut",
+        "props": {
+          "data": {
+            "$computed": "monday_extract_status",
+            "args": { "value": { "$state": "/monday/get_board_items_page/items" } }
+          },
+          "groupField": "status",
+          "legend": {
+            "Done": { "label": "Done", "tone": "success" },
+            "Working on it": { "label": "Working on it", "tone": "warning" },
+            "Stuck": { "label": "Stuck", "tone": "destructive" },
+            "Not Started": { "label": "Not started", "tone": "muted" },
+            "No status": { "label": "No status", "tone": "muted" }
+          },
+          "centerLabel": "Items",
+          "size": 104,
+          "thickness": 12
+        }
+      },
+
+      "table": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/monday/get_board_items_page/items" },
+          "columns": [
+            { "id": "name",    "header": "Item",    "field": "name",         "priority": 1 },
+            { "id": "group",   "header": "Group",   "field": "group.title",  "width": 120, "priority": 2 },
+            { "id": "state",   "header": "State",   "field": "state",        "width": 90,  "priority": 2 },
+            { "id": "updated", "header": "Updated",  "field": "updated_at",  "width": 100, "priority": 2, "format": "dd_mmm_yy" }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "published"
+}
