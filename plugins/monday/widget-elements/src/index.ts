@@ -46,10 +46,48 @@ function labelForEvent(raw: string): string {
 
 const activity_label: ComputedFunction = (args) => labelForEvent(String(args.value ?? ''));
 
+const KNOWN_ENTITIES: Record<string, string> = { pulse: 'Item', board: 'Board' };
+
+/**
+ * Humanizes monday's `entity` field ("pulse" → "Item", "board" → "Board").
+ * monday calls board items "pulses" internally — not a word to show a user.
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "monday_entity_label", "args": { "value": { "$item": "entity" } } }
+ */
+const entity_label: ComputedFunction = (args) => {
+  const raw = String(args.value ?? '').trim();
+  if (!raw) return '';
+  return KNOWN_ENTITIES[raw] ?? raw.charAt(0).toUpperCase() + raw.slice(1);
+};
+
+/**
+ * Pretty-prints a JSON string for display (monday's activity_logs `data`
+ * field). Falls back to the raw string unchanged if it isn't valid JSON —
+ * never hides or errors on a shape monday changes later.
+ *
+ * Args: { value: string }
+ *
+ * Spec example:
+ *   { "$computed": "monday_pretty_json", "args": { "value": { "$item": "data" } } }
+ */
+const pretty_json: ComputedFunction = (args) => {
+  const raw = String(args.value ?? '');
+  if (!raw) return '';
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+};
+
 /**
  * Flattens monday's board_activity rows (nested `user: { name }`, raw
  * `event` codes) into render-ready fields for a repeat list: `actor_name`,
- * `action_text`, `created_at`. Mirrors the shape widget specs need from a
+ * `action_text`, `created_at`, plus the raw `event`/`entity`/`data` fields
+ * for an expanded detail view. Mirrors the shape widget specs need from a
  * `$item` binding inside a `repeat` — nested-path `$item` reads aren't
  * something to assume support for, so flatten here instead.
  *
@@ -69,12 +107,15 @@ const flatten_activity: ComputedFunction = (args) => {
       actor_name: actorName,
       action_text: labelForEvent(String(r.event ?? '')),
       created_at: r.created_at,
+      event: r.event,
+      entity: r.entity,
+      data: r.data,
     };
   });
 };
 
 const elements: PluginElementsModule = {
   slug: 'monday',
-  functions: { activity_label, flatten_activity },
+  functions: { activity_label, entity_label, pretty_json, flatten_activity },
 };
 export default elements;
