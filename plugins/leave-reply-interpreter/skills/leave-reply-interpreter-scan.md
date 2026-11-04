@@ -1,8 +1,3 @@
----
-name: leave-reply-interpreter-scan
-description: Interpret a WorkQ comment reply to a leave request against the employee's real Xero leave balance, and create the leave application only when it's genuinely confirmed and within balance. Use in Interpret a leave reply (interpret).
----
-
 # Interpreting a leave reply (Xero Payroll AU)
 
 This runs once per `workq.item.commented` event. First check whether it even applies: read the commented-on WorkQ item (`api.workq.get(todo_id=...)`) and compare its `template_id` against this installation's `leaveRequestTemplateId` setting. If it doesn't match, this comment isn't a leave reply — output `outcome: "notApplicable"` and stop; don't try to interpret it.
