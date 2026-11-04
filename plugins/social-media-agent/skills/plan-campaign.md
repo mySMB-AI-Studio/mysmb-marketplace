@@ -52,7 +52,7 @@ Return **only** this JSON object, with no prose around it:
     "missing": ["facts the drafts will need that nobody has given yet"]
   },
   "pieces": [
-    {"title": "Short working title", "content_type": "social_post", "channels": ["linkedin", "facebook"], "publish_date": "YYYY-MM-DD", "topic": "What this piece covers", "angle": "The angle and the one point it makes", "cta": "", "cta_url": ""}
+    {"title": "Short working title", "content_type": "social_post", "channels": ["linkedin", "facebook"], "publish_date": "YYYY-MM-DD", "topic": "What this piece covers", "angle": "The angle and the one point it makes", "cta": "", "cta_url": "", "draft": true}
   ],
   "missing": ["the same list as campaign.missing"],
   "summary": "Two or three sentences: the shape of the plan, the defaults you chose and anything the reviewer should check.",
@@ -67,4 +67,14 @@ Return **only** this JSON object, with no prose around it:
 }
 ```
 
-Leave a piece's `cta` empty to use the campaign's. If the request is too thin to plan well, still return a small plan (2 or 3 pieces) and say in `summary` and `brief.recommendation` what you need to know.
+Leave a piece's `cta` empty to use the campaign's. Set a piece's `draft` to `false` only when the request says the team will write that piece themselves (for example "we'll write the event-day post"); it then goes on the calendar with a posting task but no draft or review. Every other piece is `true`. If the request is too thin to plan well, still return a small plan (2 or 3 pieces) and say in `summary` and `brief.recommendation` what you need to know.
+
+## Plan my month
+
+When the request asks to plan a month (for example "plan my month", "plan November", "what should I post next month"), there is no single promotion: plan an always-on month instead.
+
+- **Dates:** the named month, or the next calendar month if none is named; never before `earliest_publish_date`.
+- **Volume:** 2 to 3 social posts a week on the channels asked for (else the default social channels), plus at most one article or email in the month. Never more than `max_pieces`.
+- **Themes:** rotate through the Brand Kit's key messages and services, one theme per week, so the month covers the business broadly rather than one offer. Add a seasonal angle only for an Australian national date that falls in the month (for example EOFY on 30/06, Christmas), and only as an angle, never an invented offer.
+- **Campaign fields:** name it "<Month> content plan", objective `awareness` unless the request says otherwise, cadence `even`, and the Brand Kit's default call to action.
+- Everything else in this skill still applies: no invented facts, no testimonials, each piece stands alone.

@@ -1,0 +1,64 @@
+{
+  "contentHash": "619760da13cd9eb693a89609297fe05d29d796ceea310684ebe0de2625e29820",
+  "declaredScopes": [
+    "records:social_content_pieces:read",
+    "workq:read",
+    "workq:write",
+    "extension_setup:read"
+  ],
+  "dependencies": [],
+  "description": "Every Monday at 8:00 (Sydney time) lists the content pieces due to be published Monday to Sunday in one WorkQ item: what each is, its channels and whether it is approved, waiting for review, not drafted yet or calendar only. Running it again in the same week updates that item. Skips weeks with nothing to publish. Uses no AI and posts nothing.",
+  "flowIr": {
+    "description": "Every Monday at 8:00 (Sydney time) lists the content pieces due to be published Monday to Sunday in one WorkQ item: what each is, its channels and whether it is approved, waiting for review, not drafted yet or calendar only. Running it again in the same week updates that item. Skips weeks with nothing to publish. Uses no AI and posts nothing.",
+    "irVersion": 1,
+    "name": "Social Media Agent: publishing this week",
+    "nodes": [
+      {
+        "code": "from datetime import date, datetime, timedelta\nfrom zoneinfo import ZoneInfo\n\nPIECES = \"social_content_pieces\"\nTYPES = {\"social_post\": \"Social media post\", \"article\": \"Article\", \"email\": \"Email\", \"announcement\": \"Announcement\", \"visual\": \"Visual\"}\nCHANNELS = {\"instagram\": \"Instagram\", \"facebook\": \"Facebook\", \"linkedin\": \"LinkedIn\", \"google_business\": \"Google Business\", \"email\": \"Email\", \"website\": \"Website\", \"print\": \"Print\"}\nNEWLINE = chr(10)\n\n\ndef text(value):\n    if value is None:\n        return \"\"\n    if isinstance(value, (list, tuple)):\n        return \", \".join(str(v) for v in value)\n    return str(value).strip()\n\n\nsettings = api.extension.settings() or {}\nzone = ZoneInfo(text(settings.get(\"time_zone\")) or \"Australia/Sydney\")\ntoday = datetime.now(zone).date()\nmonday = today - timedelta(days=today.weekday())\nsunday = monday + timedelta(days=6)\n\n# Every content piece, a page at a time (a small business has tens, not thousands).\nrows = []\ncursor = None\nfor _ in range(10):\n    page = api.records.list(type_slug=PIECES, limit=200, cursor=cursor) or {}\n    rows.extend(page.get(\"records\") or [])\n    cursor = page.get(\"nextCursor\")\n    if not cursor:\n        break\n\nweek = []\nfor row in rows:\n    data = row.get(\"data\") or {}\n    raw = text(data.get(\"publish_date\"))[:10]\n    try:\n        when = date.fromisoformat(raw)\n    except ValueError:\n        continue\n    if not (monday <= when <= sunday):\n        continue\n    if text(data.get(\"knowledge_path\")):\n        state = \"approved, saved to Knowledge (\" + text(data.get(\"knowledge_path\")) + \")\"\n    elif text(data.get(\"origin\")) == \"campaign\" and data.get(\"generate_draft\") is False:\n        state = \"calendar only: the team writes this one\"\n    elif text(data.get(\"check_summary\")):\n        state = \"drafted, waiting for review\"\n    else:\n        state = \"not drafted yet\"\n    channels = \", \".join(CHANNELS.get(c, c) for c in (data.get(\"channels\") or []) if isinstance(c, str))\n    kind = TYPES.get(text(data.get(\"content_type\")), \"Content\")\n    title = text(row.get(\"title\") or data.get(\"piece_title\")) or \"Untitled piece\"\n    week.append((when, title, kind, channels, state))\nweek.sort(key=lambda w: (w[0], w[1]))\n\npiece_count = len(week)\ntodo_id = \"\"\nnotice_title = \"Publishing this week: \" + monday.strftime(\"%d/%m\") + \" to \" + sunday.strftime(\"%d/%m/%Y\")\nif piece_count:\n    lines = [\"These pieces are due to be published this week. Nothing is posted for you: post each one on its day, then tick its \\\"Post it today\\\" task.\", \"\"]\n    for when, title, kind, channels, state in week:\n        lines.append(\"- **\" + when.strftime(\"%a %d/%m\") + \"**: \" + title + \" (\" + kind + (\", \" + channels if channels else \"\") + \"), \" + state)\n    waiting = len([w for w in week if w[4] == \"drafted, waiting for review\"])\n    if waiting:\n        lines.extend([\"\", str(waiting) + \" still need your review: open Agents > Social Media Agent > Needs your attention.\"])\n    body = NEWLINE.join(lines)\n    existing = [t for t in (api.workq.list(search=notice_title) or []) if text(t.get(\"title\")) == notice_title]\n    if existing:\n        todo_id = text(existing[0].get(\"id\"))\n        api.workq.update(todo_id=todo_id, description=body)\n    else:\n        made = api.workq.create(title=notice_title, scope=\"org\", description=body, due_date=monday.isoformat(), labels=[\"social-media-agent\"])\n        todo_id = text((made or {}).get(\"id\"))\n",
+        "id": "week",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Pieces due to be published this week.",
+            "name": "piece_count",
+            "type": "int"
+          },
+          {
+            "description": "The WorkQ item's title.",
+            "name": "notice_title",
+            "type": "str"
+          },
+          {
+            "description": "The WorkQ item made or updated (empty when nothing is due).",
+            "name": "todo_id",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Finds the pieces due this week and writes them into one WorkQ item.",
+        "title": "List this week's pieces"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "week"
+    ],
+    "triggers": [
+      {
+        "cron": "0 8 * * 1",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Social Media Agent: publishing this week",
+  "originKey": "11c520a3-47c0-56c5-92ee-9d827bf0e9c9",
+  "tags": [
+    "social-media-agent"
+  ]
+}
