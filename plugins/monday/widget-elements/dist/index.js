@@ -109,8 +109,42 @@ const flatten_activity = (args) => {
         };
     });
 };
+/**
+ * Extracts each board item's status-column text into a flat `{ status }`
+ * row, for a Donut's `data` + `groupField`. monday's `ColumnValue.type` for
+ * a Status-style column is "color" (its own internal naming); prefers a
+ * column actually titled "Status" (case-insensitive) when the board has
+ * more than one color-type column (e.g. a Priority column is also type
+ * "color"), otherwise falls back to the first color-type column found.
+ * Items missing that column, or with it blank, group under "No status" —
+ * never dropped, since omitting them would understate the total silently.
+ *
+ * Args: { value: array } — raw items from get_board_items_page, each with
+ *   a `column_values: [{ id, title, type, text }]` array.
+ *
+ * Spec example:
+ *   { "$computed": "monday_extract_status", "args": { "value": { "$state": "/monday/get_board_items_page/items" } } }
+ */
+const extract_status = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    if (!items.length)
+        return [];
+    const columnsOf = (item) => (Array.isArray(item.column_values) ? item.column_values : []);
+    const firstColumns = columnsOf(items[0]);
+    const byTitle = firstColumns.find((cv) => String(cv.title ?? '').trim().toLowerCase() === 'status');
+    const byType = firstColumns.find((cv) => cv.type === 'color');
+    const target = byTitle ?? byType;
+    if (!target)
+        return [];
+    const columnId = target.id;
+    return items.map((item) => {
+        const match = columnsOf(item).find((cv) => cv.id === columnId);
+        const text = typeof match?.text === 'string' ? match.text.trim() : '';
+        return { status: text || 'No status' };
+    });
+};
 const elements = {
     slug: 'monday',
-    functions: { activity_label, entity_label, pretty_json, flatten_activity },
+    functions: { activity_label, entity_label, pretty_json, flatten_activity, extract_status },
 };
 export default elements;
