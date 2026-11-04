@@ -1,0 +1,517 @@
+{
+  "id": "fyi-chargeable-time-this-month",
+  "title": "Chargeable time this month",
+  "description": "Chargeable hours recorded in FYI this month, the practice's chargeable rate, and hours per staff member. Needs FYI Pro or Elite.",
+  "category": "operations",
+  "tags": [
+    "fyi",
+    "time",
+    "productivity",
+    "chart"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "chargeable hours",
+    "timesheets",
+    "utilisation",
+    "billable time",
+    "productivity",
+    "time this month"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_time_summary",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_time_summary/by_user": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/time",
+              "value": {
+                "$computed": "fyi_time_dashboard",
+                "args": {
+                  "totals": {
+                    "$state": "/fyi/get_time_summary/totals"
+                  },
+                  "by_user": {
+                    "$state": "/fyi/get_time_summary/by_user"
+                  },
+                  "currency": {
+                    "$state": "/fyi/get_time_summary/currency"
+                  },
+                  "from": {
+                    "$state": "/fyi/get_time_summary/from"
+                  },
+                  "to": {
+                    "$state": "/fyi/get_time_summary/to"
+                  },
+                  "truncated": {
+                    "$state": "/fyi/get_time_summary/truncated"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_time_summary/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Clock",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Chargeable time this month",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · This month"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_time_summary"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_time_summary",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_time_summary"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_time_summary"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No time recorded in FYI this month yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_time_summary",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_time_summary",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_time_summary/totals/entries",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "heroDivider",
+          "listTitle",
+          "list",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_time_summary",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_time_summary",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_time_summary/totals/entries"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/time/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/time/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "hero": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "template": "minmax(0,1fr) 180px"
+        },
+        "children": [
+          "heroText",
+          "pctStack"
+        ]
+      },
+      "heroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heroCaption",
+          "heroValue",
+          "heroSub"
+        ]
+      },
+      "heroCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "CHARGEABLE",
+          "tone": "muted",
+          "weight": "medium"
+        }
+      },
+      "heroValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/time/chargeableText"
+          }
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/time/heroSub"
+          },
+          "tone": "muted"
+        }
+      },
+      "pctStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "stretch"
+        },
+        "children": [
+          "pctHead",
+          "pctBarWrap"
+        ]
+      },
+      "pctHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "pctLabel",
+          "pctValue"
+        ]
+      },
+      "pctLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Chargeable rate",
+          "tone": "muted"
+        }
+      },
+      "pctValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/time/pctText"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "pctBarWrap": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "pctBar"
+        ]
+      },
+      "pctBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/time/pct"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "listTitle": {
+        "type": "Text",
+        "props": {
+          "text": "By staff member",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "row"
+        ],
+        "repeat": {
+          "statePath": "/ui/time/rows",
+          "key": "key"
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "110px minmax(0,1fr) 56px 40px"
+        },
+        "children": [
+          "rowName",
+          "rowBar",
+          "rowHours",
+          "rowShare"
+        ]
+      },
+      "rowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "rowBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": "brand"
+        }
+      },
+      "rowHours": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "hoursText"
+          },
+          "tone": "default",
+          "weight": "medium",
+          "align": "right"
+        }
+      },
+      "rowShare": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "shareText"
+          },
+          "tone": "muted",
+          "align": "right"
+        }
+      }
+    }
+  }
+}

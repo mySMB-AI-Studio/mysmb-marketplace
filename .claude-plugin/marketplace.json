@@ -4055,6 +4055,68 @@
       "version": "0.0.0",
       "displayName": "Leave Reply Interpreter",
       "source": "./plugins/leave-reply-interpreter"
+    },
+    {
+      "author": {
+        "name": "mySMB AI Studio"
+      },
+      "category": "operations",
+      "connection": {
+        "authType": "api_key",
+        "instructions": "In FYI, an FYI Admin opens **Automation → Apps**, then the app tile's cog → **Create new secret** (or the **Custom Applications** tile, if FYI has unlocked it for your practice). Copy the **Access Key ID** and **Access Key Secret** — the secret is shown only once. Needs FYI Pro or Elite; invoice tiles need Elite.",
+        "docUrl": "https://developers.fyi.app",
+        "fields": [
+          {
+            "name": "FYI_ACCESS_ID",
+            "label": "Access Key ID",
+            "type": "text",
+            "required": true,
+            "helpText": "From FYI → Automation → Apps → Create new secret."
+          },
+          {
+            "name": "FYI_ACCESS_SECRET",
+            "label": "Access Key Secret",
+            "type": "password",
+            "required": true,
+            "helpText": "Shown once when the key is created. Regenerating it invalidates the old one."
+          },
+          {
+            "name": "FYI_REGION",
+            "label": "Region",
+            "type": "text",
+            "required": false,
+            "placeholder": "au",
+            "helpText": "au (Australia and New Zealand, the default) or uk."
+          },
+          {
+            "name": "FYI_APPLICATION_ID",
+            "label": "Application ID (optional)",
+            "type": "text",
+            "required": false,
+            "helpText": "Only if FYI issued an Application ID for a partner app. Leave blank for practice-generated keys."
+          }
+        ]
+      },
+      "description": "Read-only FYI (FYI Docs) practice data on your dashboard: open jobs by state, recent jobs, tasks due soon, recently filed documents, outstanding invoices, chargeable time and manager workload.",
+      "displayName": "FYI",
+      "icon": "FolderOpen",
+      "keywords": [
+        "fyi",
+        "fyi docs",
+        "practice management",
+        "document management",
+        "jobs",
+        "tasks",
+        "time",
+        "invoices",
+        "accounting practice"
+      ],
+      "license": "MIT",
+      "name": "fyi",
+      "version": "0.0.0",
+      "widgetElements": "widget-elements/dist/index.js",
+      "widgets": "widgets",
+      "source": "./plugins/fyi"
     }
   ]
 }

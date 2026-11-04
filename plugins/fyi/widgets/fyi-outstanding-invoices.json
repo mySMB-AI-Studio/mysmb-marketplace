@@ -1,0 +1,609 @@
+{
+  "id": "fyi-outstanding-invoices",
+  "title": "Outstanding invoices",
+  "description": "Total outstanding on FYI invoices, how much is overdue by age, and the most overdue invoices. Needs FYI Elite.",
+  "category": "finance",
+  "tags": [
+    "fyi",
+    "invoices",
+    "debtors",
+    "chart"
+  ],
+  "keywords": [
+    "fyi",
+    "fyi docs",
+    "outstanding invoices",
+    "debtors",
+    "aged receivables",
+    "overdue invoices",
+    "accounts receivable",
+    "unpaid invoices"
+  ],
+  "connectorsUsed": [
+    "fyi"
+  ],
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 9
+    }
+  },
+  "branding": {
+    "color": "#34DFBA"
+  },
+  "dataProvider": {
+    "mcp": "fyi",
+    "tool": "get_invoices_overview",
+    "params": {
+      "list_limit": 5
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/fyi/get_invoices_overview/aging": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/inv",
+              "value": {
+                "$computed": "fyi_invoices_dashboard",
+                "args": {
+                  "totals": {
+                    "$state": "/fyi/get_invoices_overview/totals"
+                  },
+                  "aging": {
+                    "$state": "/fyi/get_invoices_overview/aging"
+                  },
+                  "top": {
+                    "$state": "/fyi/get_invoices_overview/top"
+                  },
+                  "currency": {
+                    "$state": "/fyi/get_invoices_overview/currency"
+                  },
+                  "truncated": {
+                    "$state": "/fyi/get_invoices_overview/truncated"
+                  },
+                  "as_of": {
+                    "$state": "/fyi/get_invoices_overview/as_of"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleRow"
+        ]
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Receipt",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Outstanding invoices",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "FYI · Open invoices"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/fyi.get_invoices_overview"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "errorRow",
+          "errorDetail"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_invoices_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_invoices_overview"
+            }
+          ]
+        }
+      },
+      "errorRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "errorIcon",
+          "errorText"
+        ]
+      },
+      "errorIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "errorText": {
+        "type": "Text",
+        "props": {
+          "text": "Couldn't load FYI data.",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "errorDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/_errors/fyi.get_invoices_overview"
+          },
+          "tone": "muted"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No outstanding invoices in FYI."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_invoices_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_invoices_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_invoices_overview/totals/open_count",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "heroDivider",
+          "over90",
+          "listTitle",
+          "ivList",
+          "footerDivider",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/fyi.get_invoices_overview",
+              "not": true
+            },
+            {
+              "$state": "/_errors/fyi.get_invoices_overview",
+              "not": true
+            },
+            {
+              "$state": "/fyi/get_invoices_overview/totals/open_count"
+            }
+          ]
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ]
+      },
+      "footerLeft": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/inv/footerLeft"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerRight": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/inv/footerRight"
+          },
+          "tone": "muted"
+        }
+      },
+      "hero": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "template": "minmax(0,1fr) minmax(0,1.3fr)"
+        },
+        "children": [
+          "heroText",
+          "agingWrap"
+        ]
+      },
+      "heroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heroCaption",
+          "heroValue",
+          "heroSub"
+        ]
+      },
+      "heroCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "OUTSTANDING",
+          "tone": "muted",
+          "weight": "medium"
+        }
+      },
+      "heroValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/inv/outstandingText"
+          }
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/inv/heroSub"
+          },
+          "tone": "muted"
+        }
+      },
+      "agingWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "bar",
+          "legend"
+        ]
+      },
+      "bar": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "template": {
+            "$state": "/ui/inv/barTemplate"
+          }
+        },
+        "children": [
+          "segCurrent",
+          "segEarly",
+          "segLate"
+        ]
+      },
+      "segCurrent": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/inv/showCurrent"
+        }
+      },
+      "segEarly": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "warning"
+        },
+        "visible": {
+          "$state": "/ui/inv/showEarly"
+        }
+      },
+      "segLate": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "destructive"
+        },
+        "visible": {
+          "$state": "/ui/inv/showLate"
+        }
+      },
+      "legend": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "legRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/inv/legend",
+          "key": "key"
+        }
+      },
+      "legRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "template": "10px minmax(0,1fr) auto"
+        },
+        "children": [
+          "legDot",
+          "legLabel",
+          "legAmount"
+        ]
+      },
+      "legDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "xs"
+        }
+      },
+      "legLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "tone": "muted"
+        }
+      },
+      "legAmount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "tone": "default",
+          "weight": "medium",
+          "align": "right"
+        }
+      },
+      "heroDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "over90": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/inv/over90Text"
+          },
+          "tone": "destructive"
+        },
+        "visible": {
+          "$state": "/ui/inv/over90Text"
+        }
+      },
+      "listTitle": {
+        "type": "Text",
+        "props": {
+          "text": "Most overdue",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "ivList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "ivRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/inv/rows",
+          "key": "id"
+        }
+      },
+      "ivRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "12px minmax(0,1fr) 110px"
+        },
+        "children": [
+          "ivDot",
+          "ivText",
+          "ivValue"
+        ]
+      },
+      "ivDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "xs"
+        }
+      },
+      "ivText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "ivTitle",
+          "ivSub"
+        ]
+      },
+      "ivTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "ivSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subtitle"
+          },
+          "tone": "muted"
+        }
+      },
+      "ivValue": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "ivAmount",
+          "ivDue"
+        ]
+      },
+      "ivAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "ivDue": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "dueText"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      }
+    }
+  }
+}
