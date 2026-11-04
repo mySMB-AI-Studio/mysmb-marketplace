@@ -8,8 +8,8 @@
   "connectorsUsed": ["monday"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 6 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
     "max":       { "colSpan": 10, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -70,7 +70,7 @@
         }
       },
 
-      "body": { "type": "Body", "props": {}, "children": ["promptEmpty", "itemsEmpty", "table"] },
+      "body": { "type": "Body", "props": {}, "children": ["promptEmpty", "itemsEmpty", "statusSection", "table"] },
 
       "promptEmpty": {
         "type": "Empty",
@@ -90,6 +90,40 @@
         }
       },
 
+      "statusSection": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statusLabel", "statusDonut"],
+        "visible": {
+          "$and": [
+            { "$state": "/ui/selectedBoardId" },
+            { "$state": "/_loading/monday.get_board_items_page", "not": true },
+            { "$state": "/monday/get_board_items_page/items/0" }
+          ]
+        }
+      },
+      "statusLabel": { "type": "Eyebrow", "props": { "text": "Status breakdown" } },
+      "statusDonut": {
+        "type": "Donut",
+        "props": {
+          "data": {
+            "$computed": "monday_extract_status",
+            "args": { "value": { "$state": "/monday/get_board_items_page/items" } }
+          },
+          "groupField": "status",
+          "legend": {
+            "Done": { "label": "Done", "tone": "success" },
+            "Working on it": { "label": "Working on it", "tone": "warning" },
+            "Stuck": { "label": "Stuck", "tone": "destructive" },
+            "Not Started": { "label": "Not started", "tone": "muted" },
+            "No status": { "label": "No status", "tone": "muted" }
+          },
+          "centerLabel": "Items",
+          "size": 104,
+          "thickness": 12
+        }
+      },
+
       "table": {
         "type": "Table",
         "props": {
@@ -99,7 +133,7 @@
           "columns": [
             { "id": "name",    "header": "Item",    "field": "name",         "priority": 1 },
             { "id": "group",   "header": "Group",   "field": "group.title",  "width": 120, "priority": 2 },
-            { "id": "state",   "header": "Status",  "field": "state",        "width": 90,  "priority": 2 },
+            { "id": "state",   "header": "State",   "field": "state",        "width": 90,  "priority": 2 },
             { "id": "updated", "header": "Updated",  "field": "updated_at",  "width": 100, "priority": 2, "format": "dd_mmm_yy" }
           ]
         },
