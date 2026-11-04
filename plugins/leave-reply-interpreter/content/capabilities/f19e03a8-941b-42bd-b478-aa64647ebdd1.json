@@ -1,0 +1,111 @@
+{
+  "contentHash": "20bd24761226c7ae2e643ad23df477d6a740f28458873a9f8e6f1c0140659ec0",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "order": "order",
+          "page": "page",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "payroll.employees.read"
+        ],
+        "server": "xero-payroll-au",
+        "tool": "list_leave_applications"
+      },
+      {
+        "argMap": {
+          "leaveApplicationId": "leaveApplicationId",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "payroll.employees.read"
+        ],
+        "server": "xero-payroll-au",
+        "tool": "get_leave_application"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "leaveApplicationId": {
+          "description": "Read one leave application by id.",
+          "type": "string"
+        },
+        "order": {
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "where": {
+          "description": "Xero filter expression.",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.leave.read",
+    "kind": "capability",
+    "originKey": "f19e03a8-941b-42bd-b478-aa64647ebdd1",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "LeaveApplications": {
+          "items": {
+            "properties": {
+              "EmployeeID": {
+                "type": "string"
+              },
+              "EndDate": {
+                "type": "string"
+              },
+              "LeaveApplicationID": {
+                "type": "string"
+              },
+              "LeavePeriods": {
+                "type": "array"
+              },
+              "LeaveTypeID": {
+                "type": "string"
+              },
+              "StartDate": {
+                "type": "string"
+              },
+              "Title": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "LeaveApplications"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-payroll-au"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read Xero leave applications"
+  },
+  "kind": "capability",
+  "name": "Read Xero leave applications",
+  "originKey": "f19e03a8-941b-42bd-b478-aa64647ebdd1"
+}
