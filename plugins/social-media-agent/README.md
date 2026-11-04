@@ -14,7 +14,7 @@ A business agent for a small business's marketing. It plans campaigns and drafts
   - *Confirm a Brand Kit:* checks a new Brand Kit, asks the reviewer to confirm it, then saves a versioned copy in Knowledge for the agent.
   - *Draft a content piece:* drafts one piece from the confirmed Brand Kit, runs the brand and compliance checks and asks the reviewer to approve, change or skip it. An approved draft is saved as Word and Markdown in the folder for its content type and booked for its publish date. Starts when a content piece is created.
   - *Plan a campaign:* plans the pieces, content types, channels and dates from what you describe, shows the plan for approval, then creates the campaign and one content piece per planned piece (each starts its own drafting job).
-- **Automations (3):** the steps the processes run (Brand Kit check and confirm, content piece steps, campaign plan steps). They use no AI and send nothing. An administrator publishes them after install.
+- **Automations (4):** the steps the processes run (Brand Kit check and confirm, content piece steps, campaign plan steps), plus **publishing this week**, which every Monday at 8:00 (Sydney time) lists the week's pieces in one WorkQ item. They use no AI and send nothing. An administrator publishes them after install.
 - **Skills (2):** `draft-content` and `plan-campaign`.
 
 **Known limit:** automations cannot move a record's stage yet, so a content piece's Stage stays at Planned. Follow progress on the job's WorkQ item and the piece's dates, checks and Knowledge link instead.
