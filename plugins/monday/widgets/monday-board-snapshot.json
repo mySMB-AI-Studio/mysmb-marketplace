@@ -1,0 +1,314 @@
+{
+  "category": "work-management",
+  "connectorsUsed": [
+    "monday"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "monday",
+    "params": {
+      "limit": 50
+    },
+    "tool": "get_board_info"
+  },
+  "description": "Pick a monday.com board to see its item count, group breakdown, and column types at a glance.",
+  "id": "monday-board-snapshot",
+  "keywords": [
+    "board",
+    "insights",
+    "snapshot",
+    "items",
+    "groups",
+    "columns",
+    "monday"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 9
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "elements": {
+      "boardSelect": {
+        "props": {
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "labelField": "name",
+              "value": {
+                "$state": "/monday/get_board_info/boards"
+              },
+              "valueField": "id"
+            }
+          },
+          "placeholder": "Select a board…",
+          "size": "sm",
+          "value": {
+            "$bindState": "/ui/selectedBoardId"
+          }
+        },
+        "type": "Select"
+      },
+      "body": {
+        "children": [
+          "promptEmpty",
+          "loading",
+          "snapshotBody"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "divider1",
+          "pickerRow",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/ui/selectedBoardId": [
+            {
+              "action": "monday.board_insights",
+              "params": {
+                "board_id": {
+                  "$state": "/ui/selectedBoardId"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "columnTypesCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Column types: {types}",
+              "types": {
+                "$computed": "join_strings",
+                "args": {
+                  "value": {
+                    "$state": "/monday/board_insights/column_types"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/monday/board_insights/column_types/0"
+        }
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "monday.com · pick a board"
+        },
+        "type": "Eyebrow"
+      },
+      "freshness": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Updated {t}",
+              "t": {
+                "$computed": "relative_time",
+                "args": {
+                  "value": {
+                    "$state": "/monday/board_insights/updated_at"
+                  }
+                }
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "groupsChart": {
+        "props": {
+          "data": {
+            "$state": "/monday/board_insights/groups"
+          },
+          "emptyMessage": "No groups on this board.",
+          "labelField": "title",
+          "limit": 8,
+          "sort": "desc",
+          "tone": "accent",
+          "valueField": "items_count"
+        },
+        "type": "BarChart"
+      },
+      "groupsLabel": {
+        "props": {
+          "text": "Items per group"
+        },
+        "type": "Eyebrow"
+      },
+      "itemsLabel": {
+        "props": {
+          "text": "Items"
+        },
+        "type": "Caption"
+      },
+      "itemsStat": {
+        "children": [
+          "itemsVal",
+          "itemsLabel"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "itemsVal": {
+        "props": {
+          "tone": "accent",
+          "value": {
+            "$state": "/monday/board_insights/total_items"
+          }
+        },
+        "type": "Stat"
+      },
+      "loading": {
+        "children": [
+          "loadingSpinner"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/_loading/monday.board_insights"
+        }
+      },
+      "loadingSpinner": {
+        "props": {
+          "label": "Loading snapshot…",
+          "size": "sm"
+        },
+        "type": "Spinner"
+      },
+      "pickerRow": {
+        "children": [
+          "boardSelect"
+        ],
+        "props": {
+          "label": "Board"
+        },
+        "type": "FormRow"
+      },
+      "promptEmpty": {
+        "props": {
+          "message": "Select a board to see its snapshot."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/selectedBoardId",
+          "not": true
+        }
+      },
+      "snapshotBody": {
+        "children": [
+          "freshness",
+          "itemsStat",
+          "groupsLabel",
+          "groupsChart",
+          "columnTypesCaption"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/selectedBoardId"
+            },
+            {
+              "$state": "/_loading/monday.board_insights",
+              "not": true
+            },
+            {
+              "$state": "/monday/board_insights/id"
+            }
+          ]
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Board Snapshot"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "BarChart3",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "monday",
+    "boards",
+    "insights",
+    "snapshot",
+    "work-management"
+  ],
+  "title": "Board Snapshot"
+}

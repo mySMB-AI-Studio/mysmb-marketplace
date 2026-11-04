@@ -1,0 +1,316 @@
+{
+  "category": "work-management",
+  "connectorsUsed": [
+    "monday"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "monday",
+    "params": {
+      "limit": 50
+    },
+    "tool": "get_board_info"
+  },
+  "description": "Pick a monday.com board to see its items — name, group, status, and when each was last updated.",
+  "id": "monday-board-items",
+  "keywords": [
+    "board items",
+    "items",
+    "tasks",
+    "monday",
+    "pulses",
+    "table"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 10
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 7
+    }
+  },
+  "spec": {
+    "elements": {
+      "boardSelect": {
+        "props": {
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "labelField": "name",
+              "value": {
+                "$state": "/monday/get_board_info/boards"
+              },
+              "valueField": "id"
+            }
+          },
+          "placeholder": "Select a board…",
+          "size": "sm",
+          "value": {
+            "$bindState": "/ui/selectedBoardId"
+          }
+        },
+        "type": "Select"
+      },
+      "body": {
+        "children": [
+          "promptEmpty",
+          "itemsEmpty",
+          "statusSection",
+          "table"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "titleRow",
+          "divider1",
+          "pickerRow",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/ui/selectedBoardId": [
+            {
+              "action": "monday.get_board_items_page",
+              "params": {
+                "board_id": {
+                  "$state": "/ui/selectedBoardId"
+                },
+                "limit": 20
+              }
+            }
+          ]
+        }
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "monday.com · pick a board"
+        },
+        "type": "Eyebrow"
+      },
+      "itemsEmpty": {
+        "props": {
+          "message": "No items on this board."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/selectedBoardId"
+            },
+            {
+              "$state": "/_loading/monday.get_board_items_page",
+              "not": true
+            },
+            {
+              "$state": "/monday/get_board_items_page/items/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "pickerRow": {
+        "children": [
+          "boardSelect"
+        ],
+        "props": {
+          "label": "Board"
+        },
+        "type": "FormRow"
+      },
+      "promptEmpty": {
+        "props": {
+          "message": "Select a board to see its items."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/selectedBoardId",
+          "not": true
+        }
+      },
+      "statusDonut": {
+        "props": {
+          "centerLabel": "Items",
+          "data": {
+            "$computed": "monday_extract_status",
+            "args": {
+              "value": {
+                "$state": "/monday/get_board_items_page/items"
+              }
+            }
+          },
+          "groupField": "status",
+          "legend": {
+            "Done": {
+              "label": "Done",
+              "tone": "success"
+            },
+            "No status": {
+              "label": "No status",
+              "tone": "muted"
+            },
+            "Not Started": {
+              "label": "Not started",
+              "tone": "muted"
+            },
+            "Stuck": {
+              "label": "Stuck",
+              "tone": "destructive"
+            },
+            "Working on it": {
+              "label": "Working on it",
+              "tone": "warning"
+            }
+          },
+          "size": 104,
+          "thickness": 12
+        },
+        "type": "Donut"
+      },
+      "statusLabel": {
+        "props": {
+          "text": "Status breakdown"
+        },
+        "type": "Eyebrow"
+      },
+      "statusSection": {
+        "children": [
+          "statusLabel",
+          "statusDonut"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/selectedBoardId"
+            },
+            {
+              "$state": "/_loading/monday.get_board_items_page",
+              "not": true
+            },
+            {
+              "$state": "/monday/get_board_items_page/items/0"
+            }
+          ]
+        }
+      },
+      "table": {
+        "props": {
+          "columns": [
+            {
+              "field": "name",
+              "header": "Item",
+              "id": "name",
+              "priority": 1
+            },
+            {
+              "field": "group.title",
+              "header": "Group",
+              "id": "group",
+              "priority": 2,
+              "width": 120
+            },
+            {
+              "field": "state",
+              "header": "State",
+              "id": "state",
+              "priority": 2,
+              "width": 90
+            },
+            {
+              "field": "updated_at",
+              "format": "dd_mmm_yy",
+              "header": "Updated",
+              "id": "updated",
+              "priority": 2,
+              "width": 100
+            }
+          ],
+          "loading": {
+            "$state": "/_loading/monday.get_board_items_page"
+          },
+          "rows": {
+            "$state": "/monday/get_board_items_page/items"
+          },
+          "skeletonRows": 5
+        },
+        "type": "Table",
+        "visible": {
+          "$state": "/ui/selectedBoardId"
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Board Items"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "ListChecks",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleRow": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "monday",
+    "items",
+    "boards",
+    "tasks",
+    "work-management",
+    "table"
+  ],
+  "title": "Board Items"
+}
