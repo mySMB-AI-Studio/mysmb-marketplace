@@ -43,7 +43,7 @@ When `steps.context.piece.origin` is `repurpose`, `steps.context.piece.source` h
 - **Social media post:** one variant per channel in `piece.channels`, each within that channel's word range, structure, hashtag and emoji limits from `rules.type.channels`. Add a short image suggestion per variant.
 - **Article:** title; intro under 80 words; 3 to 5 H2 sections; conclusion; call to action; then a meta description (up to 155 characters), a URL slug, a focus keyword, a header image suggestion and 3 short social teasers.
 - **Email / Announcement:** pick single (80 to 200 words) or newsletter (250 to 500) to suit the brief; subject line up to 50 characters; preview text up to 90; footer with the business name, contact details and an unsubscribe link. If the sender address is missing, use `[[MISSING: sender name and address]]`.
-- **Visual:** headline (up to 8 words), subhead (up to 15), call to action, website or phone, and short layout notes for each size in `rules.type.sizes`. Copy only; no images.
+- **Visual:** start `document_markdown` with these lines exactly, one per line: `Headline: ...` (up to 8 words), `Subhead: ...` (up to 15), `Call to action: ...` and `Website: ...` (from the Brand Kit, else omit the line). They are rendered into branded images (square, story and banner) in the Brand Kit's colours when the visual is approved. Then add short layout notes for each size in `rules.type.sizes`. Do not describe a photo or illustration to generate.
 
 ## Your answer
 
