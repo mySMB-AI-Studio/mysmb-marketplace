@@ -16,11 +16,21 @@ const KNOWN_EVENTS = {
     delete_pulse: 'deleted an item',
     archive_pulse: 'archived an item',
     duplicate_pulse: 'duplicated an item',
+    // monday fires "move_pulse_from_group"/"_into_group" as a pair of events
+    // for a single drag — confirmed against real activity logs — both read
+    // fine as the same phrase since the row's own timestamp/context already
+    // disambiguates direction.
     move_pulse_into_group: 'moved an item',
+    move_pulse_from_group: 'moved an item',
+    update_name: 'renamed an item',
+    update_column_value: 'updated a column value',
     create_update: 'posted an update',
     delete_update: 'deleted an update',
     create_column: 'added a column',
     delete_column: 'deleted a column',
+    // Guessed names kept in case a different monday API version/event uses
+    // them — harmless if never matched, and the generic humanized fallback
+    // covers anything unrecognized either way.
     change_column_value: 'updated a column value',
     change_column_metadata: 'renamed a column',
     create_group: 'added a group',
@@ -112,12 +122,15 @@ const flatten_activity = (args) => {
 /**
  * Extracts each board item's status-column text into a flat `{ status }`
  * row, for a Donut's `data` + `groupField`. monday's `ColumnValue.type` for
- * a Status-style column is "color" (its own internal naming); prefers a
- * column actually titled "Status" (case-insensitive) when the board has
- * more than one color-type column (e.g. a Priority column is also type
- * "color"), otherwise falls back to the first color-type column found.
- * Items missing that column, or with it blank, group under "No status" —
- * never dropped, since omitting them would understate the total silently.
+ * a Status-style column is "status" (confirmed against real board data —
+ * an earlier version of this function wrongly assumed "color", which only
+ * ever worked by accident because title-matching won first on every board
+ * tested until now). Prefers a column actually titled "Status"
+ * (case-insensitive) when the board has more than one status-type column
+ * (e.g. a Priority column is also type "status"), otherwise falls back to
+ * the first status-type column found. Items missing that column, or with
+ * it blank, group under "No status" — never dropped, since omitting them
+ * would understate the total silently.
  *
  * Args: { value: array } — raw items from get_board_items_page, each with
  *   a `column_values: [{ id, title, type, text }]` array.
@@ -132,7 +145,7 @@ const extract_status = (args) => {
     const columnsOf = (item) => (Array.isArray(item.column_values) ? item.column_values : []);
     const firstColumns = columnsOf(items[0]);
     const byTitle = firstColumns.find((cv) => String(cv.title ?? '').trim().toLowerCase() === 'status');
-    const byType = firstColumns.find((cv) => cv.type === 'color');
+    const byType = firstColumns.find((cv) => cv.type === 'status');
     const target = byTitle ?? byType;
     if (!target)
         return [];
