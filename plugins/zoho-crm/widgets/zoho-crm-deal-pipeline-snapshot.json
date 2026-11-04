@@ -1,0 +1,214 @@
+{
+  "id": "zoho-crm-deal-pipeline-snapshot",
+  "title": "Deal Pipeline Snapshot",
+  "description": "Total value of open Zoho CRM deals, with deal and stage counts and a breakdown of value by pipeline stage. Excludes Closed Won and Closed Lost deals.",
+  "category": "crm",
+  "tags": ["zoho", "zoho-crm", "crm", "deals", "pipeline", "sales"],
+  "keywords": ["pipeline", "open deals", "deal value", "stages", "forecast", "sales", "revenue", "zoho crm"],
+  "connectorsUsed": ["zoho-crm"],
+  "popularity": 0,
+  "branding": { "color": "#1A73E8" },
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-crm",
+    "tool": "coql_query",
+    "params": {
+      "select_query": "select Deal_Name, Stage, Amount, Currency from Deals where Stage not in ('Closed Won', 'Closed Lost', 'Closed Lost to Competition') limit 200"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"],
+        "watch": {
+          "/zoho-crm/coql_query/data": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pipeline",
+              "value": {
+                "$computed": "zoho-crm_pipeline_snapshot_dashboard",
+                "args": {
+                  "value": { "$state": "/zoho-crm/coql_query/data" },
+                  "moreRecords": { "$state": "/zoho-crm/coql_query/info/more_records" },
+                  "currency": "USD",
+                  "selected": { "$state": "/ui/selectedStage" }
+                }
+              }
+            }
+          },
+          "/ui/selectedStage": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pipeline",
+              "value": {
+                "$computed": "zoho-crm_pipeline_snapshot_dashboard",
+                "args": {
+                  "value": { "$state": "/zoho-crm/coql_query/data" },
+                  "moreRecords": { "$state": "/zoho-crm/coql_query/info/more_records" },
+                  "currency": "USD",
+                  "selected": { "$state": "/ui/selectedStage" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart3", "tone": "brand", "size": "lg" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Deal Pipeline Snapshot", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Zoho CRM" } },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "error", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skHero", "skRow1", "skRow2", "skRow3"],
+        "visible": { "$state": "/_loading/zoho-crm.coql_query" }
+      },
+      "skHero": { "type": "Skeleton", "props": { "height": "5rem", "rounded": "md" } },
+      "skRow1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "skRow2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "skRow3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+
+      "error": {
+        "type": "Empty",
+        "props": { "message": "Couldn't load deals from Zoho CRM. Please try again." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoho-crm.coql_query", "not": true },
+            { "$state": "/_errors/zoho-crm.coql_query" }
+          ]
+        }
+      },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No open deals in Zoho CRM." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoho-crm.coql_query", "not": true },
+            { "$state": "/_errors/zoho-crm.coql_query", "not": true },
+            { "$state": "/zoho-crm/coql_query/data/0", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["hero", "divider", "stageList", "footer"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/zoho-crm.coql_query", "not": true },
+            { "$state": "/_errors/zoho-crm.coql_query", "not": true },
+            { "$state": "/zoho-crm/coql_query/data/0" }
+          ]
+        }
+      },
+
+      "hero": { "type": "Stack", "props": { "gap": "xs" }, "children": ["heroRow", "heroCaption"] },
+      "heroRow": {
+        "type": "Row",
+        "props": { "template": "minmax(0, 1fr) auto auto", "gap": "lg", "align": "center" },
+        "children": ["totalValue", "dealsGroup", "stagesGroup"]
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/pipeline/totalDisplay" }, "size": "lg" }
+      },
+      "dealsGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["dealsCount", "dealsLabel"] },
+      "dealsCount": { "type": "Stat", "props": { "value": { "$state": "/ui/pipeline/dealCount" }, "size": "sm" } },
+      "dealsLabel": { "type": "Text", "props": { "text": { "$state": "/ui/pipeline/dealLabel" }, "tone": "brand", "weight": "medium" } },
+      "stagesGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["stagesCount", "stagesLabel"] },
+      "stagesCount": { "type": "Stat", "props": { "value": { "$state": "/ui/pipeline/stageCount" }, "size": "sm" } },
+      "stagesLabel": { "type": "Text", "props": { "text": { "$state": "/ui/pipeline/stageLabel" }, "tone": "brand", "weight": "medium" } },
+      "heroCaption": { "type": "Caption", "props": { "text": "Total open pipeline across all deals" } },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "stageList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["stageItem"],
+        "repeat": { "statePath": "/ui/pipeline/stages", "key": "key" }
+      },
+      "stageItem": { "type": "Stack", "props": { "gap": "xs" }, "children": ["stageRow", "stageDeals"] },
+      "stageRow": {
+        "type": "Row",
+        "props": { "template": "8px minmax(0, 1fr) minmax(0, 1fr) 64px 14px", "gap": "sm", "align": "center", "hover": true, "clickable": true },
+        "children": ["stageDot", "stageLabel", "stageBar", "stageAmount", "stageChevron"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedStage",
+              "value": { "$computed": "identity", "args": { "value": { "$item": "toggleValue" } } }
+            }
+          }
+        }
+      },
+      "stageChevron": { "type": "Icon", "props": { "name": { "$item": "chevron" }, "tone": "muted", "size": "sm" } },
+      "stageDot": { "type": "Dot", "props": { "tone": { "$item": "tone" }, "size": "sm" } },
+      "stageLabel": { "type": "Text", "props": { "text": { "$item": "label" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "stageBar": { "type": "ProgressBar", "props": { "value": { "$item": "pct" }, "tone": { "$item": "tone" } } },
+      "stageAmount": {
+        "type": "Text",
+        "props": { "text": { "$item": "amountDisplay" }, "tone": { "$item": "tone" }, "size": "sm", "weight": "semibold", "align": "right" }
+      },
+
+      "stageDeals": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["dealList"],
+        "visible": { "$item": "expanded" }
+      },
+      "dealList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["dealRow"],
+        "repeat": { "statePath": "/ui/pipeline/openDeals", "key": "id" }
+      },
+      "dealRow": {
+        "type": "Row",
+        "props": { "template": "minmax(0, 1fr) auto", "gap": "sm", "align": "center" },
+        "children": ["dealName", "dealAmount"]
+      },
+      "dealName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "truncate": true } },
+      "dealAmount": { "type": "Text", "props": { "text": { "$item": "amountDisplay" }, "size": "sm", "weight": "medium", "align": "right" } },
+
+      "footer": { "type": "Stack", "props": { "gap": "xs" }, "children": ["truncatedNote", "footerActions"] },
+      "footerActions": { "type": "Row", "props": { "justify": "end", "align": "center" }, "children": ["openButton"] },
+      "truncatedNote": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/pipeline/coverageText" } },
+        "visible": { "$state": "/ui/pipeline/truncated" }
+      },
+      "openButton": {
+        "type": "Button",
+        "props": { "label": "Open in Zoho CRM", "size": "sm", "variant": "primary", "tone": "brand", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://crm.zoho.com/crm/tab/Potentials", "target": "_blank" }
+          }
+        }
+      }
+    }
+  }
+}
