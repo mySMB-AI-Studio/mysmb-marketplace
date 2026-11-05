@@ -1,0 +1,646 @@
+{
+  "id": "zoho-crm-win-rate-weighted-forecast",
+  "title": "Win Rate & Weighted Forecast",
+  "description": "Weighted value of open Zoho CRM deals (amount × win probability) still due to close, with the won-vs-lost win rate over the last 90 days and each open deal's weighted value. Click a deal to see its details.",
+  "category": "crm",
+  "tags": [
+    "zoho",
+    "zoho-crm",
+    "crm",
+    "deals",
+    "forecast",
+    "win-rate",
+    "sales"
+  ],
+  "keywords": [
+    "win rate",
+    "weighted forecast",
+    "forecast",
+    "probability",
+    "won",
+    "lost",
+    "open deals",
+    "pipeline",
+    "zoho crm"
+  ],
+  "connectorsUsed": [
+    "zoho-crm"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-crm",
+    "tool": "coql_query",
+    "params": {
+      "select_query": "select Deal_Name, Amount, Currency, Stage, Probability, Closing_Date, Type, Lead_Source, Next_Step, Owner, Account_Name.Account_Name, Contact_Name.Full_Name from Deals where Closing_Date is not null order by Closing_Date desc limit 200"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-crm/coql_query/data": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/forecast",
+              "value": {
+                "$computed": "zoho-crm_win_rate_forecast_dashboard",
+                "args": {
+                  "value": {
+                    "$state": "/zoho-crm/coql_query/data"
+                  },
+                  "moreRecords": {
+                    "$state": "/zoho-crm/coql_query/info/more_records"
+                  },
+                  "currency": "USD",
+                  "days": 90,
+                  "selected": {
+                    "$state": "/ui/selectedDeal"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/selectedDeal": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/forecast",
+              "value": {
+                "$computed": "zoho-crm_win_rate_forecast_dashboard",
+                "args": {
+                  "value": {
+                    "$state": "/zoho-crm/coql_query/data"
+                  },
+                  "moreRecords": {
+                    "$state": "/zoho-crm/coql_query/info/more_records"
+                  },
+                  "currency": "USD",
+                  "days": 90,
+                  "selected": {
+                    "$state": "/ui/selectedDeal"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Target",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Win Rate & Weighted Forecast",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho CRM"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skBar",
+          "skRow1",
+          "skRow2"
+        ],
+        "visible": {
+          "$state": "/_loading/zoho-crm.coql_query"
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "skBar": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "skRow1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "skRow2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load deals from Zoho CRM. Please try again."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoho-crm.coql_query",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-crm.coql_query"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No deals in Zoho CRM yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoho-crm.coql_query",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-crm.coql_query",
+              "not": true
+            },
+            {
+              "$state": "/ui/forecast/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "winRate",
+          "divider",
+          "openDeals",
+          "footer"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoho-crm.coql_query",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-crm.coql_query",
+              "not": true
+            },
+            {
+              "$state": "/ui/forecast/hasData"
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "forecastValue",
+          "forecastCaption"
+        ]
+      },
+      "forecastValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/forecast/weightedDisplay"
+          },
+          "size": "lg"
+        }
+      },
+      "forecastCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "Weighted forecast of open deals"
+        }
+      },
+      "winRate": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "winRateBody",
+          "winRateLabel",
+          "noClosed"
+        ]
+      },
+      "winRateLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/forecast/winRateLabel"
+          },
+          "tone": "muted"
+        }
+      },
+      "winRateBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "winLegend",
+          "winBarRow"
+        ],
+        "visible": {
+          "$state": "/ui/forecast/hasClosed"
+        }
+      },
+      "winBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "winBar"
+        ]
+      },
+      "winBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/forecast/winPct"
+          },
+          "tone": "success"
+        }
+      },
+      "winLegend": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "wonLabel",
+          "lostLabel"
+        ]
+      },
+      "wonLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/forecast/wonText"
+          },
+          "tone": "success",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "lostLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/forecast/lostText"
+          },
+          "tone": "muted",
+          "size": "sm",
+          "weight": "medium",
+          "align": "right"
+        }
+      },
+      "noClosed": {
+        "type": "Text",
+        "props": {
+          "text": "No deals closed in the last 90 days.",
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/forecast/hasClosed",
+          "not": true
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "openDeals": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "openTitle",
+          "dealList",
+          "noOpen"
+        ]
+      },
+      "openTitle": {
+        "type": "Heading",
+        "props": {
+          "text": "Open Deals",
+          "level": "h3"
+        }
+      },
+      "dealList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "dealItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/forecast/deals",
+          "key": "id"
+        }
+      },
+      "dealItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "dealRow",
+          "dealDetails"
+        ]
+      },
+      "dealRow": {
+        "type": "Row",
+        "props": {
+          "template": "20px minmax(0, 1fr) minmax(0, 1fr) 40px 64px 14px",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "dealIcon",
+          "dealName",
+          "dealBar",
+          "dealProb",
+          "dealWeighted",
+          "dealChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedDeal",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggleValue"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "dealIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "icon"
+          },
+          "tone": {
+            "$item": "iconTone"
+          },
+          "size": "md"
+        }
+      },
+      "dealName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "dealBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "probability"
+          },
+          "tone": "brand"
+        }
+      },
+      "dealProb": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "probabilityText"
+          },
+          "tone": "muted",
+          "align": "right"
+        }
+      },
+      "dealWeighted": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "weightedDisplay"
+          },
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "dealChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "dealDetails": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "detailList"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "detailList": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "detailRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/forecast/openDetails",
+          "key": "id"
+        }
+      },
+      "detailRow": {
+        "type": "KeyValue",
+        "props": {
+          "label": {
+            "$item": "label"
+          },
+          "value": {
+            "$item": "value"
+          }
+        }
+      },
+      "noOpen": {
+        "type": "Text",
+        "props": {
+          "text": "No open deals due to close.",
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/forecast/deals/0",
+          "not": true
+        }
+      },
+      "footer": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "coverageNote",
+          "footerActions"
+        ]
+      },
+      "coverageNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/forecast/coverageText"
+          }
+        },
+        "visible": {
+          "$state": "/ui/forecast/truncated"
+        }
+      },
+      "footerActions": {
+        "type": "Row",
+        "props": {
+          "justify": "end",
+          "align": "center"
+        },
+        "children": [
+          "openButton"
+        ]
+      },
+      "openButton": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Zoho CRM",
+          "size": "sm",
+          "variant": "primary",
+          "tone": "brand",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://crm.zoho.com/crm/tab/Potentials",
+              "target": "_blank"
+            }
+          }
+        }
+      }
+    }
+  }
+}

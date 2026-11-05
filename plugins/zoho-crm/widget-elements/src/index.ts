@@ -377,12 +377,163 @@ const account_activity_dashboard: ComputedFunction = (args) => {
   };
 };
 
+const CLOSED_WON = ['Closed Won'];
+const CLOSED_LOST = ['Closed Lost', 'Closed Lost to Competition'];
+const MAX_FORECAST_ROWS = 20;
+
+/**
+ * Decorative deal icons, assigned in rotation (§10 categorical tones; pink
+ * `chart-4` left out at the requester's preference). They carry no meaning.
+ */
+const DEAL_ICONS: Array<[string, string]> = [
+  ['Folder', 'chart-1'],
+  ['ShoppingCart', 'chart-2'],
+  ['Settings', 'chart-3'],
+  ['Briefcase', 'chart-5'],
+  ['Package', 'brand'],
+];
+
+/** `$6.4K`, `$1.85K`, `$57.6K` — compact to three significant figures, per the mock. */
+function formatSig3(n: number, currency: unknown): string {
+  const abs = Math.abs(n);
+  const [div, unit] = abs >= 1e9 ? [1e9, 'B'] : abs >= 1e6 ? [1e6, 'M'] : abs >= 1e3 ? [1e3, 'K'] : [1, ''];
+  const v = div === 1 ? Math.round(n) : Number((n / div).toPrecision(3));
+  return `${symbolFor(currency)}${v.toLocaleString('en-US', { maximumFractionDigits: 2 })}${unit}`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Zoho `YYYY-MM-DD` as `25-Nov-26` (TILE-DISPLAY-STANDARDS §1). */
+function ddMmmYy(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}-${MONTHS[Number(m[2]) - 1]}-${m[1].slice(2)}` : iso;
+}
+
+/** Local calendar date as `YYYY-MM-DD`, comparable with Zoho's `Closing_Date`. */
+function isoDate(d: Date): string {
+  const pad = (x: number) => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Win rate and weighted forecast from Zoho CRM deals (rows from `coql_query`)
+ * for the Win Rate & Weighted Forecast tile.
+ *
+ * - Weighted forecast: Σ Amount × Probability over open deals whose
+ *   `Closing_Date` is today or later (overdue deals are left out).
+ * - Win rate: won vs lost deal value with `Closing_Date` in the last `days` days.
+ * - Open deals: the forecast's deals, soonest closing first, max 20 rows. The
+ *   selected deal is expanded with its non-empty details (`openDetails`).
+ *
+ * Args:
+ *   value       — the COQL `data` array: `{ id, Deal_Name, Amount, Currency?, Stage, Probability, Closing_Date, Type, Lead_Source, Next_Step, Owner: { name }, "Account_Name.Account_Name", "Contact_Name.Full_Name" }[]`
+ *   moreRecords — COQL `info.more_records`; true when the 200-row limit cut the list
+ *   currency    — fallback ISO code when a deal has no `Currency`
+ *   days        — win-rate window in days (default 90)
+ *   selected    — the expanded deal's `id` (`/ui/selectedDeal`), or empty for none
+ *
+ * Spec: `{ "$computed": "zoho-crm_win_rate_forecast_dashboard", "args": { "value": { "$state": "/zoho-crm/coql_query/data" }, "currency": "USD", "days": 90 } }`
+ */
+const win_rate_forecast_dashboard: ComputedFunction = (args) => {
+  const rows = Array.isArray(args.value) ? (args.value as AnyRecord[]) : [];
+  const currency = rows.find((r) => typeof r.Currency === 'string' && r.Currency)?.Currency ?? args.currency;
+  const days = Number(args.days) > 0 ? Number(args.days) : 90;
+  const now = new Date();
+  const today = isoDate(now);
+  const since = isoDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - days));
+
+  let won = 0;
+  let lost = 0;
+  const open: Array<{ r: AnyRecord; amount: number; prob: number; close: string }> = [];
+  for (const r of rows) {
+    const stage = String(r.Stage ?? '').trim();
+    const close = String(r.Closing_Date ?? '');
+    const amount = Number(r.Amount) || 0;
+    if (CLOSED_WON.includes(stage) || CLOSED_LOST.includes(stage)) {
+      if (close >= since && close <= today) {
+        if (CLOSED_WON.includes(stage)) won += amount;
+        else lost += amount;
+      }
+      continue;
+    }
+    if (close < today) continue;
+    const p = Number(r.Probability);
+    open.push({ r, amount, prob: Number.isFinite(p) ? Math.min(100, Math.max(0, p)) : 0, close });
+  }
+
+  open.sort((a, b) => a.close.localeCompare(b.close) || b.amount - a.amount);
+  const weighted = open.reduce((s, d) => s + (d.amount * d.prob) / 100, 0);
+  const closed = won + lost;
+  const winPct = closed > 0 ? Math.round((won / closed) * 100) : 0;
+  const shown = open.slice(0, MAX_FORECAST_ROWS);
+  const truncated = args.moreRecords === true || open.length > shown.length;
+  const selected = String(args.selected ?? '');
+  const dealId = (r: AnyRecord, i: number) => String(r.id ?? i);
+  const openDeal = shown.find((d, i) => dealId(d.r, i) === selected);
+  const text = (v: unknown) => String(v ?? '').trim();
+
+  return {
+    hasData: rows.length > 0,
+    weightedDisplay: formatWhole(weighted, currency),
+    winRateLabel: `Win Rate (Last ${days} Days)`,
+    hasClosed: closed > 0,
+    winPct,
+    wonText: `${formatWhole(won, currency)} Won · ${winPct}%`,
+    lostText: `${formatWhole(lost, currency)} Lost · ${closed > 0 ? 100 - winPct : 0}%`,
+    deals: shown.map((d, i) => {
+      const account = String(d.r['Account_Name.Account_Name'] ?? '').trim();
+      let name = String(d.r.Deal_Name ?? '').trim() || 'Untitled deal';
+      // `Harbor & Stone Legal - Case Management Platform` shows as `Case Management Platform`.
+      if (account && name.startsWith(`${account} - `)) name = name.slice(account.length + 3).trim() || name;
+      const [icon, iconTone] = DEAL_ICONS[i % DEAL_ICONS.length];
+      const id = dealId(d.r, i);
+      return {
+        id,
+        name,
+        expanded: id === selected,
+        // What a click on this row writes to `/ui/selectedDeal`: open it, or close it if already open.
+        toggleValue: id === selected ? '' : id,
+        chevron: id === selected ? 'ChevronDown' : 'ChevronRight',
+        icon,
+        iconTone,
+        probability: d.prob,
+        probabilityText: `${d.prob}%`,
+        weightedDisplay: formatSig3((d.amount * d.prob) / 100, currency),
+      };
+    }),
+    // The expanded deal's details, empty fields left out. Returned here rather than
+    // by a second watch action: a watch stops its action list once one action writes state.
+    openDetails: openDeal
+      ? [
+          ['Account', text(openDeal.r['Account_Name.Account_Name'])],
+          ['Contact', text(openDeal.r['Contact_Name.Full_Name'])],
+          ['Stage', stageLabel(text(openDeal.r.Stage))],
+          ['Amount', formatWhole(openDeal.amount, openDeal.r.Currency ?? currency)],
+          ['Closing date', ddMmmYy(openDeal.close)],
+          ['Owner', text((openDeal.r.Owner as AnyRecord | null | undefined)?.name)],
+          ['Type', text(openDeal.r.Type)],
+          ['Lead source', text(openDeal.r.Lead_Source)],
+          ['Next step', text(openDeal.r.Next_Step)],
+        ]
+          .filter(([, v]) => v)
+          .map(([label, value]) => ({ id: label, label, value }))
+      : [],
+    truncated,
+    coverageText: truncated
+      ? args.moreRecords === true
+        ? 'Based on the 200 deals with the latest closing dates'
+        : `Showing ${shown.length} of ${open.length} open deals`
+      : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-crm',
   functions: {
     pipeline_snapshot_dashboard,
     lead_inbox_dashboard,
     account_activity_dashboard,
+    win_rate_forecast_dashboard,
   },
 };
 
