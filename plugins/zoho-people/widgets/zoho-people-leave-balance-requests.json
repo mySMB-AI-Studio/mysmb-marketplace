@@ -1,0 +1,943 @@
+{
+  "id": "zoho-people-leave-balance-requests",
+  "title": "Leave Balance & Requests",
+  "description": "Your Zoho People leave balance: total days available, each leave type's remaining days out of its yearly total, and how many leave requests you've booked this year. Click a leave type, or the requests summary, to see the requests.",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-people",
+    "hr",
+    "leave",
+    "time-off",
+    "pto"
+  ],
+  "keywords": [
+    "leave balance",
+    "leave requests",
+    "time off",
+    "annual leave",
+    "sick leave",
+    "casual leave",
+    "earned leave",
+    "zoho people"
+  ],
+  "connectorsUsed": [
+    "zoho-people"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#16A34A"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-people",
+    "tool": "get_leave_types",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-people/get_leave_types/response": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/leave",
+              "value": {
+                "$computed": "zoho-people_leave_balance_dashboard",
+                "args": {
+                  "leaveTypes": {
+                    "$state": "/zoho-people/get_leave_types/response/result"
+                  },
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  },
+                  "leaveRecords": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "selected": {
+                    "$state": "/ui/selectedLeave"
+                  },
+                  "showAll": {
+                    "$state": "/ui/showAllRequests"
+                  },
+                  "report": {
+                    "$state": "/zoho-people/passthrough_get/leavetypes"
+                  }
+                }
+              }
+            }
+          },
+          "/zoho-people/my_employee_record/response": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/leave",
+              "value": {
+                "$computed": "zoho-people_leave_balance_dashboard",
+                "args": {
+                  "leaveTypes": {
+                    "$state": "/zoho-people/get_leave_types/response/result"
+                  },
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  },
+                  "leaveRecords": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "selected": {
+                    "$state": "/ui/selectedLeave"
+                  },
+                  "showAll": {
+                    "$state": "/ui/showAllRequests"
+                  },
+                  "report": {
+                    "$state": "/zoho-people/passthrough_get/leavetypes"
+                  }
+                }
+              }
+            }
+          },
+          "/zoho-people/get_form_records/response": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/leave",
+              "value": {
+                "$computed": "zoho-people_leave_balance_dashboard",
+                "args": {
+                  "leaveTypes": {
+                    "$state": "/zoho-people/get_leave_types/response/result"
+                  },
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  },
+                  "leaveRecords": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "selected": {
+                    "$state": "/ui/selectedLeave"
+                  },
+                  "showAll": {
+                    "$state": "/ui/showAllRequests"
+                  },
+                  "report": {
+                    "$state": "/zoho-people/passthrough_get/leavetypes"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/selectedLeave": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/leave",
+              "value": {
+                "$computed": "zoho-people_leave_balance_dashboard",
+                "args": {
+                  "leaveTypes": {
+                    "$state": "/zoho-people/get_leave_types/response/result"
+                  },
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  },
+                  "leaveRecords": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "selected": {
+                    "$state": "/ui/selectedLeave"
+                  },
+                  "showAll": {
+                    "$state": "/ui/showAllRequests"
+                  },
+                  "report": {
+                    "$state": "/zoho-people/passthrough_get/leavetypes"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showAllRequests": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/leave",
+              "value": {
+                "$computed": "zoho-people_leave_balance_dashboard",
+                "args": {
+                  "leaveTypes": {
+                    "$state": "/zoho-people/get_leave_types/response/result"
+                  },
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  },
+                  "leaveRecords": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "selected": {
+                    "$state": "/ui/selectedLeave"
+                  },
+                  "showAll": {
+                    "$state": "/ui/showAllRequests"
+                  },
+                  "report": {
+                    "$state": "/zoho-people/passthrough_get/leavetypes"
+                  }
+                }
+              }
+            }
+          },
+          "/zoho-people/passthrough_get/leavetypes": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/leave",
+              "value": {
+                "$computed": "zoho-people_leave_balance_dashboard",
+                "args": {
+                  "leaveTypes": {
+                    "$state": "/zoho-people/get_leave_types/response/result"
+                  },
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  },
+                  "leaveRecords": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "selected": {
+                    "$state": "/ui/selectedLeave"
+                  },
+                  "showAll": {
+                    "$state": "/ui/showAllRequests"
+                  },
+                  "report": {
+                    "$state": "/zoho-people/passthrough_get/leavetypes"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ],
+        "watch": {
+          "/zoho-people/get_leave_types/response": {
+            "action": "zoho-people.get_form_records",
+            "params": {
+              "form": "leave",
+              "rec_limit": 200
+            }
+          },
+          "/zoho-people/my_employee_record/response": {
+            "action": "zoho-people.passthrough_get",
+            "params": {
+              "path": "/v2/leavetracker/reports/user",
+              "params": {
+                "$computed": "zoho-people_leave_report_params",
+                "args": {
+                  "me": {
+                    "$state": "/zoho-people/my_employee_record/response/result"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CalendarDays",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Leave Balance & Requests",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho People"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ],
+        "watch": {
+          "/zoho-people/get_leave_types/response": {
+            "action": "zoho-people.my_employee_record",
+            "params": {}
+          }
+        }
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRow1",
+          "skRow2",
+          "skRow3"
+        ],
+        "visible": {
+          "$state": "/_loading/zoho-people.get_leave_types"
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "skRow1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "skRow2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "skRow3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load your leave from Zoho People. Please try again."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoho-people.get_leave_types",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.get_leave_types"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No leave types are set up for you in Zoho People."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoho-people.get_leave_types",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.get_leave_types",
+              "not": true
+            },
+            {
+              "$state": "/ui/leave/types/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "divider",
+          "typeList",
+          "requestsBox",
+          "viewBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/zoho-people.get_leave_types",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.get_leave_types",
+              "not": true
+            },
+            {
+              "$state": "/ui/leave/types/0"
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "availableValue",
+          "availableLabel"
+        ]
+      },
+      "availableValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/leave/availableDisplay"
+          },
+          "size": "lg"
+        }
+      },
+      "availableLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/leave/availableLabel"
+          },
+          "tone": "muted"
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "typeList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "typeItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/leave/types",
+          "key": "id"
+        }
+      },
+      "typeItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "typeRow",
+          "typeDetails"
+        ]
+      },
+      "typeRow": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "typeHead",
+          "typeBarRow"
+        ]
+      },
+      "typeHead": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "typeName"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedLeave",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggleValue"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "typeName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "typeBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) 76px",
+          "gap": "sm",
+          "align": "center",
+          "clickable": true
+        },
+        "children": [
+          "typeBar",
+          "typeBalance"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedLeave",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggleValue"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "typeBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": "brand"
+        }
+      },
+      "typeBalance": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "balanceDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "typeDetails": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "requestList",
+          "requestNote"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "requestList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "requestRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/leave/openRequests",
+          "key": "id"
+        }
+      },
+      "requestRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "requestMain",
+          "requestSide"
+        ]
+      },
+      "requestMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "requestDates",
+          "requestReason",
+          "requestFiledBy"
+        ]
+      },
+      "requestDates": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "dates"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "requestReason": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "reason"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "reason"
+        }
+      },
+      "requestFiledBy": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "filedBy"
+          }
+        },
+        "visible": {
+          "$item": "filedBy"
+        }
+      },
+      "requestSide": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "requestDays",
+          "requestStatus"
+        ]
+      },
+      "requestDays": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "daysDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "requestStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "statusLabel"
+          },
+          "tone": {
+            "$item": "statusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "requestNote": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/leave/openNote"
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/leave/openNote"
+        }
+      },
+      "requestsBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "requestsRow",
+          "allList"
+        ],
+        "visible": {
+          "$state": "/ui/leave/requestsLoaded"
+        }
+      },
+      "requestsRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "requestsIcon",
+          "requestsText",
+          "requestsBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showAllRequests",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/leave/allToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "requestsIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "requestsText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/leave/requestsText"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "requestsBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/leave/statusLabel"
+          },
+          "tone": {
+            "$state": "/ui/leave/statusTone"
+          },
+          "variant": "soft"
+        },
+        "visible": {
+          "$state": "/ui/leave/statusLabel"
+        }
+      },
+      "allList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "allRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/leave/allRequests",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/leave/allExpanded"
+        }
+      },
+      "allRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "allMain",
+          "allSide"
+        ]
+      },
+      "allMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "allDates",
+          "allReason"
+        ]
+      },
+      "allDates": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "dates"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "allReason": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "reason"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "reason"
+        }
+      },
+      "allSide": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "allDays",
+          "allStatus"
+        ]
+      },
+      "allDays": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "daysDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "allStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "statusLabel"
+          },
+          "tone": {
+            "$item": "statusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "viewBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://people.zoho.com/zp#home/myspace/overview-leave",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View Leave Requests",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      }
+    }
+  }
+}
