@@ -6,74 +6,7 @@ Access Xero Payroll (Australia) via the myHub-hosted OAuth MCP gateway. Manage e
 
 ## Configuration
 
-No environment variables required. Browser OAuth — click Connect in MyHub to sign in and pick an AU Xero org.
-
-The Fortnightly Payroll tile also uses the Xero Accounting connection (`xero-accounting`) to follow the organisation picked in the Xero connector dock.
-
-Scopes requested:
-```
-offline_access openid profile email
-payroll.employees payroll.timesheets payroll.payruns payroll.payslip payroll.settings
-```
-
-### Payroll automations (connector requirements)
-
-All automations below install as drafts; an admin reviews the scopes and publishes each one.
-
-**Payroll: Email intake (Outlook)** needs the `m365-mail-read` connector (Microsoft 365 extension) connected by the automation's owner.
-
-**Rate Step-up & Birthday Reminders** needs the `m365-mail-send` connector (Microsoft 365 extension) connected by the automation's owner, to send its reminder emails. Its recipient email address ships with a placeholder (`payroll-admin@example.com`) — edit the automation's `reminder_email` param after installing to point it at your real payroll/HR admin.
-
-**Payroll: Cut-off reminders & SLA timers** needs the `m365-mail-send` connector (Microsoft 365 extension, admin consent) connected by the automation's owner, to save reminder and follow-up drafts in the owner's Outlook Drafts. It never sends email. It reads what the email intake has filed, so publish **Payroll: Email intake (Outlook)** too.
-
-**Corrections Workflow: Propose** and **Corrections Workflow: Execute** need no connector beyond `xero-payroll-au` itself (Propose) — Execute reads/writes WorkQ only. Both must be published for the pair to work: Propose opens the correction item, Execute fires when someone marks it Done.
-
-Settings for the email intake automation live in organisation Knowledge:
-
-- `Payroll/clients.json` (required): the payroll clients and where their emails come from. Until it exists, the automation reads no mail and opens one "Set up payroll email intake" WorkQ item.
-  ```json
-  {
-    "clients": [
-      { "name": "Acme Plumbing", "senders": ["@acme.com.au", "boss@gmail.com"], "other_names": ["Acme"], "assignee_email": "processor@yourpractice.com.au" }
-    ]
-  }
-  ```
-- `Payroll/settings.json` (optional): `owner_email` (who gets emails that need a person), `folders` (Outlook folders to read besides the Inbox), `timezone` (default `Australia/Sydney`).
-- `Payroll/Mail/outlook.json` is written by the automation (where it has read up to, and the pay run items it opened). Don't edit it.
-
-Settings for the cut-off reminders & SLA timers automation are an optional `"timers"` list on each client in `Payroll/clients.json`:
-
-```json
-{ "name": "Acme Plumbing", "senders": ["@acme.com.au"], "assignee_email": "processor@yourpractice.com.au",
-  "timezone": "Australia/Perth",
-  "timers": [
-    { "name": "Timesheets", "every": "week", "day": "Mon", "remind_at": "07:30", "due": "08:00", "cutoff": "11:00",
-      "contacts": ["boss@acme.com.au"] },
-    { "name": "Manager approvals", "every": "fortnight", "first_date": "2026-11-04", "day": "Wed", "due": "10:30",
-      "cutoff": "11:00", "done_when": "workq" }
-  ] }
-```
-
-- `every`: `week`, `fortnight` (needs `first_date`, one date it falls on) or `month` (`day` is 1 to 28 or `last`). Weekly and fortnightly days are Mon to Fri.
-- `due` (required), `remind_at` and `cutoff` are 24-hour times in the client's `timezone` (default: `timezone` in `Payroll/settings.json`, else `Australia/Sydney`).
-- `follow_up_after` / `escalate_after`: minutes after `due` (default 30 and 60; `escalate_after: 0` turns escalation off).
-- `done_when`: `email` (default) when the client's payroll email of one of `kinds` (default `["timesheets"]`; also `pay changes`, `new starter`, `leaver`, `expenses`, `approval`, `other payroll`) has been filed by the email intake since the previous due time; `workq` when someone marks the cut-off item done.
-- `contacts`: who the reminder and follow-up drafts are addressed to. Without contacts, the WorkQ item says to contact them directly.
-- A timer with anything unclear is switched off and listed in one "Payroll cut-off timers need fixing" WorkQ item; it's never guessed.
-- `Payroll/Mail/timers.json` is written by the automation (what it has done for each due date). Don't edit it.
-
-Settings for the Corrections Workflow pair live in organisation Knowledge:
-
-- `Payroll/correction-policy.json` (optional): which correction policy applies by default, and per-employee overrides. Without it, every variance defaults to `next_pay_run`.
-  ```json
-  {
-    "default_policy": "next_pay_run",
-    "employee_overrides": {
-      "<EmployeeID>": "unscheduled_pay_run"
-    }
-  }
-  ```
-  Valid policy values: `revert`, `next_pay_run`, `unscheduled_pay_run`.
+No configuration variables are required.
 
 ## Tools (24)
 
