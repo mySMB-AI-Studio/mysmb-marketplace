@@ -219,11 +219,146 @@ const lead_inbox_dashboard = (args) => {
         coverageText: truncated ? `Showing ${shown.length} of ${total}${cutBySource ? '+' : ''} leads this week` : '',
     };
 };
+const MAX_ACCOUNT_ROWS = 20;
+/**
+ * Deal badge colour by win probability, per the Account Activity Feed mock:
+ * early (under 20%) brand blue, middle amber, late (75%+) green. Shared by the
+ * row's avatar so each account reads as one colour.
+ */
+function probabilityTone(p) {
+    if (p >= 75)
+        return 'success';
+    if (p >= 20)
+        return 'warning';
+    return 'brand';
+}
+/** `Negotiation/Review` shows as `Negotiation`, per the mock; others as `stageLabel`. */
+function shortStage(stage) {
+    if (stage === 'Negotiation/Review')
+        return 'Negotiation';
+    return stageLabel(stage);
+}
+/** `LR` for `Lighthouse Retail Co`, `HS` for `Harbor & Stone Legal`. */
+function accountInitials(name) {
+    const words = name.split(/\s+/).filter((w) => /^[\p{L}\p{N}]/u.test(w));
+    return words.map((w) => w.charAt(0)).slice(0, 2).join('').toUpperCase() || '·';
+}
+/**
+ * Zoho CRM accounts whose open deals changed this week (rows from `coql_query`
+ * over Deals, with `Account_Name.*` and `Contact_Name.Full_Name` lookups) for
+ * the Account Activity Feed tile. "This week" is Monday 00:00 local time to
+ * now. An account's contacts are those linked to it (`list_records` over
+ * Contacts, fetched by the tile after the deals) plus any named on its deals,
+ * so the list is still right if the contacts call is slow or fails.
+ *
+ * Args:
+ *   value       — the COQL `data` array: `{ id, Deal_Name, Amount, Stage, Probability, Modified_Time, "Account_Name.id", "Account_Name.Account_Name", "Contact_Name.Full_Name" }[]`
+ *   moreRecords — COQL `info.more_records`; true when the 200-row limit cut the list
+ *   contacts    — `list_records` Contacts `data`: `{ id, Full_Name, Email, Account_Name: { id, name } | null }[]` (optional)
+ *   currency    — fallback ISO code for amounts
+ *   selected    — the expanded account's `id` (`/ui/selectedAccount`), or empty for none
+ *
+ * Spec: `{ "$computed": "zoho-crm_account_activity_dashboard", "args": { "value": { "$state": "/zoho-crm/coql_query/data" }, "currency": "USD" } }`
+ */
+const account_activity_dashboard = (args) => {
+    const rows = Array.isArray(args.value) ? args.value : [];
+    const since = weekStart(new Date()).getTime();
+    // Adds a contact once by name, keeping the first email seen for it.
+    const addContact = (a, name, email) => {
+        const mail = String(email ?? '').trim();
+        const existing = a.contacts.find((c) => c.name === name);
+        if (!existing)
+            a.contacts.push({ name, email: mail });
+        else if (!existing.email)
+            existing.email = mail;
+    };
+    const byAccount = new Map();
+    for (const r of rows) {
+        const id = String(r['Account_Name.id'] ?? '').trim();
+        if (!id)
+            continue;
+        const a = byAccount.get(id) ?? {
+            id,
+            name: String(r['Account_Name.Account_Name'] ?? '').trim() || 'Unnamed account',
+            latest: -Infinity,
+            contacts: [],
+            top: null,
+        };
+        const ms = Date.parse(String(r.Modified_Time ?? ''));
+        if (Number.isFinite(ms) && ms > a.latest)
+            a.latest = ms;
+        const contact = String(r['Contact_Name.Full_Name'] ?? '').trim();
+        if (contact)
+            addContact(a, contact, r['Contact_Name.Email']);
+        if (!a.top || (Number(r.Amount) || 0) > (Number(a.top.Amount) || 0))
+            a.top = r;
+        byAccount.set(id, a);
+    }
+    const contactRows = Array.isArray(args.contacts) ? args.contacts : [];
+    for (const c of contactRows) {
+        const account = c.Account_Name;
+        const a = byAccount.get(String(account?.id ?? ''));
+        const name = String(c.Full_Name ?? '').trim();
+        if (a && name)
+            addContact(a, name, c.Email);
+    }
+    const active = [...byAccount.values()].filter((a) => a.latest >= since).sort((a, b) => b.latest - a.latest);
+    const shown = active.slice(0, MAX_ACCOUNT_ROWS);
+    const accountCount = active.length;
+    const truncated = args.moreRecords === true || accountCount > shown.length;
+    const selected = String(args.selected ?? '');
+    const byName = (x, y) => x.name.localeCompare(y.name);
+    return {
+        accountCount,
+        heroCaption: `${accountCount === 1 ? 'Account' : 'Accounts'} with activity this week`,
+        accounts: shown.map((a) => {
+            const top = a.top ?? {};
+            const p = Number(top.Probability);
+            const prob = Number.isFinite(p) ? p : 0;
+            const stage = String(top.Stage ?? '').trim();
+            const amount = Number(top.Amount);
+            const tone = probabilityTone(prob);
+            const names = [...a.contacts].sort(byName).map((c) => c.name);
+            const n = names.length;
+            const listed = n > 3 ? `${names.slice(0, 3).join(', ')} +${n - 3}` : names.join(', ');
+            return {
+                id: a.id,
+                name: a.name,
+                initials: accountInitials(a.name),
+                tone,
+                meta: n > 0 ? `${n} ${n === 1 ? 'contact' : 'contacts'} · ${listed}` : 'No contacts yet',
+                // Probability shows from 50% up, per the mock (`Negotiation 90%`).
+                dealLabel: [
+                    Number.isFinite(amount) ? formatWhole(amount, top.Currency ?? args.currency) : '',
+                    stage ? `${shortStage(stage)}${prob >= 50 ? ` ${prob}%` : ''}` : '',
+                ].filter(Boolean).join(' · ') || 'Open deal',
+                expanded: a.id === selected,
+                // What a click on this row writes to `/ui/selectedAccount`: open it, or close it if already open.
+                toggleValue: a.id === selected ? '' : a.id,
+                chevron: a.id === selected ? 'ChevronDown' : 'ChevronRight',
+            };
+        }),
+        // The expanded account's contacts. Returned here rather than by a second
+        // watch action: a watch stops its action list once one action writes state.
+        openContacts: (shown.find((a) => a.id === selected)?.contacts ?? [])
+            .slice()
+            .sort(byName)
+            .map((c) => ({ id: c.name, name: c.name, email: c.email, initials: initialsOf('', '', c.name) })),
+        openEmpty: shown.some((a) => a.id === selected && a.contacts.length === 0),
+        truncated,
+        coverageText: truncated
+            ? args.moreRecords === true
+                ? `Showing ${shown.length} accounts from the 200 most recently updated open deals`
+                : `Showing ${shown.length} of ${accountCount} accounts`
+            : '',
+    };
+};
 const elements = {
     slug: 'zoho-crm',
     functions: {
         pipeline_snapshot_dashboard,
         lead_inbox_dashboard,
+        account_activity_dashboard,
     },
 };
 export default elements;
