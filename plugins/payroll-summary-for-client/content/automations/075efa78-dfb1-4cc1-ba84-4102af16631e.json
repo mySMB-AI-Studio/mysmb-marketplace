@@ -1,0 +1,171 @@
+{
+  "contentHash": "29ac3b837e4e5104fd3c2ca56dd025899f9a1356a266b13e8aa40c0c26a8419a",
+  "declaredScopes": [
+    "workq:read",
+    "workq:write",
+    "connectors:xero-payroll-au"
+  ],
+  "dependencies": [],
+  "description": "Checks whether a pay run is due for review, checks payroll readiness, and raises one WorkQ item carrying the headline figures and a link to the live Payroll Summary for Client report -- the reviewer and client approvals happen as comments on that item.",
+  "flowIr": {
+    "description": "Checks whether a pay run is due for review, checks payroll readiness, and raises one WorkQ item carrying the headline figures and a link to the live Payroll Summary for Client report -- the reviewer and client approvals happen as comments on that item.",
+    "irVersion": 1,
+    "name": "Payroll Summary for Client",
+    "nodes": [
+      {
+        "code": "import re\nfrom datetime import date\n\nresult = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"list_pay_runs\", args={\"where\": 'PayRunStatus==\"DRAFT\"', \"order\": \"PaymentDate ASC\"})\npay_runs = result.get(\"PayRuns\", []) if isinstance(result, dict) else []\n\nreview_window_days = 3\ndue = False\npay_run_id = \"\"\npayment_date_text = \"N/A\"\n\nif pay_runs:\n    first = pay_runs[0]\n    pay_run_id = first.get(\"PayRunID\", \"\")\n    raw_date = first.get(\"PaymentDate\", \"\") or \"\"\n    m = re.search(r\"/Date\\((\\d+)\", raw_date)\n    if m:\n        epoch_ms = int(m.group(1))\n        payment_date = date.fromtimestamp(epoch_ms / 1000)\n        payment_date_text = payment_date.isoformat()\n        due = (payment_date - date.today()).days <= review_window_days",
+        "id": "check_due",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Whether the earliest Draft pay run's payment date is within the review window.",
+            "name": "due",
+            "type": "bool"
+          },
+          {
+            "description": "The Draft pay run's Xero PayRunID, empty if none.",
+            "name": "pay_run_id",
+            "type": "str"
+          },
+          {
+            "description": "The pay run's payment date as YYYY-MM-DD, or N/A.",
+            "name": "payment_date_text",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Finds the earliest Draft pay run and compares its payment date to a 3-day review window.",
+        "title": "Check whether a pay run is due"
+      },
+      {
+        "cond": "{{steps.check_due.outputs.due}} == True",
+        "else": [],
+        "id": "gate_due",
+        "kind": "if",
+        "then": [
+          "check_readiness",
+          "gate_ready"
+        ],
+        "title": "Is it due yet?"
+      },
+      {
+        "code": "result = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"get_payroll_readiness_check\", args={})\nready = bool(result.get(\"notReadyCount\", 0) == 0 and result.get(\"balanceConflictCount\", 0) == 0)\nnot_ready_count = result.get(\"notReadyCount\", 0)\nbalance_conflict_count = result.get(\"balanceConflictCount\", 0)\n\nblocking_lines = []\nfor emp in result.get(\"employees\", []):\n    if not emp.get(\"ready\", True) or emp.get(\"hasBalanceConflict\"):\n        missing = \", \".join(emp.get(\"missingFields\", []))\n        line = \"- \" + emp.get(\"name\", \"Unknown\")\n        if missing:\n            line += \": missing \" + missing\n        if emp.get(\"hasBalanceConflict\"):\n            line += \" (leave balance conflict)\"\n        blocking_lines.append(line)\nblocking_summary = \"\\n\".join(blocking_lines) if blocking_lines else \"None\"",
+        "id": "check_readiness",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True only when no employees are not-ready and none have a balance conflict.",
+            "name": "ready",
+            "type": "bool"
+          },
+          {
+            "description": "Count of employees missing required fields.",
+            "name": "not_ready_count",
+            "type": "int"
+          },
+          {
+            "description": "Count of employees whose requested leave exceeds their balance.",
+            "name": "balance_conflict_count",
+            "type": "int"
+          },
+          {
+            "description": "Markdown bullet list naming each blocking employee and their specific issue, or \"None\".",
+            "name": "blocking_summary",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Runs the payroll readiness check -- missing employee fields or unresolved leave balance conflicts block the review.",
+        "title": "Check payroll readiness"
+      },
+      {
+        "cond": "{{steps.check_readiness.outputs.ready}} == True",
+        "else": [
+          "raise_blocker_item"
+        ],
+        "id": "gate_ready",
+        "kind": "if",
+        "then": [
+          "raise_review_item"
+        ],
+        "title": "Is it ready for review?"
+      },
+      {
+        "code": "processing = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"get_payroll_processing\", args={})\ntimesheets = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"get_timesheet_approval_check\", args={})\nhours = api.connectors.invoke(server=\"xero-payroll-au\", tool=\"get_hours_reconciliation\", args={})\n\ntotals = processing.get(\"totals\", {}) if isinstance(processing, dict) else {}\nvs_last = processing.get(\"vsLastRun\", {}) if isinstance(processing, dict) else {}\nwages = totals.get(\"wages\")\ntax = totals.get(\"tax\")\nsuper_amt = totals.get(\"super\")\nnet_pay = totals.get(\"netPay\")\nvs_last_label = vs_last.get(\"label\", \"N/A\")\nall_approved = bool(timesheets.get(\"allApproved\")) if isinstance(timesheets, dict) else False\nall_matched = bool(hours.get(\"allMatched\")) if isinstance(hours, dict) else False\n\ndescription = (\n    \"Pay run paid \" + payment_date_text + \". Wages $\" + str(wages) + \", tax $\" + str(tax) + \", super $\" + str(super_amt) +\n    \", net pay $\" + str(net_pay) + \" (vs last run \" + str(vs_last_label) + \").\\n\\n\" +\n    \"Timesheets all approved: \" + str(all_approved) + \". Hours all matched: \" + str(all_matched) + \".\\n\\n\" +\n    \"Open the **Payroll Summary for Client** report on the Reports tab for full live figures.\\n\\n\" +\n    \"1. Reviewer: check the figures above and the report, then comment your approval or decline here.\\n\" +\n    \"2. Only after the reviewer approves: send the pack to the client and record their approval or decline as a comment here too.\\n\" +\n    \"3. Mark this item done once both approvals are recorded.\"\n)\n\nitem = api.workq.create(\n    title=\"Review and approve payroll summary (\" + payment_date_text + \")\",\n    description=description,\n    priority=\"high\",\n)\nitem_id = item[\"id\"]",
+        "id": "raise_review_item",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The created WorkQ item's id.",
+            "name": "item_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{steps.check_due.outputs.payment_date_text}}",
+            "control": "text",
+            "name": "payment_date_text",
+            "type": "str"
+          }
+        ],
+        "summary": "Assembles the headline figures and raises one WorkQ item for the reviewer and client approvals.",
+        "title": "Raise the review WorkQ item"
+      },
+      {
+        "code": "description = (\n    str(not_ready_count) + \" employee(s) not ready, \" + str(balance_conflict_count) + \" with a leave balance conflict:\\n\\n\" +\n    blocking_summary + \"\\n\\n\" +\n    \"Fix these directly in Xero, then this will be picked up on the next run.\"\n)\nitem = api.workq.create(\n    title=\"Payroll readiness issues before review\",\n    description=description,\n    priority=\"high\",\n)\nitem_id = item[\"id\"]",
+        "id": "raise_blocker_item",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The created WorkQ item's id.",
+            "name": "item_id",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{steps.check_readiness.outputs.not_ready_count}}",
+            "control": "number",
+            "name": "not_ready_count",
+            "type": "int"
+          },
+          {
+            "binding": "{{steps.check_readiness.outputs.balance_conflict_count}}",
+            "control": "number",
+            "name": "balance_conflict_count",
+            "type": "int"
+          },
+          {
+            "binding": "{{steps.check_readiness.outputs.blocking_summary}}",
+            "control": "text",
+            "name": "blocking_summary",
+            "type": "str"
+          }
+        ],
+        "summary": "Raises a WorkQ item naming exactly which employees need fixing in Xero before the review can proceed.",
+        "title": "Raise a readiness-blocker WorkQ item"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "check_due",
+      "gate_due"
+    ],
+    "triggers": [
+      {
+        "cron": "0 7 * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Payroll Summary for Client",
+  "originKey": "075efa78-dfb1-4cc1-ba84-4102af16631e",
+  "tags": []
+}
