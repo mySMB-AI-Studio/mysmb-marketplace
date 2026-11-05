@@ -1,0 +1,44 @@
+{
+  "contentHash": "1768105b4400f08f74da2fa87625804d1c50b3a0a8c60e3eddbf7ed610302488",
+  "definition": {
+    "kind": "capability",
+    "schemaVersion": 1,
+    "key": "xero.payroll.readiness.read",
+    "originKey": "5e3afc79-97e2-4179-89be-449d552e830c",
+    "title": "Xero payroll readiness (read)",
+    "sideEffectClass": "read",
+    "inputsSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+    "outputsSchema": {
+      "type": "object",
+      "properties": {
+        "employeeCount": { "type": "number" },
+        "readyCount": { "type": "number" },
+        "notReadyCount": { "type": "number" },
+        "balanceConflictCount": { "type": "number" },
+        "employees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "employeeId": { "type": "string" },
+              "name": { "type": "string" },
+              "isTerminated": { "type": "boolean" },
+              "ready": { "type": "boolean" },
+              "missingFields": { "type": "array", "items": { "type": "string" } },
+              "hasPendingLeave": { "type": "boolean" },
+              "hasBalanceConflict": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "idempotency": { "supported": true },
+    "bindings": [
+      { "server": "xero-payroll-au", "tool": "get_payroll_readiness_check", "argMap": {}, "scopes": ["connectors:xero-payroll-au"] }
+    ],
+    "permissionRequirements": ["connectors:xero-payroll-au"]
+  },
+  "kind": "capability",
+  "name": "Xero payroll readiness (read)",
+  "originKey": "5e3afc79-97e2-4179-89be-449d552e830c"
+}

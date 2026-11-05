@@ -1,0 +1,99 @@
+{
+  "contentHash": "c414e964f067da99a09f75c8382f8f4a67668d05f5abfa980a132dfcc7f2e6f5",
+  "definition": {
+    "kind": "process",
+    "schemaVersion": 1,
+    "key": "payroll-summary-review",
+    "version": "0.1.0",
+    "title": "Prepare and approve a payroll summary",
+    "description": "Checks a pay run is due and ready, assembles the review pack figures, and gets the reviewer's then the client's recorded approval before anything is treated as confirmed.",
+    "vocabulary": { "subject": "Pay run" },
+    "subject": { "kind": "none", "dedupeBy": ["payRunId"] },
+    "inputs": [
+      { "key": "clientApproverEmail", "type": "string", "label": "Client approver email", "required": true }
+    ],
+    "capabilities": [
+      "xero.payroll.pay-runs.read",
+      "xero.payroll.readiness.read",
+      "xero.payroll.summary.read",
+      "workq.update"
+    ],
+    "roles": { "reviewer": "installation.reviewer" },
+    "variationPoints": [
+      { "key": "reviewWindowDays", "editableBy": "manager", "type": "number", "default": 3, "min": 1, "max": 14 }
+    ],
+    "protectedRules": [
+      { "key": "readinessBeforeReview", "description": "A pay run never reaches the reviewer or the client until the payroll readiness check comes back clean -- no missing employee fields, no unresolved leave balance conflicts." },
+      { "key": "reviewerBeforeClient", "description": "The client is never asked to approve before the internal reviewer has approved the same pack." },
+      { "key": "noAutoConfirm", "description": "A pay run is never treated as approved except as the direct effect of two recorded decisions: the reviewer's and the client's. Silence from either is never treated as approval." },
+      { "key": "readOnly", "description": "This process never writes to Xero -- no tool exists for it to edit a pay run, timesheet, or employee record. Any correction needed is handed to a person to make directly in Xero." }
+    ],
+    "steps": [
+      { "key": "checkDue", "kind": "agent", "title": "Check whether a pay run is due", "skill": "payroll-check-due", "outputs": ["due", "payRunId", "paymentDateText", "reviewWindowDays"] },
+      { "key": "checkReadiness", "kind": "agent", "title": "Check payroll readiness", "skill": "payroll-check-readiness", "outputs": ["ready", "notReadyCount", "balanceConflictCount", "blockingEmployees"] },
+      { "key": "summarize", "kind": "agent", "title": "Assemble the review pack", "skill": "payroll-summarize", "outputs": ["wages", "tax", "super", "netPay", "vsLastRunLabel", "periodText", "paymentDateText", "allApproved", "allMatched"] },
+      {
+        "key": "internalReview",
+        "kind": "decision",
+        "title": "Reviewer approves the pack",
+        "type": "payroll_review",
+        "eligible": ["reviewer"],
+        "separation": "preparerCannotDecide",
+        "materiality": ["steps.summarize.netPay", "steps.summarize.vsLastRunLabel", "steps.checkReadiness.notReadyCount", "steps.summarize.allApproved", "steps.summarize.allMatched"],
+        "options": [
+          { "key": "approve", "label": "Send to client", "effect": "The client is asked to approve this same pack." },
+          { "key": "reject", "label": "Send back", "effect": "Stops here; nothing is sent to the client." }
+        ],
+        "sla": { "remindAfterBusinessDays": 1, "expireAfterBusinessDays": 3 }
+      },
+      {
+        "key": "clientApproval",
+        "kind": "external",
+        "title": "Client approves the pack",
+        "channel": ["email"],
+        "interaction": "choice",
+        "recipient": "inputs.clientApproverEmail",
+        "identityLevel": "email_code",
+        "expiresAfterDays": 5,
+        "onNoResponse": "remindThenEscalate"
+      },
+      { "key": "approved", "kind": "gate", "title": "Approved", "requires": ["steps.clientApproval.choiceKey == 'approve'"], "outcome": "approved", "evidence": ["steps.internalReview.decision", "steps.clientApproval.choiceKey", "steps.summarize.wages", "steps.summarize.tax", "steps.summarize.super", "steps.summarize.netPay"] },
+      { "key": "reviewerDeclinedGate", "kind": "gate", "title": "Reviewer sent it back", "requires": ["steps.internalReview.decision == 'reject'"], "outcome": "reviewerDeclined", "evidence": ["steps.internalReview.decision"] },
+      { "key": "clientDeclinedGate", "kind": "gate", "title": "Client declined", "requires": ["steps.clientApproval.choiceKey == 'decline'"], "outcome": "clientDeclined", "evidence": ["steps.internalReview.decision", "steps.clientApproval.choiceKey"] },
+      { "key": "notDueYetGate", "kind": "gate", "title": "Not due yet", "requires": ["steps.checkDue.due == false"], "outcome": "notDueYet", "evidence": ["steps.checkDue.paymentDateText"] },
+      { "key": "readinessBlockedGate", "kind": "gate", "title": "Readiness blocked", "requires": ["steps.checkReadiness.ready == false"], "outcome": "readinessBlocked", "evidence": ["steps.checkReadiness.blockingEmployees"] }
+    ],
+    "transitions": [
+      { "from": "checkDue", "to": "checkReadiness", "when": "steps.checkDue.due == true" },
+      { "from": "checkDue", "to": "notDueYetGate", "when": "steps.checkDue.due == false" },
+      { "from": "checkReadiness", "to": "summarize", "when": "steps.checkReadiness.ready == true" },
+      { "from": "checkReadiness", "to": "readinessBlockedGate", "when": "steps.checkReadiness.ready == false" },
+      { "from": "summarize", "to": "internalReview" },
+      { "from": "internalReview", "to": "clientApproval", "when": "steps.internalReview.decision == 'approve'" },
+      { "from": "internalReview", "to": "reviewerDeclinedGate", "when": "steps.internalReview.decision == 'reject'" },
+      { "from": "clientApproval", "to": "approved", "when": "steps.clientApproval.choiceKey == 'approve'" },
+      { "from": "clientApproval", "to": "clientDeclinedGate", "when": "steps.clientApproval.choiceKey == 'decline'" }
+    ],
+    "exceptions": [
+      { "key": "noDraftPayRun", "blocks": ["checkReadiness", "summarize", "internalReview", "clientApproval"], "allowedPaths": ["notDueYetGate"] }
+    ],
+    "rework": [],
+    "outcomes": [
+      { "key": "approved", "terminal": true, "evidence": ["steps.internalReview.decision", "steps.clientApproval.choiceKey", "steps.summarize.wages", "steps.summarize.tax", "steps.summarize.super", "steps.summarize.netPay"] },
+      { "key": "reviewerDeclined", "terminal": true, "evidence": ["steps.internalReview.decision"] },
+      { "key": "clientDeclined", "terminal": true, "evidence": ["steps.internalReview.decision", "steps.clientApproval.choiceKey"] },
+      { "key": "notDueYet", "terminal": true, "evidence": ["steps.checkDue.paymentDateText"] },
+      { "key": "readinessBlocked", "terminal": true, "evidence": ["steps.checkReadiness.blockingEmployees"] }
+    ],
+    "limits": { "maxSteps": 20, "maxAiUnits": 150, "maxActiveHours": 2, "maxWaitingDays": 10, "maxAgentTurnsPerStep": 8 },
+    "modelPolicy": { "plan": "sonnet", "brief": "haiku", "judgement": "sonnet" },
+    "safeTest": {
+      "assertions": ["steps.checkDue.due != null", "steps.checkReadiness.ready != null", "steps.summarize.netPay != null"],
+      "sampleInputs": { "clientApproverEmail": "client@example.com" }
+    },
+    "originKey": "db69f970-156d-4e5d-9a96-8dfffaae8a77"
+  },
+  "kind": "process",
+  "name": "Prepare and approve a payroll summary",
+  "originKey": "db69f970-156d-4e5d-9a96-8dfffaae8a77"
+}

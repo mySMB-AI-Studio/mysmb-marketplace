@@ -1,0 +1,56 @@
+{
+  "contentHash": "d3da75c275c42a58826ab76c02c4a579d4ffef96ba39cf388f7beb565c241779",
+  "definition": {
+    "kind": "capability",
+    "schemaVersion": 1,
+    "key": "xero.payroll.summary.read",
+    "originKey": "918a0a43-5725-4309-9c5c-f405adcc4951",
+    "title": "Xero payroll summary (read)",
+    "sideEffectClass": "read",
+    "inputsSchema": { "type": "object", "properties": {}, "additionalProperties": false },
+    "outputsSchema": {
+      "type": "object",
+      "properties": {
+        "hasPayRun": { "type": "boolean" },
+        "payRun": {
+          "type": "object",
+          "properties": {
+            "periodText": { "type": "string" },
+            "paymentDateText": { "type": "string" },
+            "employeeCount": { "type": "number" },
+            "statusLabel": { "type": "string" }
+          }
+        },
+        "totals": {
+          "type": "object",
+          "properties": {
+            "wages": { "type": "number" },
+            "tax": { "type": "number" },
+            "super": { "type": "number" },
+            "netPay": { "type": "number" }
+          }
+        },
+        "vsLastRun": {
+          "type": "object",
+          "properties": {
+            "pct": { "type": ["number", "null"] },
+            "label": { "type": "string" }
+          }
+        },
+        "allApproved": { "type": "boolean", "description": "From the timesheet approval check: every timesheet approved and matching payslip hours." },
+        "allMatched": { "type": "boolean", "description": "From the hours reconciliation check: approved-timesheet count matches payroll count." },
+        "blockers": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "idempotency": { "supported": true },
+    "bindings": [
+      { "server": "xero-payroll-au", "tool": "get_payroll_processing", "argMap": {}, "scopes": ["connectors:xero-payroll-au"] },
+      { "server": "xero-payroll-au", "tool": "get_timesheet_approval_check", "argMap": {}, "scopes": ["connectors:xero-payroll-au"] },
+      { "server": "xero-payroll-au", "tool": "get_hours_reconciliation", "argMap": {}, "scopes": ["connectors:xero-payroll-au"] }
+    ],
+    "permissionRequirements": ["connectors:xero-payroll-au"]
+  },
+  "kind": "capability",
+  "name": "Xero payroll summary (read)",
+  "originKey": "918a0a43-5725-4309-9c5c-f405adcc4951"
+}
