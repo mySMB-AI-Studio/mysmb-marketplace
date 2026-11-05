@@ -71,6 +71,23 @@ describe("portable contracts", () => {
     const definition = { version: 1, steps: [{ id: "general", title: "General", fields: [{ key: "api_token", label: "Token", type: "string" }], connectors: [] }] };
     expect(() => validatePortableContent("setup", signed({ kind: "setup", originKey: setupOrigin, name: "Bad", definition }))).toThrow(/Connections/);
   });
+  it("accepts v2 setup requirements and rejects malformed ones", () => {
+    const v2 = (definition: Record<string, unknown>) => signed({ kind: "setup", originKey: setupOrigin, name: "Setup", definition: { version: 2, ...definition } });
+    expect(() => validatePortableContent("setup", v2({
+      connections: [{ key: "xero", label: "Xero", oneOf: ["xero-accounting"], required: true, scope: "service" }],
+      knowledge: [{ key: "reference_docs", label: "Reference", folder: "installation:reference", minFiles: 1, extensions: [".pdf"] }],
+      people: [], tasks: [], tenantSettings: [],
+      settings: { type: "object", properties: { business_name: { type: "string", title: "Business name" } } },
+    }))).not.toThrow();
+    for (const definition of [
+      { steps: [] },
+      { connections: [{ key: "xero", label: "Xero", oneOf: ["xero-accounting"], server: "xero-accounting", scope: "service" }] },
+      { connections: [{ key: "api_token", label: "Token", server: "x", scope: "service" }] },
+      { knowledge: [{ key: "docs", label: "Docs", folder: "org:../secrets" }] },
+      { connections: [{ key: "same", label: "A", server: "x", scope: "service" }], knowledge: [{ key: "same", label: "B", folder: "org:Docs" }] },
+      { tasks: [{ key: "classify", label: "Classify", op: "jev.classifyDocuments", after: ["missing"] }] },
+    ]) expect(() => validatePortableContent("setup", v2(definition))).toThrow();
+  });
   it("rejects invalid defaults and duplicate setup keys", () => {
     for (const fields of [
       [{ key: "n", label: "Number", type: "number", default: "wrong" }],
