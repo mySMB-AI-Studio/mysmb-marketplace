@@ -1,0 +1,151 @@
+{
+  "id": "reckon-company-overview",
+  "title": "Reckon — Company Overview",
+  "description": "Company name and chart-of-accounts snapshot from Reckon One — total accounts and a breakdown by account type.",
+  "category": "accounting",
+  "tags": ["reckon", "accounting", "accounts", "company", "chart-of-accounts"],
+  "keywords": ["reckon", "company", "accounts", "chart of accounts", "overview", "snapshot"],
+  "connectorsUsed": ["reckon-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min":       { "colSpan": 3, "rowSpan": 4 },
+    "max":       { "colSpan": 6, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "reckon-accounting",
+    "tool": "get_company",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["titleRow", "companyRow", "divider", "statGrid", "typeList"],
+        "watch": {
+          "/reckon-accounting/get_company": {
+            "action": "reckon-accounting.list_accounts",
+            "params": {}
+          },
+          "/reckon-accounting/list_accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/reckonOverview/accountSummary",
+              "value": {
+                "$computed": "reckon-accounting_account_summary",
+                "args": {
+                  "value": { "$state": "/reckon-accounting/list_accounts" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "titleRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Building2", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Company Overview", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Reckon One" }
+      },
+
+      "companyRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["companyLabel", "companyName"]
+      },
+      "companyLabel": {
+        "type": "Caption",
+        "props": { "text": "Company:", "tone": "muted" }
+      },
+      "companyName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "reckon-accounting_company_name",
+            "args": { "value": { "$state": "/reckon-accounting/get_company" } }
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+
+      "divider": { "type": "Divider", "props": {} },
+
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 1 },
+        "children": ["tileCount"]
+      },
+      "tileCount": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["stackCount"]
+      },
+      "stackCount": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["iconCount", "valCount", "lblCount"]
+      },
+      "iconCount": {
+        "type": "Icon",
+        "props": { "name": "ListTree", "size": "sm", "tone": "accent" }
+      },
+      "valCount": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/ui/reckonOverview/accountSummary/totalAccounts" },
+          "tone": "accent"
+        }
+      },
+      "lblCount": {
+        "type": "Caption",
+        "props": { "text": "Accounts" }
+      },
+
+      "typeList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["typeRow"],
+        "repeat": {
+          "statePath": "/ui/reckonOverview/accountSummary/byType",
+          "key": "type"
+        }
+      },
+      "typeRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["typeName", "typeCount"]
+      },
+      "typeName": {
+        "type": "Text",
+        "props": { "text": { "$item": "type" }, "size": "sm" }
+      },
+      "typeCount": {
+        "type": "Badge",
+        "props": { "text": { "$item": "count" }, "tone": "accent", "variant": "soft" }
+      }
+
+    }
+  },
+  "status": "published"
+}
