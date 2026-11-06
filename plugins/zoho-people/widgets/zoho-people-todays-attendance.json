@@ -1,7 +1,7 @@
 {
   "id": "zoho-people-todays-attendance",
   "title": "Today's Attendance",
-  "description": "Today's Zoho People attendance across your organisation: the share of employees present, how many are present, late or absent, and when the figures were last synced. Click the employee count to see who is present, late or absent. Check-ins come from the last 10 hours.",
+  "description": "Today's Zoho People attendance across your organisation: the share of scheduled employees present, how many are present, late, absent or on leave, and when the figures were last synced. Late is measured against each employee's own shift. Click the employee count to see who is present, late or absent.",
   "category": "hr",
   "tags": [
     "zoho",
@@ -42,11 +42,8 @@
   "dataProvider": {
     "kind": "tool",
     "mcp": "zoho-people",
-    "tool": "get_form_records",
-    "params": {
-      "form": "employee",
-      "rec_limit": 200
-    }
+    "tool": "attendance_today",
+    "params": {}
   },
   "spec": {
     "root": "card",
@@ -59,38 +56,15 @@
           "body"
         ],
         "watch": {
-          "/zoho-people/get_form_records/response": {
+          "/zoho-people/attendance_today": {
             "action": "setState",
             "params": {
               "statePath": "/ui/attendance",
               "value": {
                 "$computed": "zoho-people_attendance_today_dashboard",
                 "args": {
-                  "employees": {
-                    "$state": "/zoho-people/get_form_records/response/result"
-                  },
-                  "entries": {
-                    "$state": "/zoho-people/passthrough_get/response/result"
-                  },
-                  "showEmployees": {
-                    "$state": "/ui/showEmployees"
-                  }
-                }
-              }
-            }
-          },
-          "/zoho-people/passthrough_get/response": {
-            "action": "setState",
-            "params": {
-              "statePath": "/ui/attendance",
-              "value": {
-                "$computed": "zoho-people_attendance_today_dashboard",
-                "args": {
-                  "employees": {
-                    "$state": "/zoho-people/get_form_records/response/result"
-                  },
-                  "entries": {
-                    "$state": "/zoho-people/passthrough_get/response/result"
+                  "report": {
+                    "$state": "/zoho-people/attendance_today"
                   },
                   "showEmployees": {
                     "$state": "/ui/showEmployees"
@@ -106,11 +80,8 @@
               "value": {
                 "$computed": "zoho-people_attendance_today_dashboard",
                 "args": {
-                  "employees": {
-                    "$state": "/zoho-people/get_form_records/response/result"
-                  },
-                  "entries": {
-                    "$state": "/zoho-people/passthrough_get/response/result"
+                  "report": {
+                    "$state": "/zoho-people/attendance_today"
                   },
                   "showEmployees": {
                     "$state": "/ui/showEmployees"
@@ -126,19 +97,7 @@
         "props": {},
         "children": [
           "titleGroup"
-        ],
-        "watch": {
-          "/zoho-people/get_form_records/response": {
-            "action": "zoho-people.passthrough_get",
-            "params": {
-              "path": "/attendance/fetchLatestAttEntries",
-              "params": {
-                "duration": 600,
-                "dateTimeFormat": "yyyy-MM-dd HH:mm:ss"
-              }
-            }
-          }
-        }
+        ]
       },
       "titleGroup": {
         "type": "Row",
@@ -189,6 +148,7 @@
           "loading",
           "error",
           "empty",
+          "offToday",
           "content"
         ]
       },
@@ -210,11 +170,7 @@
               "not": true
             },
             {
-              "$state": "/_errors/zoho-people.get_form_records",
-              "not": true
-            },
-            {
-              "$state": "/_errors/zoho-people.passthrough_get",
+              "$state": "/_errors/zoho-people.attendance_today",
               "not": true
             }
           ]
@@ -254,14 +210,7 @@
           "message": "Couldn't load today's attendance from Zoho People. Please try again in a few minutes."
         },
         "visible": {
-          "$or": [
-            {
-              "$state": "/_errors/zoho-people.get_form_records"
-            },
-            {
-              "$state": "/_errors/zoho-people.passthrough_get"
-            }
-          ]
+          "$state": "/_errors/zoho-people.attendance_today"
         }
       },
       "empty": {
@@ -279,6 +228,15 @@
               "not": true
             }
           ]
+        }
+      },
+      "offToday": {
+        "type": "Empty",
+        "props": {
+          "message": "No one is scheduled to work today — it's a weekend or holiday for everyone tracked."
+        },
+        "visible": {
+          "$state": "/ui/attendance/nobodyScheduled"
         }
       },
       "content": {
@@ -303,7 +261,11 @@
               "$state": "/ui/attendance/tracked"
             },
             {
-              "$state": "/_errors/zoho-people.passthrough_get",
+              "$state": "/ui/attendance/nobodyScheduled",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.attendance_today",
               "not": true
             }
           ]
@@ -408,7 +370,9 @@
       "legend": {
         "type": "Row",
         "props": {
-          "template": "1fr 1fr 1fr",
+          "template": {
+            "$state": "/ui/attendance/legendTemplate"
+          },
           "gap": "sm",
           "align": "start"
         },
