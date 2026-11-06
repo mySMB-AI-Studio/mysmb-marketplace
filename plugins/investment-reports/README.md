@@ -55,6 +55,10 @@ No environment variables are required.
 - **Investment name:** use it when the link is to the folder that holds every investment. The folder whose name contains it is used, wherever it sits below the link, so you can paste the top folder and type "Fund 1". If nothing matches, the run stops and lists the folders that are there rather than reading them all as one investment. You can leave it blank when the link goes straight to one investment's own folder; if the link turns out to sit above several, the run stops and names them, because one report can only cover one investment.
 - **Email to:** defaults to the address set in the automation. Separate several addresses with commas.
 - **Name on the report:** defaults to Future Now.
+- **Logo file:** a PNG or JPEG in Knowledge, `Automations/logo.png` by default, drawn at the top of the PDF
+  and of the page in Reports in place of the name. The page carries the image inline, so it renders for
+  anyone the report reaches without them needing rights to the file. Leave it blank for the name in text;
+  if the file is missing the report still goes out with the name in text and says so in its summary.
 - **Xero contact or reference to match:** use it when the dividends in Xero don't name the company, for example a share registry's name.
 
 **Scopes:**
