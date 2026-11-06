@@ -1,0 +1,684 @@
+{
+  "id": "zoho-people-todays-attendance",
+  "title": "Today's Attendance",
+  "description": "Today's Zoho People attendance across your organisation: the share of employees present, how many are present, late or absent, and when the figures were last synced. Click the employee count to see who is present, late or absent. Check-ins come from the last 10 hours.",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-people",
+    "hr",
+    "attendance",
+    "check-in"
+  ],
+  "keywords": [
+    "attendance",
+    "present today",
+    "late",
+    "absent",
+    "check-in",
+    "zoho people"
+  ],
+  "connectorsUsed": [
+    "zoho-people"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-people",
+    "tool": "get_form_records",
+    "params": {
+      "form": "employee",
+      "rec_limit": 200
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-people/get_form_records/response": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/attendance",
+              "value": {
+                "$computed": "zoho-people_attendance_today_dashboard",
+                "args": {
+                  "employees": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "entries": {
+                    "$state": "/zoho-people/passthrough_get/response/result"
+                  },
+                  "showEmployees": {
+                    "$state": "/ui/showEmployees"
+                  }
+                }
+              }
+            }
+          },
+          "/zoho-people/passthrough_get/response": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/attendance",
+              "value": {
+                "$computed": "zoho-people_attendance_today_dashboard",
+                "args": {
+                  "employees": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "entries": {
+                    "$state": "/zoho-people/passthrough_get/response/result"
+                  },
+                  "showEmployees": {
+                    "$state": "/ui/showEmployees"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showEmployees": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/attendance",
+              "value": {
+                "$computed": "zoho-people_attendance_today_dashboard",
+                "args": {
+                  "employees": {
+                    "$state": "/zoho-people/get_form_records/response/result"
+                  },
+                  "entries": {
+                    "$state": "/zoho-people/passthrough_get/response/result"
+                  },
+                  "showEmployees": {
+                    "$state": "/ui/showEmployees"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ],
+        "watch": {
+          "/zoho-people/get_form_records/response": {
+            "action": "zoho-people.passthrough_get",
+            "params": {
+              "path": "/attendance/fetchLatestAttEntries",
+              "params": {
+                "duration": 600,
+                "dateTimeFormat": "yyyy-MM-dd HH:mm:ss"
+              }
+            }
+          }
+        }
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Today's Attendance",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho People"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skBar",
+          "skLegend",
+          "skSummary"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/attendance/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.get_form_records",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.passthrough_get",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "skBar": {
+        "type": "Skeleton",
+        "props": {
+          "height": "0.75rem",
+          "rounded": "md"
+        }
+      },
+      "skLegend": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        }
+      },
+      "skSummary": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load today's attendance from Zoho People. Please try again in a few minutes."
+        },
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_errors/zoho-people.get_form_records"
+            },
+            {
+              "$state": "/_errors/zoho-people.passthrough_get"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No active employees in Zoho People yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/attendance/loaded"
+            },
+            {
+              "$state": "/ui/attendance/tracked",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "barRow",
+          "legend",
+          "divider",
+          "summaryBox",
+          "viewBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/attendance/loaded"
+            },
+            {
+              "$state": "/ui/attendance/tracked"
+            },
+            {
+              "$state": "/_errors/zoho-people.passthrough_get",
+              "not": true
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "presentValue",
+          "presentRow"
+        ]
+      },
+      "presentValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/attendance/presentPctDisplay"
+          },
+          "size": "lg"
+        }
+      },
+      "presentRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "presentLabel",
+          "syncedRow"
+        ]
+      },
+      "presentLabel": {
+        "type": "Text",
+        "props": {
+          "text": "present today",
+          "tone": "brand",
+          "weight": "medium"
+        }
+      },
+      "syncedRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "syncedIcon",
+          "syncedText"
+        ]
+      },
+      "syncedIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "RefreshCw",
+          "tone": "brand",
+          "size": "sm"
+        }
+      },
+      "syncedText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/attendance/syncedText"
+          },
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "barRow": {
+        "type": "Row",
+        "props": {
+          "template": {
+            "$state": "/ui/attendance/barTemplate"
+          },
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "barSegment"
+        ],
+        "repeat": {
+          "statePath": "/ui/attendance/segments",
+          "key": "key"
+        }
+      },
+      "barSegment": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      },
+      "legend": {
+        "type": "Row",
+        "props": {
+          "template": "1fr 1fr 1fr",
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "legendItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/attendance/legend",
+          "key": "key"
+        }
+      },
+      "legendItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "legendHead",
+          "legendCount"
+        ]
+      },
+      "legendHead": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "legendDot",
+          "legendLabel"
+        ]
+      },
+      "legendDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      },
+      "legendLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "tone": {
+            "$item": "textTone"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "legendCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "tone": {
+            "$item": "textTone"
+          },
+          "weight": "semibold"
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "summaryBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "summaryStack"
+        ]
+      },
+      "summaryStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "trackedRow",
+          "employeeList",
+          "employeesNote"
+        ]
+      },
+      "trackedRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr)",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "trackedIcon",
+          "trackedText"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showEmployees",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/attendance/employeesToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "trackedIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "trackedText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/attendance/trackedText"
+          },
+          "size": "sm",
+          "truncate": true,
+          "weight": "semibold"
+        }
+      },
+      "employeeList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "employeeRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/attendance/employeeList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/attendance/employeesExpanded"
+        }
+      },
+      "employeeRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "employeeMain",
+          "employeeStatus"
+        ]
+      },
+      "employeeMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "employeeName",
+          "employeeDetail"
+        ]
+      },
+      "employeeName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "employeeDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "employeeStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "statusLabel"
+          },
+          "tone": {
+            "$item": "statusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "employeesNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/attendance/employeesNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/attendance/employeesNote"
+        }
+      },
+      "viewBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://people.zoho.com/zp#reports/admin/attendance/daily",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View Attendance",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      }
+    }
+  }
+}
