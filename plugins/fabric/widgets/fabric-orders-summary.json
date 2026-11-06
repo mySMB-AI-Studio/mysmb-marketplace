@@ -1,0 +1,78 @@
+{
+  "category": "operations",
+  "connectorsUsed": ["fabric"],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "fabric",
+    "tool": "fabric_read_rows",
+    "params": {
+      "server": "g3mcb3frh7zu7i4jex6gz4d3v4-ha6eymwo33ueljlyeo2r6xhc4m.datawarehouse.fabric.microsoft.com",
+      "database": "test-warehouse",
+      "schema": "dbo",
+      "table": "test_orders",
+      "limit": 50,
+      "offset": 0
+    }
+  },
+  "description": "Order count and total amount for dbo.test_orders in the test-warehouse Fabric Warehouse, computed client-side (count/sum) over the rows fabric_read_rows returns. Fine for small test data; not accurate for a real table larger than the 200-row page cap -- rebuild as a server-side aggregate once the real Pronto schema and table size are known.",
+  "id": "fabric-orders-summary",
+  "keywords": ["fabric", "warehouse", "orders", "summary", "total", "count"],
+  "popularity": 0,
+  "sizing": {
+    "max": { "colSpan": 6, "rowSpan": 4 },
+    "min": { "colSpan": 3, "rowSpan": 2 },
+    "preferred": { "colSpan": 4, "rowSpan": 2 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "statSection"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Database", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Orders Summary" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Fabric · dbo.test_orders" } },
+      "queryCaption": { "type": "Caption", "props": { "text": "Source: SQL query 1", "tone": "muted" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow", "queryCaption"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "liveDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "liveBadge": { "type": "Badge", "props": { "text": "Live", "tone": "success", "variant": "soft" } },
+      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge"] },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "loading": {
+        "type": "Skeleton",
+        "props": { "height": "2.5rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/fabric.fabric_read_rows" }
+      },
+      "countVal": {
+        "type": "Stat",
+        "props": { "value": { "$computed": "count", "args": { "value": { "$state": "/fabric/fabric_read_rows/rows" } } } }
+      },
+      "countCaption": { "type": "Badge", "props": { "text": "Orders", "tone": "info", "variant": "soft" } },
+      "countStack": { "type": "Stack", "props": { "align": "center", "gap": "xs" }, "children": ["countVal", "countCaption"] },
+      "totalVal": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "sum",
+                "args": { "value": { "$state": "/fabric/fabric_read_rows/rows" }, "field": "amount" }
+              }
+            }
+          }
+        }
+      },
+      "totalCaption": { "type": "Badge", "props": { "text": "Total amount", "tone": "success", "variant": "soft" } },
+      "totalStack": { "type": "Stack", "props": { "align": "center", "gap": "xs" }, "children": ["totalVal", "totalCaption"] },
+      "statsRow": {
+        "type": "Row",
+        "props": { "gap": "lg", "justify": "around" },
+        "children": ["countStack", "totalStack"],
+        "visible": { "$state": "/_loading/fabric.fabric_read_rows", "not": true }
+      },
+      "statSection": { "type": "Section", "props": { "variant": "muted" }, "children": ["loading", "statsRow"] }
+    }
+  },
+  "tags": ["fabric", "microsoft", "warehouse", "data", "test", "summary"],
+  "title": "Fabric Orders Summary"
+}
