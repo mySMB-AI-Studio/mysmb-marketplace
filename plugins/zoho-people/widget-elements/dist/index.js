@@ -396,12 +396,154 @@ const attendance_today_dashboard = (args) => {
             : '',
     };
 };
+/** `yyyy-MM-dd` for a local date. */
+function localIsoDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/**
+ * This week's Monday (`edge: "start"`) or Sunday (`edge: "end"`) as
+ * `yyyy-MM-dd`, in the viewer's time zone — `list_timesheets`' fromDate and
+ * toDate. One date per call: action params resolve `$computed` per key, so a
+ * function returning the whole params object is never evaluated.
+ *
+ * Spec: `{ "$computed": "zoho-people_timesheet_week_date", "args": { "edge": "start" } }`
+ */
+const timesheet_week_date = (args) => {
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() - ((day.getDay() + 6) % 7) + (args.edge === 'end' ? 6 : 0));
+    return localIsoDate(day);
+};
+/** A Zoho People list response's rows: `{ response: { result: [...] } }` or a bare array. */
+function resultRows(value) {
+    const result = value?.response
+        ? value.response.result
+        : value;
+    return Array.isArray(result) ? result.filter((r) => r && typeof r === 'object') : [];
+}
+/** Minutes in one time log: `hoursInMins`, else `hours` as `HH:mm` or decimal hours. */
+function timeLogMinutes(log) {
+    const mins = Number(log.hoursInMins ?? log.minutes);
+    if (Number.isFinite(mins) && mins > 0)
+        return mins;
+    const hours = String(log.hours ?? log.totaltime ?? '').trim();
+    const hm = /^(\d+):(\d{2})/.exec(hours);
+    if (hm)
+        return Number(hm[1]) * 60 + Number(hm[2]);
+    const dec = Number(hours);
+    return Number.isFinite(dec) ? dec * 60 : 0;
+}
+/** `186.5` — hours to one decimal place, without a trailing `.0`. */
+function hoursDisplay(mins) {
+    return (Math.round((mins / 60) * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: 1 });
+}
+/** Minutes in an `HH:mm` duration; 0 if unparseable. */
+function hhmmMinutes(value) {
+    const m = /^(\d+):(\d{2})/.exec(String(value ?? ''));
+    return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+}
+/** A Zoho `dd-MMM-yyyy` (or `yyyy-MM-dd`) date as a local Date; null if unparseable. */
+function zohoDate(value) {
+    const s = String(value ?? '').trim();
+    const dmy = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/.exec(s);
+    if (dmy) {
+        const month = MONTHS.indexOf(dmy[2].charAt(0).toUpperCase() + dmy[2].slice(1).toLowerCase());
+        return month < 0 ? null : new Date(Number(dmy[3]), month, Number(dmy[1]));
+    }
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    return ymd ? new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])) : null;
+}
+/** `11 Oct – 17 Oct 2026` for a timesheet period (`11 Oct 2025 – 2 Jan 2026` across years). */
+function periodDisplay(from, to) {
+    const fmt = (d, year) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) });
+    if (!from || !to)
+        return from ? fmt(from, true) : to ? fmt(to, true) : '';
+    return `${fmt(from, from.getFullYear() !== to.getFullYear())} – ${fmt(to, true)}`;
+}
+/** Rows in the expanded pending-timesheet list (TILE-DISPLAY-STANDARDS §11). */
+const MAX_TIMESHEET_ROWS = 20;
+/**
+ * This week's logged hours for the Timesheet Summary tile.
+ *
+ * - Total, billable and non-billable hours from this week's time logs.
+ *   A log counts as billable unless its `billingStatus` says non-billable.
+ * - Progress against a weekly hour target (fixed in the tile spec).
+ * - Timesheets awaiting approval (any period), and — when that box is
+ *   expanded — the list of them, the longest-waiting period first.
+ *
+ * Args:
+ *   logs        — `list_timesheets` (this week) `response.result`: `[{ hours: "HH:mm", hoursInMins, billingStatus }]`
+ *   pending     — `passthrough_get` (`/timetracker/gettimesheet`, `approvalStatus: pending`) `response.result`: `[{ recordId, employeeName, fromDate, toDate, totalHours, billableHours }]`
+ *   targetHours — weekly target in hours
+ *   showPending — true when the "N timesheets awaiting approval" box is expanded (`/ui/showPending`)
+ *
+ * Spec: `{ "$computed": "zoho-people_timesheet_summary_dashboard", "args": { "logs": { "$state": "/zoho-people/list_timesheets/response/result" }, "pending": { "$state": "/zoho-people/passthrough_get/response/result" }, "targetHours": 200, "showPending": { "$state": "/ui/showPending" } } }`
+ */
+const timesheet_summary_dashboard = (args) => {
+    const loaded = Array.isArray(args.logs) && Array.isArray(args.pending);
+    const logs = resultRows(args.logs);
+    let billable = 0;
+    let nonBillable = 0;
+    for (const log of logs) {
+        const mins = timeLogMinutes(log);
+        if (/non/i.test(String(log.billingStatus ?? log.billableStatus ?? '')))
+            nonBillable += mins;
+        else
+            billable += mins;
+    }
+    const total = billable + nonBillable;
+    const pending = resultRows(args.pending);
+    const pendingCount = pending.length;
+    const target = Number(args.targetHours) > 0 ? Number(args.targetHours) : 0;
+    const pct = target ? Math.round((total / 60 / target) * 100) : 0;
+    const showPending = args.showPending === true && pendingCount > 0;
+    const pendingList = showPending
+        ? pending
+            .map((t) => ({ t, from: zohoDate(t.fromDate), to: zohoDate(t.toDate) }))
+            .sort((a, b) => (a.from?.getTime() ?? Infinity) - (b.from?.getTime() ?? Infinity) ||
+            String(a.t.employeeName ?? '').localeCompare(String(b.t.employeeName ?? '')))
+            .slice(0, MAX_TIMESHEET_ROWS)
+            .map(({ t, from, to }, i) => {
+            const totalMins = hhmmMinutes(t.totalHours);
+            const billableMins = hhmmMinutes(t.billableHours);
+            return {
+                id: String(t.recordId ?? t.listId ?? i),
+                name: String(t.employeeName ?? '').trim() || String(t.employeeEmail ?? 'Employee'),
+                // `11 Oct – 17 Oct 2026 · 5h billable`
+                detail: `${periodDisplay(from, to) || String(t.timesheetName ?? 'Timesheet')} · ${hoursDisplay(billableMins)}h billable`,
+                hoursDisplay: `${hoursDisplay(totalMins)}h`,
+            };
+        })
+        : [];
+    return {
+        loaded,
+        hasData: total > 0 || pendingCount > 0,
+        totalDisplay: hoursDisplay(total),
+        targetText: `of ${target.toLocaleString('en-US')} hr target`,
+        targetPctDisplay: `${pct}%`,
+        // The bar fills to 100% once the target is reached.
+        targetPct: Math.min(pct, 100),
+        billableDisplay: `${hoursDisplay(billable)}h`,
+        nonBillableDisplay: `${hoursDisplay(nonBillable)}h`, pendingCount,
+        pendingText: `${pendingCount.toLocaleString('en-US')} ${pendingCount === 1 ? 'timesheet' : 'timesheets'} awaiting approval`,
+        pendingExpanded: showPending,
+        // What a click on the pending row writes to `/ui/showPending`.
+        pendingToggle: !showPending,
+        pendingChevron: showPending ? 'ChevronUp' : 'ChevronDown',
+        pendingList,
+        pendingNote: showPending && pendingCount > MAX_TIMESHEET_ROWS
+            ? `Showing ${MAX_TIMESHEET_ROWS} of ${pendingCount.toLocaleString('en-US')} timesheets.`
+            : '',
+    };
+};
 const elements = {
     slug: 'zoho-people',
     functions: {
         leave_balance_dashboard,
         leave_report_params,
         attendance_today_dashboard,
+        timesheet_week_date,
+        timesheet_summary_dashboard,
     },
 };
 export default elements;
