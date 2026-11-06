@@ -1,0 +1,697 @@
+{
+  "id": "zoho-people-timesheet-summary",
+  "title": "Timesheet Summary",
+  "description": "This week's Zoho People time logs across your organisation: total hours logged against a 200-hour weekly target, the billable and non-billable split, and how many timesheets are awaiting approval. Click the approval count to see which timesheets are waiting.",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-people",
+    "hr",
+    "timesheets",
+    "time-tracking"
+  ],
+  "keywords": [
+    "timesheet",
+    "hours logged",
+    "billable",
+    "non-billable",
+    "approval",
+    "zoho people"
+  ],
+  "connectorsUsed": [
+    "zoho-people"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#F26B1D"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-people",
+    "tool": "passthrough_get",
+    "params": {
+      "path": "/timetracker/gettimesheet",
+      "params": {
+        "user": "all",
+        "approvalStatus": "pending"
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-people/list_timesheets/response": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/timesheets",
+              "value": {
+                "$computed": "zoho-people_timesheet_summary_dashboard",
+                "args": {
+                  "logs": {
+                    "$state": "/zoho-people/list_timesheets/response/result"
+                  },
+                  "pending": {
+                    "$state": "/zoho-people/passthrough_get/response/result"
+                  },
+                  "targetHours": 200,
+                  "showPending": {
+                    "$state": "/ui/showPending"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showPending": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/timesheets",
+              "value": {
+                "$computed": "zoho-people_timesheet_summary_dashboard",
+                "args": {
+                  "logs": {
+                    "$state": "/zoho-people/list_timesheets/response/result"
+                  },
+                  "pending": {
+                    "$state": "/zoho-people/passthrough_get/response/result"
+                  },
+                  "targetHours": 200,
+                  "showPending": {
+                    "$state": "/ui/showPending"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ],
+        "watch": {
+          "/zoho-people/passthrough_get/response": {
+            "action": "zoho-people.list_timesheets",
+            "params": {
+              "user": "all",
+              "fromDate": {
+                "$computed": "zoho-people_timesheet_week_date",
+                "args": {
+                  "edge": "start"
+                }
+              },
+              "toDate": {
+                "$computed": "zoho-people_timesheet_week_date",
+                "args": {
+                  "edge": "end"
+                }
+              }
+            }
+          }
+        }
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Timer",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Timesheet Summary",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho People"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skBar",
+          "skSplit",
+          "skPending"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/timesheets/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.passthrough_get",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.list_timesheets",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "skBar": {
+        "type": "Skeleton",
+        "props": {
+          "height": "1.5rem",
+          "rounded": "md"
+        }
+      },
+      "skSplit": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "skPending": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load timesheets from Zoho People. Please try again in a few minutes."
+        },
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_errors/zoho-people.passthrough_get"
+            },
+            {
+              "$state": "/_errors/zoho-people.list_timesheets"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No time logged in Zoho People this week yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/timesheets/loaded"
+            },
+            {
+              "$state": "/ui/timesheets/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "targetBlock",
+          "splitRow",
+          "divider",
+          "pendingBox",
+          "viewBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/timesheets/loaded"
+            },
+            {
+              "$state": "/ui/timesheets/hasData"
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "hoursValue",
+          "hoursLabel"
+        ]
+      },
+      "hoursValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/timesheets/totalDisplay"
+          },
+          "size": "lg"
+        }
+      },
+      "hoursLabel": {
+        "type": "Text",
+        "props": {
+          "text": "hrs logged this week",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "targetBlock": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "targetRow",
+          "targetBarRow"
+        ]
+      },
+      "targetRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "targetLabel",
+          "targetPct"
+        ]
+      },
+      "targetLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/timesheets/targetText"
+          },
+          "size": "sm"
+        }
+      },
+      "targetPct": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/timesheets/targetPctDisplay"
+          },
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "targetBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "targetBar"
+        ]
+      },
+      "targetBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/timesheets/targetPct"
+          },
+          "tone": "brand"
+        }
+      },
+      "splitRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto minmax(0, 1fr)",
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "billableCol",
+          "splitDivider",
+          "nonBillableCol"
+        ]
+      },
+      "billableCol": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "billableLabel",
+          "billableValue"
+        ]
+      },
+      "billableLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Billable",
+          "size": "sm"
+        }
+      },
+      "billableValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/timesheets/billableDisplay"
+          },
+          "weight": "semibold"
+        }
+      },
+      "splitDivider": {
+        "type": "Divider",
+        "props": {
+          "vertical": true
+        }
+      },
+      "nonBillableCol": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "nonBillableLabel",
+          "nonBillableValue"
+        ]
+      },
+      "nonBillableLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Non-billable",
+          "size": "sm"
+        }
+      },
+      "nonBillableValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/timesheets/nonBillableDisplay"
+          },
+          "weight": "semibold"
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "pendingBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "pendingStack"
+        ],
+        "visible": {
+          "$state": "/ui/timesheets/pendingCount"
+        }
+      },
+      "pendingStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "pendingRow",
+          "pendingList",
+          "pendingNote"
+        ]
+      },
+      "pendingRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "pendingToggleRow",
+          "reviewButton"
+        ]
+      },
+      "pendingToggleRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "pendingIcon",
+          "pendingText",
+          "pendingChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showPending",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/timesheets/pendingToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "pendingIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "pendingText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/timesheets/pendingText"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "pendingChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/timesheets/pendingChevron"
+          },
+          "tone": "brand",
+          "size": "sm"
+        }
+      },
+      "reviewButton": {
+        "type": "Badge",
+        "props": {
+          "text": "Review",
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "pendingList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "pendingItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/timesheets/pendingList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/timesheets/pendingExpanded"
+        }
+      },
+      "pendingItem": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "pendingItemMain",
+          "pendingItemHours"
+        ]
+      },
+      "pendingItemMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "pendingItemName",
+          "pendingItemDetail"
+        ]
+      },
+      "pendingItemName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "pendingItemDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "pendingItemHours": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "hoursDisplay"
+          },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "pendingNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/timesheets/pendingNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/timesheets/pendingNote"
+        }
+      },
+      "viewBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://people.zoho.com/zp#timetracker/mydata/timesheets",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View Timesheets",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      }
+    }
+  }
+}
