@@ -817,6 +817,1077 @@ const three_month_window = (args) => {
     }
     return window;
 };
+// ── levenshtein_ratio ────────────────────────────────────────────────
+// Classic edit-distance similarity ratio in [0, 1] — 1 means identical.
+// Used internally by analyze_duplicate_contacts for fuzzy name matching.
+const levenshtein_ratio = (a, b) => {
+    if (a === b)
+        return 1;
+    if (!a.length || !b.length)
+        return 0;
+    const m = a.length, n = b.length;
+    const dp = new Array(n + 1);
+    for (let j = 0; j <= n; j++)
+        dp[j] = j;
+    for (let i = 1; i <= m; i++) {
+        let prev = dp[0];
+        dp[0] = i;
+        for (let j = 1; j <= n; j++) {
+            const tmp = dp[j];
+            dp[j] = a[i - 1] === b[j - 1]
+                ? prev
+                : 1 + Math.min(prev, dp[j], dp[j - 1]);
+            prev = tmp;
+        }
+    }
+    const dist = dp[n];
+    return 1 - dist / Math.max(m, n);
+};
+// ── analyze_duplicate_contacts ──────────────────────────────────────
+// Scans MYOB contacts and buckets likely duplicates by confidence:
+//  - Critical:      two+ contacts share the same normalized email or phone.
+//  - Needs Review:  two+ contacts share the same normalized display name
+//                    (and weren't already caught by the email/phone match).
+//  - Low Risk:      contacts with a highly similar (but not identical) name
+//                    to another contact sharing its first name-token
+//                    (Levenshtein ratio >= 0.82).
+// A contact is only counted once, at its highest-confidence tier.
+// Returns { totalDuplicates, critical: {count, pct}, needsReview: {count, pct},
+//   lowRisk: {count, pct}, mostAffected: {label, count}, duplicateRatePct,
+//   recordsScanned, lastScanAt }
+// Args: { value: Contact[] }
+const analyze_duplicate_contacts = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const normName = (s) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    const normEmail = (s) => s.toLowerCase().trim();
+    const normPhone = (s) => s.replace(/\D/g, '');
+    const records = items.map((item, i) => {
+        const company = String(item.CompanyName ?? '').trim();
+        const first = String(item.FirstName ?? '').trim();
+        const last = String(item.LastName ?? '').trim();
+        const name = company || `${first} ${last}`.trim();
+        const addresses = Array.isArray(item.Addresses) ? item.Addresses : [];
+        const email = String(addresses[0]?.Email ?? '');
+        const phone = String(addresses[0]?.Phone1 ?? '');
+        return {
+            uid: String(item.UID ?? i),
+            name,
+            normName: normName(name),
+            email: normEmail(email),
+            phone: normPhone(phone),
+        };
+    }).filter((r) => r.name);
+    const critical = new Set();
+    const needsReview = new Set();
+    const lowRisk = new Set();
+    // Critical — exact email or exact phone match (phone requires 6+ digits
+    // to avoid grouping contacts with blank/short placeholder numbers).
+    const groupBy = (key, minLen = 1) => {
+        const map = new Map();
+        for (const r of records) {
+            const k = key(r);
+            if (k.length < minLen)
+                continue;
+            const arr = map.get(k) ?? [];
+            arr.push(r.uid);
+            map.set(k, arr);
+        }
+        return map;
+    };
+    for (const [, uids] of groupBy((r) => r.email)) {
+        if (uids.length > 1)
+            uids.forEach((u) => critical.add(u));
+    }
+    for (const [, uids] of groupBy((r) => r.phone, 6)) {
+        if (uids.length > 1)
+            uids.forEach((u) => critical.add(u));
+    }
+    // Needs Review — exact normalized name match, excluding contacts already critical.
+    for (const [, uids] of groupBy((r) => r.normName)) {
+        const remaining = uids.filter((u) => !critical.has(u));
+        if (remaining.length > 1)
+            remaining.forEach((u) => needsReview.add(u));
+    }
+    // Low Risk — fuzzy name match within same first-token bucket, excluding
+    // anything already flagged at a higher tier.
+    const byFirstToken = new Map();
+    for (const r of records) {
+        if (critical.has(r.uid) || needsReview.has(r.uid))
+            continue;
+        const token = r.normName.split(' ')[0] ?? '';
+        if (!token)
+            continue;
+        const arr = byFirstToken.get(token) ?? [];
+        arr.push(r);
+        byFirstToken.set(token, arr);
+    }
+    for (const [, bucket] of byFirstToken) {
+        if (bucket.length < 2)
+            continue;
+        for (let i = 0; i < bucket.length; i++) {
+            for (let j = i + 1; j < bucket.length; j++) {
+                if (bucket[i].normName === bucket[j].normName)
+                    continue;
+                if (levenshtein_ratio(bucket[i].normName, bucket[j].normName) >= 0.82) {
+                    lowRisk.add(bucket[i].uid);
+                    lowRisk.add(bucket[j].uid);
+                }
+            }
+        }
+    }
+    const criticalCount = critical.size;
+    const needsReviewCount = needsReview.size;
+    const lowRiskCount = lowRisk.size;
+    const totalDuplicates = criticalCount + needsReviewCount + lowRiskCount;
+    const pct = (n) => (totalDuplicates > 0 ? Math.round((n / totalDuplicates) * 100) : 0);
+    const recordsScanned = items.length;
+    return {
+        totalDuplicates,
+        critical: { count: criticalCount, pct: pct(criticalCount) },
+        needsReview: { count: needsReviewCount, pct: pct(needsReviewCount) },
+        lowRisk: { count: lowRiskCount, pct: pct(lowRiskCount) },
+        mostAffected: { label: 'Contacts', count: totalDuplicates },
+        duplicateRatePct: recordsScanned > 0 ? Math.round((totalDuplicates / recordsScanned) * 1000) / 10 : 0,
+        recordsScanned,
+        lastScanAt: new Date().toISOString(),
+    };
+};
+// ── analyze_myob_duplicates ───────────────────────────────────────────
+// Cross-checks MYOB Contacts, Bills, and Invoices for likely duplicates,
+// tiered EXACT / LIKELY / POSSIBLE by confidence, filterable by record
+// type via matchMode-style category filtering handled spec-side.
+//
+// "Same Contact" below means the same CANONICAL contact — Contacts that
+// are themselves flagged as duplicates of each other (shared email/phone,
+// or an exact/fuzzy name hit) are merged into one cluster first, so a
+// bill/invoice split across two duplicate contact records (e.g. "Acme
+// Pty Ltd" vs "Acme Pty. Ltd.", both real records for the same vendor)
+// still matches its counterpart under the sibling record — capped at
+// LIKELY even when the amount/date line up exactly, since a match
+// crossing a contact boundary is one inference hop weaker than a
+// same-record match.
+//
+// Match rules:
+//   Contacts  — reuses analyze_duplicate_contacts' tiers verbatim:
+//               EXACT = shared normalized email or phone (6+ digits).
+//               LIKELY = shared normalized display name (not already
+//               EXACT). POSSIBLE = fuzzy name match (Levenshtein >=0.82)
+//               within the same first-name-token bucket.
+//   Bills     — EXACT: same (raw) Supplier + same non-blank
+//               SupplierInvoiceNumber. LIKELY: same Supplier + same
+//               TotalAmount, 0-2 days apart (not already EXACT), OR a
+//               cross-contact same-day match. POSSIBLE: same Supplier +
+//               same TotalAmount, 3-7 days apart.
+//   Invoices  — same rules as Bills, using Customer +
+//               CustomerPurchaseOrderNumber in place of Supplier +
+//               SupplierInvoiceNumber.
+//
+// No MYOB Contact resource in this org exposes an ABN/tax-number field
+// (confirmed against real data — Identifiers is always null), so contact
+// matching relies on email/phone/name only, not ABN.
+//
+// detailRows: one row per flagged record, most-recent-Date-first —
+// { category: 'Bill'|'Invoice'|'Contact', label, detail, tier, amount? }.
+// filterCounts gives the per-category open count for the spec's filter
+// tabs without a second pass over detailRows.
+//
+// `filter` ('' | 'Bill' | 'Invoice' | 'Contact') narrows detailRows/
+// previewRows to one category — echoed back as `filter` in the result so
+// the spec can highlight the active filter tab from the same state write
+// that applied it, with no separate setState needed. previewRows is the
+// current filter's top 3 (most-recent-tier-first); detailRows is the
+// FULL current-filter list, for the "View all" table. totalOpen is
+// always the grand (unfiltered) count, for the header's "N open" badge.
+//
+// Args: { contacts?: Contact[], bills?: Bill[], invoices?: Invoice[], filter?: string }
+const analyze_myob_duplicates = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const bills = Array.isArray(args.bills) ? args.bills : [];
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const filter = ['Bill', 'Invoice', 'Contact'].includes(String(args.filter)) ? String(args.filter) : '';
+    const parseDate = (raw) => {
+        const s = String(raw ?? '');
+        if (!s)
+            return null;
+        const m = s.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        if (m)
+            return Number(m[1]);
+        const t = new Date(s).getTime();
+        return Number.isFinite(t) ? t : null;
+    };
+    const daysBetween = (a, b) => {
+        const ma = parseDate(a);
+        const mb = parseDate(b);
+        if (ma == null || mb == null)
+            return Infinity;
+        return Math.abs(ma - mb) / 86_400_000;
+    };
+    const dayKeyOf = (raw) => {
+        const ms = parseDate(raw);
+        return ms == null ? null : String(Math.floor(ms / 86_400_000));
+    };
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    const fmtDate = (raw) => {
+        const ms = parseDate(raw);
+        if (ms == null)
+            return '';
+        return new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    };
+    const daysApartPhrase = (n) => (n === 0 ? 'same day' : n === 1 ? '1 day apart' : `${n} days apart`);
+    const detailRows = [];
+    // ── Contacts — union-find over contact IDs, reusing the existing
+    // critical/needsReview/lowRisk tiers to also build canonicalContact().
+    const normName = (s) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    const normEmail = (s) => s.toLowerCase().trim();
+    const normPhone = (s) => s.replace(/\D/g, '');
+    const contactParent = new Map();
+    const findContactRoot = (id) => {
+        if (!contactParent.has(id))
+            contactParent.set(id, id);
+        let root = id;
+        while (contactParent.get(root) !== root)
+            root = contactParent.get(root);
+        let cur = id;
+        while (contactParent.get(cur) !== root) {
+            const next = contactParent.get(cur);
+            contactParent.set(cur, root);
+            cur = next;
+        }
+        return root;
+    };
+    const unionContacts = (a, b) => {
+        const ra = findContactRoot(a);
+        const rb = findContactRoot(b);
+        if (ra !== rb)
+            contactParent.set(ra, rb);
+    };
+    const canonicalContact = (id) => (contactParent.has(id) ? findContactRoot(id) : id);
+    const contactByUid = new Map();
+    const crecs = contacts.map((item, i) => {
+        const uid = String(item.UID ?? i);
+        contactByUid.set(uid, item);
+        const company = String(item.CompanyName ?? '').trim();
+        const first = String(item.FirstName ?? '').trim();
+        const last = String(item.LastName ?? '').trim();
+        const name = company || `${first} ${last}`.trim();
+        const addresses = Array.isArray(item.Addresses) ? item.Addresses : [];
+        const email = String(addresses[0]?.Email ?? '');
+        const phone = String(addresses[0]?.Phone1 ?? '');
+        return { uid, name, normName: normName(name), email: normEmail(email), phone: normPhone(phone) };
+    }).filter((r) => r.name);
+    const contactTier = new Map();
+    const groupBy = (recs, key, minLen = 1) => {
+        const map = new Map();
+        for (const r of recs) {
+            const k = key(r);
+            if (k.length < minLen)
+                continue;
+            (map.get(k) ?? map.set(k, []).get(k)).push(r.uid);
+        }
+        return map;
+    };
+    for (const [, uids] of groupBy(crecs, (r) => r.email)) {
+        if (uids.length > 1) {
+            uids.forEach((u) => contactTier.set(u, 'exact'));
+            for (let i = 1; i < uids.length; i++)
+                unionContacts(uids[0], uids[i]);
+        }
+    }
+    for (const [, uids] of groupBy(crecs, (r) => r.phone, 6)) {
+        if (uids.length > 1) {
+            uids.forEach((u) => contactTier.set(u, 'exact'));
+            for (let i = 1; i < uids.length; i++)
+                unionContacts(uids[0], uids[i]);
+        }
+    }
+    for (const [, uids] of groupBy(crecs, (r) => r.normName)) {
+        const remaining = uids.filter((u) => contactTier.get(u) !== 'exact');
+        if (remaining.length > 1) {
+            remaining.forEach((u) => contactTier.set(u, 'likely'));
+            for (let i = 1; i < remaining.length; i++)
+                unionContacts(remaining[0], remaining[i]);
+        }
+    }
+    const byFirstToken = new Map();
+    for (const r of crecs) {
+        if (contactTier.has(r.uid))
+            continue;
+        const token = r.normName.split(' ')[0] ?? '';
+        if (!token)
+            continue;
+        (byFirstToken.get(token) ?? byFirstToken.set(token, []).get(token)).push(r);
+    }
+    for (const [, bucket] of byFirstToken) {
+        for (let i = 0; i < bucket.length; i++) {
+            for (let j = i + 1; j < bucket.length; j++) {
+                if (bucket[i].normName === bucket[j].normName)
+                    continue;
+                if (levenshtein_ratio(bucket[i].normName, bucket[j].normName) >= 0.82) {
+                    if (!contactTier.has(bucket[i].uid))
+                        contactTier.set(bucket[i].uid, 'possible');
+                    if (!contactTier.has(bucket[j].uid))
+                        contactTier.set(bucket[j].uid, 'possible');
+                    unionContacts(bucket[i].uid, bucket[j].uid);
+                }
+            }
+        }
+    }
+    for (const [uid, tier] of contactTier) {
+        const c = contactByUid.get(uid);
+        const name = String(c?.CompanyName || `${c?.FirstName ?? ''} ${c?.LastName ?? ''}`.trim());
+        const addresses = Array.isArray(c?.Addresses) ? c.Addresses : [];
+        const email = String(addresses[0]?.Email ?? '');
+        const detail = tier === 'exact'
+            ? (email ? `Same email/phone as another contact (${email})` : 'Same phone as another contact')
+            : tier === 'likely'
+                ? 'Same business name as another contact record'
+                : 'Similar name to another contact record';
+        detailRows.push({ category: 'Contact', label: `Contact · ${name}`, detail, tier, amount: '' });
+    }
+    const matchDocs = (recs, categoryLabel) => {
+        const tier = new Map();
+        // Pass 1a — same raw contact + same non-blank document number => exact.
+        const byContactNum = new Map();
+        for (const r of recs) {
+            if (!r.docNum)
+                continue;
+            const key = `${r.contactId}|${r.docNum}`;
+            (byContactNum.get(key) ?? byContactNum.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byContactNum)
+            if (group.length > 1)
+                group.forEach((r) => tier.set(r.id, 'exact'));
+        // Pass 1b — same raw contact + same total: 0-2 days apart => likely,
+        // 3-7 days apart => possible (mirrors the reference mockup's own
+        // "same amount, N days apart" wording for the possible tier).
+        const byContactTotal = new Map();
+        for (const r of recs) {
+            const key = `${r.contactId}|${r.total ?? ''}`;
+            (byContactTotal.get(key) ?? byContactTotal.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byContactTotal) {
+            if (group.length < 2)
+                continue;
+            for (let i = 0; i < group.length; i++) {
+                for (let j = i + 1; j < group.length; j++) {
+                    const a = group[i], b = group[j];
+                    if (tier.get(a.id) === 'exact' && tier.get(b.id) === 'exact')
+                        continue;
+                    const days = daysBetween(a.date, b.date);
+                    if (days <= 2) {
+                        if (!tier.has(a.id))
+                            tier.set(a.id, 'likely');
+                        if (!tier.has(b.id))
+                            tier.set(b.id, 'likely');
+                    }
+                    else if (days <= 7) {
+                        if (!tier.has(a.id))
+                            tier.set(a.id, 'possible');
+                        if (!tier.has(b.id))
+                            tier.set(b.id, 'possible');
+                    }
+                }
+            }
+        }
+        // Pass 2 — cross the contact boundary via canonicalContact, but ONLY
+        // for docs not already tagged, and NEVER above 'likely': a match that
+        // only exists because two Contact records are themselves flagged as
+        // duplicates is one hop weaker than a same-record match.
+        const byCanonTotal = new Map();
+        for (const r of recs) {
+            const key = `${canonicalContact(r.contactId)}|${r.total ?? ''}`;
+            (byCanonTotal.get(key) ?? byCanonTotal.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byCanonTotal) {
+            const exactRecs = group.filter((r) => tier.get(r.id) === 'exact');
+            if (exactRecs.length === 0)
+                continue;
+            for (const r of group) {
+                if (tier.has(r.id))
+                    continue;
+                const dayKey = dayKeyOf(r.date);
+                if (dayKey != null && exactRecs.some((e) => e.contactId !== r.contactId && dayKeyOf(e.date) === dayKey)) {
+                    tier.set(r.id, 'likely');
+                }
+            }
+        }
+        return tier;
+    };
+    const billRecs = bills.map((b) => {
+        const supplier = b.Supplier;
+        return {
+            id: String(b.UID ?? ''),
+            contactId: String(supplier?.UID ?? ''),
+            contactName: String(supplier?.Name ?? 'Unknown supplier'),
+            docNum: String(b.SupplierInvoiceNumber ?? '').trim(),
+            total: b.TotalAmount,
+            date: b.Date,
+        };
+    });
+    const billTier = matchDocs(billRecs, 'Bill');
+    const billById = new Map(billRecs.map((r) => [r.id, r]));
+    for (const [id, tier] of billTier) {
+        const r = billById.get(id);
+        const b = bills.find((x) => String(x.UID ?? '') === id);
+        const siblings = billRecs.filter((o) => o.id !== id && o.contactId === r.contactId && o.docNum === r.docNum && r.docNum);
+        const detail = tier === 'exact'
+            ? `Same supplier inv # ${r.docNum} on ${siblings.length + 1} bills · ${fmtDate(r.date)}`
+            : `Same supplier & amount, ${daysApartPhrase(Math.round(Math.min(...billRecs
+                .filter((o) => o.id !== id && o.contactId === r.contactId && String(o.total) === String(r.total))
+                .map((o) => daysBetween(o.date, r.date)))))}`;
+        detailRows.push({ category: 'Bill', label: `Bill · ${r.contactName}`, detail, tier, amount: fmtAmt(b.TotalAmount) });
+    }
+    const invRecs = invoices.map((inv) => {
+        const customer = inv.Customer;
+        return {
+            id: String(inv.UID ?? ''),
+            contactId: String(customer?.UID ?? ''),
+            contactName: String(customer?.Name ?? 'Unknown customer'),
+            docNum: String(inv.CustomerPurchaseOrderNumber ?? '').trim(),
+            total: inv.TotalAmount,
+            date: inv.Date,
+        };
+    });
+    const invTier = matchDocs(invRecs, 'Invoice');
+    const invById = new Map(invRecs.map((r) => [r.id, r]));
+    for (const [id, tier] of invTier) {
+        const r = invById.get(id);
+        const inv = invoices.find((x) => String(x.UID ?? '') === id);
+        const siblings = invRecs.filter((o) => o.id !== id && o.contactId === r.contactId && o.docNum === r.docNum && r.docNum);
+        const detail = tier === 'exact'
+            ? (r.docNum
+                ? `Same customer PO # ${r.docNum} on ${siblings.length + 1} invoices · ${fmtDate(r.date)}`
+                : `Same customer & amount, same day · ${fmtDate(r.date)}`)
+            : `Same customer & amount, ${daysApartPhrase(Math.round(Math.min(...invRecs
+                .filter((o) => o.id !== id && o.contactId === r.contactId && String(o.total) === String(r.total))
+                .map((o) => daysBetween(o.date, r.date)))))}`;
+        detailRows.push({ category: 'Invoice', label: `Invoice · ${r.contactName}`, detail, tier, amount: fmtAmt(inv.TotalAmount) });
+    }
+    detailRows.sort((a, b) => {
+        const order = { exact: 0, likely: 1, possible: 2 };
+        return order[a.tier] - order[b.tier];
+    });
+    const tierCount = (cat) => {
+        const rows = cat ? detailRows.filter((r) => r.category === cat) : detailRows;
+        return {
+            exact: rows.filter((r) => r.tier === 'exact').length,
+            likely: rows.filter((r) => r.tier === 'likely').length,
+            possible: rows.filter((r) => r.tier === 'possible').length,
+            total: rows.length,
+        };
+    };
+    const shaped = detailRows.map(({ category, label, detail, tier, amount }) => ({
+        category,
+        label,
+        detail,
+        tier: tier.toUpperCase(),
+        tierTone: tier === 'exact' ? 'warning' : tier === 'likely' ? 'info' : 'muted',
+        amount,
+    }));
+    const filtered = filter ? shaped.filter((r) => r.category === filter) : shaped;
+    return {
+        totalOpen: detailRows.length,
+        filter,
+        filteredTotal: filtered.length,
+        filterCounts: {
+            all: detailRows.length,
+            bills: tierCount('Bill').total,
+            invoices: tierCount('Invoice').total,
+            contacts: tierCount('Contact').total,
+        },
+        previewRows: filtered.slice(0, 3),
+        previewCount: Math.min(3, filtered.length),
+        detailRows: filtered,
+        lastScanAt: new Date().toISOString(),
+    };
+};
+// ── analyze_exclusion_check ──────────────────────────────────────────
+// Rolls up three independently-verified real MYOB exclusion signals into
+// one summary card:
+//  - Supplier Exclusion Screen: suppliers marked Inactive that still have
+//    at least one Bill against them (same signal as the standalone
+//    "MYOB — Exclusion Check (Suppliers)" tile's analyze_supplier_exclusions).
+//  - Inactive Contact Activity: CUSTOMERS marked Inactive that still have
+//    at least one Invoice against them. Deliberately scoped to customers
+//    only (not suppliers) so this never double-counts the same record as
+//    Supplier Exclusion Screen above — an inactive supplier with a bill is
+//    always reported there, never here.
+//  - Excluded Account Postings: accounts named Suspense/Non-deductible, or
+//    themselves marked Inactive, carrying a real non-zero CurrentBalance.
+// "GST Exclusion Mismatch" from the original 4-check reference is NOT
+// buildable: confirmed via live testing that this MCP server's get_invoice
+// and get_bill tools return no Lines/LineItems field at all (not just the
+// list endpoints — every single-record fetch was checked too), even though
+// the connector's own README documents them as returning full line-item
+// detail. A real MCP-server-side gap, not a widget-side limitation —
+// intentionally omitted rather than shown with a placeholder number.
+// `filter` ('' | 'Supplier' | 'Customer' | 'Account') narrows detailRows to
+// one check — set when a summary row is clicked, echoed back unchanged so
+// the spec can tell which row opened the detail view from the same state
+// write that applied it. `showAll` is similarly echoed back (not derived)
+// so a background data refresh (a fresh watch firing after list_bills/
+// list_invoices/list_accounts re-arrive) doesn't silently close an
+// already-open detail view — both must be read back out of current state
+// and passed in again on every recompute, same pattern as
+// analyze_myob_duplicates' `filter`.
+// Args: { contacts?: Contact[], bills?: Bill[], invoices?: Invoice[], accounts?: Account[], filter?: string, showAll?: boolean }
+const analyze_exclusion_check = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const bills = Array.isArray(args.bills) ? args.bills : [];
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const accounts = Array.isArray(args.accounts) ? args.accounts : [];
+    const filter = ['Supplier', 'Customer', 'Account'].includes(String(args.filter)) ? String(args.filter) : '';
+    const showAll = Boolean(args.showAll);
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    // Supplier Exclusion Screen — inactive suppliers that still have at
+    // least one bill against them (a blocked/retired vendor someone is
+    // still paying).
+    const inactiveSupplierUids = new Set(contacts.filter((c) => c.Type === 'Supplier' && c.IsActive === false).map((c) => String(c.UID ?? '')));
+    const billsBySupplierForExc = new Map();
+    for (const b of bills) {
+        const supplier = b.Supplier;
+        const uid = String(supplier?.UID ?? '');
+        if (!inactiveSupplierUids.has(uid))
+            continue;
+        (billsBySupplierForExc.get(uid) ?? billsBySupplierForExc.set(uid, []).get(uid)).push(b);
+    }
+    const supplierDetailRows = contacts
+        .filter((c) => billsBySupplierForExc.has(String(c.UID ?? '')))
+        .map((c) => {
+        const uidBills = billsBySupplierForExc.get(String(c.UID ?? '')) ?? [];
+        const total = uidBills.reduce((s, b) => s + (Number(b.TotalAmount) || 0), 0);
+        const billWord = `${uidBills.length} bill${uidBills.length !== 1 ? 's' : ''}`;
+        return {
+            category: 'Supplier',
+            label: String(c.CompanyName ?? ''),
+            detail: `Inactive supplier — ${billWord} still outstanding`,
+            amount: fmtAmt(total),
+        };
+    });
+    // Inactive Contact Activity — customers marked Inactive that still have
+    // at least one invoice against them.
+    const inactiveCustomerUids = new Set(contacts.filter((c) => c.Type === 'Customer' && c.IsActive === false).map((c) => String(c.UID ?? '')));
+    const invoicesByCustomerForExc = new Map();
+    for (const i of invoices) {
+        const customer = i.Customer;
+        const uid = String(customer?.UID ?? '');
+        if (!inactiveCustomerUids.has(uid))
+            continue;
+        (invoicesByCustomerForExc.get(uid) ?? invoicesByCustomerForExc.set(uid, []).get(uid)).push(i);
+    }
+    const customerDetailRows = contacts
+        .filter((c) => invoicesByCustomerForExc.has(String(c.UID ?? '')))
+        .map((c) => {
+        const uidInvoices = invoicesByCustomerForExc.get(String(c.UID ?? '')) ?? [];
+        const total = uidInvoices.reduce((s, i) => s + (Number(i.TotalAmount) || 0), 0);
+        const invWord = `${uidInvoices.length} invoice${uidInvoices.length !== 1 ? 's' : ''}`;
+        return {
+            category: 'Customer',
+            label: String(c.CompanyName ?? ''),
+            detail: `Inactive customer — ${invWord} still outstanding`,
+            amount: fmtAmt(total),
+        };
+    });
+    // Excluded Account Postings — accounts whose balance sits outside normal
+    // P&L/balance-sheet reporting: a Suspense/clearing account, an account
+    // explicitly marked non-deductible for tax purposes, or any account
+    // that's been made Inactive but still carries a live balance.
+    const reasonFor = (a) => {
+        const name = String(a.Name ?? '');
+        if (/suspense/i.test(name))
+            return 'Suspense account — balance not yet cleared to a real account';
+        if (/non.?deductible/i.test(name))
+            return 'Marked non-deductible for tax purposes';
+        if (a.IsActive === false)
+            return 'Inactive account still carrying a live balance';
+        return String(a.Classification ?? '');
+    };
+    const flaggedAccounts = accounts.filter((a) => {
+        const name = String(a.Name ?? '');
+        const isSuspenseOrNonDeductible = /suspense|non.?deductible/i.test(name);
+        const isInactive = a.IsActive === false;
+        return (isSuspenseOrNonDeductible || isInactive) && Math.abs(Number(a.CurrentBalance) || 0) > 0;
+    });
+    const accountDetailRows = flaggedAccounts.map((a) => ({
+        category: 'Account',
+        label: String(a.Name ?? ''),
+        detail: reasonFor(a),
+        amount: fmtAmt(a.CurrentBalance),
+    }));
+    const rows = [
+        {
+            category: 'Supplier',
+            label: 'Supplier Exclusion Screen',
+            description: 'Inactive suppliers with bills still outstanding',
+            count: supplierDetailRows.length,
+            tone: 'destructive',
+        },
+        {
+            category: 'Customer',
+            label: 'Inactive Contact Activity',
+            description: 'Inactive customers with invoices still outstanding',
+            count: customerDetailRows.length,
+            tone: 'warning',
+        },
+        {
+            category: 'Account',
+            label: 'Excluded Account Postings',
+            description: 'Suspense, non-deductible, or inactive account balances',
+            count: accountDetailRows.length,
+            tone: 'success',
+        },
+    ];
+    const allDetailRows = [...supplierDetailRows, ...customerDetailRows, ...accountDetailRows];
+    const filterLabel = filter ? (rows.find((r) => r.category === filter)?.label ?? 'All flagged items') : 'All flagged items';
+    return {
+        totalCount: rows.reduce((s, r) => s + r.count, 0),
+        checksCount: rows.length,
+        rows,
+        filter,
+        showAll,
+        filterLabel,
+        detailRows: filter ? allDetailRows.filter((r) => r.category === filter) : allDetailRows,
+    };
+};
+// ── duplicate_check_status_label ────────────────────────────────────
+// "Review" when any Critical-tier duplicates exist, "Clear" otherwise.
+// Args: { value: number } — critical duplicate count
+const duplicate_check_status_label = (args) => (Number(args.value) || 0) > 0 ? 'Review' : 'Clear';
+// ── duplicate_check_status_tone ─────────────────────────────────────
+// "warning" when any Critical-tier duplicates exist, "success" otherwise.
+// Args: { value: number } — critical duplicate count
+const duplicate_check_status_tone = (args) => (Number(args.value) || 0) > 0 ? 'warning' : 'success';
+// ── paginate ─────────────────────────────────────────────────────────
+// Client-side paging over a list already in state. `repeat` only accepts a
+// static statePath, so widgets `setState` the returned object into a UI path
+// (on data load via `watch`, and from Prev/Next clicks) and repeat over
+// `<path>/items`. Returns one object so a single setState writes everything —
+// json-render's watch loop cancels after the first state write, so chained
+// setStates would silently drop all but the first.
+// Args: { value: array, page?: number, delta?: number, size?: number (default 30) }
+// Returns: { items, page, label, hasPrev, hasNext, hasPages }
+const paginate = (args) => {
+    const all = Array.isArray(args.value) ? args.value : [];
+    const size = Math.max(1, Math.floor(Number(args.size) || 30));
+    const pageCount = Math.max(1, Math.ceil(all.length / size));
+    const requested = Math.floor(Number(args.page) || 0) + Math.floor(Number(args.delta) || 0);
+    const page = Math.min(Math.max(requested, 0), pageCount - 1);
+    const from = page * size;
+    const to = Math.min(all.length, from + size);
+    return {
+        items: all.slice(from, to),
+        page,
+        label: all.length ? `${from + 1}–${to} of ${all.length}` : '',
+        hasPrev: page > 0,
+        hasNext: page < pageCount - 1,
+        hasPages: pageCount > 1,
+    };
+};
+// ── classify_bill_queue ──────────────────────────────────────────────
+// Classifies every MYOB bill into one of three queue states:
+//  - Duplicate Risk: same supplier + same amount, dated the SAME day as
+//    at least one other bill (a real same-day double-entry pattern).
+//  - Needs Review: supplier name closely matches (normalized — case/
+//    punctuation-insensitive) a supplier already flagged Duplicate Risk,
+//    but this bill's amount differs — not an exact duplicate, but the
+//    same underlying vendor under a slightly different name variant is
+//    worth a second look (confirmed real pattern: "QA Dup Test Supplies
+//    Pty Ltd" vs "...Pty. Ltd.").
+//  - Ready: no match of either kind.
+// `filter` narrows `rows` to one status — the full filtered list is
+// returned every time (no pagination; the widget scrolls natively via the
+// system Body component's own overflow-y-auto instead). `expandedBillId`
+// toggles which row's "why" reason is shown — same echo-and-compare
+// pattern as analyze_bill_duplicates (xero-accounting). Only Needs Review
+// and Duplicate Risk rows get a reason and are clickable — Ready is
+// self-explanatory and needs no explanation.
+// Args: { bills?: Bill[], filter?: string, expandedBillId?: string, clickedBillId?: string }
+const classify_bill_queue = (args) => {
+    const bills = Array.isArray(args.bills) ? args.bills : [];
+    const filter = ['Ready', 'Needs Review', 'Duplicate Risk'].includes(String(args.filter)) ? String(args.filter) : '';
+    const parseDate = (raw) => {
+        const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        if (m)
+            return Number(m[1]);
+        const t = new Date(String(raw ?? '')).getTime();
+        return Number.isFinite(t) ? t : NaN;
+    };
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    const fmtDate = (ms) => Number.isFinite(ms) ? new Date(ms).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    const normName = (s) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    // Same supplier (by name) + same amount + same day = Duplicate Risk.
+    const sameDayGroups = new Map();
+    for (const b of bills) {
+        const supplier = b.Supplier;
+        const dateKey = Math.floor(parseDate(b.Date) / 86_400_000);
+        const key = `${normName(String(supplier?.Name ?? ''))}|${Number(b.TotalAmount) || 0}|${dateKey}`;
+        (sameDayGroups.get(key) ?? sameDayGroups.set(key, []).get(key)).push(b);
+    }
+    const duplicateRiskUids = new Set();
+    const flaggedNormNames = new Set();
+    for (const [, arr] of sameDayGroups) {
+        if (arr.length < 2)
+            continue;
+        for (const b of arr)
+            duplicateRiskUids.add(String(b.UID ?? ''));
+        const supplier = arr[0].Supplier;
+        flaggedNormNames.add(normName(String(supplier?.Name ?? '')));
+    }
+    const rows = bills
+        .map((b) => {
+        const uid = String(b.UID ?? '');
+        const supplier = b.Supplier;
+        const supplierName = String(supplier?.Name ?? 'Unknown');
+        const dateMs = parseDate(b.Date);
+        let status = 'Ready';
+        let reason = '';
+        if (duplicateRiskUids.has(uid)) {
+            status = 'Duplicate Risk';
+            reason = 'Same supplier and amount as another bill, dated the same day.';
+        }
+        else if (flaggedNormNames.has(normName(supplierName))) {
+            status = 'Needs Review';
+            reason = "Supplier name closely matches a flagged duplicate, but the amount differs — may be the same vendor.";
+        }
+        return {
+            uid,
+            supplier: supplierName,
+            invoiceNumber: String(b.Number ?? '—'),
+            date: fmtDate(dateMs),
+            dateMs,
+            amount: fmtAmt(b.TotalAmount),
+            status,
+            statusTone: status === 'Duplicate Risk' ? 'destructive' : status === 'Needs Review' ? 'warning' : 'success',
+            reason,
+            hasReason: status !== 'Ready',
+        };
+    })
+        .sort((a, b) => b.dateMs - a.dateMs);
+    const counts = {
+        all: rows.length,
+        ready: rows.filter((r) => r.status === 'Ready').length,
+        needsReview: rows.filter((r) => r.status === 'Needs Review').length,
+        duplicateRisk: rows.filter((r) => r.status === 'Duplicate Risk').length,
+    };
+    const filteredRows = filter ? rows.filter((r) => r.status === filter) : rows;
+    const prevExpandedId = String(args.expandedBillId ?? '');
+    const clickedBillId = args.clickedBillId !== undefined ? String(args.clickedBillId) : undefined;
+    const expandedBillId = clickedBillId !== undefined ? (clickedBillId === prevExpandedId ? '' : clickedBillId) : prevExpandedId;
+    const resultRows = filteredRows.map((r, i, arr) => ({
+        ...r,
+        expanded: r.uid === expandedBillId,
+        isLast: i === arr.length - 1,
+    }));
+    return {
+        counts,
+        filter,
+        filteredCount: filteredRows.length,
+        rows: resultRows,
+        expandedBillId,
+    };
+};
+// ── Bill Entry (record + validate a draft bill) ──────────────────────
+// Helpers for the MYOB "Bill Entry" tile — mirrors xero-accounting's own
+// Bill Entry tile in shape, but every field name and the balance model
+// differ for real reasons confirmed against live data (not guessed):
+//   - create_bill's schema uses `units`/`unit_price` (not `quantity`/
+//     `unitAmount`), has NO due_date field at all, and `tax_code_uid` is
+//     genuinely OPTIONAL per line (Xero's TaxType is mandatory) — so
+//     validation here does NOT require a tax code to be selected.
+//   - list_contacts/list_accounts responses wrap results in `{ Items:
+//     [...] }`; list_tax_codes returns a bare array — inconsistent across
+//     MYOB's own endpoints, confirmed live, not a guess.
+//   - A Contact carries ONE `CurrentBalance` field, not Xero's separate
+//     AccountsPayable/AccountsReceivable split (MYOB models a company
+//     that's both a customer and a supplier as two separate Contact
+//     records, Type="Customer" vs Type="Supplier") — so the balance
+//     section here is a single "Current balance" readout, not a two-
+//     sided "we owe / they owe" split. Sign convention (positive vs
+//     negative = owing) was NOT independently confirmed, so the raw
+//     value is shown as-is rather than asserting a direction.
+//   - list_accounts includes non-postable header/group accounts
+//     (`IsHeader: true`, e.g. "Bank Accounts") that must be filtered out
+//     of the picker — confirmed live, not every account in the chart is
+//     a valid line-item target.
+function bill_entry_fmt(value) {
+    return format_currency({ value });
+}
+/** Appends one blank editable row. `id` is a client-only row key (never sent to MYOB). */
+const bill_entry_add_line = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const id = `line-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    return [...lines, { id, description: '', units: 1, unitPrice: 0, accountUid: '', taxCodeUid: '' }];
+};
+/** units * unitPrice for one row, formatted. Args: { units, unitPrice } */
+const bill_entry_line_total = (args) => {
+    const units = Number(args.units) || 0;
+    const unitPrice = Number(args.unitPrice) || 0;
+    return bill_entry_fmt(units * unitPrice);
+};
+/** Sum of units * unitPrice across all rows, formatted. Args: { lines } */
+const bill_entry_grand_total = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const total = lines.reduce((sum, l) => sum + (Number(l.units) || 0) * (Number(l.unitPrice) || 0), 0);
+    return bill_entry_fmt(total);
+};
+/**
+ * Filters list_accounts' raw Items to real postable accounts (excludes
+ * IsHeader groupings and inactive accounts) and maps to Select options,
+ * labeled "{DisplayID} · {Name}" (e.g. "6-2100 · Office Supplies") since
+ * the bare account code alone isn't identifiable. Args: { accounts }
+ */
+const bill_entry_account_options = (args) => {
+    const accounts = Array.isArray(args.accounts) ? args.accounts : [];
+    return accounts
+        .filter((a) => a.IsHeader !== true && a.IsActive !== false)
+        .map((a) => ({
+        value: String(a.UID ?? ''),
+        label: `${String(a.DisplayID ?? '')} · ${String(a.Name ?? '')}`.replace(/^ · /, ''),
+    }))
+        .filter((o) => o.value);
+};
+/**
+ * Maps each tax code UID to its Rate (a plain percentage number, same
+ * scale as Xero's EffectiveRate — confirmed live). Args: { taxCodes }
+ */
+const bill_entry_tax_rate_lookup = (args) => {
+    const codes = Array.isArray(args.taxCodes) ? args.taxCodes : [];
+    const map = {};
+    for (const c of codes) {
+        const uid = String(c.UID ?? '');
+        if (!uid)
+            continue;
+        map[uid] = Number(c.Rate) || 0;
+    }
+    return map;
+};
+/**
+ * Tax amount for one row — units * unitPrice * (rate / 100) — using the
+ * row's own selected taxCodeUid. Blank until a tax code is actually
+ * selected (tax_code_uid is optional on this tile, unlike Xero's).
+ * Args: { units, unitPrice, taxCodeUid, taxRateMap }
+ */
+const bill_entry_line_tax = (args) => {
+    const taxCodeUid = String(args.taxCodeUid ?? '').trim();
+    if (!taxCodeUid)
+        return '';
+    const units = Number(args.units) || 0;
+    const unitPrice = Number(args.unitPrice) || 0;
+    const map = (args.taxRateMap ?? {});
+    const rate = Number(map[taxCodeUid]) || 0;
+    return bill_entry_fmt(units * unitPrice * (rate / 100));
+};
+/**
+ * Current balance for the selected supplier, read straight off
+ * list_contacts' own response (MYOB already returns `CurrentBalance` per
+ * contact — no extra API call needed). Args: { contacts, supplierUid }
+ */
+const bill_entry_supplier_balance = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const supplierUid = String(args.supplierUid ?? '').trim();
+    if (!supplierUid)
+        return { hasSelection: false, balance: '' };
+    const contact = contacts.find((c) => String(c.UID ?? '') === supplierUid);
+    if (!contact)
+        return { hasSelection: false, balance: '' };
+    return {
+        hasSelection: true,
+        balance: bill_entry_fmt(Number(contact.CurrentBalance) || 0),
+    };
+};
+/**
+ * True when the form is NOT ready to submit — supplier, date, and every
+ * line item's description/units(>0)/unitPrice(>=0)/account/tax code must be
+ * filled. Tax code is required here even though it reads as optional in
+ * MYOB's list/display responses — MYOB's Purchase/Bill/Item endpoint 400s
+ * with "TaxCode is required" on every line (confirmed live 2026-10-02).
+ * Args: { supplierUid, date, lines }
+ */
+const bill_entry_is_invalid = (args) => {
+    const supplierUid = String(args.supplierUid ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    if (!supplierUid || !date || lines.length === 0)
+        return true;
+    for (const l of lines) {
+        const desc = String(l.description ?? '').trim();
+        const units = Number(l.units);
+        const unitPrice = Number(l.unitPrice);
+        const accountUid = String(l.accountUid ?? '').trim();
+        const taxCodeUid = String(l.taxCodeUid ?? '').trim();
+        if (!desc || !accountUid || !taxCodeUid)
+            return true;
+        if (!Number.isFinite(units) || units <= 0)
+            return true;
+        if (!Number.isFinite(unitPrice) || unitPrice < 0)
+            return true;
+    }
+    return false;
+};
+/** Human-readable reason the form can't submit yet, mirroring bill_entry_is_invalid's checks in order. */
+const bill_entry_validation_message = (args) => {
+    const supplierUid = String(args.supplierUid ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    if (!supplierUid)
+        return 'Select a supplier';
+    if (!date)
+        return 'Set the bill date';
+    if (lines.length === 0)
+        return 'Add at least one line item';
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        const n = i + 1;
+        const desc = String(l.description ?? '').trim();
+        const units = Number(l.units);
+        const unitPrice = Number(l.unitPrice);
+        const accountUid = String(l.accountUid ?? '').trim();
+        const taxCodeUid = String(l.taxCodeUid ?? '').trim();
+        if (!desc)
+            return `Line ${n}: enter a description`;
+        if (!Number.isFinite(units) || units <= 0)
+            return `Line ${n}: units must be greater than 0`;
+        if (!Number.isFinite(unitPrice) || unitPrice < 0)
+            return `Line ${n}: unit price can't be negative`;
+        if (!accountUid)
+            return `Line ${n}: choose an account`;
+        if (!taxCodeUid)
+            return `Line ${n}: choose a tax code`;
+    }
+    return '';
+};
+/**
+ * create_bill takes flat top-level args (supplier_uid, date, lines, ...) —
+ * unlike Xero's create_invoice, there's no single wrapping object key to bind
+ * one $computed onto, so each field is bound separately in the widget and
+ * this only builds the `lines` array shape create_bill actually expects.
+ */
+const bill_entry_payload_lines = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    return lines.map((l) => ({
+        account_uid: String(l.accountUid ?? ''),
+        description: String(l.description ?? ''),
+        units: Number(l.units) || 0,
+        unit_price: Number(l.unitPrice) || 0,
+        tax_code_uid: String(l.taxCodeUid ?? ''),
+    }));
+};
+/**
+ * Every myob-accounting tool catches its own errors and returns a normal
+ * (non-isError) result shaped `{ __error: string }` (see myob-accounting.ts'
+ * shared tool wrapper) — so a failed create_bill looks identical to a
+ * success as far as the harness/production `/_errors` plumbing is concerned.
+ * This tile is the plugin's first write action, so it's the first time that
+ * needs handling client-side instead of relying on `/_errors/<mcp>.<tool>`.
+ */
+const bill_entry_create_bill_error = (args) => {
+    const result = args.result;
+    if (result && typeof result === 'object' && typeof result.__error === 'string') {
+        return result.__error;
+    }
+    if (typeof result === 'string')
+        return result;
+    return '';
+};
+const bill_entry_create_bill_id = (args) => {
+    const result = args.result;
+    if (result && typeof result === 'object' && !result.__error && typeof result.UID === 'string') {
+        return result.UID;
+    }
+    return '';
+};
+/** Clears the line-item list only on an actual successful create — a failed
+ * attempt must leave the user's in-progress lines intact to re-submit. */
+const bill_entry_clear_lines_on_success = (args) => {
+    const id = String(args.id ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    return id ? [] : lines;
+};
+/**
+ * Deep link to MYOB's actual Bills list — same `app.myob.com/#/au/{id}/bills`
+ * shape already used by the batch-payments and bill-validation tiles' own
+ * billsUrl. Falls back to the generic login page before list_company_files
+ * resolves, or if it ever comes back empty.
+ */
+const bill_entry_bills_url = (args) => {
+    const files = Array.isArray(args.companyFiles) ? args.companyFiles : [];
+    const id = files[0]?.Id;
+    return id ? `https://app.myob.com/#/au/${id}/bills` : 'https://www.myob.com/au/login';
+};
+// ── flatten_supplier_payments ────────────────────────────────────────
+// Flattens MYOB Purchase/SupplierPayment items (remittance records) into
+// display-ready flat rows for Table, sorted most-recent-first. Each
+// payment's Lines[].Purchase.Number (the bill(s) it was applied against)
+// is condensed into a single "Bill <n>" / "<n> bills" reference string —
+// a remittance can cover more than one bill in the one payment.
+//
+// Consumed by myob-remittance-advice.json's watch on
+// "/myob-accounting/list_supplier_payments/Items". That key MUST come
+// BEFORE the sibling "/myob-accounting/list_supplier_payments" watch (the
+// one driving the footer's list_company_files call) in the widget's watch
+// object — @json-render/react's watch dispatcher iterates all of one
+// element's watched paths in a single sequential async loop (object key
+// order), and a slow/failing earlier action can starve a later one from
+// ever running. Confirmed live: with list_company_files listed first,
+// this function was never invoked at all despite the data loading fine.
+// Args: { value: SupplierPayment[] }
+const flatten_supplier_payments = (args) => {
+    const items = Array.isArray(args.value) ? args.value : [];
+    const parseDate = (raw) => {
+        if (!raw)
+            return NaN;
+        const m = raw.match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : new Date(raw).getTime();
+    };
+    const fmtDate = (raw) => {
+        const t = parseDate(raw);
+        const d = new Date(t);
+        return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return 'A$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    return items
+        .map((item) => {
+        const supplier = item.Supplier;
+        const lines = Array.isArray(item.Lines) ? item.Lines : [];
+        const billNumbers = lines
+            .map((l) => l.Purchase?.Number)
+            .filter((n) => typeof n === 'string' && n.length > 0);
+        const billRef = billNumbers.length === 0 ? '—'
+            : billNumbers.length === 1 ? `Bill ${billNumbers[0]}`
+                : `${billNumbers.length} bills`;
+        const rawDate = String(item.Date ?? '');
+        return {
+            id: String(item.UID ?? ''),
+            supplierName: String(supplier?.Name ?? 'Unknown'),
+            paymentNumber: String(item.PaymentNumber ?? ''),
+            date: fmtDate(rawDate),
+            rawDate,
+            billRef,
+            amount: fmtAmt(item.AmountPaid),
+        };
+    })
+        .sort((a, b) => (parseDate(b.rawDate) || 0) - (parseDate(a.rawDate) || 0));
+};
 const elements = {
     slug: 'myob-accounting',
     functions: {
@@ -846,6 +1917,28 @@ const elements = {
         cash_received,
         bool_not,
         three_month_window,
+        analyze_duplicate_contacts,
+        analyze_myob_duplicates,
+        analyze_exclusion_check,
+        duplicate_check_status_label,
+        duplicate_check_status_tone,
+        paginate,
+        classify_bill_queue,
+        bill_entry_add_line,
+        bill_entry_line_total,
+        bill_entry_grand_total,
+        bill_entry_account_options,
+        bill_entry_tax_rate_lookup,
+        bill_entry_line_tax,
+        bill_entry_supplier_balance,
+        bill_entry_is_invalid,
+        bill_entry_validation_message,
+        bill_entry_payload_lines,
+        bill_entry_create_bill_error,
+        bill_entry_create_bill_id,
+        bill_entry_clear_lines_on_success,
+        bill_entry_bills_url,
+        flatten_supplier_payments,
     },
 };
 export default elements;

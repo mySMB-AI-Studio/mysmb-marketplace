@@ -1,0 +1,346 @@
+{
+  "id": "myob-exclusion-summary",
+  "title": "MYOB — Exclusion Check",
+  "description": "Rolls up three real exclusion signals into one summary: inactive suppliers still carrying bills, inactive customers still carrying invoices, and account postings sitting in Suspense/Non-deductible/Inactive accounts. Live-wired to myob-accounting: list_contacts fires on mount, fans out to list_bills, list_invoices, and list_accounts, and analyze_exclusion_check converges as each result arrives. Each row is clickable — opens an in-tile table of just that check's flagged records, each with a plain-language reason it was flagged. 'GST Exclusion Mismatch' from the original 4-check reference is intentionally omitted — confirmed via live testing that this MCP server's get_invoice/get_bill tools return no Lines field at all, at any level, despite the connector's own README documenting line-item detail; a real MCP-server-side gap, not a widget-side limitation.",
+  "category": "finance",
+  "tags": ["myob", "exclusions", "suppliers", "customers", "accounts", "compliance", "data-quality"],
+  "keywords": ["exclusion", "flags", "review", "supplier", "customer", "suspense", "non-deductible", "inactive", "myob"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min":       { "colSpan": 3, "rowSpan": 7 },
+    "max":       { "colSpan": 6, "rowSpan": 11 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_contacts",
+    "params": { "type": "All", "page_size": 1000 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["headerRow", "div0", "body"],
+        "watch": {
+          "/myob-accounting/list_contacts/Items": {
+            "action": "myob-accounting.list_bills",
+            "params": { "page_size": 1000 }
+          },
+          "/myob-accounting/list_bills/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": { "$state": "/ui/myobExc/filter" },
+                  "showAll": { "$state": "/ui/myobExc/showAll" }
+                }
+              }
+            }
+          },
+          "/myob-accounting/list_invoices/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": { "$state": "/ui/myobExc/filter" },
+                  "showAll": { "$state": "/ui/myobExc/showAll" }
+                }
+              }
+            }
+          },
+          "/myob-accounting/list_accounts/Items": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": { "$state": "/ui/myobExc/filter" },
+                  "showAll": { "$state": "/ui/myobExc/showAll" }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "headerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"],
+        "watch": {
+          "/myob-accounting/list_contacts/Items": {
+            "action": "myob-accounting.list_accounts",
+            "params": { "page_size": 1000 }
+          }
+        }
+      },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["logo", "titleStack"] },
+      "logo": { "type": "Icon", "props": { "name": "Ban", "tone": "destructive", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "subtitle"] },
+      "title": { "type": "Heading", "props": { "text": "Exclusion Check", "level": "h2" } },
+      "subtitle": { "type": "Eyebrow", "props": { "text": "MYOB" } },
+
+      "div0": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/myob-accounting/list_contacts/Items": {
+            "action": "myob-accounting.list_invoices",
+            "params": { "page_size": 1000 }
+          }
+        }
+      },
+
+      "body": { "type": "Body", "props": { "padding": "md" }, "children": ["loading", "empty", "content"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/myob-accounting.list_contacts" },
+            { "$state": "/myob-accounting/list_bills/Items", "not": true },
+            { "$state": "/myob-accounting/list_invoices/Items", "not": true },
+            { "$state": "/myob-accounting/list_accounts/Items", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No exclusions found — nothing needs review." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_contacts", "not": true },
+            { "$state": "/myob-accounting/list_bills/Items" },
+            { "$state": "/myob-accounting/list_invoices/Items" },
+            { "$state": "/myob-accounting/list_accounts/Items" },
+            { "$state": "/ui/myobExc/totalCount", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["heroStack", "div1", "row1", "div2", "row2", "div3", "row3", "row3Footer", "div4", "detailSection"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myob-accounting.list_contacts", "not": true },
+            { "$state": "/myob-accounting/list_bills/Items" },
+            { "$state": "/myob-accounting/list_invoices/Items" },
+            { "$state": "/myob-accounting/list_accounts/Items" },
+            { "$state": "/ui/myobExc/totalCount" }
+          ]
+        }
+      },
+
+      "heroStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["heroValue", "heroSubtitle"] },
+      "heroValue": { "type": "Stat", "props": { "value": { "$state": "/ui/myobExc/totalCount" }, "tone": "destructive" } },
+      "heroSubtitle": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "items needing review across {n} checks", "n": { "$state": "/ui/myobExc/checksCount" } } },
+          "size": "md",
+          "tone": "muted"
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "row1": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "clickable": true },
+        "children": ["row1Left", "row1Badge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": "Supplier",
+                  "showAll": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "row1Left": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["row1Dot", "row1TextStack"] },
+      "row1Dot": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
+      "row1TextStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["row1Label", "row1Desc"] },
+      "row1Label": { "type": "Text", "props": { "text": { "$state": "/ui/myobExc/rows/0/label" }, "size": "sm", "weight": "medium" } },
+      "row1Desc": { "type": "Caption", "props": { "text": "Inactive suppliers with bills still outstanding", "tone": "muted" } },
+      "row1Badge": { "type": "Badge", "props": { "text": { "$state": "/ui/myobExc/rows/0/count" }, "tone": "default", "variant": "soft" } },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "row2": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "clickable": true },
+        "children": ["row2Left", "row2Badge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": "Customer",
+                  "showAll": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "row2Left": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["row2Dot", "row2TextStack"] },
+      "row2Dot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "row2TextStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["row2Label", "row2Desc"] },
+      "row2Label": { "type": "Text", "props": { "text": { "$state": "/ui/myobExc/rows/1/label" }, "size": "sm", "weight": "medium" } },
+      "row2Desc": { "type": "Caption", "props": { "text": "Inactive customers with invoices still outstanding", "tone": "muted" } },
+      "row2Badge": { "type": "Badge", "props": { "text": { "$state": "/ui/myobExc/rows/1/count" }, "tone": "default", "variant": "soft" } },
+
+      "div3": { "type": "Divider", "props": {} },
+
+      "row3": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "start", "clickable": true },
+        "children": ["row3Left", "row3Badge"],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": "Account",
+                  "showAll": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "row3Left": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["row3Dot", "row3TextStack"] },
+      "row3Dot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "row3TextStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["row3Label", "row3Desc"] },
+      "row3Label": { "type": "Text", "props": { "text": { "$state": "/ui/myobExc/rows/2/label" }, "size": "sm", "weight": "medium" } },
+      "row3Desc": { "type": "Caption", "props": { "text": "Suspense, non-deductible, or inactive account balances", "tone": "muted" } },
+      "row3Badge": { "type": "Badge", "props": { "text": { "$state": "/ui/myobExc/rows/2/count" }, "tone": "default", "variant": "soft" } },
+
+      "row3Footer": {
+        "type": "Button",
+        "props": { "label": "Review all", "variant": "primary", "tone": "destructive" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": "",
+                  "showAll": true
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "div4": { "type": "Divider", "props": {} },
+
+      "detailSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["detailHeaderRow", "detailTable"],
+        "visible": { "$state": "/ui/myobExc/showAll" }
+      },
+      "detailHeaderRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["detailHeading", "detailCloseBtn"] },
+      "detailHeading": { "type": "Text", "props": { "text": { "$state": "/ui/myobExc/filterLabel" }, "size": "sm", "weight": "semibold" } },
+      "detailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Close" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/myobExc",
+              "value": {
+                "$computed": "myob-accounting_analyze_exclusion_check",
+                "args": {
+                  "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                  "bills": { "$state": "/myob-accounting/list_bills/Items" },
+                  "invoices": { "$state": "/myob-accounting/list_invoices/Items" },
+                  "accounts": { "$state": "/myob-accounting/list_accounts/Items" },
+                  "filter": "",
+                  "showAll": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "detailTable": {
+        "type": "Table",
+        "props": {
+          "rows": { "$state": "/ui/myobExc/detailRows" },
+          "columns": [
+            { "id": "category", "header": "Check", "field": "category", "priority": 2, "width": 90 },
+            { "id": "label", "header": "Record", "field": "label", "priority": 1 },
+            { "id": "detail", "header": "Why it's flagged", "field": "detail", "priority": 1 },
+            { "id": "amount", "header": "Amount", "field": "amount", "priority": 1, "width": 100 }
+          ]
+        }
+      }
+
+    }
+  },
+  "status": "draft"
+}

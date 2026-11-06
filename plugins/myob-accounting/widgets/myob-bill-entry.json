@@ -1,0 +1,446 @@
+{
+  "id": "myob-bill-entry",
+  "title": "MYOB — Bill Entry",
+  "description": "Record a new supplier bill in MYOB — pick the supplier, date, and line items (account + tax code per line, both required by MYOB's own create_bill endpoint), with inline validation before it can be submitted. Creates a real bill via MYOB's create_bill — there is no separate draft/authorised state on this endpoint the way Xero has, so submitting here creates the bill outright. Never resolves its own company file — MYOB has no dashboard-level company-file switcher (unlike Xero's org switcher), so every tool call omits myob_company_file_id entirely and relies on the connection's own auto-discovered default, same as every other myob-accounting tile.",
+  "category": "accounting",
+  "tags": ["myob", "accounting", "bills", "accounts-payable", "data-entry"],
+  "keywords": ["bill entry", "record bill", "create bill", "accounts payable", "myob", "supplier bill"],
+  "connectorsUsed": ["myob-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 10 },
+    "min": { "colSpan": 6, "rowSpan": 8 },
+    "max": { "colSpan": 12, "rowSpan": 16 }
+  },
+  "dataProvider": {
+    "mcp": "myob-accounting",
+    "tool": "list_contacts",
+    "params": { "type": "Supplier", "is_active": true }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer"],
+        "watch": {
+          "/myob-accounting/list_contacts": [
+            { "action": "myob-accounting.list_company_files", "params": {} }
+          ],
+          "/myob-accounting/list_contacts/Items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/contactOptions",
+                "value": {
+                  "$computed": "to_options",
+                  "args": {
+                    "value": { "$state": "/myob-accounting/list_contacts/Items" },
+                    "valueField": "UID",
+                    "labelField": "CompanyName"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/contactOptions": [
+            { "action": "myob-accounting.list_accounts", "params": {} }
+          ],
+          "/myob-accounting/list_accounts/Items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/accountOptions",
+                "value": {
+                  "$computed": "myob-accounting_bill_entry_account_options",
+                  "args": { "accounts": { "$state": "/myob-accounting/list_accounts/Items" } }
+                }
+              }
+            }
+          ],
+          "/ui/accountOptions": [
+            { "action": "myob-accounting.list_tax_codes", "params": {} }
+          ],
+          "/myob-accounting/list_tax_codes/Items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/taxOptions",
+                "value": {
+                  "$computed": "to_options",
+                  "args": {
+                    "value": { "$state": "/myob-accounting/list_tax_codes/Items" },
+                    "valueField": "UID",
+                    "labelField": "Code",
+                    "labelPattern": "{Code} — {Description}"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/taxOptions": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/taxRateByCode",
+                "value": {
+                  "$computed": "myob-accounting_bill_entry_tax_rate_lookup",
+                  "args": { "taxCodes": { "$state": "/myob-accounting/list_tax_codes/Items" } }
+                }
+              }
+            }
+          ],
+          "/ui/form/supplierUid": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/supplierBalance",
+                "value": {
+                  "$computed": "myob-accounting_bill_entry_supplier_balance",
+                  "args": {
+                    "contacts": { "$state": "/myob-accounting/list_contacts/Items" },
+                    "supplierUid": { "$state": "/ui/form/supplierUid" }
+                  }
+                }
+              }
+            }
+          ],
+          "/myob-accounting/create_bill": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/lastCreatedBillId",
+                "value": {
+                  "$computed": "myob-accounting_bill_entry_create_bill_id",
+                  "args": { "result": { "$state": "/myob-accounting/create_bill" } }
+                }
+              }
+            }
+          ],
+          "/ui/lastCreatedBillId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/lineItems",
+                "value": {
+                  "$computed": "myob-accounting_bill_entry_clear_lines_on_success",
+                  "args": { "id": { "$state": "/ui/lastCreatedBillId" }, "lines": { "$state": "/ui/lineItems" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "FilePlus2", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Bill Entry", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "MYOB · record a bill" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["successBanner", "errorBanner", "formStack"] },
+
+      "successBanner": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["successIcon", "successText"],
+        "visible": { "$state": "/ui/lastCreatedBillId" }
+      },
+      "successIcon": { "type": "Icon", "props": { "name": "CheckCircle2", "tone": "success", "size": "sm" } },
+      "successText": { "type": "Caption", "props": { "text": "Bill created in MYOB.", "tone": "success" } },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_bill_entry_create_bill_error",
+            "args": { "result": { "$state": "/myob-accounting/create_bill" } }
+          },
+          "tone": "destructive"
+        },
+        "visible": {
+          "$computed": "myob-accounting_bill_entry_create_bill_error",
+          "args": { "result": { "$state": "/myob-accounting/create_bill" } }
+        }
+      },
+
+      "formStack": { "type": "Stack", "props": { "gap": "sm" }, "children": ["supplierRow", "supplierBalanceRow", "dateRow", "referenceRow", "commentRow", "lineItemsSection", "totalsRow", "validationRow", "submitRow"] },
+
+      "supplierRow": {
+        "type": "FormRow",
+        "props": { "label": "Supplier" },
+        "children": ["supplierSelect"]
+      },
+      "supplierSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/form/supplierUid" },
+          "options": { "$state": "/ui/contactOptions" },
+          "placeholder": "Select a supplier…",
+          "size": "sm"
+        }
+      },
+
+      "supplierBalanceRow": {
+        "type": "Row",
+        "props": { "gap": "lg", "align": "center" },
+        "children": ["balanceBlock"],
+        "visible": { "$state": "/ui/form/supplierUid" }
+      },
+      "balanceBlock": { "type": "Stack", "props": { "gap": "none" }, "children": ["balanceLabel", "balanceValue"] },
+      "balanceLabel": { "type": "Caption", "props": { "text": "Current balance", "tone": "muted" } },
+      "balanceValue": {
+        "type": "Text",
+        "props": { "text": { "$state": "/ui/supplierBalance/balance" }, "weight": "semibold", "size": "sm" }
+      },
+
+      "dateRow": {
+        "type": "FormRow",
+        "props": { "label": "Date" },
+        "children": ["dateInput"]
+      },
+      "dateInput": {
+        "type": "DateInput",
+        "props": { "value": { "$bindState": "/ui/form/date" }, "size": "sm" }
+      },
+
+      "referenceRow": {
+        "type": "FormRow",
+        "props": { "label": "Supplier invoice #", "hint": "Optional" },
+        "children": ["referenceInput"]
+      },
+      "referenceInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/form/invoiceNumber" }, "placeholder": "INV-1234", "size": "sm" }
+      },
+
+      "commentRow": {
+        "type": "FormRow",
+        "props": { "label": "Comment", "hint": "Optional" },
+        "children": ["commentInput"]
+      },
+      "commentInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/form/comment" }, "placeholder": "Internal note", "size": "sm" }
+      },
+
+      "lineItemsSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lineItemsHeaderRow", "lineItemsColHeader", "lineItemsList", "addLineRow"]
+      },
+      "lineItemsHeaderRow": {
+        "type": "Caption",
+        "props": { "text": "Line items", "tone": "muted" }
+      },
+      "lineItemsColHeader": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": "minmax(0, 1fr) 4.5rem 6rem 6rem 2rem" },
+        "children": ["colDesc", "colUnits", "colUnitPrice", "colLineTotal", "colRemoveSpacer"]
+      },
+      "colDesc": { "type": "Caption", "props": { "text": "Description" } },
+      "colUnits": { "type": "Caption", "props": { "text": "Units" } },
+      "colUnitPrice": { "type": "Caption", "props": { "text": "Unit price" } },
+      "colLineTotal": { "type": "Caption", "props": { "text": "Line total" } },
+      "colRemoveSpacer": { "type": "Caption", "props": { "text": "" } },
+
+      "lineItemsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["lineItemCard"],
+        "repeat": { "statePath": "/ui/lineItems", "key": "id" }
+      },
+      "lineItemCard": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["lineRow", "lineRow2"]
+      },
+      "lineRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": "minmax(0, 1fr) 4.5rem 6rem 6rem 2rem" },
+        "children": ["lineDesc", "lineUnits", "lineUnitPrice", "lineTotal", "lineRemoveBtn"]
+      },
+      "lineDesc": {
+        "type": "TextInput",
+        "props": { "value": { "$bindItem": "description" }, "placeholder": "Item or service", "size": "sm" }
+      },
+      "lineUnits": {
+        "type": "NumberInput",
+        "props": { "value": { "$bindItem": "units" }, "min": 0, "step": 1, "size": "sm" }
+      },
+      "lineUnitPrice": {
+        "type": "NumberInput",
+        "props": { "value": { "$bindItem": "unitPrice" }, "min": 0, "step": 0.01, "size": "sm" }
+      },
+      "lineTotal": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_bill_entry_line_total",
+            "args": { "units": { "$item": "units" }, "unitPrice": { "$item": "unitPrice" } }
+          },
+          "tone": "muted"
+        }
+      },
+      "lineRemoveBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "variant": "ghost", "ariaLabel": "Remove line" },
+        "on": {
+          "click": {
+            "action": "list_remove_by_field",
+            "params": { "listPaths": "/ui/lineItems", "field": "id", "value": { "$bindItem": "id" } }
+          }
+        }
+      },
+      "lineRow2": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "template": "minmax(0, 1fr) minmax(0, 1fr) 6rem 2rem" },
+        "children": ["lineAccount", "lineTax", "lineTaxAmount", "lineRow2Spacer"]
+      },
+      "lineAccount": {
+        "type": "Select",
+        "props": { "value": { "$bindItem": "accountUid" }, "options": { "$state": "/ui/accountOptions" }, "placeholder": "Account…", "size": "sm" }
+      },
+      "lineTax": {
+        "type": "Select",
+        "props": { "value": { "$bindItem": "taxCodeUid" }, "options": { "$state": "/ui/taxOptions" }, "placeholder": "Tax code…", "size": "sm" }
+      },
+      "lineTaxAmount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_bill_entry_line_tax",
+            "args": {
+              "units": { "$item": "units" },
+              "unitPrice": { "$item": "unitPrice" },
+              "taxCodeUid": { "$item": "taxCodeUid" },
+              "taxRateMap": { "$state": "/ui/taxRateByCode" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "lineRow2Spacer": { "type": "Caption", "props": { "text": "" } },
+
+      "addLineRow": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["addLineBtn"]
+      },
+      "addLineBtn": {
+        "type": "Button",
+        "props": { "label": "Add line", "leadingIcon": "Plus", "size": "sm", "variant": "secondary" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/lineItems",
+              "value": { "$computed": "myob-accounting_bill_entry_add_line", "args": { "lines": { "$state": "/ui/lineItems" } } }
+            }
+          }
+        }
+      },
+
+      "totalsRow": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs", "align": "center" },
+        "children": ["totalsLabel", "totalsValue"],
+        "visible": { "$state": "/ui/lineItems/0" }
+      },
+      "totalsLabel": { "type": "Caption", "props": { "text": "Total", "tone": "muted" } },
+      "totalsValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "myob-accounting_bill_entry_grand_total", "args": { "lines": { "$state": "/ui/lineItems" } } },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+
+      "validationRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "myob-accounting_bill_entry_validation_message",
+            "args": {
+              "supplierUid": { "$state": "/ui/form/supplierUid" },
+              "date": { "$state": "/ui/form/date" },
+              "lines": { "$state": "/ui/lineItems" }
+            }
+          },
+          "tone": "warning"
+        },
+        "visible": {
+          "$computed": "myob-accounting_bill_entry_is_invalid",
+          "args": {
+            "supplierUid": { "$state": "/ui/form/supplierUid" },
+            "date": { "$state": "/ui/form/date" },
+            "lines": { "$state": "/ui/lineItems" }
+          }
+        }
+      },
+
+      "submitRow": { "type": "Row", "props": { "justify": "end" }, "children": ["submitBtn"] },
+      "submitBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Create Bill",
+          "leadingIcon": "FilePlus2",
+          "tone": "brand",
+          "variant": "primary",
+          "disabled": {
+            "$computed": "myob-accounting_bill_entry_is_invalid",
+            "args": {
+              "supplierUid": { "$state": "/ui/form/supplierUid" },
+              "date": { "$state": "/ui/form/date" },
+              "lines": { "$state": "/ui/lineItems" }
+            }
+          }
+        },
+        "on": {
+          "click": {
+            "action": "myob-accounting.create_bill",
+            "params": {
+              "supplier_uid": { "$state": "/ui/form/supplierUid" },
+              "date": { "$state": "/ui/form/date" },
+              "supplier_invoice_number": { "$state": "/ui/form/invoiceNumber" },
+              "comment": { "$state": "/ui/form/comment" },
+              "lines": {
+                "$computed": "myob-accounting_bill_entry_payload_lines",
+                "args": { "lines": { "$state": "/ui/lineItems" } }
+              }
+            }
+          }
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["openMyobBtn"]
+      },
+      "openMyobBtn": {
+        "type": "Button",
+        "props": { "label": "Open Bills", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "myob-accounting_bill_entry_bills_url",
+                "args": { "companyFiles": { "$state": "/myob-accounting/list_company_files" } }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      }
+    }
+  },
+  "status": "published"
+}

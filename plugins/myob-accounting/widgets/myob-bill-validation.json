@@ -1,0 +1,669 @@
+{
+  "id": "myob-bill-validation",
+  "title": "Bill Validation",
+  "description": "Rule-first check over open MYOB bills: which validation rules fail most (duplicate or missing supplier invoice number, GST not 10%, missing or invalid ABN, totals that don't add up) and the bills behind them.",
+  "category": "finance",
+  "tags": [
+    "myob",
+    "bills",
+    "validation",
+    "compliance",
+    "accounts-payable",
+    "controls"
+  ],
+  "keywords": [
+    "myob",
+    "bill validation",
+    "duplicate invoice",
+    "abn check",
+    "gst check",
+    "supplier invoice number",
+    "bill errors",
+    "accounts payable",
+    "pre-payment check",
+    "open purchases"
+  ],
+  "connectorsUsed": [
+    "myob-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 8
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 16
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "myob-accounting",
+    "tool": "list_myob_bill_validation",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ListChecks",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Bill Validation",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Open purchases"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/myob-accounting.list_myob_bill_validation"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No open bills to check."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/myob-accounting.list_myob_bill_validation",
+              "not": true
+            },
+            {
+              "$state": "/myob-accounting/list_myob_bill_validation/summary/totalBills",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "heroDivider",
+          "ruleList",
+          "flaggedHead",
+          "flaggedList",
+          "flaggedMore",
+          "footerDivider",
+          "footerRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/myob-accounting.list_myob_bill_validation",
+              "not": true
+            },
+            {
+              "$state": "/myob-accounting/list_myob_bill_validation/summary/totalBills"
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "template": "auto minmax(0,1fr)"
+        },
+        "children": [
+          "heroCount",
+          "heroText"
+        ]
+      },
+      "heroCount": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "heroCountStack"
+        ]
+      },
+      "heroCountStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "heroCountValue",
+          "heroCountLabel"
+        ]
+      },
+      "heroCountValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/myob-accounting/list_myob_bill_validation/summary/flaggedCount"
+          }
+        }
+      },
+      "heroCountLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "FLAGGED",
+          "tone": "warning"
+        }
+      },
+      "heroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heroAmount",
+          "heroSub"
+        ]
+      },
+      "heroAmount": {
+        "type": "Heading",
+        "props": {
+          "text": {
+            "$state": "/myob-accounting/list_myob_bill_validation/summary/flaggedAmountText"
+          },
+          "level": "h1"
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/myob-accounting/list_myob_bill_validation/summary/headlineText"
+          },
+          "tone": "muted"
+        }
+      },
+      "heroDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "ruleList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "ruleRow"
+        ],
+        "repeat": {
+          "statePath": "/myob-accounting/list_myob_bill_validation/rules",
+          "key": "key"
+        }
+      },
+      "ruleRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "1.25rem minmax(0,1fr) 9rem 1.5rem"
+        },
+        "children": [
+          "ruleIcon",
+          "ruleLabel",
+          "ruleBarWrap",
+          "ruleCountWrap"
+        ]
+      },
+      "ruleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "icon"
+          },
+          "size": "xs",
+          "tone": "muted"
+        }
+      },
+      "ruleLabel": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "ruleLabelFail",
+          "ruleLabelPass"
+        ]
+      },
+      "ruleLabelFail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "passed",
+          "not": true
+        }
+      },
+      "ruleLabelPass": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "tone": "muted",
+          "truncate": true
+        },
+        "visible": {
+          "$item": "passed"
+        }
+      },
+      "ruleBarWrap": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "ruleBar"
+        ]
+      },
+      "ruleBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": "warning"
+        }
+      },
+      "ruleCountWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "end"
+        },
+        "children": [
+          "ruleCount",
+          "rulePassTick"
+        ]
+      },
+      "ruleCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "count"
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "passed",
+          "not": true
+        }
+      },
+      "rulePassTick": {
+        "type": "Badge",
+        "props": {
+          "text": "✓",
+          "tone": "success",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "passed"
+        }
+      },
+      "flaggedHead": {
+        "type": "Caption",
+        "props": {
+          "text": "FLAGGED BILLS",
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/myob-accounting/list_myob_bill_validation/summary/flaggedCount"
+        }
+      },
+      "flaggedList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "flaggedRow"
+        ],
+        "repeat": {
+          "statePath": "/myob-accounting/list_myob_bill_validation/flaggedBills",
+          "key": "id"
+        }
+      },
+      "flaggedRow": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "flaggedRowContent"
+        ]
+      },
+      "flaggedRowContent": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0,1fr) auto auto",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "flaggedInfo",
+          "flaggedPills",
+          "flaggedAmount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "reviewUrl"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "flaggedInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "flaggedName",
+          "flaggedMeta"
+        ]
+      },
+      "flaggedName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "supplierName"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "flaggedMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "metaLine"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "flaggedPills": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "pill0",
+          "pill1",
+          "pill2",
+          "pill3",
+          "pill4"
+        ]
+      },
+      "pill0": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/0"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/0"
+        }
+      },
+      "pill1": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/1"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/1"
+        }
+      },
+      "pill2": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/2"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/2"
+        }
+      },
+      "pill3": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/3"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/3"
+        }
+      },
+      "pill4": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/4"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/4"
+        }
+      },
+      "flaggedAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "flaggedMore": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/myob-accounting/list_myob_bill_validation/summary/moreFlaggedText"
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/myob-accounting/list_myob_bill_validation/summary/moreFlaggedText"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerCompany",
+          "footerOpen"
+        ]
+      },
+      "footerCompany": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/myob-accounting/list_myob_bill_validation/companyFileText"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerOpen": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/myob-accounting/list_myob_bill_validation/billsUrl"
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "footerOpenText": {
+        "type": "Text",
+        "props": {
+          "text": "Open in MYOB",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "xs"
+        }
+      }
+    }
+  }
+}
