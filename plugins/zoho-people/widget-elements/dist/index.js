@@ -211,152 +211,155 @@ const leave_report_params = (args) => {
     const year = new Date().getFullYear();
     return { employee: meId, from: `${year}-01-01`, to: `${year}-12-31`, dateFormat: 'yyyy-MM-dd' };
 };
-/** Check-ins after this time (24h `HH:mm`) count as late — the staging org's "General" shift start. */
-const SHIFT_START = '09:00';
 /** Rows in the expanded employee list (TILE-DISPLAY-STANDARDS §11). */
 const MAX_EMPLOYEE_ROWS = 20;
-/** `yyyy-MM-dd` for a local date. */
-function localIsoDate(d) {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-/**
- * A Zoho People check-in time as `{ date: 'yyyy-MM-dd', time: 'HH:mm' }`.
- * Accepts `2026-11-06 09:02:00` (the `dateTimeFormat` the tile requests),
- * `06-11-2026 09:02:00` and `06-Nov-2026 09:02 AM`; null if unparseable.
- */
-function parseCheckIn(value) {
-    const s = String(value ?? '').trim();
-    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/.exec(s) ??
-        /^(\d{2})-(\d{2}|[A-Za-z]{3})-(\d{4}) (\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?/.exec(s);
-    if (!m)
-        return null;
-    let year, month, day;
-    if (m[1].length === 4) {
-        [year, month, day] = [m[1], Number(m[2]), m[3]];
-    }
-    else {
-        month = /^\d+$/.test(m[2])
-            ? Number(m[2])
-            : MONTHS.indexOf(m[2].charAt(0).toUpperCase() + m[2].slice(1).toLowerCase()) + 1;
-        [year, day] = [m[3], m[1]];
-    }
-    if (!month)
-        return null;
-    let hour = Number(m[4]);
-    const meridiem = m[6]?.toUpperCase();
-    if (meridiem === 'PM' && hour < 12)
-        hour += 12;
-    if (meridiem === 'AM' && hour === 12)
-        hour = 0;
-    return {
-        date: `${year}-${String(month).padStart(2, '0')}-${day}`,
-        time: `${String(hour).padStart(2, '0')}:${m[5]}`,
-    };
-}
-/**
- * Every check-in time in one employee's `fetchLatestAttEntries` entries:
- * `[{ "<date>": { singleRegEntries: {checkInTime}, multiRegEntries: [...], attEntries: [...] } }]`.
- */
-function checkInTimes(entries) {
-    const out = [];
-    for (const byDate of Array.isArray(entries) ? entries : [entries]) {
-        if (!byDate || typeof byDate !== 'object')
-            continue;
-        for (const day of Object.values(byDate)) {
-            if (!day || typeof day !== 'object')
-                continue;
-            for (const group of Object.values(day)) {
-                for (const e of Array.isArray(group) ? group : [group]) {
-                    if (e && typeof e === 'object' && e.checkInTime)
-                        out.push(e.checkInTime);
-                }
-            }
-        }
-    }
-    return out;
-}
 /** `9:02 AM` for a Date, in the viewer's time zone. */
 function clockTime(d) {
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
+/** A getUserReport time such as `06-Nov-2026 07:57 AM` as 24h `HH:mm`; '' if it has none. */
+function reportTime(value) {
+    const m = /(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?\s*$/.exec(String(value ?? '').trim());
+    if (!m)
+        return '';
+    let hour = Number(m[1]);
+    const meridiem = m[3]?.toUpperCase();
+    if (meridiem === 'PM' && hour < 12)
+        hour += 12;
+    if (meridiem === 'AM' && hour === 12)
+        hour = 0;
+    return `${String(hour).padStart(2, '0')}:${m[2]}`;
+}
+/** `7:57 AM` for a 24h `HH:mm`. */
+function clock12(time) {
+    const [h, m] = time.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+/** `11 min` / `1 hr 5 min` from an `HH:mm` lateness; '' if unparseable. */
+function lateText(value) {
+    const m = /^(\d+):(\d{2})/.exec(String(value ?? ''));
+    if (!m)
+        return '';
+    const [h, min] = [Number(m[1]), Number(m[2])];
+    return [h ? `${h} hr` : '', min || !h ? `${min} min` : ''].filter(Boolean).join(' ');
+}
+const ATTENDANCE_STATUSES = ['present', 'late', 'absent', 'leave', 'weekend', 'holiday', 'unknown'];
 /**
- * Today's attendance across the organisation for the Today's Attendance tile.
+ * Today's attendance across the organisation for the Today's Attendance tile,
+ * from the `attendance_today` tool (one Zoho getUserReport per active
+ * employee, for today in the org's time zone).
  *
- * - Tracked: active employees from the `employee` form.
- * - Present: checked in today by the shift start (`SHIFT_START`); Late: first
- *   check-in after it; Absent: tracked employees with no check-in today
- *   (employees on leave included). The percentage is present ÷ tracked, so
- *   late arrivals don't count towards it — as in the mock.
- * - Check-ins come from Zoho's `fetchLatestAttEntries`, which only returns
- *   entries added or updated in the last 10 hours (its maximum `duration`),
- *   matched to employees by record ID, employee ID or email.
+ * - Scheduled: tracked employees not on a weekend or holiday whose report
+ *   loaded. The bar, legend and percentage cover them.
+ * - Present / Late: checked in, on time or late against their own shift;
+ *   Absent: no check-in; On leave: on leave for the day.
+ * - The percentage is present ÷ scheduled, so late arrivals don't count
+ *   towards it — as in the mock.
  *
  * Args:
- *   employees — `get_form_records` (form `employee`) `response.result`: `[{ "<erecno>": [{ EmployeeID, EmailID, Employeestatus }] }]`
- *   entries   — `passthrough_get` (`/attendance/fetchLatestAttEntries`) `response.result`: `{ erecNo, employeeId, emailId, entries }[]`
+ *   report — `attendance_today` result: `{ date, timezone, summary, employees: [{ erecno, name, status, firstIn, lateBy, zohoStatus, leaveCode }] }`
  *   showEmployees — true when the "N employees tracked" box is expanded (`/ui/showEmployees`)
  *
- * Spec: `{ "$computed": "zoho-people_attendance_today_dashboard", "args": { "employees": { "$state": "/zoho-people/get_form_records/response/result" }, "entries": { "$state": "/zoho-people/passthrough_get/response/result" } } }`
+ * Spec: `{ "$computed": "zoho-people_attendance_today_dashboard", "args": { "report": { "$state": "/zoho-people/attendance_today" }, "showEmployees": { "$state": "/ui/showEmployees" } } }`
  */
 const attendance_today_dashboard = (args) => {
-    const employees = unwrapFormRecords(args.employees).filter((e) => String(e.Employeestatus ?? 'Active') === 'Active');
-    const loaded = Array.isArray(args.employees) && Array.isArray(args.entries);
-    const now = new Date();
-    const today = localIsoDate(now);
-    // Each employee's first check-in today, keyed by every ID they can be matched on.
-    const firstIn = new Map();
-    for (const row of Array.isArray(args.entries) ? args.entries : []) {
-        const times = checkInTimes(row.entries)
-            .map(parseCheckIn)
-            .filter((t) => t?.date === today)
-            .map((t) => t.time)
-            .sort();
-        if (!times.length)
-            continue;
-        for (const key of [row.erecNo, row.employeeId, String(row.emailId ?? '').toLowerCase()]) {
-            if (key)
-                firstIn.set(String(key), times[0]);
-        }
-    }
-    const people = employees.map((e) => {
-        const time = firstIn.get(String(e.id)) ??
-            firstIn.get(String(e.EmployeeID ?? '')) ??
-            firstIn.get(String(e.EmailID ?? '').toLowerCase());
-        const status = !time ? 'absent' : time > SHIFT_START ? 'late' : 'present';
+    const report = (args.report && typeof args.report === 'object' ? args.report : {});
+    const loaded = Array.isArray(report.employees);
+    const people = (loaded ? report.employees : []).map((e) => {
+        const status = ATTENDANCE_STATUSES.includes(e.status)
+            ? e.status
+            : 'unknown';
         return {
-            id: String(e.id),
-            name: [e.FirstName, e.LastName].map((p) => String(p ?? '').trim()).filter(Boolean).join(' ') || String(e.EmailID ?? 'Employee'),
-            time: time ?? '',
+            id: String(e.erecno ?? e.employeeId ?? e.email),
+            name: String(e.name ?? '').trim() || String(e.email ?? 'Employee'),
             status,
+            time: reportTime(e.firstIn),
+            late: lateText(e.lateBy),
+            // Zoho's day status names the leave type (`Casual Leave`); leaveCode is only its code (`CL`).
+            leave: String(e.zohoStatus || e.leaveCode || '').trim(),
         };
     });
-    const present = people.filter((p) => p.status === 'present').length;
-    const late = people.filter((p) => p.status === 'late').length;
-    const tracked = employees.length;
-    const absent = tracked - present - late;
+    const count = (...statuses) => people.filter((p) => statuses.includes(p.status)).length;
+    const tracked = people.length;
+    const present = count('present');
+    const late = count('late');
+    const absent = count('absent');
+    const onLeave = count('leave');
+    const offDay = count('weekend', 'holiday');
+    const unknown = count('unknown');
+    const scheduled = present + late + absent + onLeave;
     // The "N employees tracked" box expanded: everyone tracked, present first
-    // (earliest check-in first), then late, then absent by name.
+    // (earliest check-in first), then late, absent, on leave, off and unavailable.
     const showEmployees = args.showEmployees === true && tracked > 0;
-    const statusRank = { present: 0, late: 1, absent: 2 };
-    const statusLabel = { present: 'Present', late: 'Late', absent: 'Absent' };
+    const statusRank = {
+        present: 0,
+        late: 1,
+        absent: 2,
+        leave: 3,
+        weekend: 4,
+        holiday: 4,
+        unknown: 5,
+    };
+    const statusLabel = {
+        present: 'Present',
+        late: 'Late',
+        absent: 'Absent',
+        leave: 'On leave',
+        weekend: 'Day off',
+        holiday: 'Holiday',
+        unknown: 'Unavailable',
+    };
     // Badge colours. Absent is red here rather than the bar's grey: a `muted`
-    // badge renders colourless.
-    const statusTone = { present: 'brand', late: 'warning', absent: 'destructive' };
-    const sorted = [...people].sort((a, b) => statusRank[a.status] - statusRank[b.status] || a.time.localeCompare(b.time) || a.name.localeCompare(b.name));
+    // badge renders colourless. Days off and unloaded reports stay grey.
+    const statusTone = {
+        present: 'brand',
+        late: 'warning',
+        absent: 'destructive',
+        leave: 'chart-4',
+        weekend: 'muted',
+        holiday: 'muted',
+        unknown: 'muted',
+    };
+    const detail = (p) => {
+        const checkedIn = p.time ? `Checked in ${clock12(p.time)}` : 'Checked in';
+        switch (p.status) {
+            case 'present':
+                return checkedIn;
+            case 'late':
+                return p.late ? `${checkedIn} · ${p.late} late` : checkedIn;
+            case 'absent':
+                return 'No check-in today';
+            case 'leave':
+                return p.leave || 'On leave today';
+            case 'weekend':
+                return 'Not scheduled today';
+            case 'holiday':
+                return 'Public holiday';
+            default:
+                return "Couldn't load attendance";
+        }
+    };
     const employeeList = showEmployees
-        ? sorted.slice(0, MAX_EMPLOYEE_ROWS).map((p) => ({
+        ? [...people]
+            .sort((a, b) => statusRank[a.status] - statusRank[b.status] || a.time.localeCompare(b.time) || a.name.localeCompare(b.name))
+            .slice(0, MAX_EMPLOYEE_ROWS)
+            .map((p) => ({
             id: p.id,
             name: p.name,
-            detail: p.time ? `Checked in ${clockTime(new Date(`${today}T${p.time}:00`))}` : 'No check-in today',
+            detail: detail(p),
             statusLabel: statusLabel[p.status],
             statusTone: statusTone[p.status],
         }))
         : [];
+    // On leave only gets a legend column when someone is on leave.
     const legend = [
         { key: 'present', label: 'Present', tone: 'brand', count: present },
         { key: 'late', label: 'Late', tone: 'warning', count: late },
         { key: 'absent', label: 'Absent', tone: 'muted', count: absent },
-    ].map((s) => ({
+        { key: 'leave', label: 'On leave', tone: 'chart-4', count: onLeave },
+    ]
+        .filter((s) => s.key !== 'leave' || s.count > 0)
+        .map((s) => ({
         ...s,
         countDisplay: s.count.toLocaleString('en-US'),
         // Legend label and count colour. Absent stays the normal text colour:
@@ -367,13 +370,23 @@ const attendance_today_dashboard = (args) => {
     return {
         loaded,
         tracked,
-        presentPctDisplay: `${tracked ? Math.round((present / tracked) * 100) : 0}%`,
+        // Everyone tracked is on a weekend or holiday (or couldn't be loaded).
+        nobodyScheduled: loaded && tracked > 0 && scheduled === 0,
+        presentPctDisplay: `${scheduled ? Math.round((present / scheduled) * 100) : 0}%`,
         // One bar segment per non-empty status, sized by its count.
         barTemplate: segments.map((s) => `${s.count}fr`).join(' '),
         segments,
         legend,
-        trackedText: `${tracked.toLocaleString('en-US')} ${tracked === 1 ? 'employee' : 'employees'} tracked`,
-        syncedText: `Synced ${clockTime(now)}`,
+        legendTemplate: legend.map(() => '1fr').join(' '),
+        // Employees left out of the bar are named after the tracked count.
+        trackedText: [
+            `${tracked.toLocaleString('en-US')} ${tracked === 1 ? 'employee' : 'employees'} tracked`,
+            offDay ? `${offDay.toLocaleString('en-US')} off today` : '',
+            unknown ? `${unknown.toLocaleString('en-US')} unavailable` : '',
+        ]
+            .filter(Boolean)
+            .join(' · '),
+        syncedText: `Synced ${clockTime(new Date())}`,
         employeesExpanded: showEmployees,
         // What a click on the tracked row writes to `/ui/showEmployees`.
         employeesToggle: !showEmployees,
