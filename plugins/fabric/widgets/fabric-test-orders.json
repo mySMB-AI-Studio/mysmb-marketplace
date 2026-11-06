@@ -1,0 +1,137 @@
+{
+  "category": "operations",
+  "connectorsUsed": ["fabric"],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "fabric",
+    "tool": "fabric_read_rows",
+    "params": {
+      "server": "g3mcb3frh7zu7i4jex6gz4d3v4-ha6eymwo33ueljlyeo2r6xhc4m.datawarehouse.fabric.microsoft.com",
+      "database": "test-warehouse",
+      "schema": "dbo",
+      "table": "test_orders",
+      "limit": 50,
+      "offset": 0
+    }
+  },
+  "description": "Lists rows from the dbo.test_orders table in the test-warehouse Fabric Warehouse, via fabric_read_rows, sorted by id. Each order's amount renders as a colored pill (green/amber/red by amount tier) instead of plain text. Temporary, test-data-only tile -- rebuild against the real Pronto table and schema once confirmed.",
+  "id": "fabric-test-orders",
+  "keywords": ["fabric", "warehouse", "orders", "test", "data"],
+  "popularity": 0,
+  "sizing": {
+    "max": { "colSpan": 8, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "preferred": { "colSpan": 6, "rowSpan": 6 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Database", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Test Orders" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Fabric · dbo.test_orders" } },
+      "queryCaption": { "type": "Caption", "props": { "text": "Source: SQL query 1", "tone": "muted" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow", "queryCaption"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "liveDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "liveBadge": { "type": "Badge", "props": { "text": "Live", "tone": "success", "variant": "soft" } },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": { "$computed": "count", "args": { "value": { "$state": "/fabric/fabric_read_rows/rows" } } },
+              "pattern": "{n} orders"
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge", "countBadge"] },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "loading": {
+        "type": "Skeleton",
+        "props": { "height": "8rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/fabric.fabric_read_rows" }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No rows found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/fabric.fabric_read_rows", "not": true },
+            { "$state": "/ui/sortedOrders/0", "not": true }
+          ]
+        }
+      },
+      "listHeaderId": { "type": "Caption", "props": { "text": "ID", "tone": "muted" } },
+      "listHeaderCustomer": { "type": "Caption", "props": { "text": "Customer", "tone": "muted" } },
+      "listHeaderAmount": { "type": "Caption", "props": { "text": "Amount", "tone": "muted", "align": "right" } },
+      "listHeaderDate": { "type": "Caption", "props": { "text": "Order date", "tone": "muted", "align": "right" } },
+      "listHeader": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "template": "48px 1fr 110px 170px" },
+        "children": ["listHeaderId", "listHeaderCustomer", "listHeaderAmount", "listHeaderDate"],
+        "visible": { "$state": "/ui/sortedOrders/0" }
+      },
+      "rowId": { "type": "Caption", "props": { "text": { "$computed": "fmt", "args": { "id": { "$item": "id" }, "pattern": "#{id}" } }, "tone": "muted" } },
+      "rowCustomer": { "type": "Text", "props": { "size": "sm", "text": { "$item": "customer" } } },
+      "rowAmountBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$item": "amount" } } },
+          "variant": "solid",
+          "tone": {
+            "$cond": { "$item": "amount", "gte": 200 },
+            "$then": "destructive",
+            "$else": {
+              "$cond": { "$item": "amount", "gte": 100 },
+              "$then": "warning",
+              "$else": "success"
+            }
+          }
+        }
+      },
+      "rowAmountCell": { "type": "Stack", "props": { "align": "end" }, "children": ["rowAmountBadge"] },
+      "rowDate": { "type": "Caption", "props": { "text": { "$item": "order_date" }, "tone": "muted", "align": "right" } },
+      "orderRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "template": "48px 1fr 110px 170px" },
+        "children": ["rowId", "rowCustomer", "rowAmountCell", "rowDate"]
+      },
+      "orderList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["orderRow"],
+        "repeat": { "key": "id", "statePath": "/ui/sortedOrders" },
+        "visible": { "$state": "/ui/sortedOrders/0" }
+      },
+      "body": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["loading", "empty", "listHeader", "orderList"],
+        "watch": {
+          "/fabric/fabric_read_rows/rows": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortedOrders",
+              "value": {
+                "$computed": "top_n",
+                "args": {
+                  "value": { "$state": "/fabric/fabric_read_rows/rows" },
+                  "field": "id",
+                  "direction": "asc",
+                  "limit": 50
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": ["fabric", "microsoft", "warehouse", "data", "test"],
+  "title": "Fabric Test Orders"
+}
