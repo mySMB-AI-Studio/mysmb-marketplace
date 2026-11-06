@@ -56,7 +56,7 @@ No environment variables are required.
 - **Email to:** defaults to the address set in the automation. Separate several addresses with commas.
 - **Name on the report:** defaults to Future Now.
 - **Logo file:** a PNG or JPEG in Knowledge, `Automations/logo.png` by default, drawn at the top of the PDF
-  and of the page in Reports in place of the name. The page carries the image inline, so it renders for
+  and of the page in Reports, beside the name rather than in place of it. The page carries the image inline, so it renders for
   anyone the report reaches without them needing rights to the file. Leave it blank for the name in text;
   if the file is missing the report still goes out with the name in text and says so in its summary.
 - **Xero contact or reference to match:** use it when the dividends in Xero don't name the company, for example a share registry's name.
