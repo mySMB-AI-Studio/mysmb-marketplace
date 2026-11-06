@@ -1,0 +1,203 @@
+{
+  "contentHash": "db78d27d063060578bc2cfce336ca4cb7034eef8d6e6b49ffdeada7036842aec",
+  "definition": {
+    "capabilities": [
+      "xero.leave.read",
+      "xero.employee.read",
+      "xero.leave.create",
+      "workq.update"
+    ],
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "todoId",
+        "label": "WorkQ item id",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "commentId",
+        "label": "Comment id",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "key": "interpret-leave-reply",
+    "kind": "process",
+    "originKey": "b9babd03-ff73-408a-a3bd-a91e56473bea",
+    "outcomes": [
+      {
+        "evidence": [
+          "leave_application"
+        ],
+        "key": "created",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "comment"
+        ],
+        "key": "declined",
+        "terminal": true
+      },
+      {
+        "evidence": [],
+        "key": "notApplicable",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision"
+        ],
+        "key": "resolved",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "A leave application is never created beyond the employee's current balance unless the reply explicitly says to proceed anyway -- that case always goes to a person, never decided automatically.",
+        "key": "neverBeyondBalance"
+      },
+      {
+        "description": "An existing leave application is never edited or cancelled from this process -- there is no tool for that.",
+        "key": "readOnlyOnExisting"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "leavesOwner": "installation.reviewer",
+      "manager": "installation.manager"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "interpret",
+        "kind": "agent",
+        "outputs": [
+          "outcome",
+          "employee",
+          "leaveType",
+          "confirmedAmount",
+          "balance",
+          "reason",
+          "summary"
+        ],
+        "skill": "leave-reply-interpreter-scan",
+        "title": "Interpret the reply and check the balance"
+      },
+      {
+        "assign": "leavesOwner",
+        "completion": "statusDone",
+        "key": "resolve",
+        "kind": "human",
+        "title": "Decide: proceed anyway, adjust, or decline"
+      },
+      {
+        "evidence": [
+          "steps.interpret.summary"
+        ],
+        "key": "created",
+        "kind": "gate",
+        "outcome": "created",
+        "requires": [
+          "steps.interpret.outcome == \"created\""
+        ],
+        "title": "Leave application created"
+      },
+      {
+        "evidence": [
+          "steps.interpret.summary"
+        ],
+        "key": "declined",
+        "kind": "gate",
+        "outcome": "declined",
+        "requires": [
+          "steps.interpret.outcome == \"declined\""
+        ],
+        "title": "Request declined"
+      },
+      {
+        "evidence": [],
+        "key": "notApplicable",
+        "kind": "gate",
+        "outcome": "notApplicable",
+        "requires": [
+          "steps.interpret.outcome == \"notApplicable\""
+        ],
+        "title": "Not a leave-request comment"
+      },
+      {
+        "evidence": [
+          "steps.interpret.reason"
+        ],
+        "key": "resolved",
+        "kind": "gate",
+        "outcome": "resolved",
+        "requires": [
+          "steps.resolve.completed == true"
+        ],
+        "title": "Resolved by a person"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "todoId",
+        "commentId"
+      ],
+      "kind": "workq"
+    },
+    "title": "Interpret a leave reply",
+    "transitions": [
+      {
+        "from": "interpret",
+        "to": "created",
+        "when": "steps.interpret.outcome == \"created\""
+      },
+      {
+        "from": "interpret",
+        "to": "declined",
+        "when": "steps.interpret.outcome == \"declined\""
+      },
+      {
+        "from": "interpret",
+        "to": "notApplicable",
+        "when": "steps.interpret.outcome == \"notApplicable\""
+      },
+      {
+        "from": "interpret",
+        "to": "resolve",
+        "when": "steps.interpret.outcome == \"needsHuman\""
+      },
+      {
+        "from": "resolve",
+        "to": "resolved"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "workq.item.commented",
+        "inputsFrom": {
+          "commentId": "subject.comment_id",
+          "todoId": "subject.todo_id"
+        },
+        "kind": "event",
+        "subjectFrom": "subject.todo_id"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": "",
+        "editableBy": "manager",
+        "key": "leaveRequestTemplateId",
+        "type": "string"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Leave request"
+    }
+  },
+  "kind": "process",
+  "name": "Interpret a leave reply",
+  "originKey": "b9babd03-ff73-408a-a3bd-a91e56473bea"
+}

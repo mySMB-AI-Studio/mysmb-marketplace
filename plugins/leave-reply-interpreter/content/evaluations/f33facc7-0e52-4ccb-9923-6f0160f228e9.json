@@ -1,0 +1,149 @@
+{
+  "contentHash": "30158d0edce5f6eb6092706c0ebfb25183f14584bd0bfd3905e0ca30153ae089",
+  "definition": {
+    "key": "interpret-leave-reply-controls",
+    "kind": "evaluation",
+    "originKey": "f33facc7-0e52-4ccb-9923-6f0160f228e9",
+    "process": "b9babd03-ff73-408a-a3bd-a91e56473bea",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "outcome": "created",
+          "stepsReached": [
+            "interpret",
+            "created"
+          ]
+        },
+        "fixtures": {
+          "organisation": {
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "interpret": {
+              "balance": "40 hours available before this request",
+              "confirmedAmount": "16 hours",
+              "employee": "Jordan Lee",
+              "leaveType": "Annual Leave",
+              "outcome": "created",
+              "reason": "",
+              "summary": "Jordan Lee's annual leave confirmed for the dates requested, within balance; leave application created."
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "commentId": "00000000-0000-4000-8000-00000000a101",
+          "todoId": "00000000-0000-4000-8000-00000000a001"
+        },
+        "key": "created",
+        "title": "Confirmed and within balance: the leave application is created"
+      },
+      {
+        "expected": {
+          "outcome": "declined",
+          "stepsReached": [
+            "interpret",
+            "declined"
+          ]
+        },
+        "fixtures": {
+          "organisation": {
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "interpret": {
+              "balance": "",
+              "confirmedAmount": "",
+              "employee": "Priya Nair",
+              "leaveType": "Annual Leave",
+              "outcome": "declined",
+              "reason": "Manager declined the request in the comment.",
+              "summary": "Priya Nair's leave request was declined."
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "commentId": "00000000-0000-4000-8000-00000000a102",
+          "todoId": "00000000-0000-4000-8000-00000000a002"
+        },
+        "key": "declined",
+        "title": "Clearly declined: nothing is created"
+      },
+      {
+        "expected": {
+          "outcome": "notApplicable",
+          "stepsReached": [
+            "interpret",
+            "notApplicable"
+          ]
+        },
+        "fixtures": {
+          "organisation": {
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "interpret": {
+              "balance": "",
+              "confirmedAmount": "",
+              "employee": "",
+              "leaveType": "",
+              "outcome": "notApplicable",
+              "reason": "Commented item's template_id does not match leaveRequestTemplateId.",
+              "summary": "Not a leave-request comment."
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "commentId": "00000000-0000-4000-8000-00000000a103",
+          "todoId": "00000000-0000-4000-8000-00000000a003"
+        },
+        "key": "notApplicable",
+        "title": "A comment on an unrelated WorkQ item is not interpreted as a leave reply"
+      },
+      {
+        "expected": {
+          "outcome": "resolved",
+          "stepsReached": [
+            "interpret",
+            "resolve",
+            "resolved"
+          ]
+        },
+        "fixtures": {
+          "organisation": {
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "interpret": {
+              "balance": "16 hours available — confirmed amount exceeds balance by 8 hours",
+              "confirmedAmount": "24 hours",
+              "employee": "Sam Carter",
+              "leaveType": "Annual Leave",
+              "outcome": "needsHuman",
+              "reason": "Confirmed amount exceeds Sam Carter's annual leave balance by 8 hours; reply did not say to proceed anyway.",
+              "summary": "Needs a decision: confirmed leave exceeds balance."
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "commentId": "00000000-0000-4000-8000-00000000a104",
+          "todoId": "00000000-0000-4000-8000-00000000a004"
+        },
+        "key": "resolved",
+        "title": "Confirmed beyond balance: routed to a person, resolved after their decision"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Interpret a leave reply: controls"
+  },
+  "kind": "evaluation",
+  "name": "Interpret a leave reply: controls",
+  "originKey": "f33facc7-0e52-4ccb-9923-6f0160f228e9"
+}

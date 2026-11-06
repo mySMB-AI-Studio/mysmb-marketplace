@@ -1,0 +1,95 @@
+{
+  "contentHash": "478e8b67c0bebec6de24e79967afed3bfed07cb5cf93ed96998a70d30592da42",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "employeeId": "employeeId",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "payroll.employees.read"
+        ],
+        "server": "xero-payroll-au",
+        "tool": "get_employee"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "employeeId": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "employeeId"
+      ],
+      "type": "object"
+    },
+    "key": "xero.employee.read",
+    "kind": "capability",
+    "originKey": "7b1f198b-2322-41fe-8bf9-c922c666fea9",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Employees": {
+          "items": {
+            "properties": {
+              "EmployeeID": {
+                "type": "string"
+              },
+              "FirstName": {
+                "type": "string"
+              },
+              "LastName": {
+                "type": "string"
+              },
+              "LeaveBalances": {
+                "items": {
+                  "properties": {
+                    "LeaveName": {
+                      "type": "string"
+                    },
+                    "LeaveTypeID": {
+                      "type": "string"
+                    },
+                    "NumberOfUnits": {
+                      "type": "number"
+                    },
+                    "TypeOfUnits": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Employees"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-payroll-au"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read a Xero Payroll AU employee"
+  },
+  "kind": "capability",
+  "name": "Read a Xero Payroll AU employee",
+  "originKey": "7b1f198b-2322-41fe-8bf9-c922c666fea9"
+}

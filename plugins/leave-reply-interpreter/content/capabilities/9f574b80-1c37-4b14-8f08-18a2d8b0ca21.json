@@ -1,0 +1,68 @@
+{
+  "contentHash": "603a0a901d49ef489905aecff3b98eb7e42990f28fefa988df9f0e34f4e6d0d9",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "leaveApplication": "leaveApplication"
+        },
+        "scopes": [
+          "payroll.employees"
+        ],
+        "server": "xero-payroll-au",
+        "tool": "create_leave_application"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "leaveApplication": {
+          "description": "Raw Xero Payroll AU LeaveApplication body: EmployeeID, LeaveTypeID, Title, StartDate, EndDate, LeavePeriods.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "leaveApplication"
+      ],
+      "type": "object"
+    },
+    "key": "xero.leave.create",
+    "kind": "capability",
+    "originKey": "9f574b80-1c37-4b14-8f08-18a2d8b0ca21",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "LeaveApplications": {
+          "items": {
+            "properties": {
+              "EmployeeID": {
+                "type": "string"
+              },
+              "LeaveApplicationID": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "LeaveApplications"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-payroll-au"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "write_external",
+    "title": "Create a Xero leave application"
+  },
+  "kind": "capability",
+  "name": "Create a Xero leave application",
+  "originKey": "9f574b80-1c37-4b14-8f08-18a2d8b0ca21"
+}
