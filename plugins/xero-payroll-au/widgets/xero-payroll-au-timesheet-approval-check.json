@@ -1,0 +1,560 @@
+{
+  "category": "hr",
+  "connectorsUsed": [
+    "xero-payroll-au"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-payroll-au",
+    "params": {},
+    "tool": "get_timesheet_approval_check"
+  },
+  "description": "Confirms all source timesheets for the period are approved and that source and payroll counts match. Proves hours in payroll match the approved time source, employee by employee, before the pay run is built.",
+  "id": "xero-payroll-au-timesheet-approval-check",
+  "keywords": [
+    "timesheet approval",
+    "timesheet check",
+    "pay run",
+    "hours reconciliation",
+    "payroll audit"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 9
+    }
+  },
+  "spec": {
+    "elements": {
+      "approvedIcon": {
+        "props": {
+          "name": {
+            "$cond": {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/allApproved"
+            },
+            "$else": "AlertTriangle",
+            "$then": "CheckCircle2"
+          },
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/allApproved"
+            },
+            "$else": "warning",
+            "$then": "success"
+          }
+        },
+        "type": "Icon"
+      },
+      "approvedSummary": {
+        "children": [
+          "approvedIcon",
+          "approvedText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "approvedText": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$cond": {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/allApproved"
+            },
+            "$else": "Not all timesheets approved",
+            "$then": "All timesheets approved"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "errorBanner",
+          "empty",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "props": {},
+        "type": "Card"
+      },
+      "content": {
+        "children": [
+          "periodRow",
+          "divider1",
+          "summaryRow",
+          "divider2",
+          "employeesList"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-payroll-au.get_timesheet_approval_check",
+              "not": true
+            },
+            {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/hasPayRun"
+            }
+          ]
+        }
+      },
+      "divider1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "divider2": {
+        "props": {},
+        "type": "Divider"
+      },
+      "employeeCountCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/xero-payroll-au/get_timesheet_approval_check/payRun/employeeCount"
+              },
+              "pattern": "{n} employees in this pay run"
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "employeeLeft": {
+        "children": [
+          "statusIcon",
+          "employeeName"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "employeeName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "employeeRight": {
+        "children": [
+          "hoursCaption",
+          "statusBadgeItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "employeeRow": {
+        "children": [
+          "employeeLeft",
+          "employeeRight"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "employeesList": {
+        "children": [
+          "employeeRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "employeeId",
+          "statePath": "/xero-payroll-au/get_timesheet_approval_check/employees"
+        },
+        "type": "Stack"
+      },
+      "empty": {
+        "props": {
+          "message": "No pay runs found for this organisation."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-payroll-au.get_timesheet_approval_check",
+              "not": true
+            },
+            {
+              "$state": "/_errors/xero-payroll-au.get_timesheet_approval_check",
+              "not": true
+            },
+            {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/hasPayRun",
+              "not": true
+            }
+          ]
+        }
+      },
+      "errorBanner": {
+        "props": {
+          "text": {
+            "$template": "Couldn't load timesheet check: ${/_errors/xero-payroll-au.get_timesheet_approval_check}"
+          },
+          "tone": "destructive"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/_errors/xero-payroll-au.get_timesheet_approval_check"
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Xero Payroll AU"
+        },
+        "type": "Eyebrow"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "hoursCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{ts}h source · {pr}h payroll",
+              "pr": {
+                "$item": "payrollHours"
+              },
+              "ts": {
+                "$item": "timesheetHours"
+              }
+            }
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$item": "category",
+          "eq": "no_timesheet",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3",
+          "sk4"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-payroll-au.get_timesheet_approval_check"
+        }
+      },
+      "matchedIcon": {
+        "props": {
+          "name": {
+            "$cond": {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/allMatched"
+            },
+            "$else": "AlertTriangle",
+            "$then": "CheckCircle2"
+          },
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$state": "/xero-payroll-au/get_timesheet_approval_check/allMatched"
+            },
+            "$else": "destructive",
+            "$then": "success"
+          }
+        },
+        "type": "Icon"
+      },
+      "matchedSummary": {
+        "children": [
+          "matchedIcon",
+          "matchedText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "matchedText": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "a": {
+                "$state": "/xero-payroll-au/get_timesheet_approval_check/approvedCount"
+              },
+              "p": {
+                "$state": "/xero-payroll-au/get_timesheet_approval_check/payrollCount"
+              },
+              "pattern": {
+                "$cond": {
+                  "$state": "/xero-payroll-au/get_timesheet_approval_check/allMatched"
+                },
+                "$else": "Count mismatch: {a} approved / {p} in payroll",
+                "$then": "Counts match: {a} approved / {p} in payroll"
+              }
+            }
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "periodRow": {
+        "children": [
+          "periodStack",
+          "statusBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "periodStack": {
+        "children": [
+          "periodText",
+          "employeeCountCaption"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "periodText": {
+        "props": {
+          "level": "h3",
+          "text": {
+            "$state": "/xero-payroll-au/get_timesheet_approval_check/payRun/periodText"
+          }
+        },
+        "type": "Heading"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk4": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "statusBadge": {
+        "props": {
+          "text": {
+            "$computed": "xero-payroll-au_title_case",
+            "args": {
+              "value": {
+                "$state": "/xero-payroll-au/get_timesheet_approval_check/payRun/status"
+              }
+            }
+          },
+          "tone": "brand"
+        },
+        "type": "Badge"
+      },
+      "statusBadgeItem": {
+        "props": {
+          "text": {
+            "$computed": "xero-payroll-au_check_row_label",
+            "args": {
+              "category": {
+                "$item": "category"
+              },
+              "hasVariance": {
+                "$item": "hasVariance"
+              },
+              "notApproved": {
+                "$item": "notApproved"
+              },
+              "variance": {
+                "$item": "variance"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-payroll-au_check_row_tone",
+            "args": {
+              "category": {
+                "$item": "category"
+              },
+              "hasVariance": {
+                "$item": "hasVariance"
+              },
+              "notApproved": {
+                "$item": "notApproved"
+              },
+              "variance": {
+                "$item": "variance"
+              }
+            }
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "statusIcon": {
+        "props": {
+          "name": {
+            "$computed": "xero-payroll-au_check_row_icon",
+            "args": {
+              "category": {
+                "$item": "category"
+              },
+              "hasVariance": {
+                "$item": "hasVariance"
+              },
+              "notApproved": {
+                "$item": "notApproved"
+              },
+              "variance": {
+                "$item": "variance"
+              }
+            }
+          },
+          "size": "sm",
+          "tone": {
+            "$computed": "xero-payroll-au_check_row_tone",
+            "args": {
+              "category": {
+                "$item": "category"
+              },
+              "hasVariance": {
+                "$item": "hasVariance"
+              },
+              "notApproved": {
+                "$item": "notApproved"
+              },
+              "variance": {
+                "$item": "variance"
+              }
+            }
+          }
+        },
+        "type": "Icon"
+      },
+      "summaryRow": {
+        "children": [
+          "approvedSummary",
+          "matchedSummary"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Timesheet Approval & Count Check"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "ClipboardCheck",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "payroll",
+    "timesheets",
+    "hours",
+    "hr",
+    "reconciliation"
+  ],
+  "title": "Timesheet Approval & Count Check"
+}

@@ -1,0 +1,110 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Payroll Summary for Client</title>
+<style>
+  :root {
+    --ink:#1f2328; --muted:#656d76; --surface:#fff; --line:#d0d7de;
+    --success:#1a7f37; --warning:#9a6700; --danger:#cf222e; --chip:#f6f8fa;
+  }
+  :root[data-myhub-theme='dark'] {
+    --ink:#e6edf3; --muted:#9198a1; --surface:#0d1117; --line:#30363d;
+    --success:#3fb950; --warning:#d29922; --danger:#f85149; --chip:#161b22;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--surface); }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:15px; margin:28px 0 10px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  .muted { color:var(--muted); }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .cards { display:flex; flex-wrap:wrap; gap:12px; }
+  .card { flex:1 1 140px; border:1px solid var(--line); border-radius:8px; padding:12px 14px; background:var(--chip); }
+  .card .label { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin-bottom:4px; }
+  .card .value { font-size:20px; font-weight:600; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .pill.ok { background:color-mix(in srgb, var(--success) 18%, transparent); color:var(--success); }
+  .pill.bad { background:color-mix(in srgb, var(--danger) 18%, transparent); color:var(--danger); }
+  .pill.warn { background:color-mix(in srgb, var(--warning) 18%, transparent); color:var(--warning); }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:4px; }
+  th, td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  .empty { color:var(--muted); padding:12px 0; }
+  .err { color:var(--danger); padding:8px 0; }
+</style>
+</head>
+<body>
+  <h1>Payroll Summary for Client</h1>
+  <p class="sub" id="subtitle">Loading…</p>
+
+  <section id="totals-section"></section>
+
+  <h2>Timesheets &amp; hours</h2>
+  <div id="timesheets-section" class="empty">Loading…</div>
+
+  <h2>Readiness</h2>
+  <div id="readiness-section" class="empty">Loading…</div>
+
+<script>
+  function esc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function money(n) { return n == null ? 'N/A' : '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  function renderTotals(data, err) {
+    var el = document.getElementById('totals-section');
+    var sub = document.getElementById('subtitle');
+    if (err) { el.innerHTML = '<p class="err">Could not load payroll processing: ' + esc(err.message) + '</p>'; return; }
+    if (!data || !data.hasPayRun) { sub.textContent = 'No pay run currently in Draft.'; el.innerHTML = ''; return; }
+    var pr = data.payRun || {}, t = data.totals || {}, v = data.vsLastRun || {};
+    sub.textContent = (pr.periodText || 'N/A') + ' · paid ' + (pr.paymentDateText || 'N/A') + ' · ' + (pr.statusLabel || '') + ' · ' + (pr.employeeCount || 0) + ' employees';
+    el.innerHTML = '<div class="cards">' +
+      '<div class="card"><div class="label">Wages</div><div class="value">' + money(t.wages) + '</div></div>' +
+      '<div class="card"><div class="label">Tax</div><div class="value">' + money(t.tax) + '</div></div>' +
+      '<div class="card"><div class="label">Super</div><div class="value">' + money(t.super) + '</div></div>' +
+      '<div class="card"><div class="label">Net pay</div><div class="value">' + money(t.netPay) + '</div></div>' +
+      '<div class="card"><div class="label">vs last run</div><div class="value">' + esc(v.label || 'N/A') + '</div></div>' +
+      '</div>';
+  }
+
+  function renderTimesheets(tsData, tsErr, hrData, hrErr) {
+    var el = document.getElementById('timesheets-section');
+    if (tsErr || hrErr) { el.innerHTML = '<p class="err">' + esc((tsErr || hrErr).message) + '</p>'; return; }
+    if (!tsData || !tsData.hasPayRun) { el.innerHTML = '<p class="empty">No pay run to check.</p>'; return; }
+    var approvedPill = tsData.allApproved ? '<span class="pill ok">All approved</span>' : '<span class="pill bad">Approval needed</span>';
+    var matchedPill = (hrData && hrData.allMatched) ? '<span class="pill ok">Hours match</span>' : '<span class="pill warn">Hours mismatch</span>';
+    var issues = (tsData.employees || []).filter(function (e) { return e.notApproved || e.hasVariance || e.category !== 'both'; });
+    var rows = issues.map(function (e) {
+      return '<tr><td>' + esc(e.name) + '</td><td>' + esc(e.category) + '</td>' +
+        '<td>' + (e.notApproved ? '<span class="pill bad">Not approved</span>' : '') + '</td>' +
+        '<td>' + (e.hasVariance ? esc(e.timesheetHours) + 'h vs ' + esc(e.payrollHours) + 'h' : '') + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<p>' + approvedPill + ' ' + matchedPill + '</p>' +
+      (issues.length
+        ? '<table><thead><tr><th>Employee</th><th>Status</th><th>Approval</th><th>Hours variance</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        : '<p class="empty">No timesheet or hours issues.</p>');
+  }
+
+  function renderReadiness(data, err) {
+    var el = document.getElementById('readiness-section');
+    if (err) { el.innerHTML = '<p class="err">Could not load readiness check: ' + esc(err.message) + '</p>'; return; }
+    if (!data) { el.innerHTML = '<p class="empty">No data.</p>'; return; }
+    if (data.notReadyCount === 0 && data.balanceConflictCount === 0) {
+      el.innerHTML = '<p><span class="pill ok">Ready</span> all ' + data.employeeCount + ' employees are clear.</p>';
+      return;
+    }
+    var blocking = (data.employees || []).filter(function (e) { return !e.ready || e.hasBalanceConflict; });
+    var rows = blocking.map(function (e) {
+      return '<tr><td>' + esc(e.name) + '</td><td>' + esc((e.missingFields || []).join(', ') || '—') + '</td>' +
+        '<td>' + (e.hasBalanceConflict ? '<span class="pill bad">Balance conflict</span>' : (e.hasPendingLeave ? '<span class="pill warn">Pending leave</span>' : '')) + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<p><span class="pill bad">' + data.notReadyCount + ' not ready</span>' +
+      (data.balanceConflictCount ? ' <span class="pill bad">' + data.balanceConflictCount + ' balance conflicts</span>' : '') + '</p>' +
+      '<table><thead><tr><th>Employee</th><th>Missing</th><th>Leave</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function render(bundle) {
+    var d = bundle.data, e = bundle.errors;
+    renderTotals(d.processing, e.processing);
+    renderTimesheets(d.timesheets, e.timesheets, d.hours, e.hours);
+    renderReadiness(d.readiness, e.readiness);
+  }
+
+  MyHubReport.onData(render);
+</script>
+</body></html>
