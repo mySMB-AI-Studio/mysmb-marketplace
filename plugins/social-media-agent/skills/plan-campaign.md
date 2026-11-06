@@ -67,7 +67,7 @@ Return **only** this JSON object, with no prose around it:
 }
 ```
 
-Leave a piece's `cta` empty to use the campaign's. Set a piece's `draft` to `false` only when the request says the team will write that piece themselves (for example "we'll write the event-day post"); it then goes on the calendar with a posting task but no draft or review. Every other piece is `true`. If the request is too thin to plan well, still return a small plan (2 or 3 pieces) and say in `summary` and `brief.recommendation` what you need to know.
+Always return every field shown above, including `brief` and, for every piece, `channels`, `topic` and `angle`; a one-piece plan is still a full plan. Leave a piece's `cta` empty to use the campaign's. Set a piece's `draft` to `false` only when the request says the team will write that piece themselves (for example "we'll write the event-day post"); it then goes on the calendar with a posting task but no draft or review. Every other piece is `true`. If the request is too thin to plan well, still return a small plan (2 or 3 pieces) and say in `summary` and `brief.recommendation` what you need to know.
 
 ## Plan my month
 
