@@ -1,0 +1,172 @@
+{
+  "contentHash": "ccdbcb9d61939e3cd882cc8dd56a35e938b78f416998b81e46723b7878c1fda2",
+  "definition": {
+    "capabilities": [
+      "xero.bills.read",
+      "xero.contacts.read",
+      "artifacts.write",
+      "workq.update"
+    ],
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "scan",
+          "report"
+        ],
+        "blocks": [
+          "clean"
+        ],
+        "key": "xeroUnavailable"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "runDate",
+        "label": "Run date (in the practice timezone)",
+        "required": true,
+        "type": "date"
+      }
+    ],
+    "key": "expense-claim-check",
+    "kind": "process",
+    "originKey": "f18aef53-02ce-4a39-b2ea-829c01c155d2",
+    "outcomes": [
+      {
+        "evidence": [
+          "clients_checked"
+        ],
+        "key": "clean",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "findings_report",
+          "workq_item"
+        ],
+        "key": "findingsOwned",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "This check reads Xero; it never changes it. A finding drops off once a person fixes it in Xero or dismisses it.",
+        "key": "readOnlyInXero"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "checksOwner": "installation.reviewer",
+      "manager": "installation.manager"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "scan",
+        "kind": "agent",
+        "outputs": [
+          "findings",
+          "clean",
+          "summary"
+        ],
+        "skill": "expense-claim-checker-scan",
+        "title": "Review this week's reimbursement bills"
+      },
+      {
+        "artifactKind": "expenseClaimChecks",
+        "key": "report",
+        "kind": "output",
+        "template": "expense-claim-checker-report",
+        "title": "Publish the findings"
+      },
+      {
+        "assign": "checksOwner",
+        "completion": "statusDone",
+        "key": "followUp",
+        "kind": "human",
+        "title": "Own the findings: fix in Xero, dismiss, or confirm ready to pay"
+      },
+      {
+        "evidence": [
+          "steps.scan.summary"
+        ],
+        "key": "clean",
+        "kind": "gate",
+        "outcome": "clean",
+        "requires": [
+          "steps.scan.clean == true"
+        ],
+        "title": "No findings — clear to pay"
+      },
+      {
+        "evidence": [
+          "steps.scan.findings"
+        ],
+        "key": "findingsOwned",
+        "kind": "gate",
+        "outcome": "findingsOwned",
+        "requires": [
+          "steps.followUp.completed == true"
+        ],
+        "title": "Findings owned"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "runDate"
+      ],
+      "kind": "none"
+    },
+    "title": "Check expense claims before pay run",
+    "transitions": [
+      {
+        "from": "scan",
+        "to": "report"
+      },
+      {
+        "from": "report",
+        "to": "clean",
+        "when": "steps.scan.clean == true"
+      },
+      {
+        "from": "report",
+        "to": "followUp",
+        "when": "steps.scan.clean == false"
+      },
+      {
+        "from": "followUp",
+        "to": "findingsOwned"
+      }
+    ],
+    "triggers": [
+      {
+        "cron": "0 6 * * 4",
+        "inputsFrom": {
+          "runDate": "fire.date"
+        },
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": "",
+        "editableBy": "manager",
+        "key": "reimbursementAccountCode",
+        "type": "string"
+      },
+      {
+        "default": "Australia/Sydney",
+        "editableBy": "manager",
+        "key": "checksTimezone",
+        "type": "string"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Checks cycle"
+    }
+  },
+  "kind": "process",
+  "name": "Check expense claims before pay run",
+  "originKey": "f18aef53-02ce-4a39-b2ea-829c01c155d2"
+}

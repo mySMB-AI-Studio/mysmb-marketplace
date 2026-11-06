@@ -1,0 +1,96 @@
+{
+  "contentHash": "1f02f7db953ace6ca135f7632ce335ae37435e5d6884388d53c460196551398a",
+  "definition": {
+    "key": "expense-claim-check-controls",
+    "kind": "evaluation",
+    "originKey": "1454725d-4d5b-4726-ab8d-365f98bf1f4f",
+    "process": "f18aef53-02ce-4a39-b2ea-829c01c155d2",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "outcome": "clean",
+          "stepsReached": [
+            "scan",
+            "report",
+            "clean"
+          ]
+        },
+        "fixtures": {
+          "organisation": {
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "scan": {
+              "clean": true,
+              "findings": [],
+              "summary": "0 bills reviewed, no findings"
+            }
+          },
+          "reimbursementAccountCode": "463",
+          "responses": []
+        },
+        "inputs": {
+          "runDate": "2026-10-29"
+        },
+        "key": "clean",
+        "title": "No outstanding reimbursement bills: the run ends clean after the report"
+      },
+      {
+        "expected": {
+          "outcome": "findingsOwned",
+          "stepsReached": [
+            "scan",
+            "report",
+            "followUp",
+            "findingsOwned"
+          ]
+        },
+        "fixtures": {
+          "organisation": {
+            "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+          },
+          "outputs": {
+            "scan": {
+              "clean": false,
+              "findings": [
+                {
+                  "amount": 63.53,
+                  "check": "ECC-004",
+                  "employee": "John Ryder",
+                  "link": "https://go.xero.com/AccountsPayable/View.aspx?InvoiceID=e2e083f5-5fdb-484a-bee2-ac993ca8e6ed",
+                  "severity": "high",
+                  "text": "Two bills within 3 days, same amount pattern — likely duplicate"
+                },
+                {
+                  "amount": 110,
+                  "check": "ECC-002",
+                  "employee": "Emily Lee",
+                  "link": "https://go.xero.com/AccountsPayable/View.aspx?InvoiceID=8916f442-e319-4f1f-b317-98547d417648",
+                  "severity": "medium",
+                  "text": "Bill mixes a $70 Advertising line with the $30 Cleaning reimbursement — full $110 will be paid"
+                }
+              ],
+              "summary": "3 bills reviewed, 2 findings (ECC-004, ECC-002)"
+            }
+          },
+          "reimbursementAccountCode": "463",
+          "responses": []
+        },
+        "inputs": {
+          "runDate": "2026-10-29"
+        },
+        "key": "findingsOwned",
+        "title": "Findings are reported and owned by the checks owner"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Expense claim checks: controls"
+  },
+  "kind": "evaluation",
+  "name": "Expense claim checks: controls",
+  "originKey": "1454725d-4d5b-4726-ab8d-365f98bf1f4f"
+}
