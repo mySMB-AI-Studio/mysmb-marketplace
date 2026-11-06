@@ -7,7 +7,7 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 ## What's in the box
 
 - **Connectors:** `xero-accounting` (the mySMB Xero connector), and `m365-mail-shared` for reading a shared Outlook mailbox. Email intake otherwise uses `m365-mail-read` or, for a personal Hotmail / Outlook.com inbox, `hotmail-mail` (both in the Microsoft 365 extension), or `google-workspace-gmail` (Google Workspace extension).
-- **Automations (14):**
+- **Automations (19):**
   - *Bookkeeping: Start setup* (run by hand): creates the setup items.
   - *Bookkeeping: Apply setup (Xero)*: saves the setup answers and matches each client to its Xero organisation.
   - *Bookkeeping: Process bill, invoice or statement (Xero)*: runs when a PDF lands in `Bookkeeping Inbox/<client>/`. A PDF dropped into `Bookkeeping Inbox` itself is matched to its client by AI (with one client, it's that client); if that isn't clear, it waits in `Bookkeeping Failed/unmatched/` with a *Which client is this for?* item.
@@ -23,8 +23,22 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
   - *Bookkeeping: Ledger checks (Xero)*: every 30 minutes from midnight to 5:30am, checking each client once a day (see *How the ledger checks work*). Also runs when a Check findings form is submitted, or by hand with a client's name to check it now.
   - *Bookkeeping: Register lookups (ABR)*: nightly at 11:30pm, looks up each client's suppliers and customers on the Australian Business Register for the register checks. Needs the **ABR Lookup** extension; publish it only if that's installed.
   - *Bookkeeping: Asset lookups (Xero Assets)*: Sunday nights at 11pm, reads each client's fixed asset register in Xero (draft assets, and the fixed asset accounts its asset types use) for the fixed asset checks. Needs the **Xero Assets** extension connected; publish it only if that's installed.
+  - **Payroll** (Xero Payroll AU; reads only, so nothing in Xero Payroll changes without the payroll officer):
+    - *Bookkeeping: Start pay runs (Xero Payroll)*: hourly on weekdays. Opens each client's pay run item on its preparation day, says when the timesheets are in Xero, and drafts a chase when Deputy timesheets are late.
+    - *Bookkeeping: Check pay run (Xero Payroll + Deputy)* or *(Xero Payroll)*: publish one. Runs from the pay run item's form and lists:
+      - Deputy vs Xero hours per employee per day;
+      - missing starters;
+      - salaried staff with timesheets;
+      - penalty bands (early, late, Saturday, Sunday, public holiday, overtime) worked out from shift times;
+      - rates against the client's pay guide;
+      - this period's changes (junior birthdays, special arrangements ending, 1 July);
+      - reimbursements against the draft pay run.
+
+      Then it posts a report and one drafted query email.
+    - *Bookkeeping: Build payroll review pack (Xero Payroll)*: the draft pay run's totals and payslips, the last check, the changes and the notes, sent to the internal reviewer.
+    - *Bookkeeping: Apply payroll review*: internal approval → client approval item with a drafted email → done (or "post it" when the practice posts).
   - *Bookkeeping: Email intake (Outlook)*, *Email intake (Outlook shared mailbox)*, *Email intake (Hotmail)* and *Email intake (Gmail)*: every 15 minutes, read the new emails in the owner's mailbox (or the practice's shared Outlook mailbox), have AI pick out supplier bills, sales invoices, statements and invoice requests, work out which client each one belongs to, and save it into that client's `Bookkeeping Inbox/<client>/` folder. See *How email intake works*. Other emails are left untouched: nothing in the mailbox is changed. Publish the one(s) for the mailbox you use.
-- **Forms (8):** Bookkeeping setup, Client bookkeeping settings, Which client is this for?, Bill review, Invoice review, Invoice to send, Client bill approval, Check findings.
+- **Forms (12):** Bookkeeping setup, Client bookkeeping settings, Which client is this for?, Bill review, Invoice review, Invoice to send, Client bill approval, Client payroll settings, Pay run, Payroll review, Client payroll approval, Check findings.
 - **Agent (1):** Bookkeeping Coordinator (Xero). It answers status questions, explains coding and exceptions, drafts client emails and looks things up in each client's Xero. For live reports it points to the **Xero Reporting Studio** extension. It never approves or sends anything.
 - **Skill (1):** `bookkeeping-xero-foundation`. An agent can only use skills bundled in its own extension, so the agent no longer lists Xero Reporting Studio's report skills; install that extension for live Xero reports.
 
@@ -38,7 +52,7 @@ No configuration variables are required. Settings are collected by the setup for
 
 1. **Automations are on** for the workspace (`features.automations`).
 2. **Connect Xero** as the person who will own the automations. Use a Xero login that can see every client organisation. The automations run as that person and use their Xero connection.
-3. **Publish the eight forms** in Forms (they install as drafts).
+3. **Publish the twelve forms** in Forms (they install as drafts).
 4. **Publish the automations.** They install as drafts; publishing shows the permissions each one asks for. Publish *Start setup* and *Apply setup (Xero)* first.
 5. **Run *Bookkeeping: Start setup*** and fill in the Bookkeeping setup form on the item it creates. The setup is kept in Knowledge (`Bookkeeping/settings.json`), so it survives removing and installing the extension again: to change it later, run *Start setup* with **Set up again: Yes** and submit the form it sends (client settings are kept).
 6. **Run it again with your client business names** (one per line), and fill in each client's settings form. Enter the Xero organisation name exactly as it appears in Xero.
@@ -72,6 +86,45 @@ The same inbox, the same steps, the other side of the ledger:
 3. **Code:** a saved rule for the customer, then the customer's recent invoices in Xero, then AI from the **revenue** accounts with GST on income.
 4. **Review:** always, on the **Invoice review** form. The client-approval limit is for spending, so it doesn't apply.
 5. **Apply:** approved sales invoices are **Awaiting payment** in Xero, with the PDF attached. Nothing is emailed to the customer; they already have the invoice.
+
+## How a pay run flows
+
+1. **Settings:** run *Start setup* with the business under *Client businesses to set up payroll for*. Fill in its **Client payroll settings**:
+   - the pay calendar's name in Xero Payroll;
+   - the preparation day and time;
+   - where the hours come from;
+   - the timesheet owner;
+   - the payroll officer and the internal reviewer;
+   - the client approvers;
+   - who posts.
+
+   A pay guide template appears in `Bookkeeping Payroll/<client>/pay-guide.xlsx`.
+2. **Pay guide:** fill in its sheets and replace the EXAMPLE rows. The guide is the client's own rate sheet, from the Fair Work pay guides:
+   - `rates`: award, classification, employment type, age range, band, rate and effective date;
+   - `employees`: each employee's award, classification, state and any special arrangement with its end date;
+   - `rules`: when the day starts and ends, and the daily overtime threshold and first-hours band;
+   - `holidays`: public holidays by state;
+   - `pay_items`: which band each Xero earnings rate pays.
+3. **Pay run item:** opens on the preparation day, in the week of the pay day. When the timesheets are in Xero Payroll it says so; if Deputy timesheets are late it drafts a chase.
+4. **Check:** choose *Run the checks* on the Pay run form, fix what the report lists in Xero Payroll, and run it again. Drop the period's reimbursement spreadsheet (*expense* or *reimburs* in the name) into `Bookkeeping Payroll/<client>/` first.
+5. **Review pack:** choose *Ready for review* once the draft pay run is in Xero. The internal reviewer gets the pack and the **Payroll review** form.
+6. **Client approval:** an approved review creates the client approval item with a drafted email. Record the answer on the **Client payroll approval** form. If the client posts the pay run, the pay run item completes; if the practice posts it, the item stays open until you post and file STP.
+
+### Payroll checks from the checks catalogue
+
+*Check pay run* also runs the catalogue's payroll checks on the pay calendar's employees, the draft pay run's payslips and the pay items it uses. They're in the report's *Payroll checks* table, most severe first:
+
+- **High:** an employee's bank account on another Xero contact, such as a supplier (CHK-019); a terminated employee with no Single Touch Payroll cessation reason (CHK-147); a terminated employee on this pay run (CHK-155); an adult's ordinary rate below the national minimum wage, $26.44 an hour from 1 July 2026, or $33.05 for a casual with the 25% loading (CHK-156); super owed on the payroll's super liability account past its due date (CHK-157, covering CHK-158).
+- **Medium:** a tax file number still "applied for" more than 28 days after starting (CHK-148); someone on this pay run whose record has no tax file number declaration, super fund, bank account, home address or STP Phase 2 update (CHK-159); a full- or part-time employee with no annual or personal/carer's leave (CHK-161) or no long service leave (CHK-167) in their pay template.
+- **Low:** an employee's bank account on their own Xero contact, for reimbursements (CHK-152); a negative leave balance (CHK-149, covering CHK-160); a casual accruing annual leave (CHK-150); reimbursements over wages (CHK-151); paid on this pay run but starting after the period (CHK-153); two employees paid into one bank account (CHK-162); a junior's birthday this period, under *Changes this period* (CHK-163); super guarantee under 12% of the payslip's ordinary time earnings (CHK-164, covering CHK-165); annual leave set not to accrue, or a full-timer's not 4 or 5 weeks a year (CHK-166); a pay item whose name and STP earnings type disagree, or an allowance with no allowance type (CHK-168).
+
+CHK-156, CHK-164, CHK-166 and CHK-168 are heuristic readings until the content owner confirms them. CHK-156 skips employees under 21 (junior rates) and says apprentices, trainees and supported wages differ.
+
+**Super owed (CHK-157)** is the super liability account's balance in Xero (so *Check pay run* also uses the Xero accounting connection, which CHK-019 and CHK-152 read the contacts from too), less the super from posted pay runs that isn't due yet. From 1 July 2026 (Payday Super) super has to reach the fund within 7 business days of pay day; the check skips weekends and national public holidays and allows one more day for a state holiday. Before that, it was due 28 days after the quarter. When the payroll settings or the ledger can't be read, the report says super owed wasn't checked.
+
+**Privacy.** Payroll findings name the employee and show pay figures (hours, rates, amounts) only. Tax file numbers, bank details, dates of birth, addresses and contact details never appear: the checks about them state a fact ("no tax file number after 28 days", "paid into the same bank account as ..."), and bank accounts are compared in memory as hashes, never stored. Pay run, review and client approval items are visible only to the people they're assigned to and the automation's owner (a WorkQ item an automation creates is always visible to its owner).
+
+Each year on 1 July, add the new national minimum wage to `PAY_WAGE_FLOOR` in the kit's `payroll.py`.
 
 ## How the ledger checks work
 
@@ -126,6 +179,7 @@ Never use it for a real client.
 - An iPhone HEIC photo dropped straight into Knowledge can't be read (nothing in the automation sandbox decodes HEIC): email it in, or save it as JPEG. By email, photos are taken only from emails with no PDF, and only those over 30 KB, so logos and signature images are left alone.
 - A shared mailbox is work Outlook only (Gmail has no shared mailboxes through its API, and a personal Hotmail account has none). *Email intake (Hotmail)* reads the one Hotmail account its owner connected.
 - A scanned bank statement is read one page at a time from the image, and a scanned page holds about 40 transactions at most. When a page has more, the lines don't add up and the statement is flagged rather than imported.
+- Payroll checks read Xero Payroll AU and Deputy only; the officer makes every correction. Deputy is one connection per client business. Penalty rules beyond the day start/end, weekends, public holidays and a daily overtime threshold are not modelled yet.
 - Gmail requests are read from the email's snippet (the first couple of lines): the Gmail connector doesn't return the full body. Outlook requests are read in full.
 - Ledger checks see what the Xero Accounting API shares: bank statement lines that aren't coded yet aren't visible, so CHK-022 counts transactions entered but not reconciled, and CHK-023 (a bank statement line missing) isn't checked: Xero shares statement lines only with apps it has approved for its bank statement API, and the checklist lists CHK-023 as not checked. Each list is read up to 2,000 rows a run (the checklist says when that cut a list short). The first run takes the bank-details snapshot, so bank changes are reported from the second night on.
 - A raised invoice uses the organisation's default branding theme and invoice numbering, and Xero's standard email template when it's emailed.

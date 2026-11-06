@@ -1791,27 +1791,14 @@
           "content/automations/260a5aa1-dc35-46ca-a689-8d7abd646d08.json",
           "content/automations/b0a16d7a-a616-46ef-8973-ca6b795b60e5.json",
           "content/automations/8d07b0d7-93af-4937-9b85-6b3d3b7de37d.json",
-          "content/automations/44f3fd3d-7516-495e-b2aa-6621ad1fa47b.json",
-          "content/automations/d692330d-2508-4e0e-98aa-d8f5e0b7628c.json",
-          "content/automations/ab3ae9cf-3967-414a-90b6-e46c0ba8e767.json",
-          "content/automations/64369350-4011-4200-8d84-4110d421a6ef.json",
-          "content/automations/7f2c3db6-6a2e-4a3f-bd08-55c06f607cf2.json",
-          "content/automations/9b251ad2-7ec4-4dd3-b46e-5b4154117603.json",
-          "content/automations/b4911eb8-7259-40f7-9f97-f185083d0958.json",
-          "content/automations/0eb61df4-7dec-427e-8910-d79dda07ef5d.json",
-          "content/automations/87025680-c1d2-4c21-9c81-e7314ddde66b.json",
-          "content/automations/a3f5f8ef-9a11-481b-8e7b-925d03eac22d.json"
+          "content/automations/d692330d-2508-4e0e-98aa-d8f5e0b7628c.json"
         ],
         "formTemplates": [],
         "forms": [
           "content/forms/4c76d1cd-fabe-45ba-8212-658060f0bb2b.json",
           "content/forms/e2c78a13-1ad5-43e0-bb97-a5c214b9b84e.json",
           "content/forms/c249353a-fce0-4d21-84a8-636e1ad8cfcc.json",
-          "content/forms/e635fb97-abbc-42b5-b189-b3e989e93410.json",
-          "content/forms/43059e40-e1a6-4a5a-98e2-5f578f6ddd71.json",
-          "content/forms/a50cab39-831c-493e-9cf2-96f4d5cb2f00.json",
-          "content/forms/979d254a-981c-436f-be38-434f564df790.json",
-          "content/forms/3bb1e04c-1868-4f26-829b-c3c0cd89b98d.json"
+          "content/forms/e635fb97-abbc-42b5-b189-b3e989e93410.json"
         ],
         "workqTemplates": []
       },
@@ -1828,8 +1815,69 @@
       ],
       "name": "bookkeeping-xero",
       "tags": [],
-      "version": "2.0.23",
+      "version": "3.0.24",
       "displayName": "Bookkeeping for Xero",
+      "welcome": {
+        "schema": 1,
+        "audience": {
+          "anchor": "tool",
+          "industries": [
+            "bookkeeping"
+          ],
+          "roles": [
+            "bookkeeper"
+          ],
+          "requireRole": false,
+          "businessTypes": [],
+          "needs": [
+            "save_time",
+            "reduce_errors"
+          ]
+        },
+        "provider": {
+          "group": "accounting",
+          "tool": "xero"
+        },
+        "install": "selected_tool",
+        "cost": "free",
+        "auth": "oauth",
+        "credentials": "per_user",
+        "dependencies": [],
+        "setup": {
+          "steps": [
+            {
+              "kind": "connect",
+              "title": "Connect Xero",
+              "detail": "Sign in as the person who will own the automations, using a Xero login that can see every client organisation."
+            },
+            {
+              "kind": "configure",
+              "title": "Turn on Automations and publish the forms",
+              "detail": "Automations must be on for the workspace. Publish the twelve forms; they install as drafts."
+            },
+            {
+              "kind": "review_automations",
+              "title": "Publish the automations",
+              "detail": "They install as drafts. Publish Start setup and Apply setup (Xero) first, then the bill, filing, review, digest and ledger checks automations."
+            },
+            {
+              "kind": "configure",
+              "title": "Run Start setup",
+              "detail": "Fill in the Bookkeeping setup form, then run it again with your client business names and complete each client's settings form."
+            },
+            {
+              "kind": "connect",
+              "title": "Connect a mailbox for bills by email",
+              "detail": "Optional. Install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, then publish the matching email intake automation."
+            },
+            {
+              "kind": "learn",
+              "title": "Try it with a supplier bill",
+              "detail": "Email a supplier bill PDF to the connected inbox, or drop one into the client's folder under Bookkeeping Inbox in Knowledge."
+            }
+          ]
+        }
+      },
       "source": "./plugins/bookkeeping-xero",
       "branding": {
         "logo": "assets/logo.svg",
