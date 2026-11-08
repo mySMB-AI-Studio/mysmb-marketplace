@@ -1,5 +1,5 @@
 {
-  "contentHash": "fb14acb2c09a5816d3c2647c3ce2a7bfb5e6103ca4ea6af8e675ca04c0b471c5",
+  "contentHash": "16afcae4c244fc3a9b5b597d0a7a718142d35783b438e2da8e4768c835d8d0ba",
   "definition": {
     "key": "triage-customer-feedback-suite",
     "kind": "evaluation",
@@ -15,6 +15,9 @@
               "step": "followupDecision"
             }
           ],
+          "intentsNotAllowed": [
+            "workq.create"
+          ],
           "outcome": "followedUp",
           "stepsReached": [
             "triage",
@@ -27,6 +30,29 @@
           "outputs": {
             "triage": {
               "category": "complaint",
+              "closePayload": {
+                "data": {
+                  "category": "complaint",
+                  "severity": "high",
+                  "status": "closed"
+                },
+                "id": "rec-1",
+                "slug": "customer_feedback"
+              },
+              "escalatePayload": {
+                "description": "Acme said the export is broken.",
+                "priority": "high",
+                "title": "Feedback from Acme Pty Ltd: Export broken"
+              },
+              "followupRecordPayload": {
+                "data": {
+                  "category": "complaint",
+                  "severity": "high",
+                  "status": "follow_up"
+                },
+                "id": "rec-1",
+                "slug": "customer_feedback"
+              },
               "needsFollowUp": true,
               "reason": "The customer says the export 'has been broken for a week'.",
               "severity": "high"
@@ -47,9 +73,55 @@
         "expected": {
           "decisions": [
             {
+              "option": "escalate",
+              "step": "followupDecision"
+            }
+          ],
+          "intentsNotAllowed": [
+            "records.write"
+          ],
+          "outcome": "escalated",
+          "stepsReached": [
+            "triage",
+            "followupDecision",
+            "escalated"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "triage": {
+              "category": "bug",
+              "closePayload": null,
+              "escalatePayload": {
+                "description": "Riverbend Dental said the login takes 20 seconds.",
+                "priority": "medium",
+                "title": "Feedback from Riverbend Dental: Login slow"
+              },
+              "followupRecordPayload": null,
+              "needsFollowUp": true,
+              "reason": "The customer says the login 'takes 20 seconds'.",
+              "severity": "medium"
+            }
+          }
+        },
+        "inputs": {
+          "customer": "Riverbend Dental",
+          "message": "The login page takes 20 seconds.",
+          "summary": "Login slow"
+        },
+        "key": "bugEscalated",
+        "title": "A bug is escalated to the team"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
               "option": "close",
               "step": "followupDecision"
             }
+          ],
+          "intentsNotAllowed": [
+            "workq.create"
           ],
           "outcome": "closed",
           "stepsReached": [
@@ -62,6 +134,29 @@
           "outputs": {
             "triage": {
               "category": "praise",
+              "closePayload": {
+                "data": {
+                  "category": "praise",
+                  "severity": "low",
+                  "status": "closed"
+                },
+                "id": "rec-2",
+                "slug": "customer_feedback"
+              },
+              "escalatePayload": {
+                "description": "Praise.",
+                "priority": "medium",
+                "title": "Feedback from Bright Co"
+              },
+              "followupRecordPayload": {
+                "data": {
+                  "category": "praise",
+                  "severity": "low",
+                  "status": "follow_up"
+                },
+                "id": "rec-2",
+                "slug": "customer_feedback"
+              },
               "needsFollowUp": false,
               "reason": "The customer says 'love the new dashboard'.",
               "severity": "low"
