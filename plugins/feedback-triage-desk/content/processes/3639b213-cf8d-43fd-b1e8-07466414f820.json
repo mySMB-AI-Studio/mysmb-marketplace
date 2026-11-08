@@ -1,8 +1,12 @@
 {
-  "contentHash": "4f8b1216cdf39c42832de765a8410d3fae4c3e33cd6405ce95e4e12cbc37c2bc",
+  "contentHash": "0e037b904cf0cf21c410a810377372e118f9739b4ee7e7b59916a355adb5d992",
   "definition": {
-    "capabilities": [],
-    "description": "Triage, decide, then follow up or close.",
+    "capabilities": [
+      "records.read",
+      "records.write",
+      "workq.create"
+    ],
+    "description": "Triage, decide, then follow up, escalate or close.",
     "exceptions": [],
     "inputs": [
       {
@@ -45,6 +49,14 @@
       {
         "evidence": [
           "The triage",
+          "The team item"
+        ],
+        "key": "escalated",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "The triage",
           "The manager's decision"
         ],
         "key": "closed",
@@ -53,7 +65,7 @@
     ],
     "protectedRules": [
       {
-        "description": "No follow-up is raised and nothing is closed without the manager's decision.",
+        "description": "Nothing is changed, raised or closed without the manager's decision.",
         "key": "managerDecides"
       },
       {
@@ -79,7 +91,10 @@
           "category",
           "severity",
           "needsFollowUp",
-          "reason"
+          "reason",
+          "followupRecordPayload",
+          "closePayload",
+          "escalatePayload"
         ],
         "skill": "triage-feedback",
         "title": "Categorise the feedback and set a severity"
@@ -92,18 +107,37 @@
         "kind": "decision",
         "materiality": [
           "steps.triage.reason",
-          "steps.triage.severity"
+          "steps.triage.severity",
+          "steps.triage.category"
         ],
         "options": [
           {
-            "effect": "A WorkQ follow-up item is created for the manager.",
+            "effect": "The feedback is marked Follow-up raised and a follow-up task is created for you.",
+            "intent": {
+              "capability": "records.write",
+              "payloadFrom": "steps.triage.followupRecordPayload"
+            },
             "key": "followup",
-            "label": "Raise a follow-up",
+            "label": "Follow up myself",
             "suggested": true,
             "transition": "followUpTask"
           },
           {
-            "effect": "Nothing more happens; the feedback stays on record.",
+            "effect": "A WorkQ item is created for the whole team.",
+            "intent": {
+              "capability": "workq.create",
+              "payloadFrom": "steps.triage.escalatePayload"
+            },
+            "key": "escalate",
+            "label": "Escalate to the team",
+            "transition": "escalated"
+          },
+          {
+            "effect": "The feedback is marked Closed with its category and severity.",
+            "intent": {
+              "capability": "records.write",
+              "payloadFrom": "steps.triage.closePayload"
+            },
             "key": "close",
             "label": "Close as noted",
             "transition": "closed"
@@ -112,7 +146,7 @@
         "sla": {
           "remindAfterBusinessDays": 1
         },
-        "title": "Does this feedback need a follow-up?",
+        "title": "What should happen with this feedback?",
         "type": "feedback_followup"
       },
       {
@@ -137,7 +171,19 @@
       },
       {
         "evidence": [
-          "steps.triage.reason"
+          "steps.triage.escalatePayload"
+        ],
+        "key": "escalated",
+        "kind": "gate",
+        "outcome": "escalated",
+        "requires": [
+          "steps.followupDecision.decision == 'escalate'"
+        ],
+        "title": "Escalated to the team"
+      },
+      {
+        "evidence": [
+          "steps.triage.closePayload"
         ],
         "key": "closed",
         "kind": "gate",
@@ -180,7 +226,7 @@
       }
     ],
     "variationPoints": [],
-    "version": "0.2.0",
+    "version": "0.3.0",
     "vocabulary": {
       "subject": "feedback"
     }
