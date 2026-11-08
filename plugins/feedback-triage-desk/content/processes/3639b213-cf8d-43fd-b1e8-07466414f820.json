@@ -1,17 +1,31 @@
 {
-  "contentHash": "0b6eca3d3c3ff76f2bcad0dca591b7225fd071db11358f80c1c3a6297ec205b5",
+  "contentHash": "4f8b1216cdf39c42832de765a8410d3fae4c3e33cd6405ce95e4e12cbc37c2bc",
   "definition": {
-    "capabilities": [
-      "records.read",
-      "records.write",
-      "workq.create"
-    ],
+    "capabilities": [],
     "description": "Triage, decide, then follow up or close.",
     "exceptions": [],
     "inputs": [
       {
         "key": "recordId",
         "label": "Feedback record",
+        "required": false,
+        "type": "string"
+      },
+      {
+        "key": "summary",
+        "label": "Summary",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "customer",
+        "label": "Customer",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "message",
+        "label": "What they said",
         "required": true,
         "type": "string"
       }
@@ -23,7 +37,7 @@
       {
         "evidence": [
           "The triage",
-          "The manager's decision"
+          "The completed follow-up"
         ],
         "key": "followedUp",
         "terminal": true
@@ -65,9 +79,7 @@
           "category",
           "severity",
           "needsFollowUp",
-          "reason",
-          "followupPayload",
-          "closePayload"
+          "reason"
         ],
         "skill": "triage-feedback",
         "title": "Categorise the feedback and set a severity"
@@ -85,21 +97,13 @@
         "options": [
           {
             "effect": "A WorkQ follow-up item is created for the manager.",
-            "intent": {
-              "capability": "workq.create",
-              "payloadFrom": "steps.triage.followupPayload"
-            },
             "key": "followup",
             "label": "Raise a follow-up",
             "suggested": true,
-            "transition": "followedUp"
+            "transition": "followUpTask"
           },
           {
-            "effect": "The feedback is marked Closed with its category and severity. No follow-up is raised.",
-            "intent": {
-              "capability": "records.write",
-              "payloadFrom": "steps.triage.closePayload"
-            },
+            "effect": "Nothing more happens; the feedback stays on record.",
             "key": "close",
             "label": "Close as noted",
             "transition": "closed"
@@ -112,20 +116,28 @@
         "type": "feedback_followup"
       },
       {
+        "assign": "manager",
+        "completion": "statusDone",
+        "key": "followUpTask",
+        "kind": "human",
+        "template": "74353248-f232-4fa4-9e3b-8be15ee1a958",
+        "title": "Follow up with the customer"
+      },
+      {
         "evidence": [
-          "steps.triage.followupPayload"
+          "steps.followUpTask.completed"
         ],
         "key": "followedUp",
         "kind": "gate",
         "outcome": "followedUp",
         "requires": [
-          "steps.followupDecision.decision == 'followup'"
+          "steps.followUpTask.completed"
         ],
-        "title": "Follow-up raised"
+        "title": "Follow-up done"
       },
       {
         "evidence": [
-          "steps.triage.closePayload"
+          "steps.triage.reason"
         ],
         "key": "closed",
         "kind": "gate",
@@ -145,6 +157,10 @@
       {
         "from": "triage",
         "to": "followupDecision"
+      },
+      {
+        "from": "followUpTask",
+        "to": "followedUp"
       }
     ],
     "triggers": [
@@ -154,14 +170,17 @@
           "type_slug": "customer_feedback"
         },
         "inputsFrom": {
-          "recordId": "subject.record_id"
+          "customer": "payload.customer",
+          "message": "payload.message",
+          "recordId": "subject.record_id",
+          "summary": "payload.name"
         },
         "kind": "event",
         "subjectFrom": "subject.record_id"
       }
     ],
     "variationPoints": [],
-    "version": "0.1.0",
+    "version": "0.2.0",
     "vocabulary": {
       "subject": "feedback"
     }

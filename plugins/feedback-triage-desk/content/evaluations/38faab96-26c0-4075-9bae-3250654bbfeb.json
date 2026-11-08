@@ -1,5 +1,5 @@
 {
-  "contentHash": "d7741ee8231289f8a7ebc4a875cae075cc902e86f4207bc4af0d3d61c1104559",
+  "contentHash": "fb14acb2c09a5816d3c2647c3ce2a7bfb5e6103ca4ea6af8e675ca04c0b471c5",
   "definition": {
     "key": "triage-customer-feedback-suite",
     "kind": "evaluation",
@@ -15,13 +15,11 @@
               "step": "followupDecision"
             }
           ],
-          "intentsNotAllowed": [
-            "records.write"
-          ],
           "outcome": "followedUp",
           "stepsReached": [
             "triage",
             "followupDecision",
+            "followUpTask",
             "followedUp"
           ]
         },
@@ -29,29 +27,18 @@
           "outputs": {
             "triage": {
               "category": "complaint",
-              "closePayload": {
-                "data": {
-                  "category": "complaint",
-                  "severity": "high",
-                  "status": "closed"
-                },
-                "expectedUpdatedAt": "2026-11-08T00:00:00.000Z",
-                "id": "rec-1",
-                "slug": "customer_feedback"
-              },
-              "followupPayload": {
-                "description": "Acme Pty Ltd said:\n\n> The export has been broken for a week and we are losing time.\n\nTriaged as complaint, severity high.",
-                "priority": "high",
-                "title": "Follow up Acme Pty Ltd: Export broken"
-              },
               "needsFollowUp": true,
               "reason": "The customer says the export 'has been broken for a week'.",
               "severity": "high"
             }
-          }
+          },
+          "steps.followUpTask.completed": true
         },
         "inputs": {
-          "recordId": "rec-1"
+          "customer": "Acme Pty Ltd",
+          "message": "The export has been broken for a week and we are losing time.",
+          "recordId": "rec-1",
+          "summary": "Export broken"
         },
         "key": "complaintFollowedUp",
         "title": "An angry complaint gets a follow-up"
@@ -64,9 +51,6 @@
               "step": "followupDecision"
             }
           ],
-          "intentsNotAllowed": [
-            "workq.create"
-          ],
           "outcome": "closed",
           "stepsReached": [
             "triage",
@@ -78,21 +62,6 @@
           "outputs": {
             "triage": {
               "category": "praise",
-              "closePayload": {
-                "data": {
-                  "category": "praise",
-                  "severity": "low",
-                  "status": "closed"
-                },
-                "expectedUpdatedAt": "2026-11-08T00:00:00.000Z",
-                "id": "rec-2",
-                "slug": "customer_feedback"
-              },
-              "followupPayload": {
-                "description": "Bright Co said:\n\n> Love the new dashboard!",
-                "priority": "medium",
-                "title": "Follow up Bright Co: Loves the dashboard"
-              },
               "needsFollowUp": false,
               "reason": "The customer says 'love the new dashboard'.",
               "severity": "low"
@@ -100,7 +69,10 @@
           }
         },
         "inputs": {
-          "recordId": "rec-2"
+          "customer": "Bright Co",
+          "message": "Love the new dashboard!",
+          "recordId": "rec-2",
+          "summary": "Loves the dashboard"
         },
         "key": "praiseClosed",
         "title": "Praise is closed as noted"
