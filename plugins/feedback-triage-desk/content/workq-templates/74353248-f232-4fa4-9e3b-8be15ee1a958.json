@@ -1,0 +1,72 @@
+{
+  "body": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "description": "{{customer}} sent feedback triaged as **{{category}}** (severity {{severity}}):\n\n> {{message}}\n\nReply to the customer, then mark this item done.",
+        "dueOffset": {
+          "days": 2
+        },
+        "id": "follow_up",
+        "labels": [
+          "feedback-triage"
+        ],
+        "priority": "high",
+        "roleVarRef": "manager",
+        "scope": "org",
+        "subtasks": [
+          {
+            "id": "reply",
+            "label": "Reply to the customer"
+          },
+          {
+            "id": "log",
+            "label": "Note what you agreed"
+          }
+        ],
+        "title": "Follow up {{customer}}: {{summary}}"
+      }
+    ]
+  },
+  "contentHash": "e128d4818e4de7623ed0caa94c31d3a5ce4472c785019e77563d2ff2e154ad2f",
+  "kind": "workq_template",
+  "level": "org",
+  "name": "Feedback follow-up",
+  "originKey": "74353248-f232-4fa4-9e3b-8be15ee1a958",
+  "slots": [
+    {
+      "displayName": "Customer",
+      "logicalName": "customer",
+      "type": "text"
+    },
+    {
+      "displayName": "Summary",
+      "logicalName": "summary",
+      "type": "text"
+    },
+    {
+      "displayName": "Message",
+      "logicalName": "message",
+      "type": "text"
+    },
+    {
+      "displayName": "Category",
+      "logicalName": "category",
+      "type": "text"
+    },
+    {
+      "displayName": "Severity",
+      "logicalName": "severity",
+      "type": "text"
+    },
+    {
+      "config": {
+        "allow": "user"
+      },
+      "displayName": "Manager",
+      "logicalName": "manager",
+      "type": "principal"
+    }
+  ],
+  "tags": []
+}

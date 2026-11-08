@@ -1,0 +1,172 @@
+{
+  "contentHash": "0b6eca3d3c3ff76f2bcad0dca591b7225fd071db11358f80c1c3a6297ec205b5",
+  "definition": {
+    "capabilities": [
+      "records.read",
+      "records.write",
+      "workq.create"
+    ],
+    "description": "Triage, decide, then follow up or close.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "recordId",
+        "label": "Feedback record",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "key": "triage-customer-feedback",
+    "kind": "process",
+    "originKey": "3639b213-cf8d-43fd-b1e8-07466414f820",
+    "outcomes": [
+      {
+        "evidence": [
+          "The triage",
+          "The manager's decision"
+        ],
+        "key": "followedUp",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "The triage",
+          "The manager's decision"
+        ],
+        "key": "closed",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "No follow-up is raised and nothing is closed without the manager's decision.",
+        "key": "managerDecides"
+      },
+      {
+        "description": "The customer's words reach the manager exactly as written.",
+        "key": "verbatim"
+      },
+      {
+        "description": "Everything happens inside Workspace; nothing is sent outside it.",
+        "key": "workspaceOnly"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "triage",
+        "kind": "agent",
+        "outputs": [
+          "category",
+          "severity",
+          "needsFollowUp",
+          "reason",
+          "followupPayload",
+          "closePayload"
+        ],
+        "skill": "triage-feedback",
+        "title": "Categorise the feedback and set a severity"
+      },
+      {
+        "eligible": [
+          "manager"
+        ],
+        "key": "followupDecision",
+        "kind": "decision",
+        "materiality": [
+          "steps.triage.reason",
+          "steps.triage.severity"
+        ],
+        "options": [
+          {
+            "effect": "A WorkQ follow-up item is created for the manager.",
+            "intent": {
+              "capability": "workq.create",
+              "payloadFrom": "steps.triage.followupPayload"
+            },
+            "key": "followup",
+            "label": "Raise a follow-up",
+            "suggested": true,
+            "transition": "followedUp"
+          },
+          {
+            "effect": "The feedback is marked Closed with its category and severity. No follow-up is raised.",
+            "intent": {
+              "capability": "records.write",
+              "payloadFrom": "steps.triage.closePayload"
+            },
+            "key": "close",
+            "label": "Close as noted",
+            "transition": "closed"
+          }
+        ],
+        "sla": {
+          "remindAfterBusinessDays": 1
+        },
+        "title": "Does this feedback need a follow-up?",
+        "type": "feedback_followup"
+      },
+      {
+        "evidence": [
+          "steps.triage.followupPayload"
+        ],
+        "key": "followedUp",
+        "kind": "gate",
+        "outcome": "followedUp",
+        "requires": [
+          "steps.followupDecision.decision == 'followup'"
+        ],
+        "title": "Follow-up raised"
+      },
+      {
+        "evidence": [
+          "steps.triage.closePayload"
+        ],
+        "key": "closed",
+        "kind": "gate",
+        "outcome": "closed",
+        "requires": [
+          "steps.followupDecision.decision == 'close'"
+        ],
+        "title": "Closed as noted"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [],
+      "kind": "records.customer_feedback"
+    },
+    "title": "Triage customer feedback",
+    "transitions": [
+      {
+        "from": "triage",
+        "to": "followupDecision"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "record.created",
+        "filter": {
+          "type_slug": "customer_feedback"
+        },
+        "inputsFrom": {
+          "recordId": "subject.record_id"
+        },
+        "kind": "event",
+        "subjectFrom": "subject.record_id"
+      }
+    ],
+    "variationPoints": [],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "feedback"
+    }
+  },
+  "kind": "process",
+  "name": "Triage customer feedback",
+  "originKey": "3639b213-cf8d-43fd-b1e8-07466414f820"
+}
