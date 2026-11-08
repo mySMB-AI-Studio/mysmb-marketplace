@@ -1,10 +1,10 @@
 {
-  "contentHash": "745f86cdf55a24e11ba7bdd48f9e8c53746ac3d7b2ec8c292ac57f2ce867248b",
+  "contentHash": "0b6eca3d3c3ff76f2bcad0dca591b7225fd071db11358f80c1c3a6297ec205b5",
   "definition": {
     "capabilities": [
-      "feedback.read",
-      "feedback.set_status",
-      "feedback.raise_followup"
+      "records.read",
+      "records.write",
+      "workq.create"
     ],
     "description": "Triage, decide, then follow up or close.",
     "exceptions": [],
@@ -86,7 +86,7 @@
           {
             "effect": "A WorkQ follow-up item is created for the manager.",
             "intent": {
-              "capability": "feedback.raise_followup",
+              "capability": "workq.create",
               "payloadFrom": "steps.triage.followupPayload"
             },
             "key": "followup",
@@ -95,9 +95,9 @@
             "transition": "followedUp"
           },
           {
-            "effect": "The feedback is marked Closed. No follow-up is raised.",
+            "effect": "The feedback is marked Closed with its category and severity. No follow-up is raised.",
             "intent": {
-              "capability": "feedback.set_status",
+              "capability": "records.write",
               "payloadFrom": "steps.triage.closePayload"
             },
             "key": "close",

@@ -13,7 +13,6 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Setup:** Feedback Triage Desk setup (each person reviews their configuration and account bindings)
 - **Pages:** Feedback desk (installed as Draft — publish in the installing workspace)
 - **Processes:** Triage customer feedback
-- **Capabilities:** Raise a feedback follow-up, Read feedback, Update feedback triage
 - **Evaluations:** Triage customer feedback: release gate
 - **Agent views:** Overview, Setup pages
 - **Reports:** Feedback follow-up activity (templates — "Use this report" copies one into the workspace)
