@@ -17,6 +17,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Agent views:** Overview, Setup pages
 - **Reports:** Feedback follow-up activity (templates — "Use this report" copies one into the workspace)
 - **Skills:** 1
+- **Agents:** 1
 
 ## Configuration
 
