@@ -1,0 +1,79 @@
+{
+  "contentHash": "37554bd2c6c2303b2ff5882aaefedddd4e140cbecdc12dc4c4ecab46d6e643a9",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "id": "inputs.recordId",
+          "type_slug": "'customer_feedback'"
+        },
+        "scopes": [
+          "records:customer_feedback:read"
+        ],
+        "server": "workspace",
+        "tool": "records.list"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "properties": {
+        "recordId": {
+          "description": "The feedback record to read.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recordId"
+      ],
+      "type": "object"
+    },
+    "key": "feedback.read",
+    "kind": "capability",
+    "originKey": "5b4713de-80c8-4d8d-9a97-a32bdbb3b17d",
+    "outputsSchema": {
+      "properties": {
+        "feedback": {
+          "items": {
+            "properties": {
+              "category": {
+                "type": "string"
+              },
+              "customer": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "records:customer_feedback:read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read feedback"
+  },
+  "kind": "capability",
+  "name": "Read feedback",
+  "originKey": "5b4713de-80c8-4d8d-9a97-a32bdbb3b17d"
+}

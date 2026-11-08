@@ -1,0 +1,82 @@
+{
+  "contentHash": "04b416a7567e2cf5c612509fd80653b4e1d0c3ac4268eaed71293aef93e3e6f6",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "fields.category": "inputs.category",
+          "fields.severity": "inputs.severity",
+          "fields.status": "inputs.status",
+          "id": "inputs.recordId",
+          "type_slug": "'customer_feedback'"
+        },
+        "scopes": [
+          "records:customer_feedback:write"
+        ],
+        "server": "workspace",
+        "tool": "records.update"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "properties": {
+        "category": {
+          "enum": [
+            "bug",
+            "feature",
+            "praise",
+            "complaint",
+            "other"
+          ],
+          "type": "string"
+        },
+        "recordId": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "new",
+            "follow_up",
+            "closed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "recordId",
+        "status"
+      ],
+      "type": "object"
+    },
+    "key": "feedback.set_status",
+    "kind": "capability",
+    "originKey": "1fb06610-eb3d-492a-9141-0643b9abfba6",
+    "outputsSchema": {
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "records:customer_feedback:write"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "write_internal",
+    "title": "Update feedback triage"
+  },
+  "kind": "capability",
+  "name": "Update feedback triage",
+  "originKey": "1fb06610-eb3d-492a-9141-0643b9abfba6"
+}

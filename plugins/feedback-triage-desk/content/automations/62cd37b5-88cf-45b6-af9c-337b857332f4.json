@@ -1,0 +1,57 @@
+{
+  "contentHash": "06914c717d8cb5e419317c7a2060a6c4b93ad38023ab33d1cb4ff27e52c905c1",
+  "declaredScopes": [
+    "extension_setup:read",
+    "records:customer_feedback:read",
+    "workq:read",
+    "workq:write"
+  ],
+  "dependencies": [],
+  "description": "Every weekday at 8am (UTC schedule) — or on a manual run — counts open customer feedback by severity and posts one WorkQ digest item for the team. Stays inside Workspace.",
+  "flowIr": {
+    "description": "Counts open customer feedback by severity and posts one WorkQ digest item.",
+    "irVersion": 1,
+    "name": "Daily feedback digest",
+    "nodes": [
+      {
+        "code": "from datetime import datetime, timezone\n\nsettings = api.extension.settings() or {}\nproduct = settings.get(\"product_name\") or \"your product\"\n\ncounts = {\"high\": 0, \"medium\": 0, \"low\": 0, \"untriaged\": 0}\nopen_count = 0\ncursor = None\nfor _ in range(10):\n    args = {\"type_slug\": \"customer_feedback\", \"limit\": 200}\n    if cursor is not None:\n        args[\"cursor\"] = cursor\n    page = api.records.list(**args) or {}\n    for r in page.get(\"records\", []):\n        fields = r.get(\"fields\") or r.get(\"values\") or r\n        if str(fields.get(\"status\") or \"new\") == \"closed\":\n            continue\n        open_count += 1\n        sev = str(fields.get(\"severity\") or \"\")\n        counts[sev if sev in counts else \"untriaged\"] += 1\n    cursor = page.get(\"nextCursor\")\n    if cursor is None:\n        break\n\ntoday = datetime.now(timezone.utc).date().isoformat()\ntitle = f\"Feedback digest {today}\"\nsummary = (\n    f\"{open_count} open feedback item(s) for {product}: \"\n    f\"{counts['high']} high, {counts['medium']} medium, {counts['low']} low, {counts['untriaged']} not yet triaged.\"\n)\nexisting = api.workq.list(search=title) or []\nif not any(isinstance(i, dict) and i.get(\"title\") == title for i in existing):\n    api.workq.create(title=title, scope=\"org\", priority=\"low\", description=summary)\n",
+        "id": "digest",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Open feedback items.",
+            "name": "open_count",
+            "type": "int"
+          },
+          {
+            "description": "The digest line.",
+            "name": "summary",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Reads the Customer feedback table, counts open items by severity, and creates one WorkQ digest item for today.",
+        "title": "Count open feedback and post a digest"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "digest"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      },
+      {
+        "cron": "0 22 * * 0-4",
+        "kind": "schedule",
+        "timezone": "UTC"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Daily feedback digest",
+  "originKey": "62cd37b5-88cf-45b6-af9c-337b857332f4",
+  "tags": []
+}

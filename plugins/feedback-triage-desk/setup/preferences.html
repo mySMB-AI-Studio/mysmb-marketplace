@@ -1,0 +1,55 @@
+<ws-stack gap="5">
+  <ws-alert id="load-error" variant="destructive" heading="Your earlier answers could not be loaded" hidden>Reload the page to try again.</ws-alert>
+  <ws-field id="product-field" label="Product or service" description="What your customers are giving feedback about." required>
+    <ws-input id="product_name" maxlength="80" placeholder="Acme Cloud" required></ws-input>
+  </ws-field>
+  <ws-field id="threshold-field" label="Recommend a follow-up from" description="Feedback at or above this severity is recommended for a follow-up." required>
+    <ws-select id="followup_threshold" required>
+      <option value="low">Low and above</option>
+      <option value="medium">Medium and above</option>
+      <option value="high">High only</option>
+    </ws-select>
+  </ws-field>
+  <ws-field label="Post a daily digest" description="One WorkQ item each weekday morning counting open feedback.">
+    <ws-switch id="daily_digest"></ws-switch>
+  </ws-field>
+  <p id="save-state" class="ws-text-sm ws-text-muted" aria-live="polite"></p>
+</ws-stack>
+<script>
+(() => {
+  const el = (id) => document.getElementById(id);
+  const product = el('product_name');
+  const threshold = el('followup_threshold');
+  const digest = el('daily_digest');
+  const valid = () => product.value.trim().length > 0 && product.value.trim().length <= 80 && ['low','medium','high'].includes(threshold.value);
+  const allow = () => workspace.wizard.setCanContinue({ value: valid() }).catch(() => {});
+  async function save(values) {
+    el('save-state').textContent = 'Saving';
+    try {
+      await workspace.setup.save({ values });
+      el('save-state').textContent = 'Saved';
+    } catch (error) {
+      el('save-state').textContent = (error && error.message ? error.message : 'This could not be saved') + '. Try again.';
+    }
+  }
+  product.addEventListener('input', () => { el('product-field').removeAttribute('error'); allow(); });
+  product.addEventListener('change', () => {
+    const v = product.value.trim();
+    if (!v) { el('product-field').setAttribute('error', 'Enter a product or service.'); allow(); return; }
+    save({ product_name: v }); allow();
+  });
+  const onThreshold = () => { if (['low','medium','high'].includes(threshold.value)) save({ followup_threshold: threshold.value }); allow(); };
+  threshold.addEventListener('change', onThreshold);
+  digest.addEventListener('change', () => save({ daily_digest: Boolean(digest.checked) }));
+  (async () => {
+    workspace.wizard.setCanContinue({ value: false }).catch(() => {});
+    let saved = {};
+    try { saved = ((await workspace.setup.get()) || {}).settings || {}; } catch { el('load-error').hidden = false; }
+    product.value = typeof saved.product_name === 'string' ? saved.product_name : '';
+    threshold.value = ['low','medium','high'].includes(saved.followup_threshold) ? saved.followup_threshold : 'medium';
+    if (!saved.followup_threshold) save({ followup_threshold: threshold.value });
+    digest.checked = saved.daily_digest !== false;
+    allow();
+  })();
+})();
+</script>

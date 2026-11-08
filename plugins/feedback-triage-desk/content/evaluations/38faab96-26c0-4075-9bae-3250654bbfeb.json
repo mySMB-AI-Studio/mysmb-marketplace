@@ -1,0 +1,115 @@
+{
+  "contentHash": "f78691b843f1b2e77ef62774f0cfdf7425dec4ded4c710b83641fa51e98309b7",
+  "definition": {
+    "key": "triage-customer-feedback-suite",
+    "kind": "evaluation",
+    "originKey": "38faab96-26c0-4075-9bae-3250654bbfeb",
+    "process": "3639b213-cf8d-43fd-b1e8-07466414f820",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "followup",
+              "step": "followupDecision"
+            }
+          ],
+          "outcome": "followedUp",
+          "stepsReached": [
+            "triage",
+            "followupDecision",
+            "followedUp"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "triage": {
+              "category": "complaint",
+              "closePayload": {
+                "category": "complaint",
+                "recordId": "rec-1",
+                "severity": "high",
+                "status": "closed"
+              },
+              "followupPayload": {
+                "category": "complaint",
+                "customer": "Acme Pty Ltd",
+                "message": "The export has been broken for a week and we are losing time.",
+                "recordId": "rec-1",
+                "requestRef": "rec-1:followup",
+                "severity": "high",
+                "summary": "Export broken"
+              },
+              "needsFollowUp": true,
+              "reason": "The customer says the export 'has been broken for a week'.",
+              "severity": "high"
+            }
+          }
+        },
+        "inputs": {
+          "recordId": "rec-1"
+        },
+        "key": "complaintFollowedUp",
+        "title": "An angry complaint gets a follow-up"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "close",
+              "step": "followupDecision"
+            }
+          ],
+          "intentsNotAllowed": [
+            "feedback.raise_followup"
+          ],
+          "outcome": "closed",
+          "stepsReached": [
+            "triage",
+            "followupDecision",
+            "closed"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "triage": {
+              "category": "praise",
+              "closePayload": {
+                "category": "praise",
+                "recordId": "rec-2",
+                "severity": "low",
+                "status": "closed"
+              },
+              "followupPayload": {
+                "category": "praise",
+                "customer": "Bright Co",
+                "message": "Love the new dashboard!",
+                "recordId": "rec-2",
+                "requestRef": "rec-2:followup",
+                "severity": "low",
+                "summary": "Loves the dashboard"
+              },
+              "needsFollowUp": false,
+              "reason": "The customer says 'love the new dashboard'.",
+              "severity": "low"
+            }
+          }
+        },
+        "inputs": {
+          "recordId": "rec-2"
+        },
+        "key": "praiseClosed",
+        "title": "Praise is closed as noted"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Triage customer feedback: release gate"
+  },
+  "kind": "evaluation",
+  "name": "Triage customer feedback: release gate",
+  "originKey": "38faab96-26c0-4075-9bae-3250654bbfeb"
+}
