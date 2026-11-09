@@ -116,11 +116,101 @@ const toggle_ticket_list = {
   handler: toggleTicketList,
 };
 
+/** Most tickets the Priority Breakdown tile reads (`list_tickets` max). */
+const PRIORITY_TICKET_CAP = 100;
+
+/** Priority rows, in order. Medium's bar is `chart-3` because `warning` renders brown in solid fills. */
+const PRIORITIES = [
+  { id: 'high', label: 'High', tone: 'destructive' },
+  { id: 'medium', label: 'Medium', tone: 'chart-3' },
+  { id: 'low', label: 'Low', tone: 'success' },
+] as const;
+
+/**
+ * Display-ready state for the Priority Breakdown tile, from `list_tickets`
+ * with `status: "${OPEN}"` (Open and Escalated, not On Hold or Closed).
+ * High, Medium and Low always show; a "No priority" row appears only when a
+ * ticket has none (or one outside those three), so the rows add up to the total.
+ *
+ * Spec: `{ "$computed": "zoho-desk_priority_breakdown_dashboard", "args": { "report": { "$state": "/zoho-desk/list_tickets" }, "showList": { "$state": "/ui/showPriorityTickets" }, "showHigh": { "$state": "/ui/showHighTickets" } } }`
+ */
+const priority_breakdown_dashboard: ComputedFunction = (args) => {
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const loaded = Array.isArray(report.data);
+  const tickets = loaded ? (report.data as AnyRecord[]) : [];
+  const counts: Record<string, number> = {};
+  for (const t of tickets) {
+    const p = String(t?.priority ?? '').trim().toLowerCase();
+    const id = PRIORITIES.some((x) => x.id === p) ? p : 'none';
+    counts[id] = (counts[id] ?? 0) + 1;
+  }
+  const total = tickets.length;
+  const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+  const rows: AnyRecord[] = PRIORITIES.map((x) => ({
+    id: x.id,
+    label: x.label,
+    tone: x.tone,
+    pct: pct(counts[x.id] ?? 0),
+    countDisplay: (counts[x.id] ?? 0).toLocaleString('en-US'),
+  }));
+  if (counts.none) {
+    rows.push({ id: 'none', label: 'No priority', tone: 'default', pct: pct(counts.none), countDisplay: counts.none.toLocaleString('en-US') });
+  }
+  const high = counts.high ?? 0;
+  // Ticket list under the total, newest first (the provider sorts by -createdTime).
+  const showList = args.showList === true;
+  const toItem = (t: AnyRecord) => {
+    const status = String(t.status ?? '').trim() || 'Unknown';
+    return {
+      id: String(t.id ?? t.ticketNumber),
+      number: `#${String(t.ticketNumber ?? '')}`,
+      subject: String(t.subject ?? '').trim() || '(No subject)',
+      status,
+      tone: STATUS_TONE[status.toLowerCase()] ?? 'muted',
+    };
+  };
+  const ticketList = tickets.slice(0, MAX_TICKET_ROWS).map(toItem);
+  // High-priority tickets under the callout.
+  const showHigh = args.showHigh === true;
+  const highList = tickets
+    .filter((t) => String(t?.priority ?? '').trim().toLowerCase() === 'high')
+    .slice(0, MAX_TICKET_ROWS)
+    .map(toItem);
+  return {
+    highExpanded: showHigh,
+    // What a click on the callout writes to `/ui/showHighTickets`.
+    highToggle: !showHigh,
+    highChevron: showHigh ? 'ChevronUp' : 'ChevronDown',
+    highList,
+    highNote:
+      showHigh && high > highList.length
+        ? `Showing ${highList.length} of ${high.toLocaleString('en-US')} high-priority tickets, newest first.`
+        : '',
+    loaded,
+    hasData: total > 0,
+    rows,
+    listExpanded: showList,
+    // What a click on the total writes to `/ui/showPriorityTickets`.
+    listToggle: !showList,
+    listChevron: showList ? 'ChevronUp' : 'ChevronDown',
+    ticketList,
+    listNote:
+      showList && total > ticketList.length
+        ? `Showing ${ticketList.length} of ${total.toLocaleString('en-US')} tickets, newest first.`
+        : '',
+    highCount: high,
+    alertText: `${high.toLocaleString('en-US')} high-priority ${high === 1 ? 'ticket needs' : 'tickets need'} attention first`,
+    totalLabel: `${total.toLocaleString('en-US')} open ${total === 1 ? 'ticket' : 'tickets'} total`,
+    capNote: total >= PRIORITY_TICKET_CAP ? `Based on the newest ${PRIORITY_TICKET_CAP} open tickets.` : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-desk',
   functions: {
     ticket_status_dashboard,
     ticket_list_chevron,
+    priority_breakdown_dashboard,
   },
   actions: {
     toggle_ticket_list,
