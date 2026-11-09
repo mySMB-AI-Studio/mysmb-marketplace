@@ -1,0 +1,401 @@
+{
+  "category": "operations",
+  "connectorsUsed": ["fabric"],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "fabric",
+    "tool": "fabric_list_schemas",
+    "params": {
+      "server": "g3mcb3frh7zu7i4jex6gz4d3v4-ha6eymwo33ueljlyeo2r6xhc4m.datawarehouse.fabric.microsoft.com",
+      "database": "test-warehouse"
+    }
+  },
+  "description": "Overview of the test-warehouse Fabric Warehouse: every schema (including Fabric's built-in ones) with its table/view/function/procedure counts, plus database roles. Click a schema row to drill into its actual table/view/function/procedure names (fabric_list_schema_objects); click the Security row to see the actual role names (fabric_list_database_roles). Mirrors the grouping of the Fabric portal's own Explorer panel. Test-data-only for now -- rebuild against the real Pronto warehouse once confirmed.",
+  "id": "fabric-data-warehouse",
+  "keywords": ["fabric", "warehouse", "schemas", "explorer", "overview", "security", "roles"],
+  "popularity": 0,
+  "sizing": {
+    "max": { "colSpan": 8, "rowSpan": 12 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body", "infoOverlay"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Database", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Data Warehouse" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Fabric · test-warehouse" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "liveDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "liveBadge": { "type": "Badge", "props": { "text": "Live", "tone": "success", "variant": "soft" } },
+      "countBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": { "$computed": "count", "args": { "value": { "$state": "/fabric/fabric_list_schemas" } } },
+              "pattern": "{n} schemas"
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge", "countBadge", "infoBtn"] },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "loading": {
+        "type": "Skeleton",
+        "props": { "height": "8rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/fabric.fabric_list_schemas" }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No user schemas found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/fabric.fabric_list_schemas", "not": true },
+            { "$state": "/fabric/fabric_list_schemas/0", "not": true }
+          ]
+        }
+      },
+      "schemaName": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "text": { "$item": "schema" },
+          "tone": { "$cond": { "$item": "isSystem", "eq": true }, "$then": "muted", "$else": "default" }
+        }
+      },
+      "systemBadge": {
+        "type": "Badge",
+        "props": { "text": "System", "tone": "muted", "variant": "outline" },
+        "visible": { "$item": "isSystem" }
+      },
+      "schemaNameGroup": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["schemaName", "systemBadge"] },
+      "schemaChevron": { "type": "Icon", "props": { "name": "ChevronRight", "size": "sm", "tone": "muted" } },
+      "tablesBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "tables" }, "pattern": "{n} tables" } },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+      "viewsBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "views" }, "pattern": "{n} views" } },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "functionsBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "functions" }, "pattern": "{n} functions" } },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "proceduresBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "procedures" }, "pattern": "{n} procedures" } },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "badgesRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["tablesBadge", "viewsBadge", "functionsBadge", "proceduresBadge"]
+      },
+      "schemaRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "clickable": true, "hover": true },
+        "children": ["schemaNameGroup", "badgesRow", "schemaChevron"],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/selectedSchema", "value": { "$computed": "identity", "args": { "value": { "$item": "schema" } } } }
+            },
+            {
+              "action": "fabric.fabric_list_schema_objects",
+              "params": {
+                "server": "g3mcb3frh7zu7i4jex6gz4d3v4-ha6eymwo33ueljlyeo2r6xhc4m.datawarehouse.fabric.microsoft.com",
+                "database": "test-warehouse",
+                "schema": { "$computed": "identity", "args": { "value": { "$item": "schema" } } }
+              }
+            }
+          ]
+        }
+      },
+      "schemaList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["schemaRow"],
+        "repeat": { "key": "schema", "statePath": "/fabric/fabric_list_schemas" },
+        "visible": { "$state": "/fabric/fabric_list_schemas/0" }
+      },
+      "detailDivider": { "type": "Divider", "props": {}, "visible": { "$state": "/ui/selectedSchema" } },
+      "detailHeading": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "text": { "$computed": "fmt", "args": { "s": { "$state": "/ui/selectedSchema" }, "pattern": "{s} contents" } }
+        }
+      },
+      "detailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedSchema", "value": null } } }
+      },
+      "detailHeaderRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between" },
+        "children": ["detailHeading", "detailCloseBtn"]
+      },
+      "detailLoading": {
+        "type": "Skeleton",
+        "props": { "height": "3rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/fabric.fabric_list_schema_objects" }
+      },
+      "tablesLabel": { "type": "Caption", "props": { "text": "Tables & views", "tone": "muted", "weight": "semibold" } },
+      "tablesEmpty": {
+        "type": "Caption",
+        "props": { "text": "None", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/fabric.fabric_list_schema_objects", "not": true },
+            { "$state": "/fabric/fabric_list_schema_objects/tables/0", "not": true }
+          ]
+        }
+      },
+      "tableItemBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "name" },
+          "variant": "soft",
+          "tone": { "$cond": { "$item": "kind", "eq": "view" }, "$then": "info", "$else": "accent" }
+        }
+      },
+      "tablesRepeatRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["tableItemBadge"],
+        "repeat": { "key": "name", "statePath": "/fabric/fabric_list_schema_objects/tables" },
+        "visible": { "$state": "/fabric/fabric_list_schema_objects/tables/0" }
+      },
+      "routinesLabel": { "type": "Caption", "props": { "text": "Functions & procedures", "tone": "muted", "weight": "semibold" } },
+      "routinesEmpty": {
+        "type": "Caption",
+        "props": { "text": "None", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/fabric.fabric_list_schema_objects", "not": true },
+            { "$state": "/fabric/fabric_list_schema_objects/routines/0", "not": true }
+          ]
+        }
+      },
+      "routineItemBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "name" },
+          "variant": "soft",
+          "tone": { "$cond": { "$item": "kind", "eq": "procedure" }, "$then": "brand", "$else": "warning" }
+        }
+      },
+      "routinesRepeatRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["routineItemBadge"],
+        "repeat": { "key": "name", "statePath": "/fabric/fabric_list_schema_objects/routines" },
+        "visible": { "$state": "/fabric/fabric_list_schema_objects/routines/0" }
+      },
+      "schemaDetailSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": [
+          "detailHeaderRow",
+          "detailLoading",
+          "tablesLabel",
+          "tablesEmpty",
+          "tablesRepeatRow",
+          "routinesLabel",
+          "routinesEmpty",
+          "routinesRepeatRow"
+        ],
+        "visible": { "$state": "/ui/selectedSchema" }
+      },
+      "securityDivider": { "type": "Divider", "props": {}, "visible": { "$state": "/fabric/fabric_list_schemas/0" } },
+      "securityLabel": { "type": "Caption", "props": { "text": "Security", "tone": "muted", "weight": "semibold" } },
+      "securityChevron": { "type": "Icon", "props": { "name": "ChevronRight", "size": "sm", "tone": "muted" } },
+      "securityLoading": {
+        "type": "Skeleton",
+        "props": { "height": "1.5rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/fabric.fabric_list_database_roles" }
+      },
+      "builtinRolesBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count_where",
+                "args": { "value": { "$state": "/fabric/fabric_list_database_roles" }, "whereField": "isFixed", "equals": true }
+              },
+              "pattern": "{n} built-in roles"
+            }
+          },
+          "tone": "brand",
+          "variant": "soft"
+        }
+      },
+      "customRolesBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count_where",
+                "args": { "value": { "$state": "/fabric/fabric_list_database_roles" }, "whereField": "isFixed", "equals": false }
+              },
+              "pattern": "{n} custom roles"
+            }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "rolesRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "clickable": true, "hover": true },
+        "children": ["builtinRolesBadge", "customRolesBadge", "securityChevron"],
+        "visible": { "$state": "/_loading/fabric.fabric_list_database_roles", "not": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showRoleNames", "value": true } } }
+      },
+      "roleItemBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "name" },
+          "variant": "soft",
+          "tone": { "$cond": { "$item": "isFixed", "eq": true }, "$then": "brand", "$else": "warning" }
+        }
+      },
+      "roleNamesRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["roleItemBadge"],
+        "repeat": { "key": "name", "statePath": "/fabric/fabric_list_database_roles" }
+      },
+      "roleNamesCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "\"Custom\" here just means SQL Server doesn't flag it as a fixed role -- public is a standard role every database has, not something created here.",
+          "tone": "muted"
+        }
+      },
+      "roleNamesCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Hide role names" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showRoleNames", "value": false } } }
+      },
+      "roleNamesHeaderRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "end" },
+        "children": ["roleNamesCloseBtn"]
+      },
+      "roleNamesSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["roleNamesHeaderRow", "roleNamesRow", "roleNamesCaption"],
+        "visible": { "$state": "/ui/showRoleNames" }
+      },
+      "securitySection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["securityLabel", "securityLoading", "rolesRow", "roleNamesSection"],
+        "visible": { "$state": "/fabric/fabric_list_schemas/0" }
+      },
+      "body": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["loading", "empty", "schemaList", "detailDivider", "schemaDetailSection", "securityDivider", "securitySection"],
+        "watch": {
+          "/fabric/fabric_list_schemas": {
+            "action": "fabric.fabric_list_database_roles",
+            "params": {
+              "server": "g3mcb3frh7zu7i4jex6gz4d3v4-ha6eymwo33ueljlyeo2r6xhc4m.datawarehouse.fabric.microsoft.com",
+              "database": "test-warehouse"
+            }
+          }
+        }
+      },
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Data Warehouse", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "An overview of a Microsoft Fabric Warehouse -- every schema (including Fabric's built-in ones, tagged \"System\"), with how many tables, views, functions and procedures it holds, plus its database roles. Mirrors how the Fabric portal's own Explorer panel groups things.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "How it works", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Reads live from the test-warehouse Warehouse via fabric_list_schemas (schemas + object counts) and fabric_list_database_roles (role names). Click a schema row to see its actual table/view/function/procedure names, via fabric_list_schema_objects. Click the Security row to see the actual role names.",
+          "size": "sm"
+        }
+      },
+      "infoLimitsLabel": { "type": "Caption", "props": { "text": "Good to know", "tone": "muted", "weight": "semibold" } },
+      "infoLimitsText": {
+        "type": "Text",
+        "props": {
+          "text": "Two Fabric schemas (INFORMATION_SCHEMA, queryinsights) have no objects visible this way and won't appear, even though they show as empty folders in the Fabric portal. This points at fixed test data for now -- it will be rebuilt against the real Pronto warehouse once confirmed.",
+          "size": "sm"
+        }
+      },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText", "infoLimitsLabel", "infoLimitsText"]
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      }
+    }
+  },
+  "tags": ["fabric", "microsoft", "warehouse", "schemas", "data", "test"],
+  "title": "Microsoft Fabric Data Warehouse"
+}

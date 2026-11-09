@@ -26,7 +26,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "body"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "body", "infoOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "Database", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "Test Orders" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Fabric · dbo.test_orders" } },
@@ -49,8 +49,63 @@
           "variant": "soft"
         }
       },
-      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge", "countBadge"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge", "countBadge", "infoBtn"] },
       "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Test Orders", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Lists rows from a test table (dbo.test_orders) in a Microsoft Fabric Warehouse -- built to prove the Fabric connection works end-to-end before real Pronto data lands.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "How it works", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Reads live from the test-warehouse Warehouse via the fabric_read_rows tool, sorted by order ID. Each amount shows as a colored pill -- green under $100, amber $100-200, red $200 and over.",
+          "size": "sm"
+        }
+      },
+      "infoLimitsLabel": { "type": "Caption", "props": { "text": "Good to know", "tone": "muted", "weight": "semibold" } },
+      "infoLimitsText": {
+        "type": "Text",
+        "props": {
+          "text": "This points at fixed test data for now -- it will be rebuilt against the real Pronto table and schema once confirmed.",
+          "size": "sm"
+        }
+      },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText", "infoLimitsLabel", "infoLimitsText"]
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
       "loading": {
         "type": "Skeleton",
         "props": { "height": "8rem", "rounded": "md" },

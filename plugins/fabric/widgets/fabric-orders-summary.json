@@ -26,7 +26,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "statSection"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "statSection", "infoOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "Database", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "Orders Summary" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Fabric · dbo.test_orders" } },
@@ -35,8 +35,63 @@
       "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
       "liveDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
       "liveBadge": { "type": "Badge", "props": { "text": "Live", "tone": "success", "variant": "soft" } },
-      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["liveDot", "liveBadge", "infoBtn"] },
       "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Orders Summary", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Shows the order count and total dollar amount for the same test table (dbo.test_orders) in a Microsoft Fabric Warehouse, as a quick at-a-glance summary.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "How it works", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Count and total are computed client-side from the same fabric_read_rows data used by the Test Orders tile -- no separate query.",
+          "size": "sm"
+        }
+      },
+      "infoLimitsLabel": { "type": "Caption", "props": { "text": "Good to know", "tone": "muted", "weight": "semibold" } },
+      "infoLimitsText": {
+        "type": "Text",
+        "props": {
+          "text": "Accurate for small test data only. A real table larger than the 200-row page cap would need a server-side SQL aggregate instead of this client-side sum.",
+          "size": "sm"
+        }
+      },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText", "infoLimitsLabel", "infoLimitsText"]
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
       "loading": {
         "type": "Skeleton",
         "props": { "height": "2.5rem", "rounded": "md" },
