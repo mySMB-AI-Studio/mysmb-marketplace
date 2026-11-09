@@ -205,12 +205,185 @@ const priority_breakdown_dashboard: ComputedFunction = (args) => {
   };
 };
 
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Heading over the list a clicked SLA card opens. */
+const GROUP_TITLES: Record<string, string> = {
+  overdue: 'Overdue tickets',
+  soon: 'Due within 1 hr',
+  today: 'On track today',
+};
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Local `5:33 pm`. */
+function clockTime(d: Date): string {
+  const h = d.getHours() % 12 || 12;
+  return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? 'am' : 'pm'}`;
+}
+
+/** Local `11-Nov-26` (TILE-DISPLAY-STANDARDS §1). */
+function ddMmmYy(d: Date): string {
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(2)}`;
+}
+
+/**
+ * Display-ready state for the SLA & Due Date Health tile, from `list_tickets`
+ * with `status: "${OPEN},${ONHOLD}"` sorted by `dueDate`. Against the
+ * current local time: overdue (due date passed), due within 1 hr, and
+ * "on track today" (due later today, more than an hour away). On Hold
+ * tickets have no due date (Desk pauses the clock), so they count only
+ * towards the total.
+ *
+ * Spec: `{ "$computed": "zoho-desk_sla_due_dashboard", "args": { "report": { "$state": "/zoho-desk/list_tickets" }, "showList": { "$state": "/ui/showSlaTickets" }, "selected": { "$state": "/ui/slaCard" }, "showNearest": { "$state": "/ui/showNearest" } } }`
+ */
+const sla_due_dashboard: ComputedFunction = (args) => {
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const loaded = Array.isArray(report.data);
+  const tickets = loaded ? (report.data as AnyRecord[]) : [];
+  const now = new Date();
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+  const tomorrowEnd = new Date(endOfToday);
+  tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+
+  let overdue = 0;
+  let soon = 0;
+  let today = 0;
+  let nearest: { subject: string; due: Date; ticket: AnyRecord } | null = null;
+  const items = tickets.map((t) => {
+    const raw = typeof t.dueDate === 'string' ? Date.parse(t.dueDate) : NaN;
+    const due = Number.isNaN(raw) ? null : new Date(raw);
+    const subject = String(t.subject ?? '').trim() || '(No subject)';
+    let dueLabel: string;
+    let dueTone: string;
+    let rank: number;
+    let group = '';
+    if (!due) {
+      const onHold = String(t.status ?? '').trim().toLowerCase() === 'on hold';
+      dueLabel = onHold ? 'On hold' : 'No due date';
+      dueTone = 'muted';
+      rank = Number.MAX_SAFE_INTEGER;
+    } else {
+      rank = due.getTime();
+      if (due.getTime() < now.getTime()) {
+        overdue += 1;
+        group = 'overdue';
+        dueLabel = 'Overdue';
+        dueTone = 'destructive';
+      } else {
+        if (!nearest || due < nearest.due) nearest = { subject, due, ticket: t };
+        if (due.getTime() - now.getTime() <= HOUR_MS) {
+          soon += 1;
+          group = 'soon';
+          dueLabel = 'Due in 1 hr';
+          dueTone = 'warning';
+        } else if (due <= endOfToday) {
+          today += 1;
+          group = 'today';
+          dueLabel = 'Due today';
+          dueTone = 'brand';
+        } else {
+          dueLabel = due <= tomorrowEnd ? 'Due tomorrow' : `Due ${ddMmmYy(due)}`;
+          dueTone = 'muted';
+        }
+      }
+    }
+    return {
+      id: String(t.id ?? t.ticketNumber),
+      number: `#${String(t.ticketNumber ?? '')}`,
+      subject,
+      dueLabel,
+      dueTone,
+      rank,
+      group,
+    };
+  });
+  items.sort((a, b) => a.rank - b.rank);
+  const total = tickets.length;
+  const showList = args.showList === true;
+  const strip = ({ rank: _rank, group: _group, ...rest }: (typeof items)[number]) => rest;
+  const ticketList = items.slice(0, MAX_TICKET_ROWS).map(strip);
+
+  // The card whose tickets are listed under the cards (`/ui/slaCard`), or none.
+  const selected = typeof args.selected === 'string' && GROUP_TITLES[args.selected] ? args.selected : '';
+  const inGroup = selected ? items.filter((x) => x.group === selected) : [];
+  const groupList = inGroup.slice(0, MAX_TICKET_ROWS).map(strip);
+  const toggle = (key: string) => (selected === key ? '' : key);
+  const chevron = (key: string) => (selected === key ? 'ChevronUp' : 'ChevronDown');
+
+  let nearestText = '';
+  const n = nearest as { subject: string; due: Date; ticket: AnyRecord } | null;
+  if (n) {
+    const when =
+      n.due <= endOfToday
+        ? `due today, ${clockTime(n.due)}`
+        : n.due <= tomorrowEnd
+          ? `due tomorrow, ${clockTime(n.due)}`
+          : `due ${ddMmmYy(n.due)}`;
+    nearestText = `Nearest due: “${n.subject}” — ${when}`;
+  }
+  // Details under the nearest-due line when it is clicked (`/ui/showNearest`).
+  const showNearest = args.showNearest === true && n !== null;
+  const nearestStatus = n ? String(n.ticket.status ?? '').trim() || 'Unknown' : '';
+  const nearestPriority = n ? String(n.ticket.priority ?? '').trim() : '';
+
+  return {
+    loaded,
+    hasData: total > 0,
+    overdueDisplay: overdue.toLocaleString('en-US'),
+    overdueLabel: `overdue ${overdue === 1 ? 'ticket' : 'tickets'}`,
+    overdueTone: overdue > 0 ? 'destructive' : 'success',
+    overdueIcon: overdue > 0 ? 'TriangleAlert' : 'CircleCheck',
+    soonDisplay: soon.toLocaleString('en-US'),
+    todayDisplay: today.toLocaleString('en-US'),
+    nearestText,
+    nearestExpanded: showNearest,
+    // What a click on the nearest-due line writes to `/ui/showNearest`.
+    nearestToggle: !showNearest,
+    nearestChevron: showNearest ? 'ChevronUp' : 'ChevronDown',
+    nearestNumber: n ? `#${String(n.ticket.ticketNumber ?? '')}` : '',
+    nearestStatus,
+    nearestStatusTone: STATUS_TONE[nearestStatus.toLowerCase()] ?? 'muted',
+    nearestDetail: n
+      ? [nearestPriority ? `${nearestPriority} priority` : 'No priority', `Due ${ddMmmYy(n.due)}, ${clockTime(n.due)}`].join(' · ')
+      : '',
+    overdueToggle: toggle('overdue'),
+    soonToggle: toggle('soon'),
+    todayToggle: toggle('today'),
+    overdueChevron: chevron('overdue'),
+    soonChevron: chevron('soon'),
+    todayChevron: chevron('today'),
+    // Overdue lists inside its own (full-width) card; the two small cards share the box under the grid.
+    overdueExpanded: selected === 'overdue',
+    groupExpanded: selected === 'soon' || selected === 'today',
+    groupTitle: GROUP_TITLES[selected] ?? '',
+    groupList,
+    groupEmpty: GROUP_TITLES[selected] !== undefined && inGroup.length === 0,
+    groupNote:
+      inGroup.length > groupList.length
+        ? `Showing ${groupList.length} of ${inGroup.length.toLocaleString('en-US')} tickets, soonest due first.`
+        : '',
+    capNote: total >= PRIORITY_TICKET_CAP ? `Based on the ${PRIORITY_TICKET_CAP} tickets due soonest.` : '',
+    totalLabel: `${total.toLocaleString('en-US')} active ${total === 1 ? 'ticket' : 'tickets'} total`,
+    listExpanded: showList,
+    // What a click on the total writes to `/ui/showSlaTickets`.
+    listToggle: !showList,
+    listChevron: showList ? 'ChevronUp' : 'ChevronDown',
+    ticketList,
+    listNote:
+      showList && total > ticketList.length
+        ? `Showing ${ticketList.length} of ${total.toLocaleString('en-US')} tickets, soonest due first.`
+        : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-desk',
   functions: {
     ticket_status_dashboard,
     ticket_list_chevron,
     priority_breakdown_dashboard,
+    sla_due_dashboard,
   },
   actions: {
     toggle_ticket_list,

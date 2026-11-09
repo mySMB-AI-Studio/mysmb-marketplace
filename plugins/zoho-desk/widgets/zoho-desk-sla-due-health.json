@@ -1,0 +1,1137 @@
+{
+  "id": "zoho-desk-sla-due-health",
+  "title": "SLA & Due Date Health",
+  "description": "Active Zoho Desk tickets (open, escalated and on hold) against their due dates: how many are overdue, due within the hour and due later today, plus the nearest due ticket (click for its details); click a card to list its tickets, or click the total to list the tickets and when each is due.",
+  "category": "support",
+  "tags": [
+    "zoho",
+    "zoho-desk",
+    "support",
+    "tickets",
+    "sla"
+  ],
+  "keywords": [
+    "sla",
+    "due date",
+    "overdue tickets",
+    "due soon",
+    "zoho desk"
+  ],
+  "connectorsUsed": [
+    "zoho-desk"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-desk",
+    "tool": "list_tickets",
+    "params": {
+      "status": "${OPEN},${ONHOLD}",
+      "limit": 100,
+      "sortBy": "dueDate"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-desk/list_tickets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sla",
+              "value": {
+                "$computed": "zoho-desk_sla_due_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showSlaTickets"
+                  },
+                  "selected": {
+                    "$state": "/ui/slaCard"
+                  },
+                  "showNearest": {
+                    "$state": "/ui/showNearest"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showSlaTickets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sla",
+              "value": {
+                "$computed": "zoho-desk_sla_due_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showSlaTickets"
+                  },
+                  "selected": {
+                    "$state": "/ui/slaCard"
+                  },
+                  "showNearest": {
+                    "$state": "/ui/showNearest"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/slaCard": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sla",
+              "value": {
+                "$computed": "zoho-desk_sla_due_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showSlaTickets"
+                  },
+                  "selected": {
+                    "$state": "/ui/slaCard"
+                  },
+                  "showNearest": {
+                    "$state": "/ui/showNearest"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showNearest": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sla",
+              "value": {
+                "$computed": "zoho-desk_sla_due_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showSlaTickets"
+                  },
+                  "selected": {
+                    "$state": "/ui/slaCard"
+                  },
+                  "showNearest": {
+                    "$state": "/ui/showNearest"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Timer",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "SLA & Due Date Health",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Desk"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skCards",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-desk.list_tickets",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skCards": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load tickets from Zoho Desk. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-desk.list_tickets"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No active tickets in Zoho Desk right now."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/loaded"
+            },
+            {
+              "$state": "/ui/sla/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "scopeLabel",
+          "heroBox",
+          "statGrid",
+          "groupBox",
+          "nearestBox",
+          "capNote",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/loaded"
+            },
+            {
+              "$state": "/ui/sla/hasData"
+            }
+          ]
+        }
+      },
+      "scopeLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Active tickets against due date",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "heroBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "heroOuter"
+        ]
+      },
+      "heroOuter": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "heroRow",
+          "overdueList",
+          "overdueEmpty",
+          "overdueNote"
+        ]
+      },
+      "heroRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "heroStack",
+          "heroIcon",
+          "overdueChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/slaCard",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/sla/overdueToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "overdueValue",
+          "overdueLabel"
+        ]
+      },
+      "overdueValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/sla/overdueDisplay"
+          }
+        }
+      },
+      "overdueLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/overdueLabel"
+          },
+          "tone": {
+            "$state": "/ui/sla/overdueTone"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "heroIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/sla/overdueIcon"
+          },
+          "tone": {
+            "$state": "/ui/sla/overdueTone"
+          },
+          "size": "lg"
+        }
+      },
+      "overdueChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/sla/overdueChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "overdueList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "overdueItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/sla/groupList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/sla/overdueExpanded"
+        }
+      },
+      "overdueItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "overdueNumber",
+          "overdueSubject",
+          "overdueDue"
+        ]
+      },
+      "overdueNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "number"
+          },
+          "tone": "muted"
+        }
+      },
+      "overdueSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "overdueDue": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "dueLabel"
+          },
+          "tone": {
+            "$item": "dueTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "overdueEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No overdue tickets right now."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/overdueExpanded"
+            },
+            {
+              "$state": "/ui/sla/groupEmpty"
+            }
+          ]
+        }
+      },
+      "overdueNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/groupNote"
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/overdueExpanded"
+            },
+            {
+              "$state": "/ui/sla/groupNote"
+            }
+          ]
+        }
+      },
+      "statGrid": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "children": [
+          "cardSoon",
+          "cardToday"
+        ]
+      },
+      "cardSoon": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "soonRow"
+        ]
+      },
+      "soonRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "start",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "soonStack",
+          "soonChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/slaCard",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/sla/soonToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "soonStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "soonValue",
+          "soonLabel"
+        ]
+      },
+      "soonValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/sla/soonDisplay"
+          }
+        }
+      },
+      "soonLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Due within 1 hr",
+          "tone": "destructive",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "soonChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/sla/soonChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "cardToday": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "todayRow"
+        ]
+      },
+      "todayRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "start",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "todayStack",
+          "todayChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/slaCard",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/sla/todayToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "todayStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "todayValue",
+          "todayLabel"
+        ]
+      },
+      "todayValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/sla/todayDisplay"
+          }
+        }
+      },
+      "todayLabel": {
+        "type": "Text",
+        "props": {
+          "text": "On track today",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "todayChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/sla/todayChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "groupBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "groupStack"
+        ],
+        "visible": {
+          "$state": "/ui/sla/groupExpanded"
+        }
+      },
+      "groupStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "groupTitle",
+          "groupList",
+          "groupEmpty",
+          "groupNote"
+        ]
+      },
+      "groupTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/groupTitle"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "groupList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "groupItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/sla/groupList",
+          "key": "id"
+        }
+      },
+      "groupItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "groupNumber",
+          "groupSubject",
+          "groupDue"
+        ]
+      },
+      "groupNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "number"
+          },
+          "tone": "muted"
+        }
+      },
+      "groupSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "groupDue": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "dueLabel"
+          },
+          "tone": {
+            "$item": "dueTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "groupEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No tickets in this group right now."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/groupExpanded"
+            },
+            {
+              "$state": "/ui/sla/groupEmpty"
+            }
+          ]
+        }
+      },
+      "groupNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/groupNote"
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/sla/groupExpanded"
+            },
+            {
+              "$state": "/ui/sla/groupNote"
+            }
+          ]
+        }
+      },
+      "nearestBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "nearestStack"
+        ],
+        "visible": {
+          "$state": "/ui/sla/nearestText"
+        }
+      },
+      "nearestStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "nearestRow",
+          "nearestItem"
+        ]
+      },
+      "nearestRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "nearestIcon",
+          "nearestText",
+          "nearestChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showNearest",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/sla/nearestToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "nearestIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Info",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "nearestText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/nearestText"
+          },
+          "size": "sm"
+        }
+      },
+      "nearestChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/sla/nearestChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "nearestItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "nearestNumber",
+          "nearestDetail",
+          "nearestStatus"
+        ],
+        "visible": {
+          "$state": "/ui/sla/nearestExpanded"
+        }
+      },
+      "nearestNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/nearestNumber"
+          },
+          "tone": "muted"
+        }
+      },
+      "nearestDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/nearestDetail"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "nearestStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/nearestStatus"
+          },
+          "tone": {
+            "$state": "/ui/sla/nearestStatusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/sla/capNote"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "footerStack"
+        ]
+      },
+      "footerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "footerRow",
+          "ticketList",
+          "ticketsNote"
+        ]
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "totalToggleRow",
+          "viewRow"
+        ]
+      },
+      "totalToggleRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto minmax(0, 1fr)",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "totalLabel",
+          "totalChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showSlaTickets",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/sla/listToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "totalLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/totalLabel"
+          },
+          "size": "sm"
+        }
+      },
+      "totalChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/sla/listChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://desk.zoho.com/agent/mysmbcom",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Desk",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "ticketList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "ticketItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/sla/ticketList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/sla/listExpanded"
+        }
+      },
+      "ticketItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "ticketNumber",
+          "ticketSubject",
+          "ticketDue"
+        ]
+      },
+      "ticketNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "number"
+          },
+          "tone": "muted"
+        }
+      },
+      "ticketSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "ticketDue": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "dueLabel"
+          },
+          "tone": {
+            "$item": "dueTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "ticketsNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/sla/listNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/sla/listNote"
+        }
+      }
+    }
+  }
+}
