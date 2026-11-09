@@ -1,0 +1,719 @@
+{
+  "id": "zoho-desk-priority-breakdown",
+  "title": "Priority Breakdown",
+  "description": "Open and escalated Zoho Desk tickets by priority (High, Medium, Low), each with a bar showing its share, plus a callout (click to list them) when high-priority tickets need attention first; click the total to list the tickets and their status.",
+  "category": "support",
+  "tags": [
+    "zoho",
+    "zoho-desk",
+    "support",
+    "tickets",
+    "priority"
+  ],
+  "keywords": [
+    "ticket priority",
+    "high priority tickets",
+    "open tickets",
+    "escalated tickets",
+    "zoho desk"
+  ],
+  "connectorsUsed": [
+    "zoho-desk"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-desk",
+    "tool": "list_tickets",
+    "params": {
+      "status": "${OPEN}",
+      "limit": 100,
+      "sortBy": "-createdTime"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-desk/list_tickets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/priority",
+              "value": {
+                "$computed": "zoho-desk_priority_breakdown_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showPriorityTickets"
+                  },
+                  "showHigh": {
+                    "$state": "/ui/showHighTickets"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showPriorityTickets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/priority",
+              "value": {
+                "$computed": "zoho-desk_priority_breakdown_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showPriorityTickets"
+                  },
+                  "showHigh": {
+                    "$state": "/ui/showHighTickets"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showHighTickets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/priority",
+              "value": {
+                "$computed": "zoho-desk_priority_breakdown_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/list_tickets"
+                  },
+                  "showList": {
+                    "$state": "/ui/showPriorityTickets"
+                  },
+                  "showHigh": {
+                    "$state": "/ui/showHighTickets"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Flag",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Priority Breakdown",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Desk"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skRows",
+          "skAlert",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/priority/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-desk.list_tickets",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        }
+      },
+      "skAlert": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load tickets from Zoho Desk. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-desk.list_tickets"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No open or escalated tickets in Zoho Desk right now."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/priority/loaded"
+            },
+            {
+              "$state": "/ui/priority/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "scopeLabel",
+          "priorityList",
+          "capNote",
+          "alertBox",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/priority/loaded"
+            },
+            {
+              "$state": "/ui/priority/hasData"
+            }
+          ]
+        }
+      },
+      "scopeLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Open & escalated tickets",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "priorityList": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "priorityRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/priority/rows",
+          "key": "id"
+        }
+      },
+      "priorityRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) 2rem",
+          "gap": "md",
+          "align": "end"
+        },
+        "children": [
+          "priorityMain",
+          "priorityCount"
+        ]
+      },
+      "priorityMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "priorityLabel",
+          "priorityBarRow"
+        ]
+      },
+      "priorityLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "priorityBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "priorityBar"
+        ]
+      },
+      "priorityBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      },
+      "priorityCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/priority/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/priority/capNote"
+        }
+      },
+      "alertBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "alertStack"
+        ],
+        "visible": {
+          "$state": "/ui/priority/highCount"
+        }
+      },
+      "alertStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "alertRow",
+          "highList",
+          "highNote"
+        ]
+      },
+      "alertRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "alertIcon",
+          "alertText",
+          "alertChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showHighTickets",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/priority/highToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "alertIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CircleAlert",
+          "tone": "destructive",
+          "size": "md"
+        }
+      },
+      "alertText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/priority/alertText"
+          },
+          "tone": "destructive",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "alertChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/priority/highChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "highList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "highItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/priority/highList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/priority/highExpanded"
+        }
+      },
+      "highItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "highNumber",
+          "highSubject",
+          "highStatus"
+        ]
+      },
+      "highNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "number"
+          },
+          "tone": "muted"
+        }
+      },
+      "highSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "highStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "highNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/priority/highNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/priority/highNote"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "footerStack"
+        ]
+      },
+      "footerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "footerRow",
+          "ticketList",
+          "ticketsNote"
+        ]
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "totalToggleRow",
+          "viewRow"
+        ]
+      },
+      "totalToggleRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto minmax(0, 1fr)",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "totalLabel",
+          "totalChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showPriorityTickets",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/priority/listToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "totalLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/priority/totalLabel"
+          },
+          "size": "sm"
+        }
+      },
+      "totalChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/priority/listChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://desk.zoho.com/agent/mysmbcom",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Desk",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "ticketList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "ticketItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/priority/ticketList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/priority/listExpanded"
+        }
+      },
+      "ticketItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "ticketNumber",
+          "ticketSubject",
+          "ticketStatus"
+        ]
+      },
+      "ticketNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "number"
+          },
+          "tone": "muted"
+        }
+      },
+      "ticketSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "ticketStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "ticketsNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/priority/listNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/priority/listNote"
+        }
+      }
+    }
+  }
+}
