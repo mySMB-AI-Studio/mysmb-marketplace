@@ -342,6 +342,7 @@
       "body": {
         "children": [
           "loading",
+          "errorBox",
           "empty",
           "content",
           "acctOverlay",
@@ -1134,6 +1135,10 @@
               "not": true
             },
             {
+              "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
               "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0"
             }
           ]
@@ -1399,8 +1404,66 @@
               "not": true
             },
             {
+              "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
               "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0",
               "not": true
+            }
+          ]
+        }
+      },
+      "errHint": {
+        "props": {
+          "text": "Check the xero-accounting connection under Settings, then refresh the tile."
+        },
+        "type": "Caption"
+      },
+      "errIcon": {
+        "props": {
+          "name": "TriangleAlert",
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Icon"
+      },
+      "errMsg": {
+        "props": {
+          "text": {
+            "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference"
+          },
+          "tone": "warning"
+        },
+        "type": "Caption"
+      },
+      "errTitle": {
+        "props": {
+          "text": "Xero could not be read",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "errorBox": {
+        "children": [
+          "errIcon",
+          "errTitle",
+          "errMsg",
+          "errHint"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference"
             }
           ]
         }
