@@ -1,0 +1,740 @@
+{
+  "id": "zoho-desk-ticket-status-overview",
+  "title": "Ticket Status Overview",
+  "description": "All Zoho Desk tickets split by status (Open, On Hold, Escalated, Closed), each with a bar showing its share of all tickets, and the total ticket count; click the total to list the newest tickets and their status.",
+  "category": "support",
+  "tags": [
+    "zoho",
+    "zoho-desk",
+    "support",
+    "tickets",
+    "help-desk"
+  ],
+  "keywords": [
+    "ticket status",
+    "open tickets",
+    "on hold",
+    "escalated",
+    "closed tickets",
+    "zoho desk"
+  ],
+  "connectorsUsed": [
+    "zoho-desk"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-desk",
+    "tool": "tickets_count_by_field",
+    "params": {
+      "field": "status"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-desk/tickets_count_by_field": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketStatus",
+              "value": {
+                "$computed": "zoho-desk_ticket_status_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-desk/tickets_count_by_field"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Ticket",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Ticket Status Overview",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Desk"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skCards",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/ticketStatus/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-desk.tickets_count_by_field",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skCards": {
+        "type": "Skeleton",
+        "props": {
+          "height": "10rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load tickets from Zoho Desk. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-desk.tickets_count_by_field"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "There are no tickets in Zoho Desk yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/ticketStatus/loaded"
+            },
+            {
+              "$state": "/ui/ticketStatus/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "scopeLabel",
+          "statusGrid",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/ticketStatus/loaded"
+            },
+            {
+              "$state": "/ui/ticketStatus/hasData"
+            }
+          ]
+        }
+      },
+      "scopeLabel": {
+        "type": "Text",
+        "props": {
+          "text": "All Tickets",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "statusGrid": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "children": [
+          "cardOpen",
+          "cardOnHold",
+          "cardEscalated",
+          "cardClosed"
+        ]
+      },
+      "cardOpen": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "openInner"
+        ]
+      },
+      "openInner": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "openStack",
+          "openBarRow"
+        ]
+      },
+      "openStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "openValue",
+          "openLabel"
+        ]
+      },
+      "openValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/openDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "openLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Open",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "openBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "openBar"
+        ]
+      },
+      "openBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/openPct"
+          },
+          "tone": "brand"
+        }
+      },
+      "cardOnHold": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "onHoldInner"
+        ]
+      },
+      "onHoldInner": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "onHoldStack",
+          "onHoldBarRow"
+        ]
+      },
+      "onHoldStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "onHoldValue",
+          "onHoldLabel"
+        ]
+      },
+      "onHoldValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/onHoldDisplay"
+          },
+          "tone": "warning"
+        }
+      },
+      "onHoldLabel": {
+        "type": "Text",
+        "props": {
+          "text": "On Hold",
+          "tone": "warning",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "onHoldBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "onHoldBar"
+        ]
+      },
+      "onHoldBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/onHoldPct"
+          },
+          "tone": "chart-3"
+        }
+      },
+      "cardEscalated": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "escalatedInner"
+        ]
+      },
+      "escalatedInner": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "escalatedStack",
+          "escalatedBarRow"
+        ]
+      },
+      "escalatedStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "escalatedValue",
+          "escalatedLabel"
+        ]
+      },
+      "escalatedValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/escalatedDisplay"
+          },
+          "tone": "destructive"
+        }
+      },
+      "escalatedLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Escalated",
+          "tone": "destructive",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "escalatedBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "escalatedBar"
+        ]
+      },
+      "escalatedBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/escalatedPct"
+          },
+          "tone": "destructive"
+        }
+      },
+      "cardClosed": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "closedInner"
+        ]
+      },
+      "closedInner": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "closedStack",
+          "closedBarRow"
+        ]
+      },
+      "closedStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "closedValue",
+          "closedLabel"
+        ]
+      },
+      "closedValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/closedDisplay"
+          },
+          "tone": "muted"
+        }
+      },
+      "closedLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Closed",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "closedBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "closedBar"
+        ]
+      },
+      "closedBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/ticketStatus/closedPct"
+          },
+          "tone": "default"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "footerStack"
+        ]
+      },
+      "footerStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "footerRow",
+          "ticketsLoading",
+          "ticketsError",
+          "ticketList",
+          "ticketsNote"
+        ]
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "totalToggleRow",
+          "viewRow"
+        ]
+      },
+      "totalToggleRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto minmax(0, 1fr)",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "totalLabel",
+          "totalChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "zoho-desk_toggle_ticket_list",
+            "params": {}
+          }
+        }
+      },
+      "totalLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketStatus/totalLabel"
+          },
+          "size": "sm"
+        }
+      },
+      "totalChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$computed": "zoho-desk_ticket_list_chevron",
+            "args": {
+              "expanded": {
+                "$state": "/ui/tickets/expanded"
+              }
+            }
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://desk.zoho.com/agent/mysmbcom",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Desk",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "ticketsLoading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/tickets/expanded"
+            },
+            {
+              "$state": "/ui/tickets/loading"
+            }
+          ]
+        }
+      },
+      "ticketsError": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/tickets/error"
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/tickets/expanded"
+            },
+            {
+              "$state": "/ui/tickets/error"
+            }
+          ]
+        }
+      },
+      "ticketList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "ticketItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/tickets/list",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/tickets/expanded"
+        }
+      },
+      "ticketItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "ticketNumber",
+          "ticketSubject",
+          "ticketStatus"
+        ]
+      },
+      "ticketNumber": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "number"
+          },
+          "tone": "muted"
+        }
+      },
+      "ticketSubject": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "subject"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "ticketStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "ticketsNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/tickets/note"
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/tickets/expanded"
+            },
+            {
+              "$state": "/ui/tickets/note"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
