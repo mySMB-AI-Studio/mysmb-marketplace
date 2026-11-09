@@ -2580,6 +2580,261 @@ const contra_document_link = (args) => {
 // clearing account was found at all.
 // Args: { blocked: boolean, clearingFound: boolean }
 const contra_create_disabled = (args) => Boolean(args.blocked) || !args.clearingFound;
+// ── bank_balance_view ────────────────────────────────────────────────
+// The whole derived view for the Bank Balance Change tile in one call:
+// which bank accounts are selected, the totals across them, a summary row
+// per account, and the transactions flattened, sorted and paged.
+//
+// It lives here rather than as a dozen chained $computed calls in the spec
+// because the tile's figures have to agree with the daily Bank Balance
+// Change report, and one testable place to get them is the only way that
+// stays true. Amounts the connector already formatted are reused as-is;
+// only the cross-account totals are formatted here.
+//
+// Args: {
+//   accounts: array,          // get_xero_bank_balance_difference accounts[]
+//   summary: object,          // ...and its summary
+//   selected: string,         // CSV of accountIds; "" means every account
+//   query: string,            // search text for the account picker
+//   mode: string,             // today | week | month | custom
+//   sortField: string,        // bankAccount | code | contact | date | amount
+//   sortDir: string,          // asc | desc
+//   shown: number,            // transaction rows to list
+//   threshold: number,        // balance to flag against; 0 or blank = off
+//   showAllAccounts: boolean, // list every account, not just the top few
+// }
+const BB_MOVED = 0.005;
+const BB_TOP_ACCOUNTS = 5;
+const bbRound2 = (n) => Math.round(n * 100) / 100;
+const bbNum = (v) => {
+    const n = Number(String(v ?? '').replace(/,/g, ''));
+    return Number.isFinite(n) ? n : 0;
+};
+const bbAud = (n) => 'A$' +
+    Math.abs(bbRound2(n)).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Signed balance, no plus: "-A$12,023.26" */
+const bbBalance = (n) => (bbRound2(n) < 0 ? '-' : '') + bbAud(n);
+/** Signed change, with plus: "+A$1,234.50" */
+const bbSigned = (n) => {
+    const r = bbRound2(n);
+    return r > 0 ? `+${bbAud(r)}` : r < 0 ? `-${bbAud(r)}` : bbAud(0);
+};
+const bbDirection = (n) => (bbRound2(n) > 0 ? 'up' : bbRound2(n) < 0 ? 'down' : 'flat');
+const bbTone = (n) => (bbRound2(n) > 0 ? 'success' : bbRound2(n) < 0 ? 'destructive' : 'muted');
+const bbArrow = (n) => (bbRound2(n) > 0 ? '▲' : bbRound2(n) < 0 ? '▼' : '–');
+const bbPlural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** "+3.2%" of the opening balance, or "" when there is nothing to be a percentage of. */
+const bbPct = (change, opening) => Math.abs(opening) >= 1
+    ? `${change < 0 ? '-' : '+'}${((Math.abs(change) / Math.abs(opening)) * 100).toFixed(1)}%`
+    : '';
+/**
+ * The selection CSV after toggling one account. The spec has no set
+ * arithmetic of its own, so each picker row carries the list its own click
+ * would produce. Everything-selected is stored as "" rather than as every
+ * id, so an account added in Xero later shows up instead of being quietly
+ * excluded by a stale list.
+ */
+const bbToggle = (ids, chosen, id) => {
+    const current = chosen.size ? ids.filter((x) => chosen.has(x)) : ids.slice();
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    return next.length === ids.length ? '' : next.join(',');
+};
+const bank_balance_view = (args) => {
+    const all = Array.isArray(args.accounts) ? args.accounts : [];
+    const summary = (args.summary ?? {});
+    const ids = all.map((a) => String(a.accountId ?? '')).filter(Boolean);
+    const chosen = new Set(String(args.selected ?? '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean));
+    const picked = chosen.size ? all.filter((a) => chosen.has(String(a.accountId ?? ''))) : all;
+    // The picker's search. Filtering here rather than in the spec keeps the
+    // toggle arithmetic above working off the full list, so searching never
+    // changes what a tick would select.
+    const query = String(args.query ?? '').trim().toLowerCase();
+    const accountOptions = all
+        .filter((a) => !query || String(a.name ?? '').toLowerCase().includes(query))
+        .map((a) => {
+        const id = String(a.accountId ?? '');
+        return {
+            accountId: id,
+            name: String(a.name ?? ''),
+            balanceText: String(a.balanceText ?? ''),
+            selected: chosen.size === 0 || chosen.has(id),
+            nextSelected: bbToggle(ids, chosen, id),
+        };
+    });
+    const opening = bbRound2(picked.reduce((s, a) => s + bbNum(a.previousBalance), 0));
+    const closing = bbRound2(picked.reduce((s, a) => s + bbNum(a.balance), 0));
+    const difference = bbRound2(closing - opening);
+    const moneyIn = bbRound2(picked.reduce((s, a) => s + bbNum(a.moneyIn), 0));
+    const moneyOut = bbRound2(picked.reduce((s, a) => s + bbNum(a.moneyOut), 0));
+    const pct = bbPct(difference, opening);
+    const ranged = summary.isDefaultRange === false;
+    // A threshold of 0 or blank is "not set"; a real one is a balance to stay above.
+    const threshold = Math.max(0, bbNum(args.threshold));
+    const aboveCount = threshold > 0 ? picked.filter((a) => bbNum(a.balance) >= threshold).length : 0;
+    const thresholdMet = threshold > 0 && picked.length > 0 && aboveCount === picked.length;
+    const thresholdText = threshold <= 0 || picked.length === 0
+        ? ''
+        : picked.length === 1
+            ? thresholdMet
+                ? `Above the ${bbAud(threshold)} threshold`
+                : `${bbAud(threshold - closing)} below the ${bbAud(threshold)} threshold`
+            : `${aboveCount} of ${bbPlural(picked.length, 'account')} at or above ${bbAud(threshold)}`;
+    const thresholdValue = threshold <= 0 || picked.length === 0
+        ? 0
+        : picked.length === 1
+            ? Math.max(0, Math.min(100, (closing / threshold) * 100))
+            : (aboveCount / picked.length) * 100;
+    const accountRows = [...picked]
+        .sort((x, y) => Math.abs(bbNum(y.difference)) - Math.abs(bbNum(x.difference)) ||
+        String(x.name ?? '').localeCompare(String(y.name ?? '')))
+        .map((a) => {
+        const diff = bbNum(a.difference);
+        const moved = Math.abs(diff) >= BB_MOVED;
+        const rowPct = bbPct(diff, bbNum(a.previousBalance));
+        return {
+            accountId: String(a.accountId ?? ''),
+            name: String(a.name ?? ''),
+            balanceText: String(a.balanceText ?? bbBalance(bbNum(a.balance))),
+            changeText: moved ? `${bbArrow(diff)} ${bbSigned(diff)}${rowPct ? ` · ${rowPct}` : ''}` : 'No change',
+            tone: moved ? bbTone(diff) : 'muted',
+            // Only coloured when a threshold is set, so the dot never implies a
+            // judgement nobody asked it to make.
+            dotTone: threshold <= 0 ? 'muted' : bbNum(a.balance) >= threshold ? 'success' : 'destructive',
+        };
+    });
+    const txns = [];
+    for (const a of picked) {
+        const name = String(a.name ?? '');
+        for (const t of Array.isArray(a.transactions) ? a.transactions : []) {
+            txns.push({ ...t, bankAccount: name });
+        }
+    }
+    const getters = {
+        bankAccount: (t) => String(t.bankAccount ?? '').toLowerCase(),
+        code: (t) => String(t.accountCode ?? ''),
+        contact: (t) => String(t.contact ?? '').toLowerCase(),
+        date: (t) => String(t.date ?? ''),
+        amount: (t) => bbNum(t.amount),
+    };
+    const get = getters[String(args.sortField ?? 'date')] ?? getters.date;
+    const dir = String(args.sortDir ?? 'desc') === 'asc' ? 1 : -1;
+    txns.sort((x, y) => {
+        const a = get(x);
+        const b = get(y);
+        let r = a < b ? -1 : a > b ? 1 : 0;
+        // A stable tiebreak, so sorting one column does not shuffle the rest.
+        if (r === 0)
+            r = String(x.contact ?? '').localeCompare(String(y.contact ?? ''));
+        if (r === 0)
+            r = String(x.id ?? '').localeCompare(String(y.id ?? ''));
+        return r * dir;
+    });
+    const shown = Math.max(1, Math.trunc(bbNum(args.shown)) || 10);
+    const page = txns.slice(0, shown);
+    const remaining = txns.length - page.length;
+    const total = bbRound2(txns.reduce((s, t) => s + bbNum(t.amount), 0));
+    const matches = Math.round(total * 100) === Math.round(difference * 100);
+    const showAll = args.showAllAccounts === true;
+    // Nothing picked yet reads as 'today', so the chip row has a sensible
+    // state before anyone touches it.
+    const mode = String(args.mode ?? 'today') || 'today';
+    return {
+        // Selection
+        accountOptions,
+        noAccountMatches: accountOptions.length === 0 && all.length > 0,
+        query,
+        // Which period is showing
+        mode,
+        isToday: mode === 'today',
+        isWeek: mode === 'week',
+        isMonth: mode === 'month',
+        isCustom: mode === 'custom',
+        accountCount: all.length,
+        selectedCount: picked.length,
+        allSelected: chosen.size === 0,
+        noneSelected: picked.length === 0,
+        selectedLabel: chosen.size === 0
+            ? `All accounts (${all.length})`
+            : picked.length === 0
+                ? 'No accounts selected'
+                : picked.length === 1
+                    ? String(picked[0].name ?? '')
+                    : `${picked.length} of ${all.length} accounts`,
+        subtitle: `${bbPlural(picked.length, 'account')} · ${String(summary.rangeText ?? '')}`,
+        // Headline figures
+        openingText: bbBalance(opening),
+        closingText: bbBalance(closing),
+        openingLabel: ranged ? 'Opening' : 'Prev business day',
+        closingLabel: ranged ? 'Closing' : 'Today',
+        openingDate: String(summary.compareText ?? ''),
+        closingDate: String(summary.todayText ?? ''),
+        differenceText: bbSigned(difference),
+        direction: bbDirection(difference),
+        tone: bbTone(difference),
+        arrow: bbArrow(difference),
+        pctText: pct,
+        pctLabel: pct ? `${pct} vs ${ranged ? 'opening' : 'prev business day'}` : '',
+        moneyInText: bbAud(moneyIn),
+        moneyOutText: bbAud(moneyOut),
+        flowText: `${bbAud(moneyIn)} in · ${bbAud(moneyOut)} out`,
+        // Thresholds
+        hasThreshold: threshold > 0,
+        thresholdText,
+        thresholdValue,
+        thresholdTone: thresholdMet ? 'success' : 'warning',
+        thresholdChipText: threshold > 0 ? `Threshold ${bbAud(threshold)}` : 'Set threshold',
+        // Per-account
+        showByAccount: picked.length > 1,
+        accountRows: showAll ? accountRows : accountRows.slice(0, BB_TOP_ACCOUNTS),
+        accountRowsHasMore: accountRows.length > BB_TOP_ACCOUNTS,
+        accountRowsToggleLabel: showAll ? 'Show top 5' : `Show all ${accountRows.length}`,
+        // Transactions
+        txnRows: page,
+        txnCount: txns.length,
+        txnCountText: bbPlural(txns.length, 'transaction'),
+        hasTxns: txns.length > 0,
+        // Before the connector carried a per-transaction date there is nothing to
+        // put in a Date column, so the tile hides it rather than ruling an empty one.
+        hasDates: txns.some((t) => String(t.dateText ?? '') !== ''),
+        totalText: bbBalance(total),
+        remaining,
+        moreLabel: remaining > 0 ? `Show ${Math.min(shown, remaining)} more · ${remaining} remaining` : '',
+        // Footer
+        checkText: matches
+            ? `Transactions add up to the difference (${bbBalance(opening)} → ${bbBalance(closing)})`
+            : `Transactions do not add up to the difference (${bbBalance(total)} listed against ${bbSigned(difference)})`,
+        checkTone: matches ? 'success' : 'warning',
+        checkIcon: matches ? 'CircleCheck' : 'TriangleAlert',
+        truncated: summary.transactionsTruncated === true,
+        updatedText: String(summary.updatedText ?? ''),
+        xeroUrl: String(summary.xeroUrl ?? 'https://go.xero.com/Bank/BankAccounts.aspx'),
+    };
+};
+// ── bank_balance_range ───────────────────────────────────────────────
+// One end of a named period, as YYYY-MM-DD, for the Bank Balance Change
+// tile's period chips. 'today' returns "" at both ends so the connector
+// falls back to its own today-vs-previous-business-day default rather than
+// the browser's idea of the date.
+//
+// Args: { preset: 'today'|'week'|'month', part: 'from'|'to' }
+const bank_balance_range = (args) => {
+    const preset = String(args.preset ?? 'today');
+    if (preset === 'today')
+        return '';
+    const now = new Date();
+    const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+    if (String(args.part ?? 'from') === 'to')
+        return iso(today);
+    if (preset === 'week')
+        return iso(today - 6 * 86400000);
+    if (preset === 'month')
+        return iso(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+    return '';
+};
 const elements = {
     slug: 'xero-accounting',
     functions: {
@@ -2647,6 +2902,8 @@ const elements = {
         expense_reimbursement_validation_message,
         expense_reimbursement_build_batch_payment,
         expense_reimbursement_other_charges_note,
+        bank_balance_view,
+        bank_balance_range,
     },
 };
 export default elements;
