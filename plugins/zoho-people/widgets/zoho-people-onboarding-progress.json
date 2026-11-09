@@ -1,0 +1,587 @@
+{
+  "id": "zoho-people-onboarding-progress",
+  "title": "Onboarding Progress",
+  "description": "New hires onboarding in Zoho People: how many are in progress, how far each is through onboarding (based on their onboarding status), and how many start next week and whether they're on track.",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-people",
+    "hr",
+    "onboarding",
+    "new-hires"
+  ],
+  "keywords": [
+    "onboarding",
+    "new hires",
+    "starting next week",
+    "onboarding progress",
+    "zoho people"
+  ],
+  "connectorsUsed": [
+    "zoho-people"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-people",
+    "tool": "onboarding_progress",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-people/onboarding_progress": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/onboarding",
+              "value": {
+                "$computed": "zoho-people_onboarding_progress_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-people/onboarding_progress"
+                  },
+                  "showStarting": {
+                    "$state": "/ui/showStarting"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showStarting": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/onboarding",
+              "value": {
+                "$computed": "zoho-people_onboarding_progress_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-people/onboarding_progress"
+                  },
+                  "showStarting": {
+                    "$state": "/ui/showStarting"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "UserPlus",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Onboarding Progress",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho People"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skStart"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/onboarding/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-people.onboarding_progress",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "skStart": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load onboarding from Zoho People. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-people.onboarding_progress"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No new hires are onboarding in Zoho People right now."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/onboarding/loaded"
+            },
+            {
+              "$state": "/ui/onboarding/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "hireList",
+          "hiresNote",
+          "divider",
+          "startBox",
+          "viewBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/onboarding/loaded"
+            },
+            {
+              "$state": "/ui/onboarding/hasData"
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "inProgressValue",
+          "inProgressLabel"
+        ]
+      },
+      "inProgressValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/onboarding/inProgressDisplay"
+          },
+          "size": "lg"
+        }
+      },
+      "inProgressLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/onboarding/inProgressLabel"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "hireList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "hireRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/onboarding/hires",
+          "key": "id"
+        }
+      },
+      "hireRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) minmax(0, 1.2fr) 2.5rem",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hireName",
+          "hireBar",
+          "hirePct"
+        ]
+      },
+      "hireName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "hireBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": {
+            "$item": "barTone"
+          }
+        }
+      },
+      "hirePct": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "pctDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "hiresNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/onboarding/hiresNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/onboarding/hiresNote"
+        }
+      },
+      "divider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "startBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "startStack"
+        ],
+        "visible": {
+          "$state": "/ui/onboarding/startingCount"
+        }
+      },
+      "startStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "startRow",
+          "startList",
+          "startNote"
+        ]
+      },
+      "startRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "startToggleRow",
+          "startStatus"
+        ]
+      },
+      "startToggleRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "startIcon",
+          "startText",
+          "startChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showStarting",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/onboarding/startingToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "startIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Flag",
+          "tone": "warning",
+          "size": "md"
+        }
+      },
+      "startText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/onboarding/startingText"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "startChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/onboarding/startingChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "startStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/onboarding/startStatusLabel"
+          },
+          "tone": {
+            "$state": "/ui/onboarding/startStatusTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "startList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "startItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/onboarding/startingList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/onboarding/startingExpanded"
+        }
+      },
+      "startItem": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "startItemMain",
+          "startItemPct"
+        ]
+      },
+      "startItemMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "startItemName",
+          "startItemDetail"
+        ]
+      },
+      "startItemName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "truncate": true
+        }
+      },
+      "startItemDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "startItemPct": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pctDisplay"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "startNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/onboarding/startingNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/onboarding/startingNote"
+        }
+      },
+      "viewBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://people.zoho.com/mysmbcom/zp#onboarding/candidate/listview",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View Onboarding",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      }
+    }
+  }
+}
