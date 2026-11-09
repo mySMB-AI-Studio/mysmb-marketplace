@@ -1,5 +1,5 @@
 {
-  "contentHash": "1d4617f369ab6519fa68797179c9c8b6b89ff8da000800f703cfa3708dcc13db",
+  "contentHash": "250c9c18c0bcbb1173448c81a42690f9fd5e1bd701b8ee06d8ac418e495b4a2e",
   "declaredScopes": [
     "ai:generate",
     "artifacts:write",
@@ -16,7 +16,7 @@
     "name": "Bank Balance Change: daily report",
     "nodes": [
       {
-        "code": "# ── Read today's bank balance change from Xero ──\nXERO = \"xero-accounting\"\nTOOL = \"get_xero_bank_balance_difference\"\nORG_TOOL = \"get_organisation\"\n# A movement smaller than half a cent is rounding, not a change.\nEPS = 0.005\n\n\ndef _err(exc):\n    msg = str(exc)\n    if msg.startswith(\"tool_error: \"):\n        msg = msg[len(\"tool_error: \"):]\n    if \"no usable credential\" in msg or \"credential unavailable\" in msg:\n        return \"the Xero connection needs connecting (Settings -> Connections -> xero-accounting)\"\n    return msg[:200]\n\n\ndef _plural(n, word):\n    return str(n) + \" \" + word + (\"\" if n == 1 else \"s\")\n\n\nchange = {}\nproblem = \"\"\ntry:\n    res = api.connectors.invoke(server=XERO, tool=TOOL, args={})\nexcept Exception as exc:\n    problem = \"Couldn't read the bank balances: \" + _err(exc) + \".\"\nelse:\n    # The tool returns {summary, defaultAccountId, accounts[]}; anything else means the shape changed.\n    change = res if isinstance(res, dict) else {}\n    if not isinstance(change.get(\"accounts\"), list):\n        change = {}\n        problem = \"Xero answered, but not with the bank balance figures this report needs.\"\n\naccounts = change.get(\"accounts\") or []\nif not problem and not accounts:\n    problem = \"No bank accounts came back from Xero, so there is nothing to report.\"\n\n# Which Xero organisation these figures actually came from. A tile reads the signed-in person's own Xero\n# connection and an automation reads the workspace's, so the two can sit on different organisations and\n# quietly disagree. Naming the org on the report makes that visible instead of silent.\norg_name = \"\"\nif not problem:\n    try:\n        org_res = api.connectors.invoke(server=XERO, tool=ORG_TOOL, args={})\n    except Exception:\n        org_name = \"\"\n    else:\n        wrap = org_res if isinstance(org_res, dict) else {}\n        orgs = wrap.get(\"Organisations\")\n        if not isinstance(orgs, list):\n            orgs = org_res if isinstance(org_res, list) else []\n        first = orgs[0] if orgs else {}\n        if isinstance(first, dict):\n            org_name = str(first.get(\"Name\") or first.get(\"LegalName\") or \"\").strip()\n\nmoved = [a for a in accounts if abs(float(a.get(\"difference\") or 0)) >= EPS]\nhead = str((change.get(\"summary\") or {}).get(\"subtitle\") or \"\")\nsummary = problem or (\"Read \" + _plural(len(accounts), \"bank account\") +\n                      (\" in \" + org_name if org_name else \" (Xero didn't name the organisation)\") + \"; \" +\n                      _plural(len(moved), \"account\") + \" moved. \" + head)\n",
+        "code": "# ── Read today's bank balance change from Xero ──\nXERO = \"xero-accounting\"\nTOOL = \"get_xero_bank_balance_difference\"\nORG_TOOL = \"get_organisation\"\nCONN_TOOL = \"list_connections\"\n# A movement smaller than half a cent is rounding, not a change.\nEPS = 0.005\n\n\ndef _err(exc):\n    msg = str(exc)\n    if msg.startswith(\"tool_error: \"):\n        msg = msg[len(\"tool_error: \"):]\n    if \"no usable credential\" in msg or \"credential unavailable\" in msg:\n        return \"the Xero connection needs connecting (Settings -> Connections -> xero-accounting)\"\n    return msg[:200]\n\n\ndef _plural(n, word):\n    return str(n) + \" \" + word + (\"\" if n == 1 else \"s\")\n\n\nchange = {}\nproblem = \"\"\n\n# Which organisation to read. A dashboard tile follows the organisation picker on the dashboard; an\n# automation has no picker, so without this it reads whichever organisation the connection happens to\n# default to - which is not necessarily the one the tile is showing.\nwant = str(params.get(\"xero_org\") or \"\").strip()\ntenant = \"\"\nif want:\n    try:\n        conns = api.connectors.invoke(server=XERO, tool=CONN_TOOL, args={})\n    except Exception as exc:\n        problem = \"Couldn't list the Xero organisations: \" + _err(exc) + \".\"\n    else:\n        names = []\n        for row in conns if isinstance(conns, list) else []:\n            if not isinstance(row, dict):\n                continue\n            tenant_name = str(row.get(\"tenantName\") or \"\").strip()\n            if tenant_name:\n                names.append(tenant_name)\n            if tenant_name.lower() == want.lower():\n                tenant = str(row.get(\"tenantId\") or \"\")\n        if not tenant:\n            problem = (\"No connected Xero organisation is called \" + want + \". Connected: \" +\n                       (\", \".join(names) if names else \"none\") +\n                       \". Check Settings -> Connections -> xero-accounting.\")\n\ncall_args = {\"xero_tenant_id\": tenant} if tenant else {}\n\nif not problem:\n    try:\n        res = api.connectors.invoke(server=XERO, tool=TOOL, args=call_args)\n    except Exception as exc:\n        problem = \"Couldn't read the bank balances: \" + _err(exc) + \".\"\n    else:\n        # The tool returns {summary, defaultAccountId, accounts[]}; anything else means the shape changed.\n        change = res if isinstance(res, dict) else {}\n        if not isinstance(change.get(\"accounts\"), list):\n            change = {}\n            problem = \"Xero answered, but not with the bank balance figures this report needs.\"\n\naccounts = change.get(\"accounts\") or []\nif not problem and not accounts:\n    problem = \"No bank accounts came back from Xero, so there is nothing to report.\"\n\n# Which Xero organisation these figures actually came from. A tile reads the signed-in person's own Xero\n# connection and an automation reads the workspace's, so the two can sit on different organisations and\n# quietly disagree. Naming the org on the report makes that visible instead of silent.\norg_name = \"\"\nif not problem:\n    try:\n        org_res = api.connectors.invoke(server=XERO, tool=ORG_TOOL, args=call_args)\n    except Exception:\n        org_name = \"\"\n    else:\n        wrap = org_res if isinstance(org_res, dict) else {}\n        orgs = wrap.get(\"Organisations\")\n        if not isinstance(orgs, list):\n            orgs = org_res if isinstance(org_res, list) else []\n        first = orgs[0] if orgs else {}\n        if isinstance(first, dict):\n            org_name = str(first.get(\"Name\") or first.get(\"LegalName\") or \"\").strip()\n\nmoved = [a for a in accounts if abs(float(a.get(\"difference\") or 0)) >= EPS]\nhead = str((change.get(\"summary\") or {}).get(\"subtitle\") or \"\")\nsummary = problem or (\"Read \" + _plural(len(accounts), \"bank account\") +\n                      (\" in \" + org_name if org_name else \" (Xero didn't name the organisation)\") + \"; \" +\n                      _plural(len(moved), \"account\") + \" moved. \" + head)\n",
         "id": "read_change",
         "kind": "python",
         "outputs": [
@@ -41,7 +41,16 @@
             "type": "str"
           }
         ],
-        "params": [],
+        "params": [
+          {
+            "binding": "{{ params.xero_org }}",
+            "control": "text",
+            "label": "Xero organisation",
+            "name": "xero_org",
+            "required": false,
+            "type": "str"
+          }
+        ],
         "summary": "Calls the Xero connector for each bank account's balance today, its closing balance on the previous business day, and the transactions in between, and asks Xero which organisation answered. Read-only.",
         "title": "Read the balance change from Xero"
       },
@@ -171,6 +180,15 @@
       }
     ],
     "params": [
+      {
+        "control": "text",
+        "description": "Which Xero organisation to report on, by name, for example Irvine Jackson Pty Ltd. Leave it blank to use whichever organisation the connection defaults to. An automation does not follow the organisation picker on your dashboard, so if the report names a different organisation than the Bank Balance Change tile, put the tile's organisation here.",
+        "label": "Xero organisation",
+        "name": "xero_org",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
       {
         "control": "text",
         "description": "Who gets the PDF. Separate several addresses with commas. Leave it blank and the report is still saved to Reports and Knowledge, but nothing is emailed.",
