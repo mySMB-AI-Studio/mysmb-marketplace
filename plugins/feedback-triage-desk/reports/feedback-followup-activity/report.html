@@ -21,9 +21,9 @@
   <tbody id="rows"></tbody>
 </table>
 <script>
-  MyHubReport.onData(function () {
-    var data = MyHubReport.getData('activity') || {};
-    var team = MyHubReport.getData('team') || {};
+  MyHubReport.onData(function (bundle) {
+    var data = bundle.data.activity || {};
+    var team = bundle.data.team || {};
     var names = {};
     (team.users || []).forEach(function (u) { if (u && u.userId) names[u.userId] = u.name; });
     var users = (data.users || []).filter(function (u) { return (u.created || u.completed || u.open || u.overdue) && names[u.userId]; });
