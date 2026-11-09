@@ -576,6 +576,112 @@ const timesheet_summary_dashboard: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * How far each onboarding status is through onboarding. Zoho exposes no
+ * per-candidate completion figure, so the bar moves in steps with the status.
+ */
+const ONBOARDING_STAGE_PCT: Record<string, number> = {
+  'Not Triggered': 0,
+  Triggered: 25,
+  'In progress': 50,
+  'Reopened by admin': 50,
+  'Completed by candidate': 75,
+  Completed: 100,
+  'Converted to employee': 100,
+};
+
+/** Hires listed on the Onboarding Progress tile, soonest joining first. */
+const MAX_ONBOARDING_ROWS = 5;
+
+/** Hires starting next week count as on track once they're at least this far (In progress). */
+const ON_TRACK_PCT = 50;
+
+/**
+ * New hires onboarding in Zoho People for the Onboarding Progress tile.
+ *
+ * - In progress: candidates not yet converted to employees.
+ * - Each hire's progress comes from their onboarding status
+ *   (`ONBOARDING_STAGE_PCT`); listed soonest joining date first.
+ * - Starting next week: joining Monday–Sunday next week (viewer's time zone).
+ *   On track when every one of them is at least In progress, else Behind.
+ *   When that box is expanded, the list of them, soonest joining first.
+ *
+ * Args:
+ *   report       — `onboarding_progress` result: `{ candidates: [{ recordId, name, joiningDate: "yyyy-MM-dd" | null, onboardingStatus }] }`
+ *   showStarting — true when the "N starting next week" box is expanded (`/ui/showStarting`)
+ *
+ * Spec: `{ "$computed": "zoho-people_onboarding_progress_dashboard", "args": { "report": { "$state": "/zoho-people/onboarding_progress" }, "showStarting": { "$state": "/ui/showStarting" } } }`
+ */
+const onboarding_progress_dashboard: ComputedFunction = (args) => {
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const loaded = Array.isArray(report.candidates);
+  const hires = (loaded ? (report.candidates as AnyRecord[]) : [])
+    .filter((c) => c.onboardingStatus !== 'Converted to employee')
+    .map((c) => {
+      const pct = ONBOARDING_STAGE_PCT[String(c.onboardingStatus ?? '')] ?? 0;
+      return {
+        id: String(c.recordId ?? c.candidateId ?? c.email),
+        name: String(c.name ?? '').trim() || String(c.email ?? 'New hire'),
+        joining: /^\d{4}-\d{2}-\d{2}$/.test(String(c.joiningDate ?? '')) ? String(c.joiningDate) : '',
+        status: String(c.onboardingStatus ?? '').trim() || 'Not Triggered',
+        pct,
+        pctDisplay: `${pct}%`,
+        // Green once onboarding is complete, else the tile's brand blue.
+        barTone: pct >= 100 ? 'success' : 'brand',
+      };
+    })
+    .sort((a, b) => (a.joining || '9999').localeCompare(b.joining || '9999') || a.name.localeCompare(b.name));
+  const count = hires.length;
+
+  // Next week, Monday to Sunday.
+  const monday = new Date();
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) + 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const [from, to] = [localIsoDate(monday), localIsoDate(sunday)];
+  const starting = hires.filter((h) => h.joining >= from && h.joining <= to);
+  const startingCount = starting.length;
+  const allMonday = starting.every((h) => h.joining === from);
+  const onTrack = starting.every((h) => h.pct >= ON_TRACK_PCT);
+  const showStarting = args.showStarting === true && startingCount > 0;
+  const startingList = showStarting
+    ? starting.slice(0, MAX_ONBOARDING_ROWS).map((h) => ({
+        id: h.id,
+        name: h.name,
+        // `Starts Mon 16 Nov · Triggered`
+        detail: `Starts ${zohoDate(h.joining)?.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) ?? h.joining} · ${h.status}`,
+        pctDisplay: h.pctDisplay,
+        tone: h.pct >= 100 ? 'success' : h.pct >= ON_TRACK_PCT ? 'brand' : 'warning',
+      }))
+    : [];
+
+  return {
+    loaded,
+    hasData: count > 0,
+    inProgressDisplay: count.toLocaleString('en-US'),
+    inProgressLabel: count === 1 ? 'new hire in progress' : 'new hires in progress',
+    hires: hires.slice(0, MAX_ONBOARDING_ROWS).map(({ joining: _joining, status: _status, ...h }) => h),
+    hiresNote:
+      count > MAX_ONBOARDING_ROWS
+        ? `Showing ${MAX_ONBOARDING_ROWS} of ${count.toLocaleString('en-US')} new hires.`
+        : '',
+    startingCount,
+    startingText: `${startingCount.toLocaleString('en-US')} starting next ${allMonday ? 'Monday' : 'week'}`,
+    startStatusLabel: onTrack ? 'On track' : 'Behind',
+    startStatusTone: onTrack ? 'brand' : 'warning',
+    startingExpanded: showStarting,
+    // What a click on the starting row writes to `/ui/showStarting`.
+    startingToggle: !showStarting,
+    startingChevron: showStarting ? 'ChevronUp' : 'ChevronDown',
+    startingList,
+    startingNote:
+      showStarting && startingCount > MAX_ONBOARDING_ROWS
+        ? `Showing ${MAX_ONBOARDING_ROWS} of ${startingCount.toLocaleString('en-US')} new hires.`
+        : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-people',
   functions: {
@@ -584,6 +690,7 @@ const elements: PluginElementsModule = {
     attendance_today_dashboard,
     timesheet_week_date,
     timesheet_summary_dashboard,
+    onboarding_progress_dashboard,
   },
 };
 
