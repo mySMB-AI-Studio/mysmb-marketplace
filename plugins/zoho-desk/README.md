@@ -4,7 +4,7 @@ Zoho Desk help desk access via the myHub-hosted OAuth MCP gateway. Browser OAuth
 
 Per-user datacenter routing across `desk.zoho.<tld>`. Calls go to the user's Desk portal (the one marked default, else the first); every tool also takes an optional `orgId` to pick another portal (`list_organizations`).
 
-**23 read-only tools** covering tickets, ticket threads/conversations/comments, ticket counts, contacts, accounts, agents, departments, views and search.
+**24 read-only tools** covering tickets, ticket threads/conversations/comments, ticket counts, contacts, accounts, agents (with per-agent workload), departments, views and search.
 
 ## Configuration
 
@@ -34,8 +34,8 @@ Desk.settings.READ Desk.search.READ AaaServer.profile.READ
 ### Contacts & accounts (6)
 - `list_contacts`, `get_contact`, `list_contact_tickets`, `list_accounts`, `get_account`, `list_account_tickets`
 
-### Agents, departments, views (4)
-- `list_agents`, `get_agent`, `list_departments`, `list_views` (ticket views default to the default department)
+### Agents, departments, views (5)
+- `list_agents`, `get_agent`, `agent_workload` (active agents with open/on-hold counts, online status, role and their active tickets), `list_departments`, `list_views` (ticket views default to the default department)
 
 ### Search (1)
 - `search` — across tickets, contacts, accounts, tasks, products, calls and events, or one module

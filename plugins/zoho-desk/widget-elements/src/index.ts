@@ -377,6 +377,98 @@ const sla_due_dashboard: ComputedFunction = (args) => {
   };
 };
 
+const MAX_AGENT_ROWS = 20;
+
+/**
+ * Display-ready state for the Agent Workload tile, from `agent_workload`
+ * (active agents with open + on-hold counts and their active tickets).
+ * Busiest agents first, then by name; `selected` is the agent id whose
+ * tickets show under that agent's row (a click on the same row closes it).
+ *
+ * Spec: `{ "$computed": "zoho-desk_agent_workload_dashboard", "args": { "report": { "$state": "/zoho-desk/agent_workload" }, "selected": { "$state": "/ui/workloadAgent" }, "showList": { "$state": "/ui/showWorkloadTickets" } } }`
+ */
+const agent_workload_dashboard: ComputedFunction = (args) => {
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const loaded = Array.isArray(report.agents);
+  const agents = loaded ? (report.agents as AnyRecord[]) : [];
+  const selected = typeof args.selected === 'string' ? args.selected : '';
+  const sorted = agents
+    .map((a) => ({ a, count: Number(a?.activeCount) || 0, name: String(a?.name ?? '').trim() || String(a?.emailId ?? '') }))
+    .sort((x, y) => y.count - x.count || x.name.localeCompare(y.name));
+  const total = sorted.reduce((sum, x) => sum + x.count, 0);
+  const rows = sorted.slice(0, MAX_AGENT_ROWS).map(({ a, count, name }) => {
+    const id = String(a.id ?? name);
+    const confirmed = a.isConfirmed !== false;
+    const online = confirmed && a.isOnline === true;
+    const role = String(a.roleName ?? '').trim();
+    const presence = online ? 'Online' : 'Offline';
+    // First and last word, so "Sean Matthew Baker" is SB.
+    const words = name.split(/\s+/).filter(Boolean);
+    const initials =
+      (words.length > 1 ? [words[0]!, words[words.length - 1]!] : words).map((w) => w[0]!.toUpperCase()).join('') || '?';
+    const busy = confirmed && count > 0;
+    return {
+      id,
+      name: name || 'Unnamed agent',
+      initials,
+      detail: confirmed ? (role ? `${presence} · ${role}` : presence) : 'Invite pending',
+      dotTone: online ? 'success' : 'muted',
+      avatarTone: busy ? 'brand' : 'muted',
+      countDisplay: count.toLocaleString('en-US'),
+      countTone: busy ? 'brand' : 'muted',
+      // Shows this agent's ticket panel right under the row.
+      expanded: id === selected,
+      chevron: id === selected ? 'ChevronUp' : 'ChevronDown',
+      // What a click on this row writes to `/ui/workloadAgent`.
+      toggle: id === selected ? '' : id,
+    };
+  });
+  const pick = selected ? sorted.find((x) => String(x.a.id ?? x.name) === selected) : undefined;
+  const pickTickets = pick && Array.isArray(pick.a.tickets) ? (pick.a.tickets as AnyRecord[]) : [];
+  const toItem = (t: AnyRecord) => {
+    const status = String(t.status ?? '').trim() || 'Unknown';
+    return {
+      id: String(t.id ?? t.ticketNumber),
+      number: `#${String(t.ticketNumber ?? '')}`,
+      subject: String(t.subject ?? '').trim() || '(No subject)',
+      status,
+      tone: STATUS_TONE[status.toLowerCase()] ?? 'muted',
+    };
+  };
+  const selectedTickets = pickTickets.slice(0, MAX_TICKET_ROWS).map(toItem);
+  const pickCount = pick ? pick.count : 0;
+  // Every agent's tickets under the total, newest (highest number) first.
+  const showList = args.showList === true;
+  const allTickets = sorted
+    .flatMap((x) => (Array.isArray(x.a.tickets) ? (x.a.tickets as AnyRecord[]) : []))
+    .sort((x, y) => (Number(y.ticketNumber) || 0) - (Number(x.ticketNumber) || 0));
+  const ticketList = allTickets.slice(0, MAX_TICKET_ROWS).map(toItem);
+  return {
+    loaded,
+    hasData: agents.length > 0,
+    agents: rows,
+    agentNote:
+      agents.length > rows.length ? `Showing ${rows.length} of ${agents.length.toLocaleString('en-US')} agents, busiest first.` : '',
+    selectedTickets,
+    selectedEmpty: !!pick && selectedTickets.length === 0,
+    selectedNote:
+      pick && (pickCount > selectedTickets.length || report.ticketsTruncated === true) && selectedTickets.length > 0
+        ? `Showing ${selectedTickets.length} of ${pickCount.toLocaleString('en-US')} tickets, newest first.`
+        : '',
+    listExpanded: showList,
+    // What a click on the total writes to `/ui/showWorkloadTickets`.
+    listToggle: !showList,
+    listChevron: showList ? 'ChevronUp' : 'ChevronDown',
+    ticketList,
+    listEmpty: showList && ticketList.length === 0,
+    listNote:
+      showList && ticketList.length > 0 && (total > ticketList.length || report.ticketsTruncated === true)
+        ? `Showing ${ticketList.length} of ${total.toLocaleString('en-US')} tickets, newest first.`
+        : '',
+    totalLabel: `${total.toLocaleString('en-US')} active ${total === 1 ? 'ticket' : 'tickets'} total`,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-desk',
   functions: {
@@ -384,6 +476,7 @@ const elements: PluginElementsModule = {
     ticket_list_chevron,
     priority_breakdown_dashboard,
     sla_due_dashboard,
+    agent_workload_dashboard,
   },
   actions: {
     toggle_ticket_list,
