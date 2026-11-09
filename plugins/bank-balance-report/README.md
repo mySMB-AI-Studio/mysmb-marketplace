@@ -35,7 +35,9 @@ No environment variables are required.
 - **xero-accounting:** sign in to the Xero organisation whose bank accounts you want reported. An automation runs on the workspace connection, which is not the personal connection a dashboard tile reads - if the two sit on different Xero organisations, this report and the Bank Balance Change tile will disagree. Every report names the organisation it read, so check that line against the tile the first time it runs.
 - **m365-mail-send:** asks for `Mail.Send`, which needs a Microsoft 365 admin to consent once for the organisation.
 
-**Set it up:** publish the automation, then fill in its fields. All three are optional:
+**Set it up:** publish the automation, then fill in its fields. All four are optional, but read the first two before the schedule fires:
+
+- **Xero organisation:** which organisation to report on, by name, for example `Irvine Jackson Pty Ltd`. An automation does not follow the organisation picker on your dashboard - with this blank it reads whichever organisation the connection happens to default to, which may not be the one your tiles show. If the name is not one of the connected organisations the run stops and lists the ones that are, rather than quietly reporting on the wrong books.
 
 - **Email to:** who gets the PDF. Separate several addresses with commas. **Set this before the schedule first fires** — it's blank by default, and with no address the report is still saved to Reports and Knowledge but nothing is emailed.
 - **Name on the report:** shown at the top. Blank uses the Xero organisation's own name. Either way the report prints the Xero organisation the figures came from beneath the title, because this field is free text and can name any organisation.
