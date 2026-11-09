@@ -10,7 +10,7 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-mail-send | Compose, reply, forward, delete emails | `Mail.Send`, `Mail.ReadWrite` | **Admin consent required** |
 | m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
 | m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
-| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite`, `Files.ReadWrite` | Admin consent required |
 | m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
 | m365-presence | Read Teams/M365 presence (availability, activity) for yourself and frequent collaborators | `People.Read`, `Presence.Read.All` | **Admin consent required** (own app registration — see below) |
@@ -41,21 +41,12 @@ user-self-consentable. Bundling them into one authorization request would
 force every existing `m365-teams` connection through admin approval just to
 keep working.
 
-`m365-presence` is likewise a separate server from `m365-people` — but unlike
-`m365-teams-transcripts`/`m365-teams`, it goes a step further and uses a
-**completely separate Entra app registration**, not just its own route on the
-main app. `Presence.Read.All` requires tenant admin consent, and the main app
-(`ENTRA_CLIENT_ID`) may be administered by someone with no path to add a
-redirect URI or grant that consent for it — registering a new app is a
-lower-privilege action in most tenants than administering an existing one,
-so whoever can create their own app registration can unblock this without
-touching the shared one. See
-**[m365-presence's own app registration](#m365-presence-uses-a-different-separate-app-registration)**
-below. `m365-presence` still declares `People.Read` itself (in addition to
-`Presence.Read.All`) because `list_colleague_presence` needs it to resolve
-the caller's relevant colleagues before batching their presence — each
-server's connection only carries the scopes declared on its own route, and
-being on a different app doesn't change that.
+`m365-teams` also requests `Channel.ReadBasic.All` — a fix, not a new
+feature. `Team.ReadBasic.All` only enumerates the teams a user belongs to
+(`/me/joinedTeams`); it does **not** cover `GET /teams/{id}/channels`
+(confirmed against Microsoft's own docs), so `list_channels` 403'd for
+every team, for every user, until this was added. Existing `m365-teams`
+connections need to reconnect once to pick up the wider scope.
 
 ## Configuration
 
