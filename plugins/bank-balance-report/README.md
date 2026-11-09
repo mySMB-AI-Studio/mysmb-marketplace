@@ -32,13 +32,13 @@ No environment variables are required.
 
 **Connect** these connectors (OAuth):
 
-- **xero-accounting:** sign in to the Xero organisation whose bank accounts you want reported.
+- **xero-accounting:** sign in to the Xero organisation whose bank accounts you want reported. An automation runs on the workspace connection, which is not the personal connection a dashboard tile reads - if the two sit on different Xero organisations, this report and the Bank Balance Change tile will disagree. Every report names the organisation it read, so check that line against the tile the first time it runs.
 - **m365-mail-send:** asks for `Mail.Send`, which needs a Microsoft 365 admin to consent once for the organisation.
 
 **Set it up:** publish the automation, then fill in its fields. All three are optional:
 
 - **Email to:** who gets the PDF. Separate several addresses with commas. **Set this before the schedule first fires** — it's blank by default, and with no address the report is still saved to Reports and Knowledge but nothing is emailed.
-- **Name on the report:** shown at the top. Blank uses the report's own title.
+- **Name on the report:** shown at the top. Blank uses the Xero organisation's own name. Either way the report prints the Xero organisation the figures came from beneath the title, because this field is free text and can name any organisation.
 - **Logo file:** a PNG or JPEG in Knowledge, for example `Automations/logo.png`, drawn at the top of the PDF and of the page in Reports in place of the name. The page carries the image inline, so it renders for anyone the report reaches without them needing rights to the file. Leave it blank for the name in text; if the file is missing the report still goes out with the name in text and says so in its summary.
 
 **Scopes:** `connectors:xero-accounting`, `connectors:m365-mail-send`, `ai:generate`, `artifacts:write`, `files:read` and `files:write`.
