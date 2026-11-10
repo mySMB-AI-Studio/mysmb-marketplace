@@ -3075,41 +3075,15 @@ const bank_balance_set_override: ComputedFunction = (args) => {
 // the browser's idea of the date.
 //
 // Args: { preset: 'today'|'week'|'month', part: 'from'|'to' }
-/**
- * The from/to dates for a named period. "today" is the empty string, which
- * the connector reads as its own default — today against the previous
- * business day — rather than as a window.
- *
- * The backward-looking presets end on the last day of a closed period, not
- * today, so "last month" means the whole of last month rather than a ragged
- * window that happens to stop now.
- */
 const bank_balance_range: ComputedFunction = (args) => {
   const preset = String(args.preset ?? 'today');
   if (preset === 'today') return '';
   const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const today = Date.UTC(y, m, now.getDate());
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-  const wantsTo = String(args.part ?? 'from') === 'to';
-
-  // Whole calendar periods that have already finished.
-  if (preset === 'lastmonth') {
-    return wantsTo ? iso(Date.UTC(y, m, 0)) : iso(Date.UTC(y, m - 1, 1));
-  }
-  if (preset === 'lastquarter') {
-    const qStart = Math.floor(m / 3) * 3;
-    return wantsTo ? iso(Date.UTC(y, qStart, 0)) : iso(Date.UTC(y, qStart - 3, 1));
-  }
-
-  // Periods running up to today.
-  if (wantsTo) return iso(today);
+  if (String(args.part ?? 'from') === 'to') return iso(today);
   if (preset === 'week') return iso(today - 6 * 86400000);
-  if (preset === 'month') return iso(Date.UTC(y, m, 1));
-  if (preset === 'days30') return iso(today - 29 * 86400000);
-  if (preset === 'quarter') return iso(Date.UTC(y, Math.floor(m / 3) * 3, 1));
-  if (preset === 'year') return iso(Date.UTC(y, 0, 1));
+  if (preset === 'month') return iso(Date.UTC(now.getFullYear(), now.getMonth(), 1));
   return '';
 };
 const elements: PluginElementsModule = {
