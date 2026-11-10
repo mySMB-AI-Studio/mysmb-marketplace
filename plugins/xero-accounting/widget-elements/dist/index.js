@@ -2595,12 +2595,14 @@ const contra_create_disabled = (args) => Boolean(args.blocked) || !args.clearing
 //   accounts: array,          // get_xero_bank_balance_difference accounts[]
 //   summary: object,          // ...and its summary
 //   selected: string,         // CSV of accountIds; "" means every account
-//   query: string,            // search text for the account picker
-//   mode: string,             // today | week | month | custom
+//   query: string,            // account picker search text
 //   sortField: string,        // bankAccount | code | contact | date | amount
 //   sortDir: string,          // asc | desc
 //   shown: number,            // transaction rows to list
-//   threshold: number,        // balance to flag against; 0 or blank = off
+//   threshold: number,        // default balance to flag against; 0 = off
+//   overrides: string,        // CSV of "accountId:amount" per-account thresholds
+//   overrideTarget: string,   // accountId whose override is being edited
+//   pins: string,             // CSV of pinned accountIds
 //   showAllAccounts: boolean, // list every account, not just the top few
 // }
 const BB_MOVED = 0.005;
@@ -2621,12 +2623,24 @@ const bbSigned = (n) => {
 };
 const bbDirection = (n) => (bbRound2(n) > 0 ? 'up' : bbRound2(n) < 0 ? 'down' : 'flat');
 const bbTone = (n) => (bbRound2(n) > 0 ? 'success' : bbRound2(n) < 0 ? 'destructive' : 'muted');
-const bbArrow = (n) => (bbRound2(n) > 0 ? '▲' : bbRound2(n) < 0 ? '▼' : '–');
+/**
+ * Up and down get an arrow; flat gets nothing. A dash here would sit directly
+ * left of a currency figure and read as a minus sign on a zero.
+ */
+const bbArrow = (n) => (bbRound2(n) > 0 ? '▲' : bbRound2(n) < 0 ? '▼' : '');
 const bbPlural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-/** "+3.2%" of the opening balance, or "" when there is nothing to be a percentage of. */
-const bbPct = (change, opening) => Math.abs(opening) >= 1
+/**
+ * "+3.2%" of the opening balance. Empty when there is nothing to be a
+ * percentage of, and when nothing moved — "+0.0%" is a signed percentage of
+ * no change, which reads as a figure rather than as silence.
+ */
+const bbPct = (change, opening) => Math.abs(bbRound2(change)) >= 0.005 && Math.abs(opening) >= 1
     ? `${change < 0 ? '-' : '+'}${((Math.abs(change) / Math.abs(opening)) * 100).toFixed(1)}%`
     : '';
+const bbCsv = (raw) => String(raw ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
 /**
  * The selection CSV after toggling one account. The spec has no set
  * arithmetic of its own, so each picker row carries the list its own click
@@ -2639,21 +2653,48 @@ const bbToggle = (ids, chosen, id) => {
     const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
     return next.length === ids.length ? '' : next.join(',');
 };
+/** The pin CSV after starring or unstarring one account. */
+const bbTogglePin = (pinned, id) => {
+    const next = new Set(pinned);
+    if (next.has(id))
+        next.delete(id);
+    else
+        next.add(id);
+    return [...next].join(',');
+};
+/** "id:50000,id:20000" → { id: 50000, id: 20000 }, ignoring anything malformed. */
+const bbParseOv = (raw) => {
+    const out = {};
+    for (const pair of bbCsv(raw)) {
+        const at = pair.lastIndexOf(':');
+        if (at <= 0)
+            continue;
+        const id = pair.slice(0, at).trim();
+        const value = bbNum(pair.slice(at + 1));
+        if (id && value > 0)
+            out[id] = value;
+    }
+    return out;
+};
 const bank_balance_view = (args) => {
     const all = Array.isArray(args.accounts) ? args.accounts : [];
     const summary = (args.summary ?? {});
     const ids = all.map((a) => String(a.accountId ?? '')).filter(Boolean);
-    const chosen = new Set(String(args.selected ?? '')
-        .split(',')
-        .map((x) => x.trim())
-        .filter(Boolean));
+    const mode = String(args.mode || 'today');
+    const chosen = new Set(bbCsv(args.selected));
+    const pinned = new Set(bbCsv(args.pins));
     const picked = chosen.size ? all.filter((a) => chosen.has(String(a.accountId ?? ''))) : all;
-    // The picker's search. Filtering here rather than in the spec keeps the
-    // toggle arithmetic above working off the full list, so searching never
-    // changes what a tick would select.
+    // A threshold of 0 or blank is "not set"; a real one is a balance to stay
+    // above. Per-account overrides win over the default for that account only.
+    const threshold = Math.max(0, bbNum(args.threshold));
+    const overrides = bbParseOv(args.overrides);
+    const thrFor = (id) => overrides[id] ?? threshold;
     const query = String(args.query ?? '').trim().toLowerCase();
+    const matches = (a) => !query || String(a.name ?? '').toLowerCase().includes(query);
     const accountOptions = all
-        .filter((a) => !query || String(a.name ?? '').toLowerCase().includes(query))
+        .filter(matches)
+        .sort((x, y) => Number(pinned.has(String(y.accountId ?? ''))) - Number(pinned.has(String(x.accountId ?? ''))) ||
+        String(x.name ?? '').localeCompare(String(y.name ?? '')))
         .map((a) => {
         const id = String(a.accountId ?? '');
         return {
@@ -2662,6 +2703,9 @@ const bank_balance_view = (args) => {
             balanceText: String(a.balanceText ?? ''),
             selected: chosen.size === 0 || chosen.has(id),
             nextSelected: bbToggle(ids, chosen, id),
+            pinned: pinned.has(id),
+            pinIcon: pinned.has(id) ? '★' : '☆',
+            nextPinned: bbTogglePin(pinned, id),
         };
     });
     const opening = bbRound2(picked.reduce((s, a) => s + bbNum(a.previousBalance), 0));
@@ -2671,38 +2715,57 @@ const bank_balance_view = (args) => {
     const moneyOut = bbRound2(picked.reduce((s, a) => s + bbNum(a.moneyOut), 0));
     const pct = bbPct(difference, opening);
     const ranged = summary.isDefaultRange === false;
-    // A threshold of 0 or blank is "not set"; a real one is a balance to stay above.
-    const threshold = Math.max(0, bbNum(args.threshold));
-    const aboveCount = threshold > 0 ? picked.filter((a) => bbNum(a.balance) >= threshold).length : 0;
-    const thresholdMet = threshold > 0 && picked.length > 0 && aboveCount === picked.length;
-    const thresholdText = threshold <= 0 || picked.length === 0
+    const withThreshold = picked.filter((a) => thrFor(String(a.accountId ?? '')) > 0);
+    const aboveCount = withThreshold.filter((a) => bbNum(a.balance) >= thrFor(String(a.accountId ?? ''))).length;
+    const thresholdMet = withThreshold.length > 0 && aboveCount === withThreshold.length;
+    const distinct = new Set(withThreshold.map((a) => thrFor(String(a.accountId ?? ''))));
+    const sharedThreshold = distinct.size === 1 ? [...distinct][0] : 0;
+    const singleThreshold = withThreshold.length === 1 ? thrFor(String(withThreshold[0].accountId ?? '')) : 0;
+    const thresholdText = withThreshold.length === 0
         ? ''
-        : picked.length === 1
+        : withThreshold.length === 1
             ? thresholdMet
-                ? `Above the ${bbAud(threshold)} threshold`
-                : `${bbAud(threshold - closing)} below the ${bbAud(threshold)} threshold`
-            : `${aboveCount} of ${bbPlural(picked.length, 'account')} at or above ${bbAud(threshold)}`;
-    const thresholdValue = threshold <= 0 || picked.length === 0
+                ? `Above the ${bbAud(singleThreshold)} threshold`
+                : `${bbAud(singleThreshold - bbNum(withThreshold[0].balance))} below the ${bbAud(singleThreshold)} threshold`
+            : `${aboveCount} of ${bbPlural(withThreshold.length, 'account')} at or above ${sharedThreshold ? bbAud(sharedThreshold) : 'their threshold'}`;
+    const thresholdValue = withThreshold.length === 0
         ? 0
-        : picked.length === 1
-            ? Math.max(0, Math.min(100, (closing / threshold) * 100))
-            : (aboveCount / picked.length) * 100;
+        : withThreshold.length === 1
+            ? Math.max(0, Math.min(100, (bbNum(withThreshold[0].balance) / singleThreshold) * 100))
+            : (aboveCount / withThreshold.length) * 100;
+    const overrideCount = Object.keys(overrides).filter((id) => ids.includes(id)).length;
+    const overrideRows = all.map((a) => {
+        const id = String(a.accountId ?? '');
+        const own = overrides[id];
+        return {
+            accountId: id,
+            name: String(a.name ?? ''),
+            thresholdText: own ? bbAud(own) : threshold > 0 ? `${bbAud(threshold)} (default)` : 'None',
+            isOverride: own !== undefined,
+            editing: id === String(args.overrideTarget ?? ''),
+        };
+    });
+    const target = overrideRows.find((r) => r.editing);
     const accountRows = [...picked]
         .sort((x, y) => Math.abs(bbNum(y.difference)) - Math.abs(bbNum(x.difference)) ||
         String(x.name ?? '').localeCompare(String(y.name ?? '')))
         .map((a) => {
+        const id = String(a.accountId ?? '');
         const diff = bbNum(a.difference);
         const moved = Math.abs(diff) >= BB_MOVED;
         const rowPct = bbPct(diff, bbNum(a.previousBalance));
+        const own = thrFor(id);
         return {
-            accountId: String(a.accountId ?? ''),
+            accountId: id,
             name: String(a.name ?? ''),
             balanceText: String(a.balanceText ?? bbBalance(bbNum(a.balance))),
-            changeText: moved ? `${bbArrow(diff)} ${bbSigned(diff)}${rowPct ? ` · ${rowPct}` : ''}` : 'No change',
+            changeText: moved
+                ? `${bbArrow(diff)} ${bbSigned(diff)}${rowPct ? ` · ${rowPct}` : ''}`.trim()
+                : 'No change',
             tone: moved ? bbTone(diff) : 'muted',
-            // Only coloured when a threshold is set, so the dot never implies a
+            // Only coloured when a threshold applies, so the dot never implies a
             // judgement nobody asked it to make.
-            dotTone: threshold <= 0 ? 'muted' : bbNum(a.balance) >= threshold ? 'success' : 'destructive',
+            dotTone: own <= 0 ? 'muted' : bbNum(a.balance) >= own ? 'success' : 'destructive',
         };
     });
     const txns = [];
@@ -2736,26 +2799,20 @@ const bank_balance_view = (args) => {
     const page = txns.slice(0, shown);
     const remaining = txns.length - page.length;
     const total = bbRound2(txns.reduce((s, t) => s + bbNum(t.amount), 0));
-    const matches = Math.round(total * 100) === Math.round(difference * 100);
+    const adds = Math.round(total * 100) === Math.round(difference * 100);
     const showAll = args.showAllAccounts === true;
-    // Nothing picked yet reads as 'today', so the chip row has a sensible
-    // state before anyone touches it.
-    const mode = String(args.mode ?? 'today') || 'today';
+    const arrow = bbArrow(difference);
     return {
         // Selection
         accountOptions,
-        noAccountMatches: accountOptions.length === 0 && all.length > 0,
-        query,
-        // Which period is showing
-        mode,
-        isToday: mode === 'today',
-        isWeek: mode === 'week',
-        isMonth: mode === 'month',
-        isCustom: mode === 'custom',
         accountCount: all.length,
         selectedCount: picked.length,
         allSelected: chosen.size === 0,
         noneSelected: picked.length === 0,
+        noAccountMatches: accountOptions.length === 0,
+        pinnedCount: pinned.size,
+        hasPins: pinned.size > 0,
+        pinnedSelection: [...pinned].join(','),
         selectedLabel: chosen.size === 0
             ? `All accounts (${all.length})`
             : picked.length === 0
@@ -2764,6 +2821,11 @@ const bank_balance_view = (args) => {
                     ? String(picked[0].name ?? '')
                     : `${picked.length} of ${all.length} accounts`,
         subtitle: `${bbPlural(picked.length, 'account')} · ${String(summary.rangeText ?? '')}`,
+        // Which period chip reads as chosen.
+        isToday: mode === 'today',
+        isWeek: mode === 'week',
+        isMonth: mode === 'month',
+        isCustom: mode === 'custom',
         // Headline figures
         openingText: bbBalance(opening),
         closingText: bbBalance(closing),
@@ -2774,18 +2836,26 @@ const bank_balance_view = (args) => {
         differenceText: bbSigned(difference),
         direction: bbDirection(difference),
         tone: bbTone(difference),
-        arrow: bbArrow(difference),
+        arrow,
+        hasArrow: arrow !== '',
         pctText: pct,
         pctLabel: pct ? `${pct} vs ${ranged ? 'opening' : 'prev business day'}` : '',
         moneyInText: bbAud(moneyIn),
         moneyOutText: bbAud(moneyOut),
         flowText: `${bbAud(moneyIn)} in · ${bbAud(moneyOut)} out`,
         // Thresholds
-        hasThreshold: threshold > 0,
+        hasThreshold: withThreshold.length > 0,
         thresholdText,
         thresholdValue,
         thresholdTone: thresholdMet ? 'success' : 'warning',
-        thresholdChipText: threshold > 0 ? `Threshold ${bbAud(threshold)}` : 'Set threshold',
+        thresholdChipText: threshold > 0 || overrideCount > 0
+            ? `Threshold ${threshold > 0 ? bbAud(threshold) : 'custom'}${overrideCount > 0 ? ` · ${overrideCount} custom` : ''}`
+            : 'Set threshold',
+        overrideRows,
+        overrideCount,
+        hasOverrides: overrideCount > 0,
+        overrideTargetName: target ? target.name : '',
+        hasOverrideTarget: target !== undefined,
         // Per-account
         showByAccount: picked.length > 1,
         accountRows: showAll ? accountRows : accountRows.slice(0, BB_TOP_ACCOUNTS),
@@ -2803,15 +2873,34 @@ const bank_balance_view = (args) => {
         remaining,
         moreLabel: remaining > 0 ? `Show ${Math.min(shown, remaining)} more · ${remaining} remaining` : '',
         // Footer
-        checkText: matches
+        checkText: adds
             ? `Transactions add up to the difference (${bbBalance(opening)} → ${bbBalance(closing)})`
             : `Transactions do not add up to the difference (${bbBalance(total)} listed against ${bbSigned(difference)})`,
-        checkTone: matches ? 'success' : 'warning',
-        checkIcon: matches ? 'CircleCheck' : 'TriangleAlert',
+        checkTone: adds ? 'success' : 'warning',
+        checkIcon: adds ? 'CircleCheck' : 'TriangleAlert',
         truncated: summary.transactionsTruncated === true,
         updatedText: String(summary.updatedText ?? ''),
         xeroUrl: String(summary.xeroUrl ?? 'https://go.xero.com/Bank/BankAccounts.aspx'),
     };
+};
+/**
+ * The override CSV after setting or clearing one account's threshold. Same
+ * reason as bbToggle: the spec has no map arithmetic, so the edit is computed
+ * where the parsing already lives.
+ */
+const bank_balance_set_override = (args) => {
+    const map = bbParseOv(args.overrides);
+    const id = String(args.accountId ?? '').trim();
+    if (!id)
+        return String(args.overrides ?? '');
+    const value = bbNum(args.value);
+    if (value > 0)
+        map[id] = value;
+    else
+        delete map[id];
+    return Object.entries(map)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(',');
 };
 // ── bank_balance_range ───────────────────────────────────────────────
 // One end of a named period, as YYYY-MM-DD, for the Bank Balance Change
@@ -2904,6 +2993,7 @@ const elements = {
         expense_reimbursement_other_charges_note,
         bank_balance_view,
         bank_balance_range,
+        bank_balance_set_override,
     },
 };
 export default elements;
