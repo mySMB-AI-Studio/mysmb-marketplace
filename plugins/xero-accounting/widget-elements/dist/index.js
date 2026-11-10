@@ -2681,7 +2681,14 @@ const bank_balance_view = (args) => {
     const summary = (args.summary ?? {});
     const ids = all.map((a) => String(a.accountId ?? '')).filter(Boolean);
     const mode = String(args.mode || 'today');
-    const chosen = new Set(bbCsv(args.selected));
+    const BB_NONE = '__none__';
+    const requested = bbCsv(args.selected);
+    const known = new Set(all.map((a) => String(a.accountId ?? '')));
+    const live = requested.filter((id) => known.has(id));
+    // An explicit Clear stands; a selection whose every id has gone stale does
+    // not — it falls back to showing everything rather than showing nothing.
+    const chosen = new Set(requested.includes(BB_NONE) ? [BB_NONE] : live.length > 0 || requested.length === 0 ? live : []);
+    const staleSelection = requested.length > 0 && !requested.includes(BB_NONE) && live.length === 0;
     const pinned = new Set(bbCsv(args.pins));
     const picked = chosen.size ? all.filter((a) => chosen.has(String(a.accountId ?? ''))) : all;
     // A threshold of 0 or blank is "not set"; a real one is a balance to stay
@@ -2813,6 +2820,7 @@ const bank_balance_view = (args) => {
         pinnedCount: pinned.size,
         hasPins: pinned.size > 0,
         pinnedSelection: [...pinned].join(','),
+        staleSelection,
         selectedLabel: chosen.size === 0
             ? `All accounts (${all.length})`
             : picked.length === 0
