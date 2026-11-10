@@ -1,0 +1,102 @@
+{
+  "contentHash": "447c489f8d8bd7195a9e8df3543c4ce48f22b16b07a7abf62b6f648f4d779410",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "contactIDs": "contactIDs",
+          "ids": "ids",
+          "invoiceNumbers": "invoiceNumbers",
+          "order": "order",
+          "page": "page",
+          "searchTerm": "searchTerm",
+          "statuses": "statuses",
+          "summaryOnly": "summaryOnly",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_invoices"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "contactIDs": {
+          "description": "Comma-separated ContactIDs.",
+          "type": "string"
+        },
+        "ids": {
+          "description": "Comma-separated InvoiceIDs.",
+          "type": "string"
+        },
+        "invoiceNumbers": {
+          "description": "Comma-separated invoice numbers.",
+          "type": "string"
+        },
+        "order": {
+          "description": "Optional Xero order clause, e.g. \"Date DESC\".",
+          "type": "string"
+        },
+        "page": {
+          "description": "Page (100 per page).",
+          "type": "integer"
+        },
+        "searchTerm": {
+          "description": "Search number or reference.",
+          "type": "string"
+        },
+        "statuses": {
+          "description": "Comma-separated statuses, e.g. AUTHORISED,PAID.",
+          "type": "string"
+        },
+        "summaryOnly": {
+          "description": "Lighter rows.",
+          "type": "boolean"
+        },
+        "where": {
+          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\".",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.invoices.read",
+    "kind": "capability",
+    "originKey": "073f1f3a-2360-4e07-8893-64febe312dba",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read invoices and bills"
+  },
+  "kind": "capability",
+  "name": "Read invoices and bills",
+  "originKey": "073f1f3a-2360-4e07-8893-64febe312dba"
+}

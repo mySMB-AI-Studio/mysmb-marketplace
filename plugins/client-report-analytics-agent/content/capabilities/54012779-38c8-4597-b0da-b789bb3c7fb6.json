@@ -1,0 +1,86 @@
+{
+  "contentHash": "e02bed7560fa26b8cbd7456c87086b1743e64306cd01c05d478f75e9bd5908b8",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "fromDate": "fromDate",
+          "paymentsOnly": "paymentsOnly",
+          "periods": "periods",
+          "timeframe": "timeframe",
+          "toDate": "toDate",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.reports.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_profit_and_loss"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "fromDate": {
+          "description": "YYYY-MM-DD",
+          "type": "string"
+        },
+        "paymentsOnly": {
+          "description": "Cash basis.",
+          "type": "boolean"
+        },
+        "periods": {
+          "description": "Comparison periods.",
+          "type": "integer"
+        },
+        "timeframe": {
+          "enum": [
+            "MONTH",
+            "QUARTER",
+            "YEAR"
+          ],
+          "type": "string"
+        },
+        "toDate": {
+          "description": "YYYY-MM-DD",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.profit_and_loss.read",
+    "kind": "capability",
+    "originKey": "54012779-38c8-4597-b0da-b789bb3c7fb6",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Reports": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the Profit and Loss"
+  },
+  "kind": "capability",
+  "name": "Read the Profit and Loss",
+  "originKey": "54012779-38c8-4597-b0da-b789bb3c7fb6"
+}
