@@ -1,0 +1,882 @@
+{
+  "category": "productivity",
+  "connectorsUsed": ["myconnect-community-admin", "myconnect-member"],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "myconnect-member",
+    "tool": "list_communities",
+    "params": {}
+  },
+  "description": "Pick any myConnect community you belong to -- same list as myConnect's own community switcher. Communities you administer show full member, event and invite-link details (name, tags, last seen, joined date; events with RSVP counts and per-attendee status; shareable invite links with use counts and who joined through each); communities you're just a member of show a view-only notice instead, since this tile's management tools only work where you're an admin. Intended for mySMB.com staff; install access is controlled the same way as any other extension.",
+  "id": "myconnect-community-manager",
+  "keywords": ["myconnect", "community", "members", "admin", "invites", "events"],
+  "popularity": 0,
+  "sizing": {
+    "max": { "colSpan": 10, "rowSpan": 12 },
+    "min": { "colSpan": 5, "rowSpan": 6 },
+    "preferred": { "colSpan": 7, "rowSpan": 9 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "body", "infoOverlay", "memberDetailOverlay", "eventDetailOverlay", "inviteLinkDetailOverlay"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Community Manager" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "myConnect" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "liveDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "liveBadge": { "type": "Badge", "props": { "text": "Live", "tone": "success", "variant": "soft" } },
+      "memberCountBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "n": { "$state": "/myconnect-community-admin/get_community_summary/members/total" }, "pattern": "{n} members" }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/myconnect-community-admin/get_community_summary/community/slug" }
+      },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "communitySelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedCommunity" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/myconnect-member/list_communities" },
+              "valueField": "slug",
+              "labelPattern": "{name} ({role})"
+            }
+          },
+          "placeholder": "Choose community…",
+          "size": "sm"
+        }
+      },
+      "viewOnlyBadge": {
+        "type": "Badge",
+        "props": { "text": "View only", "tone": "warning", "variant": "soft" },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/selectedCommunityRecord/0/slug" },
+            { "$state": "/ui/selectedCommunityRecord/0/role", "neq": "admin" },
+            { "$state": "/ui/selectedCommunityRecord/0/role", "neq": "owner" }
+          ]
+        }
+      },
+      "pillsRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["communitySelect", "viewOnlyBadge", "liveBadge", "memberCountBadge", "infoBtn"]
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+
+      "membersTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Members",
+          "leadingIcon": "Users",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "invites" }, "$then": "secondary", "$else": { "$cond": { "$state": "/ui/activeTab", "eq": "events" }, "$then": "secondary", "$else": "primary" } },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "invites" }, "$then": "default", "$else": { "$cond": { "$state": "/ui/activeTab", "eq": "events" }, "$then": "default", "$else": "info" } }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "members" } } }
+      },
+      "invitesTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Invite Links",
+          "leadingIcon": "Link",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "invites" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "invites" }, "$then": "info", "$else": "default" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "invites" } } }
+      },
+      "eventsTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Events",
+          "leadingIcon": "Calendar",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "events" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "events" }, "$then": "info", "$else": "default" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "events" } } }
+      },
+      "tabBar": { "type": "Row", "props": { "gap": "xs" }, "children": ["membersTabBtn", "invitesTabBtn", "eventsTabBtn"] },
+      "tabDivider": { "type": "Divider", "props": {} },
+
+      "membersLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["ms1", "ms2", "ms3"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
+      },
+      "ms1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "ms2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "ms3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "membersErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load members: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+      },
+      "membersEmpty": {
+        "type": "Empty",
+        "props": { "message": "No members found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/myconnect-community-admin/list_members/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_members", "not": true }
+          ]
+        }
+      },
+      "memberStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "status", "eq": "active" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "invited" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$computed": "initials", "args": { "value": { "$item": "displayName" } } },
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "role", "eq": "owner" },
+            "$then": "info",
+            "$else": {
+              "$cond": { "$item": "role", "eq": "admin" },
+              "$then": "accent",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberAvatarGroup": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["memberStatusDot", "memberAvatar"] },
+      "memberName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "displayName" } } },
+      "memberEmail": { "type": "Caption", "props": { "text": { "$item": "email" }, "tone": "muted" } },
+      "memberNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberName", "memberEmail"] },
+      "memberIdentity": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberAvatarGroup", "memberNameStack"] },
+      "memberLastSeen": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$item": "lastSeenAt", "eq": null },
+            "$then": "Never",
+            "$else": { "$computed": "relative_time", "args": { "value": { "$item": "lastSeenAt" } } }
+          },
+          "tone": {
+            "$cond": { "$item": "lastSeenAt", "eq": null },
+            "$then": "muted",
+            "$else": "success"
+          },
+          "align": "right"
+        }
+      },
+      "memberRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["memberIdentity", "memberLastSeen"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedMemberId", "value": { "$bindItem": "id" } } } }
+      },
+      "membersList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_members/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+      "membersColHeaderIdentity": { "type": "Caption", "props": { "text": "Member (click a row for details)", "tone": "muted", "weight": "semibold" } },
+      "membersColHeaderLastSeen": { "type": "Caption", "props": { "text": "Last seen", "tone": "muted", "weight": "semibold", "align": "right" } },
+      "membersColumnHeader": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["membersColHeaderIdentity", "membersColHeaderLastSeen"],
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+      "membersPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["membersErrorBanner", "membersLoading", "membersEmpty", "membersColumnHeader", "membersList"],
+        "visible": {
+          "$or": [
+            { "$state": "/ui/activeTab", "eq": "members" },
+            { "$state": "/ui/activeTab", "not": true }
+          ]
+        }
+      },
+
+      "invitesErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load invite links: ${/_errors/myconnect-community-admin.list_invite_links}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_invite_links" }
+      },
+      "invLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "invLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "invitesLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["invLoading1", "invLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_invite_links" }
+      },
+      "invitesEmpty": {
+        "type": "Empty",
+        "props": { "message": "No invite links found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_invite_links", "not": true },
+            { "$state": "/myconnect-community-admin/list_invite_links/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_invite_links", "not": true }
+          ]
+        }
+      },
+
+      "inviteLinkLabel": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "text": { "$cond": { "$item": "label", "eq": null }, "$then": "Untitled link", "$else": { "$item": "label" } }
+        }
+      },
+      "inviteLinkMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$item": "active" },
+            "$then": "Active",
+            "$else": "Inactive"
+          },
+          "tone": "muted"
+        }
+      },
+      "inviteLinkTitleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["inviteLinkLabel", "inviteLinkMeta"] },
+      "inviteLinkUseBadge": {
+        "type": "Badge",
+        "props": { "text": { "$computed": "fmt", "args": { "n": { "$item": "useCount" }, "pattern": "{n} used" } }, "tone": "info", "variant": "soft" }
+      },
+      "inviteLinkMembersBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$computed": "count", "args": { "value": { "$item": "members" } } }, "pattern": "{n} joined" } },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "inviteLinkBadgeRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["inviteLinkUseBadge", "inviteLinkMembersBadge"] },
+      "inviteLinkRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["inviteLinkTitleStack", "inviteLinkBadgeRow"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedInviteLinkId", "value": { "$bindItem": "id" } } } }
+      },
+      "inviteLinksList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["inviteLinkRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_invite_links" },
+        "visible": { "$state": "/myconnect-community-admin/list_invite_links/0" }
+      },
+      "invitesPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["invitesErrorBanner", "invitesLoading", "invitesEmpty", "inviteLinksList"],
+        "visible": { "$state": "/ui/activeTab", "eq": "invites" }
+      },
+
+      "eventsUpcomingBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Upcoming",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/eventsWhen", "eq": "past" }, "$then": "secondary", "$else": "primary" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/eventsWhen", "value": "upcoming" } } }
+      },
+      "eventsPastBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Past",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/eventsWhen", "eq": "past" }, "$then": "primary", "$else": "secondary" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/eventsWhen", "value": "past" } } }
+      },
+      "eventsWhenToggle": { "type": "Row", "props": { "gap": "xs" }, "children": ["eventsUpcomingBtn", "eventsPastBtn"] },
+
+      "eventsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load events: ${/_errors/myconnect-community-admin.list_events}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_events" }
+      },
+      "evLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "evLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "eventsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["evLoading1", "evLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_events" }
+      },
+      "eventsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No events found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_events", "not": true },
+            { "$state": "/myconnect-community-admin/list_events/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_events", "not": true }
+          ]
+        }
+      },
+
+      "eventTitle": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "title" } } },
+      "eventWhen": { "type": "Caption", "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "startsAt" } } }, "tone": "muted" } },
+      "eventTitleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["eventTitle", "eventWhen"] },
+      "eventGoingBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "rsvps/yes" }, "pattern": "{n} going" } },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "eventWaitlistBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "rsvps/waitlist" }, "pattern": "{n} waitlisted" } },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$item": "rsvps/waitlist" }
+      },
+      "eventBadgeRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["eventGoingBadge", "eventWaitlistBadge"] },
+      "eventRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["eventTitleStack", "eventBadgeRow"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedEventId", "value": { "$bindItem": "id" } } } }
+      },
+      "eventsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_events/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_events/items/0" }
+      },
+      "eventsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventsWhenToggle", "eventsErrorBanner", "eventsLoading", "eventsEmpty", "eventsList"],
+        "visible": { "$state": "/ui/activeTab", "eq": "events" }
+      },
+
+      "adminAccessContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["tabBar", "tabDivider", "membersPanel", "invitesPanel", "eventsPanel"],
+        "visible": {
+          "$or": [
+            { "$state": "/ui/selectedCommunityRecord/0/role", "eq": "admin" },
+            { "$state": "/ui/selectedCommunityRecord/0/role", "eq": "owner" }
+          ]
+        }
+      },
+      "noAdminAccessPanel": {
+        "type": "Empty",
+        "props": { "message": "You're not an admin of this community, so there's nothing to manage here -- pick a community you administer to see members, invites and events." },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/selectedCommunityRecord/0/slug" },
+            { "$state": "/ui/selectedCommunityRecord/0/role", "neq": "admin" },
+            { "$state": "/ui/selectedCommunityRecord/0/role", "neq": "owner" }
+          ]
+        }
+      },
+      "body": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["adminAccessContent", "noAdminAccessPanel"],
+        "watch": {
+          "/myconnect-member/list_communities": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/selectedCommunity", "value": "mysmb" }
+            }
+          ],
+          "/ui/selectedCommunity": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCommunityRecord",
+                "value": {
+                  "$computed": "filter_by",
+                  "args": {
+                    "value": { "$state": "/myconnect-member/list_communities" },
+                    "field": "slug",
+                    "equals": { "$state": "/ui/selectedCommunity" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/selectedCommunityRecord": [
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 25 }
+            }
+          ],
+          "/myconnect-community-admin/list_members": [
+            {
+              "action": "myconnect-community-admin.get_community_summary",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/myconnect-community-admin/get_community_summary": [
+            {
+              "action": "myconnect-community-admin.list_events",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "when": "upcoming" }
+            }
+          ],
+          "/myconnect-community-admin/list_events": [
+            {
+              "action": "myconnect-community-admin.list_invite_links",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/ui/selectedMemberId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedMemberRecord",
+                "value": {
+                  "$computed": "filter_by",
+                  "args": {
+                    "value": { "$state": "/myconnect-community-admin/list_members/items" },
+                    "field": "id",
+                    "equals": { "$state": "/ui/selectedMemberId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/eventsWhen": [
+            {
+              "action": "myconnect-community-admin.list_events",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "when": { "$state": "/ui/eventsWhen" } }
+            }
+          ],
+          "/ui/selectedEventId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedEventRecord",
+                "value": {
+                  "$computed": "filter_by",
+                  "args": {
+                    "value": { "$state": "/myconnect-community-admin/list_events/items" },
+                    "field": "id",
+                    "equals": { "$state": "/ui/selectedEventId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/selectedEventRecord": [
+            {
+              "action": "myconnect-community-admin.list_event_rsvps",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "eventId": { "$state": "/ui/selectedEventId" } }
+            }
+          ],
+          "/ui/selectedInviteLinkId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedInviteLinkRecord",
+                "value": {
+                  "$computed": "filter_by",
+                  "args": {
+                    "value": { "$state": "/myconnect-community-admin/list_invite_links" },
+                    "field": "id",
+                    "equals": { "$state": "/ui/selectedInviteLinkId" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Community Manager", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Pick any myConnect community you belong to and browse its members -- name, tags, last seen, and joined date -- if you administer it.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "How it works", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "The community picker lists every community you belong to, any role -- the same list as myConnect's own switcher. Communities where you're an admin or owner show full member details; communities where you're just a member show a view-only notice instead, since management only works where you have admin access.",
+          "size": "sm"
+        }
+      },
+      "infoLimitsLabel": { "type": "Caption", "props": { "text": "Good to know", "tone": "muted", "weight": "semibold" } },
+      "infoLimitsText": {
+        "type": "Text",
+        "props": {
+          "text": "Invite Links shows every shareable link for the community, with use counts and who's joined through each one. One-off email invitations (via invite_member) aren't listed here, only shareable links.",
+          "size": "sm"
+        }
+      },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText", "infoLimitsLabel", "infoLimitsText"]
+      },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "memberDetailOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "24rem" },
+        "children": ["memberDetailCard"],
+        "visible": { "$state": "/ui/selectedMemberId" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/selectedMemberId", "value": null } } }
+      },
+      "memberDetailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedMemberId", "value": null } } }
+      },
+      "memberDetailAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$computed": "initials", "args": { "value": { "$state": "/ui/selectedMemberRecord/0/displayName" } } },
+          "size": "lg",
+          "tone": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "owner" },
+            "$then": "info",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "admin" },
+              "$then": "accent",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberDetailName": { "type": "Heading", "props": { "level": "h2", "text": { "$state": "/ui/selectedMemberRecord/0/displayName" } } },
+      "memberDetailEmail": { "type": "Caption", "props": { "text": { "$state": "/ui/selectedMemberRecord/0/email" }, "tone": "muted" } },
+      "memberDetailNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberDetailName", "memberDetailEmail"] },
+      "memberDetailIdentityRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberDetailAvatar", "memberDetailNameStack"] },
+      "memberDetailRoleBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/selectedMemberRecord/0/role" },
+          "variant": "soft",
+          "tone": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "owner" },
+            "$then": "info",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "admin" },
+              "$then": "accent",
+              "$else": "default"
+            }
+          }
+        }
+      },
+      "memberDetailStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/status", "eq": "active" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedMemberRecord/0/status", "eq": "invited" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberDetailStatusText": { "type": "Caption", "props": { "text": { "$state": "/ui/selectedMemberRecord/0/status" }, "tone": "muted" } },
+      "memberDetailBadgeRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberDetailRoleBadge", "memberDetailStatusDot", "memberDetailStatusText"] },
+      "memberDetailDivider": { "type": "Divider", "props": {} },
+      "memberDetailTagBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "label" }, "tone": "info", "variant": "soft" }
+      },
+      "memberDetailTagsList": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["memberDetailTagBadge"],
+        "repeat": { "key": "id", "statePath": "/ui/selectedMemberRecord/0/tags" },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/tags/0" }
+      },
+      "memberDetailTagsEmpty": {
+        "type": "Caption",
+        "props": { "text": "No tags", "tone": "muted" },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/tags/0", "not": true }
+      },
+      "memberDetailTagsLabel": { "type": "Caption", "props": { "text": "Tags", "tone": "muted", "weight": "semibold" } },
+      "memberDetailTagsSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["memberDetailTagsLabel", "memberDetailTagsList", "memberDetailTagsEmpty"] },
+      "memberDetailLastSeen": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Last seen",
+          "value": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/lastSeenAt", "eq": null },
+            "$then": "Never",
+            "$else": { "$computed": "relative_time", "args": { "value": { "$state": "/ui/selectedMemberRecord/0/lastSeenAt" } } }
+          }
+        }
+      },
+      "memberDetailJoined": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Joined",
+          "value": { "$computed": "format_date", "args": { "value": { "$state": "/ui/selectedMemberRecord/0/createdAt" }, "format": "dd-mmm-yy" } }
+        }
+      },
+      "memberDetailPoints": {
+        "type": "KeyValue",
+        "props": { "label": "Points", "value": { "$state": "/ui/selectedMemberRecord/0/pointsBalance" } }
+      },
+      "memberDetailLevel": {
+        "type": "KeyValue",
+        "props": { "label": "Level", "value": { "$state": "/ui/selectedMemberRecord/0/level/name" } },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/level/name" }
+      },
+      "memberDetailMetaStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["memberDetailLastSeen", "memberDetailJoined", "memberDetailPoints", "memberDetailLevel"] },
+      "memberDetailCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["memberDetailCloseBtn", "memberDetailIdentityRow", "memberDetailBadgeRow", "memberDetailDivider", "memberDetailTagsSection", "memberDetailMetaStack"]
+      },
+
+      "eventDetailOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "26rem" },
+        "children": ["eventDetailCard"],
+        "visible": { "$state": "/ui/selectedEventId" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/selectedEventId", "value": null } } }
+      },
+      "eventDetailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedEventId", "value": null } } }
+      },
+      "eventDetailTitle": { "type": "Heading", "props": { "level": "h2", "text": { "$state": "/ui/selectedEventRecord/0/title" } } },
+      "eventDetailWhen": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{d} at {t}",
+              "d": { "$computed": "format_date", "args": { "value": { "$state": "/ui/selectedEventRecord/0/startsAt" }, "format": "long" } },
+              "t": { "$computed": "format_time", "args": { "value": { "$state": "/ui/selectedEventRecord/0/startsAt" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "eventDetailLocation": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedEventRecord/0/locationType", "eq": "in_person" },
+            "$then": {
+              "$cond": { "$state": "/ui/selectedEventRecord/0/locationAddress", "eq": null },
+              "$then": "In person",
+              "$else": { "$state": "/ui/selectedEventRecord/0/locationAddress" }
+            },
+            "$else": "Online"
+          },
+          "tone": "muted"
+        }
+      },
+      "eventDetailHeaderStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["eventDetailTitle", "eventDetailWhen", "eventDetailLocation"] },
+      "eventDetailDivider": { "type": "Divider", "props": {} },
+
+      "eventDetailRsvpErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load RSVPs: ${/_errors/myconnect-community-admin.list_event_rsvps}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_event_rsvps" }
+      },
+      "eventDetailRsvpLoading": {
+        "type": "Skeleton",
+        "props": { "height": "2.5rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_event_rsvps" }
+      },
+      "eventDetailRsvpEmpty": {
+        "type": "Empty",
+        "props": { "message": "No RSVPs yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_event_rsvps", "not": true },
+            { "$state": "/myconnect-community-admin/list_event_rsvps/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_event_rsvps", "not": true }
+          ]
+        }
+      },
+      "rsvpMemberName": { "type": "Text", "props": { "size": "sm", "text": { "$item": "displayName" } } },
+      "rsvpStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$cond": { "$item": "status", "eq": "yes" },
+            "$then": "Going",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "waitlist" },
+              "$then": "Waitlisted",
+              "$else": "Not going"
+            }
+          },
+          "variant": "soft",
+          "tone": {
+            "$cond": { "$item": "status", "eq": "yes" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "waitlist" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "rsvpRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["rsvpMemberName", "rsvpStatusBadge"] },
+      "eventDetailRsvpList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["rsvpRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_event_rsvps/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_event_rsvps/items/0" }
+      },
+      "eventDetailRsvpLabel": { "type": "Caption", "props": { "text": "RSVPs", "tone": "muted", "weight": "semibold" } },
+      "eventDetailRsvpSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["eventDetailRsvpLabel", "eventDetailRsvpErrorBanner", "eventDetailRsvpLoading", "eventDetailRsvpEmpty", "eventDetailRsvpList"]
+      },
+      "eventDetailCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["eventDetailCloseBtn", "eventDetailHeaderStack", "eventDetailDivider", "eventDetailRsvpSection"]
+      },
+
+      "inviteLinkDetailOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "26rem" },
+        "children": ["inviteLinkDetailCard"],
+        "visible": { "$state": "/ui/selectedInviteLinkId" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/selectedInviteLinkId", "value": null } } }
+      },
+      "inviteLinkDetailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedInviteLinkId", "value": null } } }
+      },
+      "inviteLinkDetailTitle": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": {
+            "$cond": { "$state": "/ui/selectedInviteLinkRecord/0/label", "eq": null },
+            "$then": "Untitled link",
+            "$else": { "$state": "/ui/selectedInviteLinkRecord/0/label" }
+          }
+        }
+      },
+      "inviteLinkDetailUrl": { "type": "Caption", "props": { "text": { "$state": "/ui/selectedInviteLinkRecord/0/url" }, "tone": "muted" } },
+      "inviteLinkDetailHeaderStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["inviteLinkDetailTitle", "inviteLinkDetailUrl"] },
+      "inviteLinkDetailUseKv": { "type": "KeyValue", "props": { "label": "Uses", "value": { "$state": "/ui/selectedInviteLinkRecord/0/useCount" } } },
+      "inviteLinkDetailStatusKv": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Status",
+          "value": { "$cond": { "$state": "/ui/selectedInviteLinkRecord/0/active" }, "$then": "Active", "$else": "Inactive" }
+        }
+      },
+      "inviteLinkDetailExpiresKv": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Expires",
+          "value": { "$computed": "format_date", "args": { "value": { "$state": "/ui/selectedInviteLinkRecord/0/expiresAt" }, "format": "dd-mmm-yy" } }
+        },
+        "visible": { "$state": "/ui/selectedInviteLinkRecord/0/expiresAt" }
+      },
+      "inviteLinkDetailMetaStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["inviteLinkDetailUseKv", "inviteLinkDetailStatusKv", "inviteLinkDetailExpiresKv"] },
+      "inviteLinkDetailDivider": { "type": "Divider", "props": {} },
+
+      "inviteLinkMemberName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "name" } } },
+      "inviteLinkMemberEmail": { "type": "Caption", "props": { "text": { "$item": "email" }, "tone": "muted" } },
+      "inviteLinkMemberStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["inviteLinkMemberName", "inviteLinkMemberEmail"] },
+      "inviteLinkMemberJoined": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "format_date", "args": { "value": { "$item": "joinedAt" }, "format": "dd-mmm-yy" } }, "tone": "muted", "align": "right" }
+      },
+      "inviteLinkMemberRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["inviteLinkMemberStack", "inviteLinkMemberJoined"] },
+      "inviteLinkMembersList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["inviteLinkMemberRow"],
+        "repeat": { "key": "id", "statePath": "/ui/selectedInviteLinkRecord/0/members" },
+        "visible": { "$state": "/ui/selectedInviteLinkRecord/0/members/0" }
+      },
+      "inviteLinkMembersEmpty": {
+        "type": "Empty",
+        "props": { "message": "No one has joined through this link yet." },
+        "visible": { "$state": "/ui/selectedInviteLinkRecord/0/members/0", "not": true }
+      },
+      "inviteLinkMembersLabel": { "type": "Caption", "props": { "text": "Joined via this link", "tone": "muted", "weight": "semibold" } },
+      "inviteLinkMembersSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["inviteLinkMembersLabel", "inviteLinkMembersList", "inviteLinkMembersEmpty"]
+      },
+      "inviteLinkDetailCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["inviteLinkDetailCloseBtn", "inviteLinkDetailHeaderStack", "inviteLinkDetailMetaStack", "inviteLinkDetailDivider", "inviteLinkMembersSection"]
+      }
+    }
+  },
+  "tags": ["myconnect", "community", "members", "admin"],
+  "title": "Community Manager"
+}
