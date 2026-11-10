@@ -6,14 +6,14 @@
     "connectors:cliniko-patients"
   ],
   "dependencies": [],
-  "description": "Every morning, checks Cliniko for the new referral on each request sent by \"Send approved referral request\": a new referral case created since, or the same case extended. When it's there, comments the details and completes the WorkQ item. If it hasn't arrived 5 days after the request, comments a reminder on the item and raises its priority (nothing is re-sent). Stops checking after 30 days or once the item is closed by hand.",
+  "description": "Every morning at 7 AM practice time, checks Cliniko for the new referral on each request sent by \"Send approved referral request\": a new referral case created since, or the same case extended. When it's there, comments the details and completes the WorkQ item. If it hasn't arrived 5 days after the request, comments a reminder on the item and raises its priority (nothing is re-sent). Stops checking after 30 days or once the item is closed by hand.",
   "flowIr": {
     "description": "Daily: watches Cliniko for the requested new referral, closes the item when it arrives, and reminds the manager after 5 days if not.",
     "irVersion": 1,
     "name": "Cliniko Automations: Follow up referral requests",
     "nodes": [
       {
-        "code": "import json\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\n# No slug set (the param ships blank and can't be edited in the app): use\n# the practice settings file, as long as there's exactly one.\nif not slug:\n    try:\n        practice_entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\") or []\n    except Exception:\n        practice_entries = []\n    practice_slugs = []\n    for e in practice_entries:\n        name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n        if name.endswith(\".json\"):\n            practice_slugs.append(name[: -len(\".json\")])\n    if len(practice_slugs) == 1:\n        slug = practice_slugs[0]\n\nif not slug:\n    problem = \"No practice_slug configured for this automation, and there isn't exactly one practice settings file in PracticeManager/Practices to fall back on.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug + \"'.\")\n    else:\n        settings = found\n",
+        "code": "import json\n\n# >>> practice-clock (canonical copy: scripts/practice-manager-kit/practice_clock.py; every copy must match it)\n# Scheduled runs fire on a UTC clock; each practice decides from its own settings\n# file (\"timezone\") whether this run is one of its own. Manual and event runs\n# always count, so a person can still run an automation by hand at any time.\nimport datetime as _pm_datetime\nfrom zoneinfo import ZoneInfo as _PmZoneInfo\n\nPRACTICE_DEFAULT_TIMEZONE = \"Australia/Sydney\"\nPRACTICE_SLOT_MINUTES = 30\n\n\ndef practice_clock_tz(practice):\n    name = str((practice or {}).get(\"timezone\") or \"\").strip() or PRACTICE_DEFAULT_TIMEZONE\n    try:\n        return _PmZoneInfo(name)\n    except Exception:\n        return _pm_datetime.timezone.utc\n\n\ndef practice_clock_now(practice, trig=None):\n    # The run's scheduled time (not when the sandbox got to it), in the practice's time zone.\n    fired = None\n    if isinstance(trig, dict) and trig.get(\"fired_at\"):\n        try:\n            fired = _pm_datetime.datetime.fromisoformat(str(trig.get(\"fired_at\")).replace(\"Z\", \"+00:00\"))\n        except Exception:\n            fired = None\n    if fired is None or fired.tzinfo is None:\n        fired = _pm_datetime.datetime.now(_pm_datetime.timezone.utc)\n    return fired.astimezone(practice_clock_tz(practice))\n\n\ndef practice_open_now(practice, trig, start_hour, end_hour, weekdays=None):\n    # True when a scheduled run falls inside [start_hour, end_hour) practice time\n    # (weekdays: ISO numbers, 1 = Monday).\n    if not (isinstance(trig, dict) and trig.get(\"kind\") == \"schedule\"):\n        return True\n    local = practice_clock_now(practice, trig)\n    if weekdays and local.isoweekday() not in weekdays:\n        return False\n    return start_hour <= local.hour < end_hour\n\n\ndef practice_due_at(practice, trig, hhmm, weekdays=None):\n    # True for the one scheduled run that is the practice's own HH:MM run: the\n    # first tick at or after HH:MM practice time (ticks are 30 minutes apart, so\n    # a time zone with a :45 offset runs 15 minutes late rather than never).\n    if not (isinstance(trig, dict) and trig.get(\"kind\") == \"schedule\"):\n        return True\n    local = practice_clock_now(practice, trig)\n    if weekdays and local.isoweekday() not in weekdays:\n        return False\n    hour, minute = (int(x) for x in str(hhmm).split(\":\"))\n    target = hour * 60 + minute\n    return target <= local.hour * 60 + local.minute < target + PRACTICE_SLOT_MINUTES\n# <<< practice-clock\n\n\nslug = (params.get(\"practice_slug\") or \"\").strip()\nproblem = \"\"\nsettings = {}\n\ndef read_json(path):\n    try:\n        raw = api.files.read(file=path, scope=\"org\")\n    except Exception as exc:\n        return None, \"Couldn't read \" + path + \": \" + str(exc)\n    try:\n        return json.loads(raw), None\n    except Exception as exc:\n        return None, path + \" isn't valid JSON (\" + str(exc) + \")\"\n\n# No slug set (the param ships blank and can't be edited in the app): use\n# the practice settings file, as long as there's exactly one.\nif not slug:\n    try:\n        practice_entries = api.files.list(path=\"PracticeManager/Practices\", scope=\"org\") or []\n    except Exception:\n        practice_entries = []\n    practice_slugs = []\n    for e in practice_entries:\n        name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n        if name.endswith(\".json\"):\n            practice_slugs.append(name[: -len(\".json\")])\n    if len(practice_slugs) == 1:\n        slug = practice_slugs[0]\n\nif not slug:\n    problem = \"No practice_slug configured for this automation, and there isn't exactly one practice settings file in PracticeManager/Practices to fall back on.\"\nelse:\n    found, err = read_json(\"PracticeManager/Practices/\" + slug + \".json\")\n    if found is None:\n        problem = err or (\"No practice settings file found for slug '\" + slug + \"'.\")\n    else:\n        settings = found\n\n# Runs every 30 minutes (UTC); only the run at 7 AM in this practice's own\n# time zone (its settings file) does the check, once a day.\ndue = practice_due_at(settings, trigger, \"07:00\")\n",
         "id": "load_context",
         "kind": "python",
         "outputs": [
@@ -28,6 +28,11 @@
           {
             "name": "problem",
             "type": "str"
+          },
+          {
+            "name": "due",
+            "type": "bool",
+            "description": "False when a scheduled run falls outside this practice's own hours, so it does nothing."
           }
         ],
         "params": [
@@ -43,7 +48,7 @@
         "title": "Load practice settings"
       },
       {
-        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"]",
+        "cond": "not steps[\"load_context\"][\"outputs\"][\"problem\"] and steps[\"load_context\"][\"outputs\"][\"due\"]",
         "else": [],
         "id": "gate_settings",
         "kind": "if",
@@ -51,7 +56,7 @@
           "list_followups",
           "foreach_followup"
         ],
-        "title": "Settings loaded okay?"
+        "title": "Settings loaded, and within the practice's hours?"
       },
       {
         "code": "import json\n\nslug = params[\"slug\"]\nprefix = slug + \"-referral-followup-\"\n\ntry:\n    entries = api.files.list(path=\"PracticeManager/State\", scope=\"org\") or []\nexcept Exception:\n    entries = []\n\n# Written by \"Send approved referral request\"; only the ones still waiting\n# for a new referral are checked.\nfollowups = []\nfor e in entries:\n    name = str((e.get(\"name\") if isinstance(e, dict) else e) or \"\").split(\"/\")[-1]\n    if not (name.startswith(prefix) and name.endswith(\".json\")):\n        continue\n    try:\n        data = json.loads(api.files.read(file=\"PracticeManager/State/\" + name, scope=\"org\") or \"{}\") or {}\n    except Exception:\n        continue\n    if isinstance(data, dict) and data.get(\"status\") in (\"waiting\", \"reminded\"):\n        data[\"_file_name\"] = name\n        followups.append(data)\n",
@@ -127,7 +132,7 @@
     ],
     "triggers": [
       {
-        "cron": "0 23 * * *",
+        "cron": "*/30 * * * *",
         "kind": "schedule",
         "timezone": "UTC"
       },
@@ -144,5 +149,5 @@
     "cliniko",
     "referrals"
   ],
-  "contentHash": "10950572940f9d2d4f550ab12dc3162b97e4d7c2d31d8f150ceede6c539454dc"
+  "contentHash": "211ba64a5a5f06a739b84019af41672c77f46953d0a0bd1ff03471224109f56d"
 }
