@@ -1,0 +1,660 @@
+{
+  "id": "xero-ready-to-pay",
+  "title": "Ready to Pay",
+  "description": "How much can go out now: Xero bills due in the next 7 days that passed every check (approved, supplier bank details on file, rate within 5% of usual), when they're due, and which bills are held back and why.",
+  "category": "finance",
+  "tags": [
+    "xero",
+    "bills",
+    "payments",
+    "accounts-payable",
+    "cash-flow"
+  ],
+  "keywords": [
+    "xero",
+    "ready to pay",
+    "pay run",
+    "bills due",
+    "due this week",
+    "held back",
+    "approved bills",
+    "bank details",
+    "rate check",
+    "accounts payable",
+    "payment run"
+  ],
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 7
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 14
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "tool": "list_xero_ready_to_pay",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/xero-accounting/list_xero_ready_to_pay/heldBills": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/rtp",
+              "value": {
+                "$computed": "xero-accounting_ready_to_pay_held",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_xero_ready_to_pay/heldBills"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "title"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Wallet",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Ready to Pay",
+          "level": "h2"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_xero_ready_to_pay"
+        }
+      },
+      "sk1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "sk2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "sk3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No bills due in the next 7 days."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_ready_to_pay",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_ready_to_pay/summary/totalCount",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "hero",
+          "heroDivider",
+          "strip",
+          "held",
+          "footerDivider",
+          "footerRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_xero_ready_to_pay",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_xero_ready_to_pay/summary/totalCount"
+            }
+          ]
+        }
+      },
+      "hero": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "template": "minmax(0,1fr) auto"
+        },
+        "children": [
+          "heroText",
+          "heroRing"
+        ]
+      },
+      "heroRing": {
+        "type": "Donut",
+        "props": {
+          "segments": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/ringSegments"
+          },
+          "centerLabel": "bills",
+          "size": 84,
+          "thickness": 9
+        }
+      },
+      "heroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heroEyebrow",
+          "heroAmount",
+          "heroSub"
+        ]
+      },
+      "heroEyebrow": {
+        "type": "Caption",
+        "props": {
+          "text": "READY TO PAY",
+          "tone": "success"
+        }
+      },
+      "heroAmount": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readyAmount"
+              },
+              "currency": "AUD"
+            }
+          }
+        }
+      },
+      "heroSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/readySubtitle"
+          },
+          "tone": "muted"
+        }
+      },
+      "heroDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "strip": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "stripHead",
+          "stripDays"
+        ]
+      },
+      "stripHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "stripTitle",
+          "stripRange"
+        ]
+      },
+      "stripTitle": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "baseline"
+        },
+        "children": [
+          "stripTitleText",
+          "stripTitleNote"
+        ]
+      },
+      "stripTitleText": {
+        "type": "Text",
+        "props": {
+          "text": "Due by day",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "stripTitleNote": {
+        "type": "Caption",
+        "props": {
+          "text": "· ready bills only",
+          "tone": "muted"
+        }
+      },
+      "stripRange": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/rangeText"
+          },
+          "tone": "muted"
+        }
+      },
+      "stripDays": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "end",
+          "template": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "repeat({n}, minmax(0, 1fr))",
+              "n": {
+                "$state": "/xero-accounting/list_xero_ready_to_pay/summary/dayCount"
+              }
+            }
+          }
+        },
+        "children": [
+          "dayCol"
+        ],
+        "repeat": {
+          "statePath": "/xero-accounting/list_xero_ready_to_pay/days",
+          "key": "key"
+        }
+      },
+      "dayCol": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "stretch"
+        },
+        "children": [
+          "dayAmountWrap",
+          "dayBarWrap",
+          "dayLabelWrap"
+        ]
+      },
+      "dayAmountWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "dayAmount"
+        ]
+      },
+      "dayAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "size": "xs",
+          "weight": "medium"
+        }
+      },
+      "dayBarWrap": {
+        "type": "Row",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "dayBar"
+        ]
+      },
+      "dayBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": "success"
+        }
+      },
+      "dayLabelWrap": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "dayNameToday",
+          "dayName",
+          "daySub"
+        ]
+      },
+      "dayNameToday": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "dayLabel"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "tone": "success"
+        },
+        "visible": {
+          "$item": "isToday"
+        }
+      },
+      "dayName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "dayLabel"
+          },
+          "size": "sm",
+          "weight": "medium"
+        },
+        "visible": {
+          "$item": "isToday",
+          "not": true
+        }
+      },
+      "daySub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "subLabel"
+          },
+          "tone": "muted"
+        }
+      },
+      "held": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "heldHead",
+          "heldList"
+        ],
+        "visible": {
+          "$state": "/xero-accounting/list_xero_ready_to_pay/summary/heldCount"
+        }
+      },
+      "heldHead": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "heldIcon",
+          "heldTitle"
+        ]
+      },
+      "heldIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "TriangleAlert",
+          "tone": "destructive",
+          "size": "xs"
+        }
+      },
+      "heldTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/heldTitle"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "tone": "destructive"
+        }
+      },
+      "heldList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "heldChip"
+        ],
+        "repeat": {
+          "statePath": "/ui/rtp/bills",
+          "key": "id"
+        }
+      },
+      "heldChip": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "heldName",
+          "heldAmount",
+          "heldPill0",
+          "heldPill1",
+          "heldPill2"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "reviewUrl"
+                  }
+                }
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "heldName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "contactName"
+          },
+          "size": "sm",
+          "truncate": true
+        }
+      },
+      "heldAmount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "amountText"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "heldPill0": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/0"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/0"
+        }
+      },
+      "heldPill1": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/1"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/1"
+        }
+      },
+      "heldPill2": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "pills/2"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        },
+        "visible": {
+          "$item": "pills/2"
+        }
+      },
+      "footerDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "footerRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "footerChecks",
+          "footerOpen"
+        ]
+      },
+      "footerChecks": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/list_xero_ready_to_pay/summary/checksText"
+          },
+          "tone": "muted"
+        }
+      },
+      "footerOpen": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$state": "/xero-accounting/list_xero_ready_to_pay/billsUrl"
+              },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "footerOpenText": {
+        "type": "Text",
+        "props": {
+          "text": "Open in Xero",
+          "size": "sm",
+          "weight": "medium",
+          "tone": "success"
+        }
+      },
+      "footerOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowRight",
+          "size": "xs",
+          "tone": "success"
+        }
+      }
+    }
+  }
+}
