@@ -2648,10 +2648,22 @@ const bbCsv = (raw) => String(raw ?? '')
  * id, so an account added in Xero later shows up instead of being quietly
  * excluded by a stale list.
  */
+const BB_NONE_ID = '__none__';
 const bbToggle = (ids, chosen, id) => {
-    const current = chosen.size ? ids.filter((x) => chosen.has(x)) : ids.slice();
+    // From the default — every account selected — a click can only mean "narrow
+    // to this one". Treating it as a deselect removes the account that was
+    // clicked and leaves its neighbours standing, so picking an account looks
+    // like it selected the others instead.
+    if (chosen.size === 0)
+        return ids.length === 1 ? '' : id;
+    const current = ids.filter((x) => chosen.has(x));
     const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-    return next.length === ids.length ? '' : next.join(',');
+    // Everything-selected stays "" rather than every id, so an account added in
+    // Xero later shows up instead of being excluded by a stale list. Nothing
+    // selected needs the explicit sentinel for the same reason.
+    if (next.length === ids.length)
+        return '';
+    return next.length === 0 ? BB_NONE_ID : next.join(',');
 };
 /** The pin CSV after starring or unstarring one account. */
 const bbTogglePin = (pinned, id) => {
@@ -2681,7 +2693,7 @@ const bank_balance_view = (args) => {
     const summary = (args.summary ?? {});
     const ids = all.map((a) => String(a.accountId ?? '')).filter(Boolean);
     const mode = String(args.mode || 'today');
-    const BB_NONE = '__none__';
+    const BB_NONE = BB_NONE_ID;
     const requested = bbCsv(args.selected);
     const known = new Set(all.map((a) => String(a.accountId ?? '')));
     const live = requested.filter((id) => known.has(id));
