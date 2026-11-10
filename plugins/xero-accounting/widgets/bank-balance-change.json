@@ -2313,6 +2313,18 @@
         ],
         "type": "Header"
       },
+      "hiddenCap": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/hiddenText"
+          },
+          "tone": "warning"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/bbc/v/hasHidden"
+        }
+      },
       "loading": {
         "children": [
           "sk1",
@@ -2795,7 +2807,7 @@
           "label": {
             "$state": "/ui/bbc/v/thresholdChipText"
           },
-          "leadingIcon": "Flag",
+          "leadingIcon": "Filter",
           "size": "sm",
           "variant": "ghost"
         },
@@ -2869,15 +2881,15 @@
       },
       "thrHint": {
         "props": {
-          "text": "Accounts at or above this balance show a green dot. The threshold lasts for this visit only — reloading the page clears it."
+          "text": "Only transactions this size or larger are listed — by amount, so money out counts the same as money in. Set 0 to show everything. The minimum lasts for this visit only; reloading the page returns it to the default."
         },
         "type": "Caption"
       },
       "thrInput": {
         "props": {
-          "ariaLabel": "Balance threshold in dollars",
+          "ariaLabel": "Smallest transaction to list, in dollars",
           "min": 0,
-          "placeholder": "No threshold",
+          "placeholder": "No minimum",
           "size": "sm",
           "step": 1000,
           "value": {
@@ -2935,7 +2947,7 @@
       },
       "thrOvInput": {
         "props": {
-          "ariaLabel": "Threshold for the selected account",
+          "ariaLabel": "Smallest transaction to list for the selected account",
           "min": 0,
           "placeholder": "Use the default",
           "size": "sm",
@@ -3135,7 +3147,7 @@
           "thrInput"
         ],
         "props": {
-          "label": "Flag at or above"
+          "label": "List from"
         },
         "type": "FormRow"
       },
@@ -3181,7 +3193,7 @@
       "thrTitle": {
         "props": {
           "level": "h3",
-          "text": "Balance Threshold"
+          "text": "Transaction Minimum"
         },
         "type": "Heading"
       },
@@ -3315,6 +3327,7 @@
           "txnList",
           "divider1",
           "totalRow",
+          "hiddenCap",
           "moreBtn"
         ],
         "props": {

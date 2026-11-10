@@ -2606,6 +2606,8 @@ const contra_create_disabled = (args) => Boolean(args.blocked) || !args.clearing
 //   showAllAccounts: boolean, // list every account, not just the top few
 // }
 const BB_MOVED = 0.005;
+/** The transaction minimum a tile opens with, until someone changes it. */
+const BB_DEFAULT_MIN = 50000;
 const BB_TOP_ACCOUNTS = 5;
 const bbRound2 = (n) => Math.round(n * 100) / 100;
 const bbNum = (v) => {
@@ -2703,9 +2705,13 @@ const bank_balance_view = (args) => {
     const staleSelection = requested.length > 0 && !requested.includes(BB_NONE) && live.length === 0;
     const pinned = new Set(bbCsv(args.pins));
     const picked = chosen.size ? all.filter((a) => chosen.has(String(a.accountId ?? ''))) : all;
-    // A threshold of 0 or blank is "not set"; a real one is a balance to stay
-    // above. Per-account overrides win over the default for that account only.
-    const threshold = Math.max(0, bbNum(args.threshold));
+    // The threshold is the smallest transaction worth listing. Blank means the
+    // default rather than "off", so the tile opens already filtered; an explicit
+    // 0 is how you turn it off and see everything. Per-account overrides win
+    // over the default for that account only.
+    const threshold = args.threshold === undefined || args.threshold === null || args.threshold === ''
+        ? BB_DEFAULT_MIN
+        : Math.max(0, bbNum(args.threshold));
     const overrides = bbParseOv(args.overrides);
     const thrFor = (id) => overrides[id] ?? threshold;
     const query = String(args.query ?? '').trim().toLowerCase();
@@ -2735,23 +2741,8 @@ const bank_balance_view = (args) => {
     const pct = bbPct(difference, opening);
     const ranged = summary.isDefaultRange === false;
     const withThreshold = picked.filter((a) => thrFor(String(a.accountId ?? '')) > 0);
-    const aboveCount = withThreshold.filter((a) => bbNum(a.balance) >= thrFor(String(a.accountId ?? ''))).length;
-    const thresholdMet = withThreshold.length > 0 && aboveCount === withThreshold.length;
     const distinct = new Set(withThreshold.map((a) => thrFor(String(a.accountId ?? ''))));
     const sharedThreshold = distinct.size === 1 ? [...distinct][0] : 0;
-    const singleThreshold = withThreshold.length === 1 ? thrFor(String(withThreshold[0].accountId ?? '')) : 0;
-    const thresholdText = withThreshold.length === 0
-        ? ''
-        : withThreshold.length === 1
-            ? thresholdMet
-                ? `Above the ${bbAud(singleThreshold)} threshold`
-                : `${bbAud(singleThreshold - bbNum(withThreshold[0].balance))} below the ${bbAud(singleThreshold)} threshold`
-            : `${aboveCount} of ${bbPlural(withThreshold.length, 'account')} at or above ${sharedThreshold ? bbAud(sharedThreshold) : 'their threshold'}`;
-    const thresholdValue = withThreshold.length === 0
-        ? 0
-        : withThreshold.length === 1
-            ? Math.max(0, Math.min(100, (bbNum(withThreshold[0].balance) / singleThreshold) * 100))
-            : (aboveCount / withThreshold.length) * 100;
     const overrideCount = Object.keys(overrides).filter((id) => ids.includes(id)).length;
     const overrideRows = all.map((a) => {
         const id = String(a.accountId ?? '');
@@ -2759,7 +2750,7 @@ const bank_balance_view = (args) => {
         return {
             accountId: id,
             name: String(a.name ?? ''),
-            thresholdText: own ? bbAud(own) : threshold > 0 ? `${bbAud(threshold)} (default)` : 'None',
+            thresholdText: own ? bbAud(own) : threshold > 0 ? `${bbAud(threshold)} (default)` : 'No minimum',
             isOverride: own !== undefined,
             editing: id === String(args.overrideTarget ?? ''),
         };
@@ -2784,16 +2775,31 @@ const bank_balance_view = (args) => {
             tone: moved ? bbTone(diff) : 'muted',
             // Only coloured when a threshold applies, so the dot never implies a
             // judgement nobody asked it to make.
-            dotTone: own <= 0 ? 'muted' : bbNum(a.balance) >= own ? 'success' : 'destructive',
+            dotTone: own <= 0
+                ? 'muted'
+                : (Array.isArray(a.transactions) ? a.transactions : []).some((t) => Math.abs(bbNum(t.amount)) >= own)
+                    ? 'success'
+                    : 'muted',
         };
     });
-    const txns = [];
+    // Every transaction in the window, before the minimum is applied. The
+    // reconciliation check below has to run on all of them — a filtered list
+    // cannot be expected to add up to the whole movement.
+    const allTxns = [];
     for (const a of picked) {
+        const id = String(a.accountId ?? '');
         const name = String(a.name ?? '');
         for (const t of Array.isArray(a.transactions) ? a.transactions : []) {
-            txns.push({ ...t, bankAccount: name });
+            allTxns.push({ ...t, accountId: id, bankAccount: name });
         }
     }
+    // Size is what matters, not direction: a A$60,000 payment out is as worth
+    // seeing as a A$60,000 receipt.
+    const txns = allTxns.filter((t) => {
+        const min = thrFor(String(t.accountId ?? ''));
+        return min <= 0 || Math.abs(bbNum(t.amount)) >= min;
+    });
+    const hidden = allTxns.length - txns.length;
     const getters = {
         bankAccount: (t) => String(t.bankAccount ?? '').toLowerCase(),
         code: (t) => String(t.accountCode ?? ''),
@@ -2818,7 +2824,8 @@ const bank_balance_view = (args) => {
     const page = txns.slice(0, shown);
     const remaining = txns.length - page.length;
     const total = bbRound2(txns.reduce((s, t) => s + bbNum(t.amount), 0));
-    const adds = Math.round(total * 100) === Math.round(difference * 100);
+    const allTotal = bbRound2(allTxns.reduce((s, t) => s + bbNum(t.amount), 0));
+    const adds = Math.round(allTotal * 100) === Math.round(difference * 100);
     const showAll = args.showAllAccounts === true;
     const arrow = bbArrow(difference);
     return {
@@ -2865,12 +2872,19 @@ const bank_balance_view = (args) => {
         flowText: `${bbAud(moneyIn)} in · ${bbAud(moneyOut)} out`,
         // Thresholds
         hasThreshold: withThreshold.length > 0,
-        thresholdText,
-        thresholdValue,
-        thresholdTone: thresholdMet ? 'success' : 'warning',
+        thresholdText: withThreshold.length === 0
+            ? ''
+            : `${txns.length} of ${bbPlural(allTxns.length, 'transaction')} at or above ${sharedThreshold ? bbAud(sharedThreshold) : 'their minimum'}`,
+        thresholdValue: allTxns.length === 0 ? 0 : (txns.length / allTxns.length) * 100,
+        thresholdTone: hidden > 0 ? 'warning' : 'success',
         thresholdChipText: threshold > 0 || overrideCount > 0
-            ? `Threshold ${threshold > 0 ? bbAud(threshold) : 'custom'}${overrideCount > 0 ? ` · ${overrideCount} custom` : ''}`
-            : 'Set threshold',
+            ? `Min ${threshold > 0 ? bbAud(threshold) : 'custom'}${overrideCount > 0 ? ` · ${overrideCount} custom` : ''}`
+            : 'No minimum',
+        hidden,
+        hasHidden: hidden > 0,
+        hiddenText: hidden === 0
+            ? ''
+            : `${bbPlural(hidden, 'transaction')} under ${sharedThreshold ? bbAud(sharedThreshold) : 'the minimum'} not shown`,
         overrideRows,
         overrideCount,
         hasOverrides: overrideCount > 0,
@@ -2884,18 +2898,20 @@ const bank_balance_view = (args) => {
         // Transactions
         txnRows: page,
         txnCount: txns.length,
-        txnCountText: bbPlural(txns.length, 'transaction'),
+        txnCountText: hidden > 0
+            ? `${txns.length} of ${allTxns.length} transactions`
+            : bbPlural(txns.length, 'transaction'),
         hasTxns: txns.length > 0,
         // Before the connector carried a per-transaction date there is nothing to
         // put in a Date column, so the tile hides it rather than ruling an empty one.
-        hasDates: txns.some((t) => String(t.dateText ?? '') !== ''),
+        hasDates: allTxns.some((t) => String(t.dateText ?? '') !== ''),
         totalText: bbBalance(total),
         remaining,
         moreLabel: remaining > 0 ? `Show ${Math.min(shown, remaining)} more · ${remaining} remaining` : '',
         // Footer
         checkText: adds
             ? `Transactions add up to the difference (${bbBalance(opening)} → ${bbBalance(closing)})`
-            : `Transactions do not add up to the difference (${bbBalance(total)} listed against ${bbSigned(difference)})`,
+            : `Transactions do not add up to the difference (${bbBalance(allTotal)} listed against ${bbSigned(difference)})`,
         checkTone: adds ? 'success' : 'warning',
         checkIcon: adds ? 'CircleCheck' : 'TriangleAlert',
         truncated: summary.transactionsTruncated === true,
