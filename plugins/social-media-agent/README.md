@@ -26,6 +26,8 @@ The agent works with three kinds of record (under **Records**):
 
 **Every week.** On Mondays you get a "Publishing this week" WorkQ item listing what's due and what still needs review, and the agent suggests campaigns 3 to 6 weeks ahead of Australian occasions ("Seasonal idea: ..."). Close a suggestion you don't want.
 
+**It learns from your changes.** Every time you choose **Request changes**, your note is saved to `Social posts/Brand Kit/reviewer-notes.md` (newest first, the last 20), and every new draft applies those notes as standing preferences. Edit or delete lines in that file to change what it applies.
+
 **Keep a steady rhythm (optional).** Set **Posts per week** in the agent's Preferences (Agents > Social Media Agent > Setup). Every Monday the agent adds social posts to next week until it has that many, each built around one of your Brand Kit's key messages; each is drafted and reviewed as usual. Leave it empty to plan everything yourself.
 
 **Where to look.** Agents > Social Media Agent shows what needs your decision, open jobs, the drafts (Outputs) and AI usage (Reports). Each piece's job is a WorkQ item due on its publish date.
