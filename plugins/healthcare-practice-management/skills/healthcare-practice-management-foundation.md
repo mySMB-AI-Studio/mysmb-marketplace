@@ -53,11 +53,12 @@ PracticeManager/AuditLog/<practice-slug>-<YYYY-MM-DD>.jsonl   one line per guard
     ]
   },
   "digest_recipient_ids": [],
-  "reviewer_id": ""
+  "reviewer_id": "",
+  "review_group_id": ""
 }
 ```
 
-Created and updated only by the **Apply practice setup** automation, from the Practice setup form. Every Cliniko, email or Xero call for a practice uses the connector and tenant implied by this file (`xero_tenant_id` passed as the `xero_tenant_id` argument on every `xero-accounting` call, matching the `bookkeeping-xero` convention). See `healthcare-practice-management-practice-policy` for how to apply the `policy` block.
+Created and updated only by the **Apply practice setup** automation, from the Practice setup form. `timezone` (IANA) is the practice's own clock: every scheduled automation runs at that practice's local time. Review items go to `reviewer_id`, or to the WorkQ group `review_group_id` when the reviewer is no longer a workspace user. Every Cliniko, email or Xero call for a practice uses the connector and tenant implied by this file (`xero_tenant_id` passed as the `xero_tenant_id` argument on every `xero-accounting` call, matching the `bookkeeping-xero` convention). See `healthcare-practice-management-practice-policy` for how to apply the `policy` block.
 
 ## `PracticeManager/Commitments/<practice-slug>.json`
 
