@@ -1,0 +1,882 @@
+{
+  "id": "zoho-recruit-open-job-openings",
+  "title": "Open Job Openings Tracker",
+  "description": "Live Zoho Recruit job openings: active count with the change vs. last month (openings opened this month minus last month), a split bar and counts for Active, On Hold and Closed (click a status to list its openings), and the total positions ever created (click to list them).",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-recruit",
+    "recruiting",
+    "jobs",
+    "hiring"
+  ],
+  "keywords": [
+    "job openings",
+    "open positions",
+    "active jobs",
+    "hiring tracker",
+    "zoho recruit"
+  ],
+  "connectorsUsed": [
+    "zoho-recruit"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-recruit",
+    "tool": "list_records",
+    "params": {
+      "module": "JobOpenings",
+      "fields": "Posting_Title,Job_Opening_Name,Job_Opening_Status,Client_Name,City,Date_Opened,Created_Time",
+      "per_page": 200,
+      "sort_by": "Created_Time",
+      "sort_order": "desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-recruit/list_records": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobs",
+              "value": {
+                "$computed": "zoho-recruit_job_openings_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "showList": {
+                    "$state": "/ui/showAllJobs"
+                  },
+                  "selected": {
+                    "$state": "/ui/jobsGroup"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showAllJobs": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobs",
+              "value": {
+                "$computed": "zoho-recruit_job_openings_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "showList": {
+                    "$state": "/ui/showAllJobs"
+                  },
+                  "selected": {
+                    "$state": "/ui/jobsGroup"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/jobsGroup": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobs",
+              "value": {
+                "$computed": "zoho-recruit_job_openings_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "showList": {
+                    "$state": "/ui/showAllJobs"
+                  },
+                  "selected": {
+                    "$state": "/ui/jobsGroup"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "BriefcaseBusiness",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Open Job Openings Tracker",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Recruit"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/jobs/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-recruit.list_records",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load job openings from Zoho Recruit. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-recruit.list_records"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No job openings in Zoho Recruit yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/jobs/loaded"
+            },
+            {
+              "$state": "/ui/jobs/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "scopeLabel",
+          "heroRow",
+          "splitBar",
+          "statusList",
+          "capNote",
+          "totalBox",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/jobs/loaded"
+            },
+            {
+              "$state": "/ui/jobs/hasData"
+            }
+          ]
+        }
+      },
+      "scopeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Live job openings across all departments"
+        }
+      },
+      "heroRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "heroStack",
+          "deltaBox"
+        ]
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "heroStat",
+          "heroLabel"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/jobs/activeDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/activeLabel"
+          },
+          "tone": "brand",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "deltaBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "deltaStack"
+        ]
+      },
+      "deltaStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "start"
+        },
+        "children": [
+          "deltaRow",
+          "deltaCaption"
+        ]
+      },
+      "deltaRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "deltaIcon",
+          "deltaText"
+        ]
+      },
+      "deltaIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/jobs/deltaIcon"
+          },
+          "tone": {
+            "$state": "/ui/jobs/deltaTone"
+          },
+          "size": "md"
+        }
+      },
+      "deltaText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/deltaDisplay"
+          },
+          "tone": {
+            "$state": "/ui/jobs/deltaTone"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "deltaCaption": {
+        "type": "Caption",
+        "props": {
+          "text": "vs. last month"
+        }
+      },
+      "splitBar": {
+        "type": "Row",
+        "props": {
+          "template": {
+            "$state": "/ui/jobs/barTemplate"
+          },
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "barActive",
+          "barOnHold",
+          "barClosed"
+        ]
+      },
+      "barActive": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "brand"
+        },
+        "visible": {
+          "$state": "/ui/jobs/activeCount"
+        }
+      },
+      "barOnHold": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "chart-3"
+        },
+        "visible": {
+          "$state": "/ui/jobs/onHoldCount"
+        }
+      },
+      "barClosed": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "muted"
+        },
+        "visible": {
+          "$state": "/ui/jobs/closedCount"
+        }
+      },
+      "statusList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "statusItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/jobs/rows",
+          "key": "id"
+        }
+      },
+      "statusItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statusRow",
+          "groupBox"
+        ]
+      },
+      "statusRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "statusDot",
+          "statusLabel",
+          "statusCount",
+          "statusChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobsGroup",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statusDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "sm"
+        }
+      },
+      "statusLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "statusCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "statusChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "groupBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "groupStack"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "groupStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "groupList",
+          "groupEmpty",
+          "groupNote"
+        ]
+      },
+      "groupList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "groupItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/jobs/groupJobs",
+          "key": "id"
+        }
+      },
+      "groupItem": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "groupMain",
+          "groupStatus"
+        ]
+      },
+      "groupMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "groupTitle",
+          "groupDetail"
+        ]
+      },
+      "groupTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "groupDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "groupStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "groupEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No job openings with this status."
+        },
+        "visible": {
+          "$state": "/ui/jobs/groupEmpty"
+        }
+      },
+      "groupNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/groupNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/jobs/groupNote"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/jobs/capNote"
+        }
+      },
+      "totalBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "totalStack"
+        ]
+      },
+      "totalStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "totalRow",
+          "jobList",
+          "jobNote"
+        ]
+      },
+      "totalRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "totalIcon",
+          "totalLabel",
+          "totalCount",
+          "totalChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showAllJobs",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/jobs/listToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "totalIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "md"
+        }
+      },
+      "totalLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Total positions ever created",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "totalCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/totalDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "totalChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/jobs/listChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "jobList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "jobItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/jobs/jobList",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/jobs/listExpanded"
+        }
+      },
+      "jobItem": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "jobMain",
+          "jobStatus"
+        ]
+      },
+      "jobMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "jobTitle",
+          "jobDetail"
+        ]
+      },
+      "jobTitle": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "title"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "jobDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "jobStatus": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "jobNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/jobs/listNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/jobs/listNote"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewIcon",
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://recruit.zoho.com/recruit/",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "SquareArrowOutUpRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Recruit",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "brand",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
