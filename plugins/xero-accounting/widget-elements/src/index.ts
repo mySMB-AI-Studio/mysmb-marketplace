@@ -2978,7 +2978,9 @@ const bank_balance_view: ComputedFunction = (args) => {
     closingText: bbBalance(closing),
     openingLabel: ranged ? 'Opening' : 'Prev business day',
     closingLabel: ranged ? 'Closing' : 'Today',
-    openingDate: String(summary.compareText ?? ''),
+    openingDate: ranged
+      ? `Close of ${String(summary.compareText ?? '')}`
+      : String(summary.compareText ?? ''),
     closingDate: String(summary.todayText ?? ''),
     differenceText: bbSigned(difference),
     direction: bbDirection(difference),
