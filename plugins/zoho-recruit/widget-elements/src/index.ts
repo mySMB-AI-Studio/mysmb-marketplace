@@ -143,10 +143,130 @@ const job_openings_dashboard: ComputedFunction = (args) => {
   };
 };
 
+/** Pipeline rows, in order, with the Recruit `Candidate_Stage` values each one groups. Rejected is left out. */
+const PIPELINE_STAGES = [
+  { id: 'new', label: 'New', tone: 'brand', badgeTone: 'brand', stages: ['new'] },
+  { id: 'screening', label: 'Screening', tone: 'chart-5', badgeTone: 'brand', stages: ['in review', 'available'] },
+  { id: 'interview', label: 'Interview', tone: 'chart-2', badgeTone: 'brand', stages: ['engaged'] },
+  { id: 'offer', label: 'Offer', tone: 'success', badgeTone: 'success', stages: ['offered'] },
+  { id: 'hired', label: 'Hired', tone: 'success', badgeTone: 'success', stages: ['hired'] },
+] as const;
+
+const MAX_CANDIDATE_ROWS = 20;
+
+/** `/ui/pipelineStage` value for the hired list under "Conversion to Hired" (separate from the Hired row). */
+const CONVERSION = 'conversion';
+
+/**
+ * Display-ready state for the Candidate Pipeline by Stage tile, from
+ * `list_records` on `Candidates`. Groups candidates by `Candidate_Stage`,
+ * sizes each bar against the biggest stage, works out the conversion to
+ * hired, and compares candidates added this month with last month.
+ * `selected` is a stage id (its candidates show under its row) or
+ * `"conversion"` (hired candidates show under the conversion line).
+ *
+ * Spec: `{ "$computed": "zoho-recruit_candidate_pipeline_dashboard", "args": { "report": { "$state": "/zoho-recruit/list_records" }, "selected": { "$state": "/ui/pipelineStage" } } }`
+ */
+const candidate_pipeline_dashboard: ComputedFunction = (args) => {
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const loaded = Array.isArray(report.data);
+  const all = loaded ? (report.data as AnyRecord[]) : [];
+  const selected = typeof args.selected === 'string' ? args.selected : '';
+  const stageOf = (c: AnyRecord) => {
+    const s = String(c?.Candidate_Stage ?? '').trim().toLowerCase();
+    return PIPELINE_STAGES.find((p) => (p.stages as readonly string[]).includes(s));
+  };
+  const inPipeline = all.filter((c) => stageOf(c));
+  const total = inPipeline.length;
+  const counts: Record<string, number> = {};
+  for (const c of inPipeline) counts[stageOf(c)!.id] = (counts[stageOf(c)!.id] ?? 0) + 1;
+  const max = Math.max(0, ...Object.values(counts));
+  const hired = counts.hired ?? 0;
+
+  // Added this month vs last month, by the date part of `Created_Time` (Recruit's org time).
+  const now = new Date();
+  const thisKey = now.getFullYear() * 12 + now.getMonth();
+  let addedThis = 0;
+  let addedLast = 0;
+  for (const c of all) {
+    const m = String(c.Created_Time ?? '').match(/^(\d{4})-(\d{2})/);
+    if (!m) continue;
+    const key = Number(m[1]) * 12 + Number(m[2]) - 1;
+    if (key === thisKey) addedThis += 1;
+    else if (key === thisKey - 1) addedLast += 1;
+  }
+  const diff = addedThis - addedLast;
+  const deltaDisplay =
+    addedLast > 0
+      ? diff === 0
+        ? 'No change'
+        : `${diff > 0 ? '+' : ''}${Math.round((diff / addedLast) * 100)}%`
+      : addedThis > 0
+        ? `+${addedThis.toLocaleString('en-US')} new`
+        : 'No change';
+
+  const toItem = (c: AnyRecord) => {
+    const p = stageOf(c);
+    const name =
+      String(c.Full_Name ?? '').trim() || [c.First_Name, c.Last_Name].map((v) => String(v ?? '').trim()).filter(Boolean).join(' ') || 'Unnamed candidate';
+    const words = name.split(/\s+/).filter(Boolean);
+    const d = String(c.Created_Time ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return {
+      id: String(c.id ?? name),
+      name,
+      initials: (words.length > 1 ? [words[0]!, words[words.length - 1]!] : words).map((w) => w[0]!.toUpperCase()).join('') || '?',
+      detail: d ? `Added ${d[3]}-${MONTH_ABBR[Number(d[2]) - 1]}-${d[1].slice(-2)}` : '',
+      stage: String(c.Candidate_Stage ?? '').trim() || (p?.label ?? ''),
+      tone: p?.badgeTone ?? 'muted',
+    };
+  };
+  const pickId = selected === CONVERSION ? 'hired' : selected;
+  const inStage = pickId ? inPipeline.filter((c) => stageOf(c)!.id === pickId) : [];
+  const selectedCandidates = inStage.slice(0, MAX_CANDIDATE_ROWS).map(toItem);
+
+  return {
+    loaded,
+    hasData: total > 0,
+    totalDisplay: total.toLocaleString('en-US'),
+    totalLabel: total === 1 ? 'candidate in motion' : 'candidates in motion',
+    deltaDisplay,
+    deltaIcon: diff > 0 ? 'ArrowUp' : diff < 0 ? 'ArrowDown' : 'Minus',
+    deltaTone: diff > 0 ? 'success' : diff < 0 ? 'destructive' : 'muted',
+    deltaCaption: addedLast > 0 ? 'vs. last month' : 'this month',
+    stages: PIPELINE_STAGES.map((p) => ({
+      id: p.id,
+      label: p.label,
+      tone: p.tone,
+      pct: max > 0 ? Math.round(((counts[p.id] ?? 0) / max) * 100) : 0,
+      countDisplay: (counts[p.id] ?? 0).toLocaleString('en-US'),
+      expanded: p.id === selected,
+      chevron: p.id === selected ? 'ChevronUp' : 'ChevronDown',
+      // What a click on this row writes to `/ui/pipelineStage`.
+      toggle: p.id === selected ? '' : p.id,
+    })),
+    selectedCandidates,
+    selectedEmpty: !!pickId && selectedCandidates.length === 0,
+    selectedNote:
+      inStage.length > selectedCandidates.length
+        ? `Showing ${selectedCandidates.length} of ${inStage.length.toLocaleString('en-US')} candidates, newest first.`
+        : '',
+    conversionDisplay: total > 0 ? `${(Math.round((hired / total) * 1000) / 10).toLocaleString('en-US')}%` : '0%',
+    hiredFromConversion: selected === CONVERSION,
+    // What a click on the conversion line writes to `/ui/pipelineStage`.
+    hiredToggle: selected === CONVERSION ? '' : CONVERSION,
+    hiredChevron: selected === CONVERSION ? 'ChevronUp' : 'ChevronDown',
+    capNote:
+      (report.info as AnyRecord | undefined)?.more_records === true
+        ? `Based on the newest ${all.length.toLocaleString('en-US')} candidates.`
+        : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-recruit',
   functions: {
     job_openings_dashboard,
+    candidate_pipeline_dashboard,
   },
   actions: {},
 };
