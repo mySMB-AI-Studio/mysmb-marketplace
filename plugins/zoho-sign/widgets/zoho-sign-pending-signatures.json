@@ -1,0 +1,576 @@
+{
+  "id": "zoho-sign-pending-signatures",
+  "title": "Pending Signatures",
+  "description": "Zoho Sign documents waiting on a signer: the total in progress and how long they've been waiting (0–2 days, 3–5 days, 6+ days overdue). Click a group to list its documents.",
+  "category": "documents",
+  "tags": [
+    "zoho",
+    "zoho-sign",
+    "esignature",
+    "signatures",
+    "documents"
+  ],
+  "keywords": [
+    "pending signatures",
+    "awaiting signature",
+    "unsigned documents",
+    "overdue signatures",
+    "zoho sign"
+  ],
+  "connectorsUsed": [
+    "zoho-sign"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#F26B1D"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-sign",
+    "tool": "list_requests",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-sign/list_requests": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/signatures",
+              "value": {
+                "$computed": "zoho-sign_pending_signatures_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-sign/list_requests"
+                  },
+                  "selected": {
+                    "$state": "/ui/signBucket"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/signBucket": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/signatures",
+              "value": {
+                "$computed": "zoho-sign_pending_signatures_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-sign/list_requests"
+                  },
+                  "selected": {
+                    "$state": "/ui/signBucket"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "PenLine",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Pending Signatures",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Sign"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/signatures/loaded",
+              "not": true
+            },
+            {
+              "$state": "/ui/signatures/failed",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-sign.list_requests",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load signature requests from Zoho Sign. Please try again in a few minutes."
+        },
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_errors/zoho-sign.list_requests"
+            },
+            {
+              "$state": "/ui/signatures/failed"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No documents are waiting on a signer. Everything's signed."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/signatures/loaded"
+            },
+            {
+              "$state": "/ui/signatures/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "heroStack",
+          "bucketList",
+          "capNote",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/signatures/loaded"
+            },
+            {
+              "$state": "/ui/signatures/hasData"
+            }
+          ]
+        }
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "heroStat",
+          "heroLabel"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/signatures/totalDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/signatures/totalLabel"
+          },
+          "tone": "muted",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "bucketList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "bucketItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/signatures/rows",
+          "key": "id"
+        }
+      },
+      "bucketItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "bucketRow",
+          "groupBox"
+        ]
+      },
+      "bucketRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "bucketDot",
+          "bucketLabel",
+          "bucketCount",
+          "bucketChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/signBucket",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "bucketDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "sm"
+        }
+      },
+      "bucketLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "bucketCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "tone": {
+            "$item": "countTone"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "bucketChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "groupBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "groupStack"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "groupStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "docList",
+          "groupEmpty",
+          "groupNote"
+        ]
+      },
+      "docList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "docItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/signatures/selectedDocs",
+          "key": "id"
+        }
+      },
+      "docItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "docIcon",
+          "docMain",
+          "docBadge"
+        ]
+      },
+      "docIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileSignature",
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "md"
+        }
+      },
+      "docMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "docName",
+          "docDetail"
+        ]
+      },
+      "docName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "docDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "docBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "ageText"
+          },
+          "tone": {
+            "$item": "badgeTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "groupEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No documents in this range."
+        },
+        "visible": {
+          "$state": "/ui/signatures/selectedEmpty"
+        }
+      },
+      "groupNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/signatures/selectedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/signatures/selectedNote"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/signatures/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/signatures/capNote"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewIcon",
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://sign.zoho.com/zs",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "SquareArrowOutUpRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Sign",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "brand",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
