@@ -262,11 +262,132 @@ const candidate_pipeline_dashboard: ComputedFunction = (args) => {
   };
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_INTERVIEW_ROWS = 20;
+
+/** Date-range dropdown values: label after the count, and wording for the caption and empty state. */
+const INTERVIEW_RANGES: Record<string, { label: string; scope: string }> = {
+  week: { label: 'scheduled this week', scope: 'this week' },
+  next: { label: 'scheduled next week', scope: 'next week' },
+  '30d': { label: 'scheduled in the next 30 days', scope: 'in the next 30 days' },
+};
+
+/** Avatar colours rotate down the list, like the mock (blue, green, amber). */
+const AVATAR_TONES = ['brand', 'success', 'chart-3'];
+
+/** "10:00 am" in the viewer's time zone. */
+function clockTime(d: Date): string {
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+/** "12-Nov-26" in the viewer's time zone. */
+function ddMmmYy(d: Date): string {
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+}
+
+/**
+ * Recruit's interview-type field reads "In-person Interview" for everything,
+ * so the mode comes from the interview name and venue text.
+ */
+function interviewMode(i: AnyRecord): { label: string; icon: string; tone: string } {
+  const text = `${String(i.Interview_Name ?? '')} ${String(i.Venue ?? '')}`.toLowerCase();
+  if (/online|video|zoom|meet|teams|webex/.test(text)) return { label: 'Video', icon: 'Video', tone: 'brand' };
+  if (/phone|call/.test(text)) return { label: 'Phone', icon: 'Phone', tone: 'chart-1' };
+  return { label: 'Onsite', icon: 'MapPin', tone: 'success' };
+}
+
+/**
+ * Display-ready state for the Upcoming Interviews tile, from `list_records`
+ * on `Interviews`. `range` is `week` (now until Sunday night, the default),
+ * `next` (next Monday to Sunday) or `30d` (the next 30 days); cancelled
+ * interviews and ones already over are left out. `selected` is the interview
+ * whose details show under its row.
+ *
+ * Spec: `{ "$computed": "zoho-recruit_upcoming_interviews_dashboard", "args": { "report": { "$state": "/zoho-recruit/list_records" }, "range": { "$state": "/ui/interviewRange" }, "selected": { "$state": "/ui/interviewOpen" } } }`
+ */
+const upcoming_interviews_dashboard: ComputedFunction = (args) => {
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const loaded = Array.isArray(report.data);
+  const all = loaded ? (report.data as AnyRecord[]) : [];
+  const range = typeof args.range === 'string' && INTERVIEW_RANGES[args.range] ? args.range : 'week';
+  const selected = typeof args.selected === 'string' ? args.selected : '';
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Monday-start weeks.
+  const nextMonday = new Date(today.getTime() + (((8 - today.getDay()) % 7) || 7) * DAY_MS);
+  const from = range === 'next' ? nextMonday.getTime() : now.getTime();
+  const to =
+    range === 'week' ? nextMonday.getTime() : range === 'next' ? nextMonday.getTime() + 7 * DAY_MS : now.getTime() + 30 * DAY_MS;
+
+  const upcoming = all
+    .map((i) => {
+      const start = new Date(String(i.Start_DateTime ?? ''));
+      const endRaw = new Date(String(i.End_DateTime ?? ''));
+      const end = Number.isNaN(endRaw.getTime()) ? new Date(start.getTime() + 60 * 60 * 1000) : endRaw;
+      return { i, start, end };
+    })
+    .filter(
+      ({ i, start, end }) =>
+        !Number.isNaN(start.getTime()) &&
+        String(i.Interview_Status ?? '').trim().toLowerCase() !== 'cancelled' &&
+        // Still to come (or under way) and starting inside the range.
+        end.getTime() > now.getTime() &&
+        start.getTime() >= (range === 'next' ? from : 0) &&
+        start.getTime() < to,
+    )
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+  const rows = upcoming.slice(0, MAX_INTERVIEW_ROWS).map(({ i, start, end }, n) => {
+    const id = String(i.id ?? n);
+    const name = lookupName(i.Candidate_Name) || 'Unnamed candidate';
+    const words = name.split(/\s+/).filter(Boolean);
+    const mode = interviewMode(i);
+    const type = String(i.Interview_Name ?? '').trim();
+    const venue = String(i.Venue ?? '').trim();
+    const owner = lookupName(i.Interview_Owner);
+    return {
+      id,
+      name,
+      initials: (words.length > 1 ? [words[0]!, words[words.length - 1]!] : words).map((w) => w[0]!.toUpperCase()).join('') || '?',
+      avatarTone: AVATAR_TONES[n % AVATAR_TONES.length],
+      job: lookupName(i.Job_Opening_Name),
+      when: `${ddMmmYy(start)} · ${clockTime(start)}`,
+      modeLabel: mode.label,
+      modeIcon: mode.icon,
+      modeTone: mode.tone,
+      expanded: id === selected,
+      // What a click on this row writes to `/ui/interviewOpen`.
+      toggle: id === selected ? '' : id,
+      typeText: type && type !== '-None-' ? type : `${mode.label} interview`,
+      timeText: `${ddMmmYy(start)}, ${clockTime(start)} – ${clockTime(end)}`,
+      venueText: venue ? `Venue: ${venue}` : '',
+      ownerText: owner ? `Owner: ${owner}` : '',
+    };
+  });
+
+  const count = upcoming.length;
+  const r = INTERVIEW_RANGES[range]!;
+  return {
+    loaded,
+    scopeText: `Scheduled interviews ${r.scope}`,
+    countDisplay: count.toLocaleString('en-US'),
+    countLabel: r.label,
+    rows,
+    isEmpty: loaded && count === 0,
+    emptyText: `No interviews scheduled ${r.scope}.`,
+    listNote:
+      count > rows.length ? `Showing ${rows.length} of ${count.toLocaleString('en-US')} interviews, soonest first.` : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-recruit',
   functions: {
     job_openings_dashboard,
     candidate_pipeline_dashboard,
+    upcoming_interviews_dashboard,
   },
   actions: {},
 };
