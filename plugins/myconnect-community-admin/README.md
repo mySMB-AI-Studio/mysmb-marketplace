@@ -5,20 +5,29 @@ Run the myConnect communities you administer — members, invitations, the moder
 Hosted by myConnect itself (`https://myconnect.community/api/mcp/community-admin`, Streamable HTTP). For owners and admins of at least one myConnect community.
 Design: myConnect `docs/decisions/ADR-015-mcp-connector-servers.md`.
 
+This plugin also bundles myConnect's member-scoped server (`myconnect-member`, same host, `/api/mcp/member`)
+so the **Community Manager** tile's community picker can show every community you belong to — not just the
+ones you administer — the same way myConnect's own app switcher does. Each server needs its own separate
+**Connect**: a token for one myConnect server is refused by the others.
+
 ## Configuration
 
-No environment variables required. Click **Connect**, sign in with your mySMB account and choose
-**Allow access** on myConnect's consent screen. The workspace registers itself with myConnect's OAuth
-server automatically (dynamic client registration, PKCE) and refreshes the connection silently.
+No environment variables required. Click **Connect** on each of the two servers below, sign in with your
+mySMB account and choose **Allow access** on myConnect's consent screen. The workspace registers itself
+with myConnect's OAuth server automatically (dynamic client registration, PKCE) and refreshes each
+connection silently.
 
-| Scope | Grants |
-|---|---|
-| `myconnect.community_admin` | This server only — a token for one myConnect server is refused by the others |
+| Server | Scope | Grants |
+|---|---|---|
+| `myconnect-community-admin` | `myconnect.community_admin` | Manage communities you administer — members, invites, moderation, audit log |
+| `myconnect-member` | `myconnect.member` | The full list of communities you belong to (any role), for the community picker only |
 
 QA and UAT workspaces are pointed at `qa.myconnect.community` / `uat.myconnect.community` automatically
-(myHub `MYCONNECT_BASE_URL` rewrite); the URL above is always the production one.
+(myHub `MYCONNECT_BASE_URL` rewrite); the URLs above are always the production ones.
 
 ## Tools
+
+`myconnect-community-admin`:
 
 | Tool | What it does |
 |---|---|
@@ -35,6 +44,12 @@ QA and UAT workspaces are pointed at `qa.myconnect.community` / `uat.myconnect.c
 
 Every tool that works inside a community takes an optional `community` (slug or id). It is required
 only when you belong to more than one, and it can only ever name one of your own communities.
+
+`myconnect-member` (used only to populate the community picker):
+
+| Tool | What it does |
+|---|---|
+| `list_communities` | Every community you're an active member of, any role, with that role included |
 
 ## Security
 
