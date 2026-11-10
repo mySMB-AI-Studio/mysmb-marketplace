@@ -644,10 +644,7 @@
           "align": "center",
           "grow": true
         },
-        "type": "Row",
-        "visible": {
-          "$state": "/ui/bbc/v/showByAccount"
-        }
+        "type": "Row"
       },
       "cAcctText": {
         "props": {
@@ -1982,10 +1979,7 @@
           "gap": "xs",
           "grow": true
         },
-        "type": "Row",
-        "visible": {
-          "$state": "/ui/bbc/v/showByAccount"
-        }
+        "type": "Row"
       },
       "hAcctFilter": {
         "on": {
@@ -2073,14 +2067,14 @@
               "$state": "/ui/bbc/sortField",
               "eq": "bankAccount"
             },
-            "$else": "ACCOUNT ↕",
+            "$else": "XERO ACCOUNT ↕",
             "$then": {
               "$cond": {
                 "$state": "/ui/bbc/sortDir",
                 "eq": "desc"
               },
-              "$else": "ACCOUNT ↑ A–Z",
-              "$then": "ACCOUNT ↓ Z–A"
+              "$else": "XERO ACCOUNT ↑ A–Z",
+              "$then": "XERO ACCOUNT ↓ Z–A"
             }
           },
           "tone": "muted",
@@ -3435,45 +3429,6 @@
         },
         "type": "Stack"
       },
-      "whyAcctFilter": {
-        "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/bbc/pop",
-                "value": "acct"
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/bbc/q",
-                "value": ""
-              }
-            }
-          ]
-        },
-        "props": {
-          "ariaLabel": "Filter by bank account",
-          "icon": "Filter",
-          "size": "sm",
-          "tone": {
-            "$cond": {
-              "$state": "/ui/bbc/v/allSelected",
-              "not": true
-            },
-            "$else": "muted",
-            "$then": "info"
-          },
-          "variant": "ghost"
-        },
-        "type": "IconButton",
-        "visible": {
-          "$state": "/ui/bbc/v/showByAccount",
-          "not": true
-        }
-      },
       "whyCount": {
         "props": {
           "text": {
@@ -3484,23 +3439,12 @@
       },
       "whyHeader": {
         "children": [
-          "whyLeft",
+          "whyTitle",
           "whyCount"
         ],
         "props": {
           "align": "center",
           "justify": "between"
-        },
-        "type": "Row"
-      },
-      "whyLeft": {
-        "children": [
-          "whyTitle",
-          "whyAcctFilter"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "xs"
         },
         "type": "Row"
       },
