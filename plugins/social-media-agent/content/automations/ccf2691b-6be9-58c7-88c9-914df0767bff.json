@@ -1,0 +1,84 @@
+{
+  "contentHash": "e3c630b1ef41a9e10b574ffa9da4920cf78f48bb94b50f0bb0c08b7ba08c987f",
+  "declaredScopes": [
+    "records:social_content_pieces:read",
+    "records:social_content_pieces:write",
+    "files:read",
+    "extension_setup:read"
+  ],
+  "dependencies": [],
+  "description": "Every Monday at 7:00 (Sydney time) counts the content pieces planned for next week and, if there are fewer than Posts per week (set in the agent's Preferences), creates the missing social posts on free weekdays, each built around one of the Brand Kit's key messages. Each new piece is drafted and reviewed as usual. Off when Posts per week is empty or 0. Running it again in the same week adds nothing. Uses no AI itself and posts nothing.",
+  "flowIr": {
+    "description": "Every Monday at 7:00 (Sydney time) counts the content pieces planned for next week and, if there are fewer than Posts per week (set in the agent's Preferences), creates the missing social posts on free weekdays, each built around one of the Brand Kit's key messages. Each new piece is drafted and reviewed as usual. Off when Posts per week is empty or 0. Running it again in the same week adds nothing. Uses no AI itself and posts nothing.",
+    "irVersion": 1,
+    "name": "Social Media Agent: rhythm top-up",
+    "nodes": [
+      {
+        "code": "import json\nfrom datetime import date, datetime, timedelta\nfrom zoneinfo import ZoneInfo\n\nPIECES = \"social_content_pieces\"\nPREFERRED_DAYS = [1, 2, 3, 0, 4]  # Tue, Wed, Thu, then Mon, Fri\n\n\ndef text(value):\n    if value is None:\n        return \"\"\n    return str(value).strip()\n\n\ndef as_list(value):\n    if isinstance(value, list):\n        return [str(v).strip() for v in value if str(v).strip()]\n    return [part.strip() for part in text(value).replace(\",\", chr(10)).splitlines() if part.strip()]\n\n\nsettings = api.extension.settings() or {}\nfolder = text(settings.get(\"knowledge_folder\")) or \"Social posts\"\nzone = ZoneInfo(text(settings.get(\"time_zone\")) or \"Australia/Sydney\")\ntry:\n    target = int(settings.get(\"posts_per_week\") or 0)\nexcept (TypeError, ValueError):\n    target = 0\ntarget = max(0, min(target, 14))\n\ntoday = datetime.now(zone).date()\nweek_start = today - timedelta(days=today.weekday()) + timedelta(days=7)  # next Monday\nweek_end = week_start + timedelta(days=6)\n\ncreated = 0\nexisting = 0\nplanned = 0\nskipped_reason = \"\"\nnew_titles = []\n\nif target == 0:\n    skipped_reason = \"Posts per week is not set, so the rhythm top-up is off.\"\nelse:\n    try:\n        brand = json.loads(api.files.read(file=f\"{folder}/Brand Kit/brand-kit.json\"))\n    except Exception:\n        brand = {}\n    messages = as_list(brand.get(\"key_messages\")) or as_list(brand.get(\"services\"))\n    if not brand.get(\"company_name\"):\n        skipped_reason = \"There is no confirmed Brand Kit yet.\"\n    else:\n        rows = []\n        cursor = None\n        for _ in range(10):\n            page = api.records.list(type_slug=PIECES, limit=200, cursor=cursor) or {}\n            rows.extend(page.get(\"records\") or [])\n            cursor = page.get(\"nextCursor\")\n            if not cursor:\n                break\n        taken = set()\n        for row in rows:\n            raw = text((row.get(\"data\") or {}).get(\"publish_date\"))[:10]\n            try:\n                when = date.fromisoformat(raw)\n            except ValueError:\n                continue\n            if week_start <= when <= week_end:\n                planned += 1\n                taken.add(when)\n        missing = max(0, target - planned)\n        free = [week_start + timedelta(days=d) for d in PREFERRED_DAYS if week_start + timedelta(days=d) not in taken]\n        # More posts than free weekdays: reuse days in the same order.\n        slots = (free or [week_start + timedelta(days=d) for d in PREFERRED_DAYS])\n        week_number = week_start.isocalendar()[1]\n        for n in range(missing):\n            day = slots[n % len(slots)]\n            message = messages[(week_number + n) % len(messages)] if messages else text(brand.get(\"company_name\"))\n            title = message[:180]\n            data = {\n                \"content_type\": \"social_post\",\n                \"origin\": \"rhythm\",\n                \"publish_date\": day.isoformat(),\n                \"topic\": message[:200],\n                \"angle\": \"Always-on post built around this Brand Kit key message. Make one practical point a small business can use this week.\",\n                \"brief\": f\"Rhythm top-up: keep {target} posts a week on the calendar.\",\n                \"generate_draft\": True,\n                \"piece_key\": f\"rhythm:{week_start.isoformat()}:{n + 1}\",\n            }\n            try:\n                api.records.create(type_slug=PIECES, record={\"title\": title, \"stage\": \"planned\", \"data\": data})\n                created += 1\n                new_titles.append(day.strftime(\"%a %d/%m\") + \": \" + title)\n            except Exception as error:\n                # The piece key is unique: a re-run in the same week is refused, not duplicated.\n                if \"unique\" in str(error).lower():\n                    existing += 1\n                else:\n                    raise\n\nweek = week_start.strftime(\"%d/%m\") + \" to \" + week_end.strftime(\"%d/%m/%Y\")\n",
+        "id": "rhythm",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Posts per week from the agent's Preferences (0 = off).",
+            "name": "target",
+            "type": "int"
+          },
+          {
+            "description": "The week topped up (dd/mm to dd/mm/yyyy).",
+            "name": "week",
+            "type": "str"
+          },
+          {
+            "description": "Pieces already planned that week.",
+            "name": "planned",
+            "type": "int"
+          },
+          {
+            "description": "Pieces created this run.",
+            "name": "created",
+            "type": "int"
+          },
+          {
+            "description": "Pieces a re-run found already created.",
+            "name": "existing",
+            "type": "int"
+          },
+          {
+            "description": "The pieces created.",
+            "name": "new_titles",
+            "type": "list[str]"
+          },
+          {
+            "description": "Why nothing was done, if so.",
+            "name": "skipped_reason",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "Adds social posts to next week until it has Posts per week.",
+        "title": "Top up next week"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "rhythm"
+    ],
+    "triggers": [
+      {
+        "cron": "0 7 * * 1",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Social Media Agent: rhythm top-up",
+  "originKey": "ccf2691b-6be9-58c7-88c9-914df0767bff",
+  "tags": [
+    "social-media-agent"
+  ]
+}

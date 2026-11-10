@@ -26,6 +26,10 @@ The agent works with three kinds of record (under **Records**):
 
 **Every week.** On Mondays you get a "Publishing this week" WorkQ item listing what's due and what still needs review, and the agent suggests campaigns 3 to 6 weeks ahead of Australian occasions ("Seasonal idea: ..."). Close a suggestion you don't want.
 
+**It learns from your changes.** Every time you choose **Request changes**, your note is saved to `Social posts/Brand Kit/reviewer-notes.md` (newest first, the last 20), and every new draft applies those notes as standing preferences. Edit or delete lines in that file to change what it applies.
+
+**Keep a steady rhythm (optional).** Set **Posts per week** in the agent's Preferences (Agents > Social Media Agent > Setup). Every Monday the agent adds social posts to next week until it has that many, each built around one of your Brand Kit's key messages; each is drafted and reviewed as usual. Leave it empty to plan everything yourself.
+
 **Where to look.** Agents > Social Media Agent shows what needs your decision, open jobs, the drafts (Outputs) and AI usage (Reports). Each piece's job is a WorkQ item due on its publish date.
 
 ## What's in the box
@@ -38,7 +42,7 @@ The agent works with three kinds of record (under **Records**):
   - *Confirm a Brand Kit:* checks a new Brand Kit, asks the reviewer to confirm it, then saves a versioned copy in Knowledge for the agent.
   - *Draft a content piece:* drafts one piece from the confirmed Brand Kit, runs the brand and compliance checks and asks the reviewer to approve, change or skip it. An approved draft is saved as Word and Markdown in the folder for its content type and booked for its publish date. Starts when a content piece is created.
   - *Plan a campaign:* plans the pieces, content types, channels and dates from what you describe, shows the plan for approval, then creates the campaign and one content piece per planned piece (each starts its own drafting job).
-- **Automations (5):** the steps the processes run (Brand Kit check and confirm, content piece steps, campaign plan steps), plus two scheduled ones: **publishing this week**, which every Monday at 8:00 (Sydney time) lists the week's pieces in one WorkQ item, and **seasonal prompts**, which every Monday at 9:00 suggests a campaign 3 to 6 weeks before an Australian occasion (New Year, Valentine's Day, Easter, Mother's Day, end of financial year, Father's Day, Small Business Month, Black Friday, Christmas). They use no AI and send nothing. An administrator publishes them after install.
+- **Automations (6):** the steps the processes run (Brand Kit check and confirm, content piece steps, campaign plan steps), plus three scheduled ones: **rhythm top-up** (Mondays 7:00, only when Posts per week is set), **publishing this week**, which every Monday at 8:00 (Sydney time) lists the week's pieces in one WorkQ item, and **seasonal prompts**, which every Monday at 9:00 suggests a campaign 3 to 6 weeks before an Australian occasion (New Year, Valentine's Day, Easter, Mother's Day, end of financial year, Father's Day, Small Business Month, Black Friday, Christmas). They use no AI and send nothing. An administrator publishes them after install.
 - **Skills (2):** `draft-content` and `plan-campaign`.
 
 **Known limit:** automations cannot move a record's stage yet, so a content piece's Stage stays at Planned. Follow progress on the job's WorkQ item and the piece's dates, checks and Knowledge link instead.
