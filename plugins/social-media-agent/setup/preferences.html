@@ -38,6 +38,11 @@
     </ws-row>
   </ws-stack>
 
+  <ws-field id="rhythm-field" label="Posts per week (optional)">
+    <ws-input id="posts_per_week" type="number" min="0" max="14" step="1" inputmode="numeric" placeholder="Off"></ws-input>
+    <span slot="description" id="rhythm-hint">Every Monday the agent adds social posts to next week until it has this many, each built around one of your Brand Kit's key messages. Leave empty to plan everything yourself.</span>
+  </ws-field>
+
   <p id="save-state" class="ws-text-sm ws-text-muted" aria-live="polite"></p>
 </ws-stack>
 <script>
@@ -51,13 +56,14 @@
     'Australia/Perth': 'Perth',
     'Australia/Hobart': 'Hobart',
   };
-  const DEFAULTS = { knowledge_folder: 'Social posts', time_zone: 'Australia/Sydney', review_lead_days: 2, default_cta: '' };
+  const DEFAULTS = { knowledge_folder: 'Social posts', time_zone: 'Australia/Sydney', review_lead_days: 2, default_cta: '', posts_per_week: null };
   const el = (id) => document.getElementById(id);
   const folder = el('knowledge_folder');
   const zone = el('time_zone');
   const lead = el('review_lead_days');
   const cta = el('default_cta');
-  const fields = { knowledge_folder: el('folder-field'), time_zone: el('zone-field'), review_lead_days: el('lead-field'), default_cta: el('cta-field') };
+  const rhythm = el('posts_per_week');
+  const fields = { knowledge_folder: el('folder-field'), time_zone: el('zone-field'), review_lead_days: el('lead-field'), default_cta: el('cta-field'), posts_per_week: el('rhythm-field') };
   const saveState = el('save-state');
   const setError = (key, message) => (message ? fields[key].setAttribute('error', message) : fields[key].removeAttribute('error'));
 
@@ -73,6 +79,12 @@
       const raw = String(lead.value).trim();
       const days = Number(raw);
       if (raw === '' || !Number.isInteger(days) || days < 0 || days > 20) return 'Enter a whole number of business days from 0 to 20.';
+      return null;
+    }
+    if (key === 'posts_per_week') {
+      const raw = String(rhythm.value).trim();
+      const posts = Number(raw);
+      if (raw !== '' && (!Number.isInteger(posts) || posts < 0 || posts > 14)) return 'Enter a whole number of posts from 0 to 14, or leave it empty.';
       return null;
     }
     return null;
@@ -156,6 +168,8 @@
   lead.addEventListener('input', () => { showLeadExample(); setError('review_lead_days', null); allowContinue(); });
   lead.addEventListener('change', () => save('review_lead_days', Number(String(lead.value).trim())));
   cta.addEventListener('change', () => save('default_cta', cta.value.trim() || null));
+  rhythm.addEventListener('input', () => setError('posts_per_week', null));
+  rhythm.addEventListener('change', () => { const raw = String(rhythm.value).trim(); save('posts_per_week', raw === '' ? null : Number(raw)); });
   el('use-local-zone').addEventListener('click', () => {
     zone.value = el('use-local-zone').dataset.zone;
     zone.dispatchEvent(new Event('change'));
@@ -182,6 +196,7 @@
     zone.value = ZONES[saved.time_zone] ? saved.time_zone : DEFAULTS.time_zone;
     lead.value = String(Number.isInteger(saved.review_lead_days) ? saved.review_lead_days : DEFAULTS.review_lead_days);
     cta.value = typeof saved.default_cta === 'string' ? saved.default_cta : DEFAULTS.default_cta;
+    rhythm.value = Number.isInteger(saved.posts_per_week) && saved.posts_per_week > 0 ? String(saved.posts_per_week) : '';
     showFolderHint();
     showLeadExample();
     showZoneSuggestion();
