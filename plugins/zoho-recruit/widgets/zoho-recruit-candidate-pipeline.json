@@ -1,0 +1,840 @@
+{
+  "id": "zoho-recruit-candidate-pipeline",
+  "title": "Candidate Pipeline by Stage",
+  "description": "Zoho Recruit candidates by hiring stage (New, Screening, Interview, Offer, Hired) with a bar per stage, the change in new candidates vs. last month and the conversion to hired; click a stage or the conversion to list candidates.",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-recruit",
+    "recruiting",
+    "candidates",
+    "pipeline"
+  ],
+  "keywords": [
+    "candidate pipeline",
+    "hiring stages",
+    "recruitment funnel",
+    "conversion to hired",
+    "zoho recruit"
+  ],
+  "connectorsUsed": [
+    "zoho-recruit"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-recruit",
+    "tool": "list_records",
+    "params": {
+      "module": "Candidates",
+      "fields": "Full_Name,First_Name,Last_Name,Candidate_Stage,Created_Time",
+      "per_page": 200,
+      "sort_by": "Created_Time",
+      "sort_order": "desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-recruit/list_records": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pipeline",
+              "value": {
+                "$computed": "zoho-recruit_candidate_pipeline_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "selected": {
+                    "$state": "/ui/pipelineStage"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/pipelineStage": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pipeline",
+              "value": {
+                "$computed": "zoho-recruit_candidate_pipeline_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "selected": {
+                    "$state": "/ui/pipelineStage"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "UsersRound",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Candidate Pipeline by Stage",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Recruit"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/pipeline/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-recruit.list_records",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "9rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load candidates from Zoho Recruit. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-recruit.list_records"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No candidates in your hiring pipeline yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/pipeline/loaded"
+            },
+            {
+              "$state": "/ui/pipeline/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "scopeLabel",
+          "heroRow",
+          "stageList",
+          "capNote",
+          "conversionBox",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/pipeline/loaded"
+            },
+            {
+              "$state": "/ui/pipeline/hasData"
+            }
+          ]
+        }
+      },
+      "scopeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Track candidates through your hiring process"
+        }
+      },
+      "heroRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "heroStack",
+          "deltaBox"
+        ]
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "heroStat",
+          "heroLabel"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/pipeline/totalDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/pipeline/totalLabel"
+          },
+          "tone": "brand",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "deltaBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "deltaStack"
+        ]
+      },
+      "deltaStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "start"
+        },
+        "children": [
+          "deltaRow",
+          "deltaCaption"
+        ]
+      },
+      "deltaRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "deltaIcon",
+          "deltaText"
+        ]
+      },
+      "deltaIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/pipeline/deltaIcon"
+          },
+          "tone": {
+            "$state": "/ui/pipeline/deltaTone"
+          },
+          "size": "md"
+        }
+      },
+      "deltaText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/pipeline/deltaDisplay"
+          },
+          "tone": {
+            "$state": "/ui/pipeline/deltaTone"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "deltaCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/pipeline/deltaCaption"
+          }
+        }
+      },
+      "stageList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "stageItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/pipeline/stages",
+          "key": "id"
+        }
+      },
+      "stageItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "stageRow",
+          "stageBox"
+        ]
+      },
+      "stageRow": {
+        "type": "Row",
+        "props": {
+          "template": "5.5rem minmax(0, 1fr) 2rem auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "stageLabel",
+          "stageBarRow",
+          "stageCount",
+          "stageChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pipelineStage",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "stageLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "stageBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
+        "children": [
+          "stageBar"
+        ]
+      },
+      "stageBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$item": "pct"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        }
+      },
+      "stageCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "stageChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "stageBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "stageStack"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "stageStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "candidateList",
+          "candidateEmpty",
+          "candidateNote"
+        ]
+      },
+      "candidateList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "candidateItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/pipeline/selectedCandidates",
+          "key": "id"
+        }
+      },
+      "candidateItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "candidateAvatar",
+          "candidateMain",
+          "candidateStage"
+        ]
+      },
+      "candidateAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": "brand",
+          "size": "sm"
+        }
+      },
+      "candidateMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "candidateName",
+          "candidateDetail"
+        ]
+      },
+      "candidateName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "candidateDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "candidateStage": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "stage"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "candidateEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No candidates at this stage."
+        },
+        "visible": {
+          "$state": "/ui/pipeline/selectedEmpty"
+        }
+      },
+      "candidateNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/pipeline/selectedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/pipeline/selectedNote"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/pipeline/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/pipeline/capNote"
+        }
+      },
+      "conversionBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "conversionStack"
+        ]
+      },
+      "conversionStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "conversionRow",
+          "hiredBox"
+        ]
+      },
+      "conversionRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "conversionIcon",
+          "conversionLabel",
+          "conversionValue",
+          "conversionChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/pipelineStage",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/pipeline/hiredToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "conversionIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "UserCheck",
+          "tone": "muted",
+          "size": "md"
+        }
+      },
+      "conversionLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Conversion to Hired",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "conversionValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/pipeline/conversionDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "conversionChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/pipeline/hiredChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "hiredBox": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "hiredList",
+          "hiredEmpty"
+        ],
+        "visible": {
+          "$state": "/ui/pipeline/hiredFromConversion"
+        }
+      },
+      "hiredList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "hiredItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/pipeline/selectedCandidates",
+          "key": "id"
+        }
+      },
+      "hiredItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr)",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hiredAvatar",
+          "hiredMain"
+        ]
+      },
+      "hiredAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "hiredMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "hiredName",
+          "hiredDetail"
+        ]
+      },
+      "hiredName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "hiredDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "hiredEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No candidates hired yet."
+        },
+        "visible": {
+          "$state": "/ui/pipeline/selectedEmpty"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewIcon",
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://recruit.zoho.com/recruit/",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "SquareArrowOutUpRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Recruit",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "brand",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
