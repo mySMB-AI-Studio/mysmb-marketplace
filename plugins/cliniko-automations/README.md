@@ -34,7 +34,7 @@ patient-facing or diary-changing through WorkQ before it happens.
     completes the WorkQ item. A moved booking's old time goes back to *Find freed slots to fill*.
 
 - **#3 Referral and care plan watchdog** — three automations:
-  - *Find referrals running out* (daily, 6 AM Kuala Lumpur / 22:00 UTC): checks open Medicare and
+  - *Find referrals running out* (daily, 6 AM practice time): checks open Medicare and
     DVA referral cases for patients booked in the next 28 days. Counts sessions used and already
     booked against the case's maximum and flags any referral that expires within 21 days (or before
     the next booking), has 1 or fewer sessions left, or would leave bookings unfunded. AI drafts a
@@ -44,7 +44,7 @@ patient-facing or diary-changing through WorkQ before it happens.
     `referral_watchdog.expiry_days` / `sessions_left` / `lookahead_days` in the practice settings.
   - *Send approved referral request* (triggered by that form's submission): emails the approved
     or edited request to the patient or GP. The item stays open until the new referral arrives.
-  - *Follow up referral requests* (daily): completes the item when a new Medicare/DVA case (or an
+  - *Follow up referral requests* (daily, 7 AM practice time): completes the item when a new Medicare/DVA case (or an
     extended one) appears in Cliniko; after 5 days (`referral_watchdog.follow_up_days`) without one,
     comments a reminder and raises the item's priority. Nothing is re-sent automatically.
 
@@ -54,10 +54,22 @@ More automations from the practice's Top 10 shortlist (no-show recovery, new-enq
 
 - A practice settings file already created at `PracticeManager/Practices/<slug>.json` (via the
   `healthcare-practice-management` extension's **Start practice setup** / **Apply practice setup**
-  automations) — these automations read `cancellation_window_hours` and `tone` from it.
+  automations) — these automations read `cancellation_window_hours`, `tone`, `timezone`,
+  `reviewer_id` and `review_group_id` from it.
 - Nothing else to configure for a single practice: each automation's `practice_slug` param can
   stay blank, and it then uses the only settings file in `PracticeManager/Practices/`. Set the
   param only when more than one practice is set up.
+
+## Practice time and reviewer
+
+- **Time zone.** Every scheduled automation runs on the practice's own clock: the `timezone` in its
+  settings file (an IANA name such as `Australia/Sydney` or `Asia/Kuala_Lumpur`). The schedules tick
+  in UTC and each run checks the practice's local time, so a clinic in any country gets its 7 AM–9 PM
+  window and its 6 AM / 7 AM daily checks at its own local time. A manual run always goes ahead.
+- **Reviewer.** Review items are assigned to the practice's reviewer (`reviewer_id`, the *Who reviews
+  and approves…* answer on the Practice setup form). If that person is no longer a workspace user,
+  they go to the practice's WorkQ group (`review_group_id`, the optional *WorkQ group for reviews*
+  answer). With neither, the item is left unassigned for anyone in the workspace to pick up.
 
 ## Configuration
 
@@ -68,7 +80,6 @@ More automations from the practice's Top 10 shortlist (no-show recovery, new-enq
 
 ## Known gaps (v1)
 
-- WorkQ items are assigned to a fixed reviewer address, not read from the practice settings.
 - There's no email-arrival trigger, so patient replies are picked up on the next scheduled check
   (every 15 minutes from 7 AM to 9 PM).
 - No cross-check against `list_unavailable_blocks` or appointment-conflict checking before

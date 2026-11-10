@@ -2,7 +2,7 @@
   "kind": "automation",
   "originKey": "3c7f2c89-ba53-490c-a6c2-3343d394cbfb",
   "name": "Healthcare Practice Management: Book patient's chosen reschedule time",
-  "description": "Every 30 minutes during the day, reads replies to approved cancellation reschedule offers (Microsoft 365 practices), checking both the Inbox and Junk Email. When the patient clearly picks one of the offered times, re-checks it is still free in Cliniko, books it, confirms by replying to their email and closes the WorkQ item. Unclear replies, taken times, booking errors and offers with no reply after 7 days go back to the WorkQ item for a person.",
+  "description": "Every 30 minutes from 7 AM to 8 PM practice time, reads replies to approved cancellation reschedule offers (Microsoft 365 practices), checking both the Inbox and Junk Email. When the patient clearly picks one of the offered times, re-checks it is still free in Cliniko, books it, confirms by replying to their email and closes the WorkQ item. Unclear replies, taken times, booking errors and offers with no reply after 7 days go back to the WorkQ item for a person.",
   "level": "org",
   "knowledgeFiles": [],
   "tags": [
@@ -24,7 +24,7 @@
   "flowIr": {
     "irVersion": 1,
     "name": "Healthcare Practice Management: Book patient's chosen reschedule time",
-    "description": "Every 30 minutes during the day, reads replies to approved cancellation reschedule offers (Microsoft 365 practices), checking both the Inbox and Junk Email. When the patient clearly picks one of the offered times, re-checks it is still free in Cliniko, books it, confirms by replying to their email and closes the WorkQ item. Unclear replies, taken times, booking errors and offers with no reply after 7 days go back to the WorkQ item for a person.",
+    "description": "Every 30 minutes from 7 AM to 8 PM practice time, reads replies to approved cancellation reschedule offers (Microsoft 365 practices), checking both the Inbox and Junk Email. When the patient clearly picks one of the offered times, re-checks it is still free in Cliniko, books it, confirms by replying to their email and closes the WorkQ item. Unclear replies, taken times, booking errors and offers with no reply after 7 days go back to the WorkQ item for a person.",
     "params": [],
     "rootOrder": [
       "list_waiting",
@@ -32,9 +32,9 @@
     ],
     "triggers": [
       {
-        "cron": "*/30 7-19 * * *",
+        "cron": "*/30 * * * *",
         "kind": "schedule",
-        "timezone": "Australia/Sydney"
+        "timezone": "UTC"
       },
       {
         "kind": "manual"
@@ -54,7 +54,7 @@
             "description": "One entry per sent reschedule offer still awaiting a reply."
           }
         ],
-        "code": "import json\n\nwaiting = []\ntry:\n    entries = api.files.list(path=\"PracticeManager/AwaitingReply\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    fname = str(fname or \"\").split(\"/\")[-1]\n    if not fname.endswith(\".json\"):\n        continue\n    try:\n        state = json.loads(api.files.read(file=\"PracticeManager/AwaitingReply/\" + fname))\n    except Exception:\n        continue\n    if isinstance(state, dict):\n        state[\"_file_name\"] = fname\n        waiting.append(state)\n"
+        "code": "import json\n\n# >>> practice-clock (canonical copy: scripts/practice-manager-kit/practice_clock.py; every copy must match it)\n# Scheduled runs fire on a UTC clock; each practice decides from its own settings\n# file (\"timezone\") whether this run is one of its own. Manual and event runs\n# always count, so a person can still run an automation by hand at any time.\nimport datetime as _pm_datetime\nfrom zoneinfo import ZoneInfo as _PmZoneInfo\n\nPRACTICE_DEFAULT_TIMEZONE = \"Australia/Sydney\"\nPRACTICE_SLOT_MINUTES = 30\n\n\ndef practice_clock_tz(practice):\n    name = str((practice or {}).get(\"timezone\") or \"\").strip() or PRACTICE_DEFAULT_TIMEZONE\n    try:\n        return _PmZoneInfo(name)\n    except Exception:\n        return _pm_datetime.timezone.utc\n\n\ndef practice_clock_now(practice, trig=None):\n    # The run's scheduled time (not when the sandbox got to it), in the practice's time zone.\n    fired = None\n    if isinstance(trig, dict) and trig.get(\"fired_at\"):\n        try:\n            fired = _pm_datetime.datetime.fromisoformat(str(trig.get(\"fired_at\")).replace(\"Z\", \"+00:00\"))\n        except Exception:\n            fired = None\n    if fired is None or fired.tzinfo is None:\n        fired = _pm_datetime.datetime.now(_pm_datetime.timezone.utc)\n    return fired.astimezone(practice_clock_tz(practice))\n\n\ndef practice_open_now(practice, trig, start_hour, end_hour, weekdays=None):\n    # True when a scheduled run falls inside [start_hour, end_hour) practice time\n    # (weekdays: ISO numbers, 1 = Monday).\n    if not (isinstance(trig, dict) and trig.get(\"kind\") == \"schedule\"):\n        return True\n    local = practice_clock_now(practice, trig)\n    if weekdays and local.isoweekday() not in weekdays:\n        return False\n    return start_hour <= local.hour < end_hour\n\n\ndef practice_due_at(practice, trig, hhmm, weekdays=None):\n    # True for the one scheduled run that is the practice's own HH:MM run: the\n    # first tick at or after HH:MM practice time (ticks are 30 minutes apart, so\n    # a time zone with a :45 offset runs 15 minutes late rather than never).\n    if not (isinstance(trig, dict) and trig.get(\"kind\") == \"schedule\"):\n        return True\n    local = practice_clock_now(practice, trig)\n    if weekdays and local.isoweekday() not in weekdays:\n        return False\n    hour, minute = (int(x) for x in str(hhmm).split(\":\"))\n    target = hour * 60 + minute\n    return target <= local.hour * 60 + local.minute < target + PRACTICE_SLOT_MINUTES\n# <<< practice-clock\n\n\nwaiting = []\npractices_by_slug = {}\ntry:\n    entries = api.files.list(path=\"PracticeManager/AwaitingReply\", scope=\"org\")\nexcept Exception:\n    entries = []\nfor entry in entries or []:\n    fname = entry.get(\"name\") if isinstance(entry, dict) else entry\n    fname = str(fname or \"\").split(\"/\")[-1]\n    if not fname.endswith(\".json\"):\n        continue\n    try:\n        state = json.loads(api.files.read(file=\"PracticeManager/AwaitingReply/\" + fname))\n    except Exception:\n        continue\n    if not isinstance(state, dict):\n        continue\n    # Runs every 30 minutes (UTC); an offer is only checked from 7 AM to 8 PM in its\n    # practice's own time zone (that practice's settings file).\n    slug = str(state.get(\"slug\") or \"\")\n    if slug not in practices_by_slug:\n        try:\n            practices_by_slug[slug] = json.loads(api.files.read(file=\"PracticeManager/Practices/\" + slug + \".json\")) if slug else {}\n        except Exception:\n            practices_by_slug[slug] = {}\n    if not practice_open_now(practices_by_slug[slug], trigger, 7, 20):\n        continue\n    state[\"_file_name\"] = fname\n    waiting.append(state)\n"
       },
       {
         "id": "foreach_waiting",
@@ -98,5 +98,5 @@
       }
     ]
   },
-  "contentHash": "910dd5b4737767e6604a100a7cd983e9ae50d5d22957ce7b8d231d3c4fe6e355"
+  "contentHash": "fdd7f0e73d0c112d78839c57237e2cb20d305cf87354fb54a578da90210b0551"
 }
