@@ -349,12 +349,136 @@ const upcoming_interviews_dashboard = (args) => {
         listNote: count > rows.length ? `Showing ${rows.length} of ${count.toLocaleString('en-US')} interviews, soonest first.` : '',
     };
 };
+/** Result groups, in row and bar order. Pending's amber comes from `chart-3` (`warning` is brown in solid fills). */
+const ASSESSMENT_GROUPS = [
+    { id: 'passed', label: 'Passed', tone: 'success' },
+    { id: 'pending', label: 'Pending', tone: 'chart-3' },
+    { id: 'failed', label: 'Failed', tone: 'destructive' },
+];
+/** Badge and avatar tones for the lists (text tones, so `warning` is fine here). */
+const ASSESSMENT_BADGE_TONE = { passed: 'success', pending: 'warning', failed: 'destructive' };
+/** No qualifying scores are set on the Recruit templates, so a reviewed rating of 3+ out of 5 counts as a pass. */
+const PASS_RATING = 3;
+/** `/ui/assessmentGroup` value for the passed list under "Pass rate" (separate from the Passed row). */
+const PASS_RATE = 'passrate';
+/** Passed / Pending / Failed for one Recruit review, or null when it's archived or expired. */
+function assessmentGroup(r) {
+    const status = String(r.Status ?? '').trim().toLowerCase();
+    if (status === 'pending' || status === 'answered')
+        return 'pending';
+    if (status !== 'reviewed')
+        return null;
+    if (r.Qualified === true)
+        return 'passed';
+    return (Number(r.Rating) || 0) >= PASS_RATING ? 'passed' : 'failed';
+}
+/**
+ * Display-ready state for the Candidate Assessments Status tile, from
+ * `list_records` on `Reviews` (Recruit keeps candidate assessment results
+ * there; the Assessments module only holds the templates). `selected` is a
+ * group id (its reviews show under its row) or `"passrate"` (passed reviews
+ * show under the pass rate).
+ *
+ * Spec: `{ "$computed": "zoho-recruit_candidate_assessments_dashboard", "args": { "report": { "$state": "/zoho-recruit/list_records" }, "selected": { "$state": "/ui/assessmentGroup" } } }`
+ */
+const candidate_assessments_dashboard = (args) => {
+    const report = (args.report && typeof args.report === 'object' ? args.report : {});
+    const loaded = Array.isArray(report.data);
+    const all = loaded ? report.data : [];
+    const selected = typeof args.selected === 'string' ? args.selected : '';
+    const onFile = all.filter((r) => assessmentGroup(r));
+    const total = onFile.length;
+    const counts = { passed: 0, pending: 0, failed: 0 };
+    for (const r of onFile)
+        counts[assessmentGroup(r)] += 1;
+    // Added this month vs last month, by the date part of `Created_Time` (Recruit's org time).
+    const now = new Date();
+    const thisKey = now.getFullYear() * 12 + now.getMonth();
+    let addedThis = 0;
+    let addedLast = 0;
+    for (const r of onFile) {
+        const m = String(r.Created_Time ?? '').match(/^(\d{4})-(\d{2})/);
+        if (!m)
+            continue;
+        const key = Number(m[1]) * 12 + Number(m[2]) - 1;
+        if (key === thisKey)
+            addedThis += 1;
+        else if (key === thisKey - 1)
+            addedLast += 1;
+    }
+    const diff = addedThis - addedLast;
+    const deltaDisplay = addedLast > 0
+        ? diff === 0
+            ? 'No change'
+            : `${diff > 0 ? '+' : ''}${Math.round((diff / addedLast) * 100)}%`
+        : addedThis > 0
+            ? `+${addedThis.toLocaleString('en-US')} new`
+            : 'No change';
+    const toItem = (r) => {
+        const group = assessmentGroup(r);
+        const name = lookupName(r.Candidate_Name) || 'Unnamed candidate';
+        const words = name.split(/\s+/).filter(Boolean);
+        const rating = Number(r.Rating);
+        return {
+            id: String(r.id ?? name),
+            name,
+            initials: (words.length > 1 ? [words[0], words[words.length - 1]] : words).map((w) => w[0].toUpperCase()).join('') || '?',
+            detail: [lookupName(r.Job_Opening_Name), lookupName(r.Assessment_Name)].filter(Boolean).join(' · '),
+            ratingText: group === 'pending' ? String(r.Status ?? 'Pending') : Number.isFinite(rating) && r.Rating !== null ? `${rating}/5` : group === 'passed' ? 'Passed' : 'Failed',
+            tone: ASSESSMENT_BADGE_TONE[group],
+        };
+    };
+    const pickId = selected === PASS_RATE ? 'passed' : selected;
+    const inGroup = pickId ? onFile.filter((r) => assessmentGroup(r) === pickId) : [];
+    const selectedReviews = inGroup.slice(0, MAX_CANDIDATE_ROWS).map(toItem);
+    return {
+        loaded,
+        hasData: total > 0,
+        totalDisplay: total.toLocaleString('en-US'),
+        totalLabel: total === 1 ? 'assessment on file' : 'assessments on file',
+        deltaDisplay,
+        deltaIcon: diff > 0 ? 'ArrowUp' : diff < 0 ? 'ArrowDown' : 'Minus',
+        deltaTone: diff > 0 ? 'success' : diff < 0 ? 'destructive' : 'muted',
+        deltaCaption: addedLast > 0 ? 'vs. last month' : 'this month',
+        passedCount: counts.passed,
+        pendingCount: counts.pending,
+        failedCount: counts.failed,
+        // Split bar: one `fr` column per non-empty group, sized by its count.
+        barTemplate: ASSESSMENT_GROUPS.filter((g) => counts[g.id] > 0)
+            .map((g) => `${counts[g.id]}fr`)
+            .join(' '),
+        rows: ASSESSMENT_GROUPS.map((g) => ({
+            id: g.id,
+            label: g.label,
+            tone: g.tone,
+            countDisplay: counts[g.id].toLocaleString('en-US'),
+            expanded: g.id === selected,
+            chevron: g.id === selected ? 'ChevronUp' : 'ChevronDown',
+            // What a click on this row writes to `/ui/assessmentGroup`.
+            toggle: g.id === selected ? '' : g.id,
+        })),
+        selectedReviews,
+        selectedEmpty: !!pickId && selectedReviews.length === 0,
+        selectedNote: inGroup.length > selectedReviews.length
+            ? `Showing ${selectedReviews.length} of ${inGroup.length.toLocaleString('en-US')} assessments, newest first.`
+            : '',
+        passRateDisplay: total > 0 ? `${Math.round((counts.passed / total) * 100)}%` : '0%',
+        passExpanded: selected === PASS_RATE,
+        // What a click on the pass rate writes to `/ui/assessmentGroup`.
+        passToggle: selected === PASS_RATE ? '' : PASS_RATE,
+        passChevron: selected === PASS_RATE ? 'ChevronUp' : 'ChevronDown',
+        capNote: report.info?.more_records === true
+            ? `Based on the newest ${all.length.toLocaleString('en-US')} assessments.`
+            : '',
+    };
+};
 const elements = {
     slug: 'zoho-recruit',
     functions: {
         job_openings_dashboard,
         candidate_pipeline_dashboard,
         upcoming_interviews_dashboard,
+        candidate_assessments_dashboard,
     },
     actions: {},
 };

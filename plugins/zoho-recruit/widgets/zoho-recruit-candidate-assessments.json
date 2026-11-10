@@ -1,0 +1,885 @@
+{
+  "id": "zoho-recruit-candidate-assessments",
+  "title": "Candidate Assessments Status",
+  "description": "Zoho Recruit candidate assessment results: assessments on file with the change vs. last month, a split bar and counts for Passed, Pending and Failed (click a status to list them), and the pass rate (click to list who passed).",
+  "category": "hr",
+  "tags": [
+    "zoho",
+    "zoho-recruit",
+    "recruiting",
+    "assessments",
+    "candidates"
+  ],
+  "keywords": [
+    "candidate assessments",
+    "assessment results",
+    "pass rate",
+    "screening results",
+    "zoho recruit"
+  ],
+  "connectorsUsed": [
+    "zoho-recruit"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#1A73E8"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-recruit",
+    "tool": "list_records",
+    "params": {
+      "module": "Reviews",
+      "fields": "Candidate_Name,Job_Opening_Name,Assessment_Name,Rating,Status,Qualified,Created_Time",
+      "per_page": 200,
+      "sort_by": "Created_Time",
+      "sort_order": "desc"
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-recruit/list_records": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/assessments",
+              "value": {
+                "$computed": "zoho-recruit_candidate_assessments_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "selected": {
+                    "$state": "/ui/assessmentGroup"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/assessmentGroup": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/assessments",
+              "value": {
+                "$computed": "zoho-recruit_candidate_assessments_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-recruit/list_records"
+                  },
+                  "selected": {
+                    "$state": "/ui/assessmentGroup"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ChartColumn",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Candidate Assessments Status",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Recruit"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/assessments/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-recruit.list_records",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "7rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load assessments from Zoho Recruit. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-recruit.list_records"
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No candidate assessments on file yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/assessments/loaded"
+            },
+            {
+              "$state": "/ui/assessments/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "scopeLabel",
+          "heroRow",
+          "splitBar",
+          "statusList",
+          "capNote",
+          "passBox",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/assessments/loaded"
+            },
+            {
+              "$state": "/ui/assessments/hasData"
+            }
+          ]
+        }
+      },
+      "scopeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Track assessment results across candidates"
+        }
+      },
+      "heroRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "md",
+          "align": "center"
+        },
+        "children": [
+          "heroStack",
+          "deltaBox"
+        ]
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "heroStat",
+          "heroLabel"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/assessments/totalDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/assessments/totalLabel"
+          },
+          "tone": "brand",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "deltaBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "deltaStack"
+        ]
+      },
+      "deltaStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "start"
+        },
+        "children": [
+          "deltaRow",
+          "deltaCaption"
+        ]
+      },
+      "deltaRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "deltaIcon",
+          "deltaText"
+        ]
+      },
+      "deltaIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/assessments/deltaIcon"
+          },
+          "tone": {
+            "$state": "/ui/assessments/deltaTone"
+          },
+          "size": "md"
+        }
+      },
+      "deltaText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/assessments/deltaDisplay"
+          },
+          "tone": {
+            "$state": "/ui/assessments/deltaTone"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "deltaCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/assessments/deltaCaption"
+          }
+        }
+      },
+      "splitBar": {
+        "type": "Row",
+        "props": {
+          "template": {
+            "$state": "/ui/assessments/barTemplate"
+          },
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "barPassed",
+          "barPending",
+          "barFailed"
+        ]
+      },
+      "barPassed": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "success"
+        },
+        "visible": {
+          "$state": "/ui/assessments/passedCount"
+        }
+      },
+      "barPending": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "chart-3"
+        },
+        "visible": {
+          "$state": "/ui/assessments/pendingCount"
+        }
+      },
+      "barFailed": {
+        "type": "ProgressBar",
+        "props": {
+          "value": 100,
+          "tone": "destructive"
+        },
+        "visible": {
+          "$state": "/ui/assessments/failedCount"
+        }
+      },
+      "statusList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "statusItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/assessments/rows",
+          "key": "id"
+        }
+      },
+      "statusItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statusRow",
+          "groupBox"
+        ]
+      },
+      "statusRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "statusDot",
+          "statusLabel",
+          "statusCount",
+          "statusChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/assessmentGroup",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statusDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "sm"
+        }
+      },
+      "statusLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "statusCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "statusChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "groupBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "groupStack"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "groupStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "reviewList",
+          "groupEmpty",
+          "groupNote"
+        ]
+      },
+      "reviewList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "reviewItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/assessments/selectedReviews",
+          "key": "id"
+        }
+      },
+      "reviewItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "reviewAvatar",
+          "reviewMain",
+          "reviewBadge"
+        ]
+      },
+      "reviewAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "sm"
+        }
+      },
+      "reviewMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "reviewName",
+          "reviewDetail"
+        ]
+      },
+      "reviewName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "reviewDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "reviewBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "ratingText"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "groupEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No assessments with this result."
+        },
+        "visible": {
+          "$state": "/ui/assessments/selectedEmpty"
+        }
+      },
+      "groupNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/assessments/selectedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/assessments/selectedNote"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/assessments/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/assessments/capNote"
+        }
+      },
+      "passBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "passStack"
+        ]
+      },
+      "passStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "passRow",
+          "passList",
+          "passEmpty"
+        ]
+      },
+      "passRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "passIcon",
+          "passLabel",
+          "passValue",
+          "passChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/assessmentGroup",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/assessments/passToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "passIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "md"
+        }
+      },
+      "passLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Pass rate",
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "passValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/assessments/passRateDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "passChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/assessments/passChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "passList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "passItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/assessments/selectedReviews",
+          "key": "id"
+        },
+        "visible": {
+          "$state": "/ui/assessments/passExpanded"
+        }
+      },
+      "passItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "passAvatar",
+          "passMain",
+          "passBadge"
+        ]
+      },
+      "passAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "passMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "passName",
+          "passDetail"
+        ]
+      },
+      "passName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "passDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "passBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "ratingText"
+          },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "passEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No candidates have passed yet."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/assessments/passExpanded"
+            },
+            {
+              "$state": "/ui/assessments/selectedEmpty"
+            }
+          ]
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewIcon",
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://recruit.zoho.com/recruit/",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "SquareArrowOutUpRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Recruit",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "brand",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
