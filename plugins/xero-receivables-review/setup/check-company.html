@@ -1,0 +1,201 @@
+<ws-stack gap="5">
+  <ws-row id="loading" gap="2"><ws-spinner label="Reading your Xero company"></ws-spinner><span class="ws-text-sm ws-text-muted">Reading your Xero company</span></ws-row>
+
+  <ws-empty id="not-connected" heading="Connect Xero first" description="This page reads the company once a Xero connection is chosen. Nothing in Xero is changed." hidden>
+    <ws-button id="connect">Connect Xero</ws-button>
+  </ws-empty>
+
+  <ws-alert id="read-error" variant="destructive" heading="Could not read Xero" hidden>
+    <ws-stack gap="2">
+      <span id="read-error-text"></span>
+      <ws-row><ws-button id="retry" variant="outline" size="sm">Try again</ws-button></ws-row>
+    </ws-stack>
+  </ws-alert>
+
+  <ws-card id="company" hidden>
+    <ws-badge id="demo-badge" slot="action" variant="success" hidden>Demo company</ws-badge>
+    <ws-stack gap="3">
+      <ws-alert id="not-demo" variant="warning" heading="This does not look like a demo company" hidden>
+        Use a Xero demo or trial company while this agent is in testing. Choose another connection on the previous page if you can.
+      </ws-alert>
+      <ws-stack gap="1">
+        <span class="ws-text-sm ws-text-muted">Start a review with</span>
+        <span id="review-start"></span>
+      </ws-stack>
+    </ws-stack>
+  </ws-card>
+
+  <ws-card id="receivables" heading="Waiting to be collected" hidden>
+    <ws-stack gap="4">
+      <ws-row gap="6" wrap align="start">
+        <ws-stack gap="1"><span class="ws-text-sm ws-text-muted">Unpaid invoices</span><span id="count" class="ws-heading"></span></ws-stack>
+        <ws-stack gap="1"><span class="ws-text-sm ws-text-muted">Amount due</span><span id="due" class="ws-heading"></span></ws-stack>
+        <ws-stack gap="1"><span class="ws-text-sm ws-text-muted">Overdue</span><span id="overdue" class="ws-heading"></span></ws-stack>
+      </ws-row>
+      <ws-table id="oldest" caption="Most overdue invoices" empty-text="Nothing is overdue."></ws-table>
+      <span id="more" class="ws-text-xs ws-text-muted" hidden></span>
+    </ws-stack>
+  </ws-card>
+
+  <ws-empty id="no-invoices" heading="No unpaid sales invoices" description="A review needs at least one. Demo companies come with some; add an invoice in Xero, then check again." hidden>
+    <ws-button id="recheck" variant="outline">Check again</ws-button>
+  </ws-empty>
+</ws-stack>
+<script>
+(() => {
+  const ORG_CAPABILITY = 'xero.organisation.read';
+  const INVOICES_CAPABILITY = 'xero.receivables.list';
+  // Xero names time zones the Windows way; the common ones as IANA zones, so "today" is the company's today.
+  const XERO_ZONES = {
+    AUSEASTERNSTANDARDTIME: 'Australia/Sydney',
+    EASTAUSTRALIASTANDARDTIME: 'Australia/Brisbane',
+    CENAUSTRALIASTANDARDTIME: 'Australia/Adelaide',
+    AUSCENTRALSTANDARDTIME: 'Australia/Darwin',
+    WAUSTRALIASTANDARDTIME: 'Australia/Perth',
+    TASMANIASTANDARDTIME: 'Australia/Hobart',
+    NEWZEALANDSTANDARDTIME: 'Pacific/Auckland',
+    GMTSTANDARDTIME: 'Europe/London',
+    UTC: 'UTC',
+    SINGAPORESTANDARDTIME: 'Asia/Singapore',
+    PACIFICSTANDARDTIME: 'America/Los_Angeles',
+    EASTERNSTANDARDTIME: 'America/New_York',
+  };
+  const PAGE_SIZE = 100;
+  const el = (id) => document.getElementById(id);
+  const show = (id, visible) => { el(id).hidden = !visible; };
+  const canContinue = (value) => workspace.wizard.setCanContinue({ value }).catch(() => {});
+
+  const listOf = (result, key) => {
+    if (!result || typeof result !== 'object') return [];
+    const found = result[key] ?? result[key.toLowerCase()];
+    return Array.isArray(found) ? found : [];
+  };
+  const amount = (value) => {
+    const number = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(number) ? number : 0;
+  };
+  // Xero sends dates as "2026-10-30T00:00:00" (DueDateString) or "/Date(1793318400000+0000)/" (DueDate).
+  function calendarDate(invoice) {
+    const text = invoice.DueDateString || invoice.DueDate || '';
+    const wrapped = /\/Date\((\d+)/.exec(text);
+    const date = wrapped ? new Date(Number(wrapped[1])) : new Date(String(text).slice(0, 10) + 'T00:00:00Z');
+    return Number.isNaN(date.getTime()) ? null : new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  }
+  function todayIn(timeZone) {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const get = (type) => Number(parts.find((part) => part.type === type).value);
+    return new Date(Date.UTC(get('year'), get('month') - 1, get('day')));
+  }
+  const longDate = (date) => date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const shortDate = (date) => date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+  function resetView() {
+    for (const id of ['not-connected', 'read-error', 'company', 'receivables', 'no-invoices', 'more']) show(id, false);
+  }
+  function failed(error) {
+    show('loading', false);
+    el('read-error-text').textContent = error && error.message
+      ? `${error.message}. Check the connection on the previous page, then try again.`
+      : 'Xero did not answer. Check the connection on the previous page, then try again.';
+    show('read-error', true);
+  }
+
+  function showCompany(org) {
+    const zone = XERO_ZONES[String(org.Timezone || '').toUpperCase()] || null;
+    const card = el('company');
+    card.setAttribute('heading', org.Name);
+    const where = [org.BaseCurrency && `Base currency ${org.BaseCurrency}`, org.CountryCode].filter(Boolean).join(' · ');
+    if (where) card.setAttribute('description', where); else card.removeAttribute('description');
+    const demo = /demo|trial|sample/i.test(org.Name);
+    show('demo-badge', demo);
+    show('not-demo', !demo);
+    const today = todayIn(zone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+    el('review-start').textContent = zone
+      ? `${org.Name}, ${longDate(today)} (today in ${zone.split('/').pop().replace(/_/g, ' ')})`
+      : `${org.Name}, ${longDate(today)} (your date; Xero lists the company's time zone as ${org.Timezone || 'not set'})`;
+    show('company', true);
+    return today;
+  }
+
+  function showReceivables(invoices, org, today) {
+    const unpaid = invoices.filter((invoice) => (!invoice.Type || invoice.Type === 'ACCREC') && amount(invoice.AmountDue) > 0);
+    if (unpaid.length === 0) { show('no-invoices', true); return; }
+    const money = new Intl.NumberFormat('en-AU', { style: 'currency', currency: org.BaseCurrency || 'AUD' });
+    const withDates = unpaid.map((invoice) => ({ invoice, due: calendarDate(invoice) }));
+    const overdue = withDates.filter((entry) => entry.due && entry.due < today).sort((a, b) => a.due - b.due);
+    const capped = invoices.length >= PAGE_SIZE;
+    el('count').textContent = capped ? `${unpaid.length}+` : String(unpaid.length);
+    el('due').textContent = money.format(unpaid.reduce((sum, invoice) => sum + amount(invoice.AmountDue), 0));
+    el('overdue').textContent = String(overdue.length);
+    const table = el('oldest');
+    table.columns = [{ key: 'number', label: 'Invoice' }, { key: 'due', label: 'Due' }, { key: 'amount', label: 'Amount due', align: 'end' }];
+    table.rows = overdue.slice(0, 5).map(({ invoice, due }) => ({ number: invoice.InvoiceNumber || 'No number', due: shortDate(due), amount: money.format(amount(invoice.AmountDue)) }));
+    if (capped) {
+      el('more').textContent = `Showing the first ${PAGE_SIZE} invoices Xero returned. The review reads them all.`;
+      show('more', true);
+    }
+    show('receivables', true);
+  }
+
+  async function check() {
+    resetView();
+    show('loading', true);
+    canContinue(false);
+    let capabilities;
+    try {
+      ({ capabilities } = await workspace.capabilities.list());
+    } catch (error) {
+      failed(error);
+      return;
+    }
+    const bound = capabilities.find((capability) => capability.key === ORG_CAPABILITY);
+    if (!bound || !bound.binding || bound.binding.status === 'revoked') {
+      show('loading', false);
+      show('not-connected', true);
+      return;
+    }
+    let org;
+    try {
+      const { result } = await workspace.capabilities.invoke({ capability: ORG_CAPABILITY, input: {} });
+      org = listOf(result, 'Organisations')[0];
+      if (!org || !org.Name) throw new Error('Xero returned no organisation for this connection');
+    } catch (error) {
+      if (error && error.code === 'precondition_failed') { show('loading', false); show('not-connected', true); return; }
+      failed(error);
+      return;
+    }
+    const today = showCompany(org);
+    canContinue(true);
+    try {
+      const input = { statuses: 'AUTHORISED', summaryOnly: true };
+      if (org.OrganisationID) input.xero_tenant_id = org.OrganisationID;
+      const { result } = await workspace.capabilities.invoke({ capability: INVOICES_CAPABILITY, input });
+      showReceivables(listOf(result, 'Invoices'), org, today);
+    } catch (error) {
+      // The company is confirmed; only the preview is missing, so setup can still continue.
+      el('read-error').setAttribute('heading', 'Could not list the invoices');
+      el('read-error-text').textContent = error && error.message ? `${error.message}. The review will try again when it runs.` : 'Xero did not answer. The review will try again when it runs.';
+      show('read-error', true);
+    } finally {
+      show('loading', false);
+    }
+  }
+
+  el('connect').addEventListener('click', async () => {
+    const button = el('connect');
+    button.setAttribute('loading', '');
+    try {
+      await workspace.connections.connect({ capability: ORG_CAPABILITY });
+      await check();
+    } catch (error) {
+      if (error && error.code !== 'cancelled') failed(error);
+    } finally {
+      button.removeAttribute('loading');
+    }
+  });
+  el('retry').addEventListener('click', () => { el('read-error').setAttribute('heading', 'Could not read Xero'); check(); });
+  el('recheck').addEventListener('click', () => check());
+
+  check();
+})();
+</script>
