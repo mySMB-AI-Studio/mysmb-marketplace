@@ -333,7 +333,7 @@ const attendance_today_dashboard: ComputedFunction = (args) => {
   // Badge colours. Absent is red here rather than the bar's grey: a `muted`
   // badge renders colourless. Days off and unloaded reports stay grey.
   const statusTone: Record<AttendanceStatus, string> = {
-    present: 'brand',
+    present: 'success',
     late: 'warning',
     absent: 'destructive',
     leave: 'chart-4',
@@ -378,18 +378,18 @@ const attendance_today_dashboard: ComputedFunction = (args) => {
 
   // On leave only gets a legend column when someone is on leave.
   const legend = [
-    { key: 'present', label: 'Present', tone: 'brand', count: present },
+    { key: 'present', label: 'Present', tone: 'success', count: present },
     { key: 'late', label: 'Late', tone: 'warning', count: late },
-    { key: 'absent', label: 'Absent', tone: 'muted', count: absent },
+    { key: 'absent', label: 'Absent', tone: 'destructive', count: absent },
     { key: 'leave', label: 'On leave', tone: 'chart-4', count: onLeave },
   ]
     .filter((s) => s.key !== 'leave' || s.count > 0)
     .map((s) => ({
       ...s,
       countDisplay: s.count.toLocaleString('en-US'),
-      // Legend label and count colour. Absent stays the normal text colour:
-      // `muted` text is forced down to the smallest size.
-      textTone: s.tone === 'muted' ? 'default' : s.tone,
+      // Legend label and count colour. Absent's dot and bar segment are red,
+      // but its label and count stay the normal text colour.
+      textTone: s.key === 'absent' ? 'default' : s.tone,
     }));
   const segments = legend.filter((s) => s.count > 0);
 
