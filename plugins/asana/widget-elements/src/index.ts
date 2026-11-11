@@ -302,80 +302,311 @@ const flatten_overdue_tasks: ComputedFunction = (args) => {
   return rows;
 };
 
-const flatten_my_tasks_tabs: ComputedFunction = (args) => {
+// ── My Tasks board ───────────────────────────────────────────────────────────
+// Everything below supports `flatten_my_tasks_board`, the single helper behind
+// the My Tasks tile. It does the whole view in one pass -- bucket, filter,
+// sort, group, label -- because a tile spec can only repeat over a flat array
+// in state, so any grouping or filtering has to be baked into the rows.
+
+const CATEGORY_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
+
+/** Project chips shown before the list. More than this and the Row overflows:
+ *  the system has no horizontally-scrolling container. */
+const MAX_PROJECT_CHIPS = 5;
+
+const TAB_KEYS = ['overdue', 'upcoming', 'completed'] as const;
+type TabKey = (typeof TAB_KEYS)[number];
+
+const TAB_NOUN: Record<TabKey, string> = {
+  overdue: 'overdue',
+  upcoming: 'upcoming',
+  completed: 'completed',
+};
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/** The viewer's own calendar date as YYYY-MM-DD. */
+function todayIsoDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+}
+
+/**
+ * dd-Mmm-yy from a YYYY-MM-DD string (TILE-DISPLAY-STANDARDS date format).
+ *
+ * String maths only -- deliberately no `Date.parse`. Asana's `due_on` is a
+ * calendar date with no time or zone; parsing it yields UTC midnight, which
+ * `getDate()` then renders as the PREVIOUS day for any viewer west of UTC.
+ */
+function formatIsoDate(ymd: string): string {
+  const [y, m, d] = ymd.split('-');
+  const month = MONTH_ABBR[Number(m) - 1];
+  if (!y || !month || !d) return '';
+  return `${pad2(Number(d))}-${month}-${y.slice(2)}`;
+}
+
+/** Whole days from `from` to `to`, both YYYY-MM-DD. Positive when `to` is later. */
+function daysBetween(to: string, from: string): number {
+  const [ty, tm, td] = to.split('-').map(Number);
+  const [fy, fm, fd] = from.split('-').map(Number);
+  if ([ty, tm, td, fy, fm, fd].some((n) => !Number.isFinite(n))) return 0;
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86400000);
+}
+
+/**
+ * Non-status colours for the projects on screen, assigned by position so the
+ * visible set is always distinct. Hashing the name (the technique
+ * `flatten_recent_activity` uses for people) is stable across refreshes but
+ * collides: three projects in one view can land on the same `chart-*` tone,
+ * which defeats the whole point of colouring them. Positional assignment over
+ * a deterministic ordering keeps a project's colour stable for as long as the
+ * tab's project mix is stable, and keeps the chips telling them apart.
+ *
+ * A project name is a category label, not a state, so these are `chart-*`
+ * tones rather than success/warning/destructive -- TILE-DISPLAY-STANDARDS §7.
+ */
+function toneMapFor(orderedProjects: string[]): Map<string, string> {
+  const tones = new Map<string, string>();
+  orderedProjects.forEach((label, index) => {
+    tones.set(label, CATEGORY_TONES[index % CATEGORY_TONES.length]);
+  });
+  return tones;
+}
+
+function projectNameOf(task: Record<string, unknown>): string {
+  const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
+  if (memberships.length > 0) {
+    const proj = memberships[0].project as Record<string, unknown> | undefined;
+    if (proj) return String(proj.name ?? '');
+  }
+  const projects = Array.isArray(task.projects) ? (task.projects as Record<string, unknown>[]) : [];
+  if (projects.length > 0) return String((projects[0] as Record<string, unknown>).name ?? '');
+  return '';
+}
+
+interface BoardTask {
+  id: string;
+  title: string;
+  project: string;
+  due_on: string;
+  done_on: string;
+  url: string;
+  tab: TabKey;
+  /** Sort key within the tab: due date for open work, completion day for done. */
+  sort: string;
+}
+
+/** The due/done pill: text plus the tone that carries the urgency. */
+function duePill(task: BoardTask, today: string): { label: string; tone: string } {
+  if (task.tab === 'completed') {
+    if (!task.done_on) return { label: 'Done', tone: 'success' };
+    const ago = daysBetween(today, task.done_on);
+    if (ago <= 0) return { label: 'Done today', tone: 'success' };
+    if (ago === 1) return { label: 'Done yesterday', tone: 'success' };
+    return { label: `Done ${formatIsoDate(task.done_on)}`, tone: 'success' };
+  }
+  if (!task.due_on) return { label: 'No due date', tone: 'muted' };
+  const days = daysBetween(task.due_on, today);
+  if (days < 0) return { label: `${Math.abs(days)}d overdue`, tone: 'destructive' };
+  if (days === 0) return { label: 'Today', tone: 'warning' };
+  if (days === 1) return { label: 'Tomorrow', tone: 'info' };
+  return { label: formatIsoDate(task.due_on), tone: 'muted' };
+}
+
+/** The run heading a task falls under. Buckets are monotonic in the sort key,
+ *  so consecutive tasks sharing a heading form one group. */
+function groupOf(task: BoardTask, today: string): { label: string; tone: string } {
+  if (task.tab === 'completed') {
+    if (!task.done_on) return { label: 'Earlier', tone: 'muted' };
+    const ago = daysBetween(today, task.done_on);
+    if (ago <= 0) return { label: 'Today', tone: 'muted' };
+    if (ago === 1) return { label: 'Yesterday', tone: 'muted' };
+    return { label: 'Earlier', tone: 'muted' };
+  }
+  if (!task.due_on) return { label: 'No due date', tone: 'muted' };
+  const days = daysBetween(task.due_on, today);
+  if (days < 0) {
+    const over = Math.abs(days);
+    if (over >= 60) return { label: '60+ days overdue', tone: 'destructive' };
+    if (over >= 30) return { label: '30–59 days overdue', tone: 'destructive' };
+    if (over >= 8) return { label: '8–29 days overdue', tone: 'destructive' };
+    return { label: 'This week', tone: 'destructive' };
+  }
+  if (days === 0) return { label: 'Today', tone: 'warning' };
+  if (days === 1) return { label: 'Tomorrow', tone: 'muted' };
+  if (days <= 7) return { label: 'Later this week', tone: 'muted' };
+  if (days <= 14) return { label: 'Next week', tone: 'muted' };
+  return { label: 'Later', tone: 'muted' };
+}
+
+/**
+ * Builds the whole My Tasks board from one `list_tasks` response: the three
+ * tab counts, the project filter chips, and the grouped rows for whichever
+ * tab and project are selected.
+ *
+ * Args: { value: array, tab?: string, project?: string }
+ *   value   -- `list_tasks`' `data` array (assignee=me, completed_since set
+ *              far enough back to carry the Completed tab).
+ *   tab     -- 'overdue' | 'upcoming' | 'completed'. Defaults to 'overdue',
+ *              which is also the tile's first paint: the overdue tab is the
+ *              one that needs attention, so it leads.
+ *   project -- a project name, or 'All' / absent for no filter.
+ *
+ * Returns ONE object (not an array) at `/ui/board`, because the tile needs
+ * counts and chips alongside the rows and a tile spec can only repeat over a
+ * flat array. Rows carry their own group heading (`show_group`), so a single
+ * flat repeat renders a grouped list.
+ *
+ * Bucketing: a task is Completed if Asana says so, Overdue if its due date is
+ * before the viewer's today, and Upcoming otherwise -- which includes tasks
+ * with no due date at all, grouped under "No due date" at the end.
+ *
+ * KNOWN APPROXIMATION -- the Completed tab's "Done today / yesterday" reads
+ * `modified_at`, not a real completion timestamp. The gateway's
+ * TASK_OPT_FIELDS (myhub-mcp-servers src/integrations/asana/servers/asana.ts)
+ * doesn't request `completed_at`, so it isn't in the response. Completing a
+ * task does modify it, so the two agree for anything completed and then left
+ * alone; editing a task after completing it makes the row look more recent
+ * than it is. Adding `completed_at` to TASK_OPT_FIELDS is a one-line gateway
+ * change that would make this exact -- a different repo, so it is flagged
+ * rather than assumed here.
+ */
+const flatten_my_tasks_board: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
-  if (raw.length === 0) return { upcoming: [], overdue: [], completed: [] };
+  const requestedTab = String(args.tab ?? '');
+  const tab: TabKey = (TAB_KEYS as readonly string[]).includes(requestedTab)
+    ? (requestedTab as TabKey)
+    : 'overdue';
+  const project = args.project ? String(args.project) : 'All';
+  const today = todayIsoDate();
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayMs = Date.parse(todayStr);
-
-  const upcoming: Record<string, unknown>[] = [];
-  const overdue:  Record<string, unknown>[] = [];
-  const completed: Record<string, unknown>[] = [];
-
-  for (const task of raw) {
-    const id    = String(task.gid ?? task.id ?? '');
-    const title = String(task.name ?? '');
-    const dueOn = task.due_on ? String(task.due_on) : null;
+  const tasks: BoardTask[] = raw.map((task) => {
     const isCompleted = Boolean(task.completed);
+    const dueOn = task.due_on ? String(task.due_on).slice(0, 10) : '';
+    // See the KNOWN APPROXIMATION note above: modified_at stands in for a
+    // completion timestamp the gateway doesn't return.
+    const doneOn = task.modified_at ? String(task.modified_at).slice(0, 10) : '';
+    const taskTab: TabKey = isCompleted ? 'completed' : dueOn && dueOn < today ? 'overdue' : 'upcoming';
+    return {
+      id: String(task.gid ?? task.id ?? ''),
+      title: String(task.name ?? ''),
+      project: projectNameOf(task),
+      due_on: dueOn,
+      done_on: doneOn,
+      url: task.permalink_url ? String(task.permalink_url) : '',
+      tab: taskTab,
+      // Open work sorts by due date, soonest first; undated work sorts last.
+      // Completed sorts newest first, so the key is inverted at sort time.
+      sort: taskTab === 'completed' ? doneOn : dueOn || '9999-12-31',
+    };
+  });
 
-    const memberships = Array.isArray(task.memberships) ? (task.memberships as Record<string, unknown>[]) : [];
-    const projects    = Array.isArray(task.projects)    ? (task.projects    as Record<string, unknown>[]) : [];
-    let projectLabel = '';
-    if (memberships.length > 0) {
-      const proj = memberships[0].project as Record<string, unknown> | undefined;
-      if (proj) projectLabel = String(proj.name ?? '');
-    } else if (projects.length > 0) {
-      projectLabel = String((projects[0] as Record<string, unknown>).name ?? '');
-    }
+  const counts: Record<TabKey, number> = { overdue: 0, upcoming: 0, completed: 0 };
+  for (const task of tasks) counts[task.tab]++;
 
-    let dueLabel   = '';
-    let dueTone    = 'muted';
-    let circleTone = 'muted';
-    let sortMs: number = isCompleted ? -1 : Infinity;
+  const dueThisWeek = tasks.filter(
+    (task) => task.tab === 'upcoming' && task.due_on && daysBetween(task.due_on, today) <= 7,
+  ).length;
 
-    if (dueOn) {
-      const dueMs = Date.parse(dueOn);
-      if (!Number.isNaN(dueMs)) {
-        sortMs = dueMs;
-        const d = new Date(dueMs);
-        const formatted = `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
-        if (!isCompleted) {
-          if (dueMs < todayMs) {
-            dueLabel   = formatted;
-            dueTone    = 'destructive';
-            circleTone = 'destructive';
-          } else if (dueOn === todayStr) {
-            dueLabel   = 'Due Today';
-            dueTone    = 'warning';
-            circleTone = 'warning';
-          } else {
-            dueLabel   = formatted;
-            dueTone    = 'muted';
-            circleTone = 'success';
-          }
-        } else {
-          dueLabel = formatted;
-        }
-      }
-    }
+  const inTab = tasks
+    .filter((task) => task.tab === tab)
+    .sort((a, b) => (tab === 'completed' ? b.sort.localeCompare(a.sort) : a.sort.localeCompare(b.sort)));
 
-    const row: Record<string, unknown> = { id, title, due_label: dueLabel, project_label: projectLabel, due_tone: dueTone, circle_tone: circleTone, _sort: sortMs };
+  // Chips describe the selected tab, so they always add up to its count.
+  const tally = new Map<string, number>();
+  for (const task of inTab) {
+    if (!task.project) continue;
+    tally.set(task.project, (tally.get(task.project) ?? 0) + 1);
+  }
+  const ranked = [...tally.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, MAX_PROJECT_CHIPS);
+  const projectTones = toneMapFor(ranked.map(([label]) => label));
+  const chips = ranked.map(([label, count]) => ({
+    id: label,
+    label,
+    count,
+    tone: projectTones.get(label) ?? 'muted',
+    selected: label === project,
+  }));
 
-    if (isCompleted) {
-      completed.push(row);
-    } else if (dueOn && !Number.isNaN(Date.parse(dueOn)) && Date.parse(dueOn) < todayMs) {
-      overdue.push(row);
-    } else {
-      upcoming.push(row);
-    }
+  // A filter on a project that has nothing left in this tab (every task
+  // completed, say) would show an empty list with no way back, so fall back.
+  const activeProject = chips.some((chip) => chip.label === project) ? project : 'All';
+  const visible = activeProject === 'All' ? inTab : inTab.filter((task) => task.project === activeProject);
+
+  const groupSizes = new Map<string, number>();
+  for (const task of visible) {
+    const label = groupOf(task, today).label;
+    groupSizes.set(label, (groupSizes.get(label) ?? 0) + 1);
   }
 
-  upcoming.sort((a, b) => (a._sort as number) - (b._sort as number));
-  overdue.sort((a, b)  => (a._sort as number) - (b._sort as number));
+  let lastGroup = '';
+  const rows = visible.map((task) => {
+    const pill = duePill(task, today);
+    const group = groupOf(task, today);
+    const isNewGroup = group.label !== lastGroup;
+    lastGroup = group.label;
+    const isDone = task.tab === 'completed';
+    return {
+      id: task.id,
+      title: task.title,
+      title_tone: isDone ? 'muted' : 'default',
+      project_label: task.project,
+      project_tone: projectTones.get(task.project) ?? 'muted',
+      show_project: Boolean(task.project),
+      due_label: pill.label,
+      due_tone: pill.tone,
+      // Lucide names: an empty ring to tick, a filled check once done.
+      circle_icon: isDone ? 'CircleCheck' : 'Circle',
+      circle_tone: isDone ? 'success' : pill.tone === 'muted' ? 'muted' : pill.tone,
+      circle_label: isDone ? `Reopen ${task.title}` : `Complete ${task.title}`,
+      /** What complete_task should set `completed` to -- a tick completes, a
+       *  tick on a done row reopens. */
+      complete_to: !isDone,
+      url: task.url,
+      has_url: Boolean(task.url),
+      show_group: isNewGroup,
+      group_label: group.label,
+      group_tone: group.tone,
+      group_count: groupSizes.get(group.label) ?? 1,
+    };
+  });
 
-  const clean = (rows: Record<string, unknown>[]) => rows.map(({ _sort: _s, ...r }) => r);
-  return { upcoming: clean(upcoming), overdue: clean(overdue), completed: clean(completed) };
+  const total = inTab.length;
+  const noun = TAB_NOUN[tab];
+
+  return {
+    tab,
+    header_label:
+      tasks.length === 0
+        ? 'Asana'
+        : `Asana · ${counts.overdue} overdue · ${dueThisWeek} due this week`,
+    overdue_count: counts.overdue,
+    upcoming_count: counts.upcoming,
+    completed_count: counts.completed,
+    tab_overdue_selected: tab === 'overdue',
+    tab_upcoming_selected: tab === 'upcoming',
+    tab_completed_selected: tab === 'completed',
+    projects: chips,
+    show_projects: chips.length > 1,
+    all_selected: activeProject === 'All',
+    all_count: total,
+    rows,
+    has_rows: rows.length > 0,
+    empty_message:
+      tab === 'overdue'
+        ? "You're all caught up — nothing overdue."
+        : tab === 'upcoming'
+        ? 'Nothing coming up.'
+        : 'Nothing completed in the last 30 days.',
+    footer_label:
+      activeProject === 'All'
+        ? `${total} ${noun} ${total === 1 ? 'task' : 'tasks'}`
+        : `${rows.length} of ${total} ${noun} · ${activeProject}`,
+  };
 };
 
 /**
@@ -606,7 +837,7 @@ const elements: PluginElementsModule = {
     flatten_project_progress,
     flatten_overdue_tasks,
     flatten_team_workload,
-    flatten_my_tasks_tabs,
+    flatten_my_tasks_board,
     flatten_milestones,
     flatten_recent_activity,
   },
