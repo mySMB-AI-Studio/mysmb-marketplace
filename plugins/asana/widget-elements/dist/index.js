@@ -228,54 +228,6 @@ const flatten_team_workload = (args) => {
     rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
     return rows;
 };
-const flatten_overdue_tasks = (args) => {
-    const raw = Array.isArray(args.value) ? args.value : [];
-    if (raw.length === 0)
-        return [];
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayMs = Date.parse(todayStr);
-    const overdueItems = [];
-    for (const task of raw) {
-        const dueOn = task.due_on ? String(task.due_on) : null;
-        if (!dueOn)
-            continue;
-        const dueMs = Date.parse(dueOn);
-        if (Number.isNaN(dueMs) || dueMs >= todayMs)
-            continue;
-        const daysOverdue = Math.round((todayMs - dueMs) / 86400000);
-        const memberships = Array.isArray(task.memberships) ? task.memberships : [];
-        const projects = Array.isArray(task.projects) ? task.projects : [];
-        let projectLabel = '';
-        if (memberships.length > 0) {
-            const proj = memberships[0].project;
-            if (proj)
-                projectLabel = String(proj.name ?? '');
-        }
-        else if (projects.length > 0) {
-            projectLabel = String(projects[0].name ?? '');
-        }
-        overdueItems.push({ task, daysOverdue, projectLabel });
-    }
-    if (overdueItems.length === 0)
-        return [];
-    overdueItems.sort((a, b) => b.daysOverdue - a.daysOverdue);
-    const uniqueProjects = new Set(overdueItems.map(i => i.projectLabel).filter(Boolean));
-    const longestDays = overdueItems[0].daysOverdue;
-    const rows = overdueItems.map((item) => ({
-        id: String(item.task.gid ?? item.task.id ?? ''),
-        title: String(item.task.name ?? ''),
-        project_label: item.projectLabel,
-        overdue_label: `${item.daysOverdue}d overdue`,
-        days_overdue: item.daysOverdue,
-        stat_overdue: '',
-        stat_projects: '',
-        stat_longest: '',
-    }));
-    rows[0].stat_overdue = String(overdueItems.length);
-    rows[0].stat_projects = String(uniqueProjects.size);
-    rows[0].stat_longest = `${longestDays}d`;
-    return rows;
-};
 // ── My Tasks board ───────────────────────────────────────────────────────────
 // Everything below supports `flatten_my_tasks_board`, the single helper behind
 // the My Tasks tile. It does the whole view in one pass -- bucket, filter,
@@ -590,6 +542,232 @@ const flatten_my_tasks_board = (args) => {
             : `${rows.length} of ${total} ${noun} · ${activeProject}`,
     };
 };
+// ── Overdue Tasks board ──────────────────────────────────────────────────────
+// `flatten_overdue_board` is the single helper behind the Overdue Tasks tile,
+// built the same way as `flatten_my_tasks_board` above: one pass that filters,
+// buckets, sorts, groups and labels, because a tile spec can only repeat over
+// a flat array, so grouping has to be baked into the rows.
+const OVERDUE_BUCKETS = ['crit', 'high', 'low'];
+/**
+ * How far past due each bucket is, and the tone that carries it.
+ *
+ * The reference design wanted red / orange / yellow. The token palette has
+ * exactly one amber (`warning`) between `destructive` and the neutrals, so
+ * the three severities map to destructive / warning / info instead -- blue
+ * reads as the least urgent step and, unlike a muted grey, stays clearly
+ * visible when its chip is the selected filter. Token tones only, never a
+ * hand-picked hex (TILE-DISPLAY-STANDARDS).
+ */
+const BUCKET_TONE = {
+    crit: 'destructive',
+    high: 'warning',
+    low: 'info',
+};
+/** Chip text is deliberately terse: four pills plus the group-by control have
+ *  to share one row at the tile's 5-column width, and `Badge` is `shrink-0`,
+ *  so a long label overflows the card rather than wrapping. The group heading
+ *  underneath spells the same bucket out in full. */
+const BUCKET_CHIP = {
+    crit: '60+d',
+    high: '30–59d',
+    low: '<30d',
+};
+const BUCKET_HEADING = {
+    crit: '60+ days overdue',
+    high: '30–59 days overdue',
+    low: 'Under 30 days overdue',
+};
+function bucketFor(daysOverdue) {
+    if (daysOverdue >= 60)
+        return 'crit';
+    if (daysOverdue >= 30)
+        return 'high';
+    return 'low';
+}
+/**
+ * Builds the whole Overdue Tasks board from one `list_tasks` response: the
+ * three summary stats, the severity bar, the bucket filter chips, and the
+ * grouped rows for whichever bucket and grouping are selected.
+ *
+ * Args: { value: array, bucket?: string, group?: string }
+ *   value  -- `list_tasks`' `data` array (assignee=me, completed_since=now,
+ *             so only open work comes back).
+ *   bucket -- 'all' | 'crit' | 'high' | 'low'. Defaults to 'all'.
+ *   group  -- 'age' (default) | 'project'. Age is the default because the
+ *             tile exists to surface what is worst, and age IS the severity.
+ *
+ * Returns ONE object (not an array) at `/ui/board` -- same reason as
+ * `flatten_my_tasks_board`: the tile needs stats and chips alongside the rows.
+ *
+ * "Overdue" is strictly `due_on` earlier than the viewer's own calendar day.
+ * A task with no due date cannot be late, so it is absent entirely rather than
+ * swept into the oldest bucket.
+ */
+const flatten_overdue_board = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const today = todayIsoDate();
+    const groupMode = String(args.group ?? 'age') === 'project' ? 'project' : 'age';
+    const tasks = [];
+    for (const task of raw) {
+        if (task.completed)
+            continue;
+        const dueOn = task.due_on ? String(task.due_on).slice(0, 10) : '';
+        if (!dueOn || dueOn >= today)
+            continue;
+        const days = daysBetween(today, dueOn);
+        tasks.push({
+            id: String(task.gid ?? task.id ?? ''),
+            title: String(task.name ?? ''),
+            project: projectNameOf(task),
+            due_on: dueOn,
+            url: task.permalink_url ? String(task.permalink_url) : '',
+            days,
+            bucket: bucketFor(days),
+        });
+    }
+    // Oldest first, so index 0 is the longest-overdue task everywhere below.
+    tasks.sort((a, b) => a.due_on.localeCompare(b.due_on) || a.title.localeCompare(b.title));
+    const total = tasks.length;
+    const counts = { crit: 0, high: 0, low: 0 };
+    for (const task of tasks)
+        counts[task.bucket]++;
+    const longest = total > 0 ? tasks[0].days : 0;
+    const avgDays = total > 0 ? Math.round(tasks.reduce((sum, t) => sum + t.days, 0) / total) : 0;
+    // Project colours are assigned over the full task list ordered by how old
+    // each project's worst task is, so a project keeps its colour when the user
+    // filters to a bucket or flips the grouping. Positional, not hashed, for
+    // the same reason as `toneMapFor`'s doc: hashes collide, and two projects
+    // sharing a colour defeats the point of colouring them at all.
+    const projectOrder = [];
+    for (const task of tasks) {
+        if (task.project && !projectOrder.includes(task.project))
+            projectOrder.push(task.project);
+    }
+    const projectTones = toneMapFor(projectOrder);
+    // A bucket filter that nothing matches would show an empty list with no way
+    // back, so fall back to 'all' -- same guard as the My Tasks project chips.
+    const requested = String(args.bucket ?? 'all');
+    const bucket = OVERDUE_BUCKETS.includes(requested) && counts[requested] > 0
+        ? requested
+        : 'all';
+    const filtered = bucket === 'all' ? tasks : tasks.filter((task) => task.bucket === bucket);
+    // The severity bar: one segment per non-empty bucket, widths proportional to
+    // the counts. `Row.template` takes a raw grid-template-columns string, so
+    // "6fr 5fr 3fr" is the only way to express proportion without inline CSS.
+    const segments = OVERDUE_BUCKETS.filter((key) => counts[key] > 0).map((key) => ({
+        id: key,
+        tone: BUCKET_TONE[key],
+        span: counts[key],
+    }));
+    const barTemplate = segments.map((segment) => `${segment.span}fr`).join(' ');
+    const chips = [
+        {
+            id: 'all',
+            bucket: 'all',
+            chip_text: `All  ${total}`,
+            tone: 'default',
+            selected: bucket === 'all',
+        },
+        ...OVERDUE_BUCKETS.filter((key) => counts[key] > 0).map((key) => ({
+            id: key,
+            bucket: key,
+            chip_text: `${BUCKET_CHIP[key]}  ${counts[key]}`,
+            tone: BUCKET_TONE[key],
+            selected: bucket === key,
+        })),
+    ];
+    let groups;
+    if (groupMode === 'project') {
+        const byProject = new Map();
+        for (const task of filtered) {
+            const label = task.project || 'No project';
+            const items = byProject.get(label);
+            if (items)
+                items.push(task);
+            else
+                byProject.set(label, [task]);
+        }
+        groups = [...byProject.entries()]
+            .map(([label, items]) => ({
+            label,
+            tone: 'muted',
+            // items[0] is the group's oldest task: `filtered` is already sorted
+            // oldest-first and the Map preserves insertion order within a key.
+            meta: `oldest ${items[0].days}d`,
+            dot_tone: projectTones.get(label) ?? 'muted',
+            show_dot: true,
+            items,
+        }))
+            .sort((a, b) => b.items[0].days - a.items[0].days);
+    }
+    else {
+        groups = OVERDUE_BUCKETS.map((key) => ({
+            label: BUCKET_HEADING[key],
+            tone: BUCKET_TONE[key],
+            meta: '',
+            dot_tone: 'muted',
+            show_dot: false,
+            items: filtered.filter((task) => task.bucket === key),
+        })).filter((group) => group.items.length > 0);
+    }
+    const rows = groups.flatMap((group) => group.items.map((task, index) => {
+        const showProject = groupMode === 'age' && Boolean(task.project);
+        return {
+            id: task.id,
+            title: task.title,
+            sev_tone: BUCKET_TONE[task.bucket],
+            due_label: `${task.days}d overdue`,
+            project_tone: projectTones.get(task.project) ?? 'muted',
+            show_project: showProject,
+            // Project and due date are ONE string, not two Texts in a Row: a flex
+            // child only honours `truncate` when something gives it min-w-0, which
+            // the system does only for a Stack/Row with `grow`. As two siblings the
+            // second one wrapped to a line of its own for every long project name,
+            // making rows jump between 56 and 69 px tall. Grouping by project
+            // already names the project in its heading, so the row only repeats it
+            // when the grouping is by age.
+            sub_label: showProject
+                ? `${task.project} · due ${formatIsoDate(task.due_on)}`
+                : `Due ${formatIsoDate(task.due_on)}`,
+            circle_label: `Complete ${task.title}`,
+            url: task.url,
+            has_url: Boolean(task.url),
+            // Only the first row of a run carries the heading, so one flat repeat
+            // renders a grouped list.
+            show_group: index === 0,
+            // Upper-cased here, not by a class: `Caption` has no transform prop
+            // and plugin elements cannot ship CSS.
+            group_label: group.label.toUpperCase(),
+            group_tone: group.tone,
+            group_count: group.items.length,
+            group_meta: group.meta,
+            show_group_meta: index === 0 && Boolean(group.meta),
+            group_dot_tone: group.dot_tone,
+            show_group_dot: index === 0 && group.show_dot,
+        };
+    }));
+    const projectCount = projectOrder.length;
+    const bucketLabel = bucket === 'all' ? '' : BUCKET_HEADING[bucket];
+    return {
+        header_label: total === 0 ? 'Asana' : `Asana · avg ${avgDays} days late`,
+        has_tasks: total > 0,
+        stat_overdue: total,
+        stat_projects: projectCount,
+        stat_longest: `${longest}d`,
+        segments,
+        bar_template: barTemplate,
+        chips,
+        show_chips: chips.length > 2,
+        group_age_selected: groupMode === 'age',
+        group_project_selected: groupMode === 'project',
+        rows,
+        has_rows: rows.length > 0,
+        empty_message: "You're all caught up — nothing overdue.",
+        footer_label: bucket === 'all'
+            ? `${total} overdue · ${projectCount} ${projectCount === 1 ? 'project' : 'projects'}`
+            : `${rows.length} of ${total} overdue · ${bucketLabel}`,
+    };
+};
 /**
  * Flattens a list_milestones response into display rows for the Upcoming
  * Milestones tile. `list_milestones` is server-side pre-filtered to
@@ -802,7 +980,7 @@ const elements = {
         flatten_my_tasks,
         flatten_projects,
         flatten_project_progress,
-        flatten_overdue_tasks,
+        flatten_overdue_board,
         flatten_team_workload,
         flatten_my_tasks_board,
         flatten_milestones,
