@@ -67,6 +67,9 @@
                   },
                   "showStarting": {
                     "$state": "/ui/showStarting"
+                  },
+                  "selectedHire": {
+                    "$state": "/ui/selectedHire"
                   }
                 }
               }
@@ -84,6 +87,29 @@
                   },
                   "showStarting": {
                     "$state": "/ui/showStarting"
+                  },
+                  "selectedHire": {
+                    "$state": "/ui/selectedHire"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/selectedHire": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/onboarding",
+              "value": {
+                "$computed": "zoho-people_onboarding_progress_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-people/onboarding_progress"
+                  },
+                  "showStarting": {
+                    "$state": "/ui/showStarting"
+                  },
+                  "selectedHire": {
+                    "$state": "/ui/selectedHire"
                   }
                 }
               }
@@ -269,7 +295,7 @@
           "text": {
             "$state": "/ui/onboarding/inProgressLabel"
           },
-          "size": "sm",
+          "size": "xs",
           "weight": "medium"
         }
       },
@@ -279,25 +305,54 @@
           "gap": "sm"
         },
         "children": [
-          "hireRow"
+          "hireItem"
         ],
         "repeat": {
           "statePath": "/ui/onboarding/hires",
           "key": "id"
         }
       },
+      "hireItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "hireRow",
+          "hireDetailBox"
+        ]
+      },
       "hireRow": {
         "type": "Row",
         "props": {
-          "template": "minmax(0, 1fr) minmax(0, 1.2fr) 2.5rem",
+          "template": "minmax(0, 1fr) minmax(0, 1.2fr) 2.5rem auto",
           "gap": "sm",
-          "align": "center"
+          "align": "center",
+          "hover": true,
+          "clickable": true
         },
         "children": [
           "hireName",
           "hireBar",
-          "hirePct"
-        ]
+          "hirePct",
+          "hireChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/selectedHire",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggle"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "hireName": {
         "type": "Text",
@@ -328,6 +383,73 @@
           },
           "size": "sm",
           "weight": "semibold"
+        }
+      },
+      "hireChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "hireDetailBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "hireDetailList"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "hireDetailList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "hireDetailRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/onboarding/selectedHireDetails",
+          "key": "id"
+        }
+      },
+      "hireDetailRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr)",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "hireDetailLabel",
+          "hireDetailValue"
+        ]
+      },
+      "hireDetailLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "tone": "muted"
+        }
+      },
+      "hireDetailValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "value"
+          },
+          "size": "sm",
+          "truncate": true,
+          "align": "end"
         }
       },
       "hiresNote": {
@@ -426,7 +548,7 @@
             "$state": "/ui/onboarding/startingText"
           },
           "size": "sm",
-          "weight": "semibold"
+          "weight": "regular"
         }
       },
       "startChevron": {
