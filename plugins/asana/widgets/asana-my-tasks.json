@@ -8,19 +8,21 @@
     "mcp": "asana",
     "params": {
       "assignee": "me",
-      "completed_since": "2026-01-01T00:00:00.000Z",
-      "limit": 50
+      "completed_since": "$days_ago_30",
+      "limit": 100
     },
     "tool": "list_tasks"
   },
-  "description": "Tasks assigned to you in Asana, organised into Upcoming, Overdue, and Completed tabs.",
+  "description": "Your Asana tasks across Overdue, Upcoming and Completed, grouped by how close the due date is, filterable by project, with one-tap complete.",
   "id": "asana-my-tasks",
   "keywords": [
     "asana tasks",
     "my tasks",
     "due today",
     "overdue",
-    "assigned tasks"
+    "assigned tasks",
+    "complete task",
+    "task list"
   ],
   "popularity": 70,
   "sizing": {
@@ -39,15 +41,20 @@
   },
   "spec": {
     "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
       "card": {
         "children": [
-          "headerRow",
-          "div0",
-          "loading",
-          "tabRow",
-          "upcomingContent",
-          "overdueContent",
-          "completedContent"
+          "header",
+          "body",
+          "footerDivider",
+          "footerRow"
         ],
         "props": {},
         "type": "Card",
@@ -56,66 +63,324 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/data",
+                "statePath": "/ui/project",
+                "value": "All"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab",
+                "value": "overdue"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
                 "value": {
-                  "$computed": "asana_flatten_my_tasks_tabs",
+                  "$computed": "asana_flatten_my_tasks_board",
                   "args": {
+                    "project": {
+                      "$state": "/ui/project"
+                    },
+                    "tab": {
+                      "$state": "/ui/tab"
+                    },
                     "value": {
                       "$state": "/asana/list_tasks/data"
                     }
                   }
                 }
               }
-            },
+            }
+          ],
+          "/ui/project": [
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/tab/upcoming",
-                "value": true
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_my_tasks_board",
+                  "args": {
+                    "project": {
+                      "$state": "/ui/project"
+                    },
+                    "tab": {
+                      "$state": "/ui/tab"
+                    },
+                    "value": {
+                      "$state": "/asana/list_tasks/data"
+                    }
+                  }
+                }
               }
-            },
+            }
+          ],
+          "/ui/tab": [
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/tab/overdue",
-                "value": false
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/completed",
-                "value": false
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_my_tasks_board",
+                  "args": {
+                    "project": {
+                      "$state": "/ui/project"
+                    },
+                    "tab": {
+                      "$state": "/ui/tab"
+                    },
+                    "value": {
+                      "$state": "/asana/list_tasks/data"
+                    }
+                  }
+                }
               }
             }
           ]
         }
       },
-      "completedContent": {
+      "chipAll": {
         "children": [
-          "completedEmpty",
-          "completedList"
+          "chipAllOn",
+          "chipAllOff"
         ],
-        "props": {
-          "gap": "sm"
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/project",
+              "value": "All"
+            }
+          }
         },
-        "type": "Stack",
-        "visible": {
-          "$state": "/ui/tab/completed"
-        }
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
       },
-      "completedEmpty": {
+      "chipAllOff": {
         "props": {
-          "message": "No recently completed tasks."
+          "text": {
+            "$state": "/ui/board/all_text"
+          },
+          "tone": "muted",
+          "variant": "outline"
         },
-        "type": "Empty",
+        "type": "Badge",
         "visible": {
-          "$state": "/ui/data/completed/0",
+          "$state": "/ui/board/all_selected",
           "not": true
         }
       },
-      "completedList": {
+      "chipAllOn": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/all_text"
+          },
+          "tone": "default",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/all_selected"
+        }
+      },
+      "chipBadgeOff": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "outline"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected",
+          "not": true
+        }
+      },
+      "chipBadgeOn": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "solid"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected"
+        }
+      },
+      "chipList": {
         "children": [
+          "chipProject"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/projects"
+        },
+        "type": "Row"
+      },
+      "chipProject": {
+        "children": [
+          "chipBadgeOn",
+          "chipBadgeOff"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/project",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "label"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "chipsRow": {
+        "children": [
+          "chipAll",
+          "chipList"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/show_projects"
+        }
+      },
+      "content": {
+        "children": [
+          "tabs",
+          "chipsRow",
+          "empty",
+          "list"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_tasks",
+          "not": true
+        }
+      },
+      "empty": {
+        "props": {
+          "message": {
+            "$state": "/ui/board/empty_message"
+          }
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/board/has_rows",
+          "not": true
+        }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/header_label"
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "footerDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "footerLabel": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footer_label"
+          }
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/footer_label"
+        }
+      },
+      "footerRow": {
+        "children": [
+          "footerLabel",
+          "openInAsanaBtn"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "groupCount": {
+        "props": {
+          "text": {
+            "$item": "group_count"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "groupHeader": {
+        "children": [
+          "groupLabel",
+          "groupCount"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$item": "show_group"
+        }
+      },
+      "groupLabel": {
+        "props": {
+          "text": {
+            "$item": "group_label"
+          },
+          "tone": {
+            "$item": "group_tone"
+          },
+          "weight": "medium"
+        },
+        "type": "Caption"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "list": {
+        "children": [
+          "groupHeader",
           "taskRow"
         ],
         "props": {
@@ -123,29 +388,12 @@
         },
         "repeat": {
           "key": "id",
-          "statePath": "/ui/data/completed"
+          "statePath": "/ui/board/rows"
         },
-        "type": "Stack"
-      },
-      "div0": {
-        "props": {},
-        "type": "Divider"
-      },
-      "eyebrow": {
-        "props": {
-          "text": "Asana"
-        },
-        "type": "Eyebrow"
-      },
-      "headerRow": {
-        "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/board/has_rows"
+        }
       },
       "loading": {
         "children": [
@@ -161,41 +409,23 @@
           "$state": "/_loading/asana.list_tasks"
         }
       },
-      "overdueContent": {
-        "children": [
-          "overdueEmpty",
-          "overdueList"
-        ],
+      "openInAsanaBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://app.asana.com/"
+            }
+          }
+        },
         "props": {
-          "gap": "sm"
+          "label": "Open in Asana",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
         },
-        "type": "Stack",
-        "visible": {
-          "$state": "/ui/tab/overdue"
-        }
-      },
-      "overdueEmpty": {
-        "props": {
-          "message": "No overdue tasks."
-        },
-        "type": "Empty",
-        "visible": {
-          "$state": "/ui/data/overdue/0",
-          "not": true
-        }
-      },
-      "overdueList": {
-        "children": [
-          "taskRow"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/ui/data/overdue"
-        },
-        "type": "Stack"
+        "type": "Button"
       },
       "sk1": {
         "props": {
@@ -218,179 +448,299 @@
         },
         "type": "Skeleton"
       },
-      "tabCompletedOff": {
-        "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/upcoming",
-                "value": false
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/overdue",
-                "value": false
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/completed",
-                "value": true
-              }
-            }
-          ]
-        },
-        "props": {
-          "label": "Completed",
-          "size": "sm",
-          "variant": "ghost"
-        },
-        "type": "Button",
-        "visible": {
-          "$state": "/ui/tab/completed",
-          "not": true
-        }
-      },
-      "tabCompletedOn": {
-        "props": {
-          "label": "Completed",
-          "size": "sm",
-          "variant": "primary"
-        },
-        "type": "Button",
-        "visible": {
-          "$state": "/ui/tab/completed"
-        }
-      },
-      "tabOverdueOff": {
-        "on": {
-          "click": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/upcoming",
-                "value": false
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/overdue",
-                "value": true
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/completed",
-                "value": false
-              }
-            }
-          ]
-        },
-        "props": {
-          "label": "Overdue",
-          "size": "sm",
-          "variant": "ghost"
-        },
-        "type": "Button",
-        "visible": {
-          "$state": "/ui/tab/overdue",
-          "not": true
-        }
-      },
-      "tabOverdueOn": {
-        "props": {
-          "label": "Overdue",
-          "size": "sm",
-          "variant": "primary"
-        },
-        "type": "Button",
-        "visible": {
-          "$state": "/ui/tab/overdue"
-        }
-      },
-      "tabRow": {
+      "tabCompleted": {
         "children": [
-          "tabUpcomingOn",
-          "tabUpcomingOff",
-          "tabOverdueOn",
-          "tabOverdueOff",
-          "tabCompletedOn",
-          "tabCompletedOff"
+          "tabCompletedStack"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/project",
+                "value": "All"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab",
+                "value": "completed"
+              }
+            }
+          ]
+        },
+        "props": {
+          "clickable": true,
+          "justify": "center",
+          "padded": true,
+          "selected": {
+            "$state": "/ui/board/tab_completed_selected"
+          }
+        },
+        "type": "Row"
+      },
+      "tabCompletedLabelOff": {
+        "props": {
+          "text": "Completed",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/tab_completed_selected",
+          "not": true
+        }
+      },
+      "tabCompletedLabelOn": {
+        "props": {
+          "text": "Completed",
+          "tone": "success",
+          "variant": "solid"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/tab_completed_selected"
+        }
+      },
+      "tabCompletedStack": {
+        "children": [
+          "tabCompletedValue",
+          "tabCompletedLabelOn",
+          "tabCompletedLabelOff"
         ],
         "props": {
+          "align": "center",
           "gap": "xs"
         },
-        "type": "Row",
-        "visible": {
-          "$state": "/_loading/asana.list_tasks",
-          "not": true
-        }
+        "type": "Stack"
       },
-      "tabUpcomingOff": {
+      "tabCompletedValue": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/board/completed_count"
+          }
+        },
+        "type": "Stat"
+      },
+      "tabOverdue": {
+        "children": [
+          "tabOverdueStack"
+        ],
         "on": {
           "click": [
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/tab/upcoming",
-                "value": true
+                "statePath": "/ui/project",
+                "value": "All"
               }
             },
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/tab/overdue",
-                "value": false
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/tab/completed",
-                "value": false
+                "statePath": "/ui/tab",
+                "value": "overdue"
               }
             }
           ]
         },
         "props": {
-          "label": "Upcoming",
-          "size": "sm",
-          "variant": "ghost"
+          "clickable": true,
+          "justify": "center",
+          "padded": true,
+          "selected": {
+            "$state": "/ui/board/tab_overdue_selected"
+          }
         },
-        "type": "Button",
+        "type": "Row"
+      },
+      "tabOverdueLabelOff": {
+        "props": {
+          "text": "Overdue",
+          "tone": "muted"
+        },
+        "type": "Caption",
         "visible": {
-          "$state": "/ui/tab/upcoming",
+          "$state": "/ui/board/tab_overdue_selected",
           "not": true
         }
       },
-      "tabUpcomingOn": {
+      "tabOverdueLabelOn": {
         "props": {
-          "label": "Upcoming",
-          "size": "sm",
-          "variant": "primary"
+          "text": "Overdue",
+          "tone": "destructive",
+          "variant": "solid"
         },
-        "type": "Button",
+        "type": "Badge",
         "visible": {
-          "$state": "/ui/tab/upcoming"
+          "$state": "/ui/board/tab_overdue_selected"
         }
       },
-      "taskCircle": {
+      "tabOverdueStack": {
+        "children": [
+          "tabOverdueValue",
+          "tabOverdueLabelOn",
+          "tabOverdueLabelOff"
+        ],
         "props": {
-          "name": "Circle",
-          "size": "sm",
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "tabOverdueValue": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/board/overdue_count"
+          }
+        },
+        "type": "Stat"
+      },
+      "tabUpcoming": {
+        "children": [
+          "tabUpcomingStack"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/project",
+                "value": "All"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/tab",
+                "value": "upcoming"
+              }
+            }
+          ]
+        },
+        "props": {
+          "clickable": true,
+          "justify": "center",
+          "padded": true,
+          "selected": {
+            "$state": "/ui/board/tab_upcoming_selected"
+          }
+        },
+        "type": "Row"
+      },
+      "tabUpcomingLabelOff": {
+        "props": {
+          "text": "Upcoming",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/tab_upcoming_selected",
+          "not": true
+        }
+      },
+      "tabUpcomingLabelOn": {
+        "props": {
+          "text": "Upcoming",
+          "tone": "info",
+          "variant": "solid"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/tab_upcoming_selected"
+        }
+      },
+      "tabUpcomingStack": {
+        "children": [
+          "tabUpcomingValue",
+          "tabUpcomingLabelOn",
+          "tabUpcomingLabelOff"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "tabUpcomingValue": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$state": "/ui/board/upcoming_count"
+          }
+        },
+        "type": "Stat"
+      },
+      "tabs": {
+        "children": [
+          "tabOverdue",
+          "tabUpcoming",
+          "tabCompleted"
+        ],
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "type": "Grid"
+      },
+      "taskCircle": {
+        "on": {
+          "click": [
+            {
+              "action": "asana.complete_task",
+              "params": {
+                "completed": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "complete_to"
+                    }
+                  }
+                },
+                "task_gid": {
+                  "$computed": "identity",
+                  "args": {
+                    "value": {
+                      "$item": "id"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "asana",
+                "tool": "list_tasks"
+              }
+            },
+            {
+              "action": "asana.list_tasks",
+              "params": {
+                "assignee": "me",
+                "completed_since": "$days_ago_30",
+                "limit": 100
+              }
+            }
+          ]
+        },
+        "props": {
+          "ariaLabel": {
+            "$item": "circle_label"
+          },
+          "icon": {
+            "$item": "circle_icon"
+          },
+          "size": "md",
           "tone": {
             "$item": "circle_tone"
           }
         },
-        "type": "Icon"
+        "type": "IconButton"
       },
-      "taskDueBadge": {
+      "taskDue": {
         "props": {
           "text": {
             "$item": "due_label"
@@ -400,44 +750,82 @@
           },
           "variant": "soft"
         },
-        "type": "Badge",
-        "visible": {
-          "$item": "due_label"
-        }
+        "type": "Badge"
       },
-      "taskInfo": {
+      "taskMain": {
         "children": [
           "taskTitle",
-          "taskProject"
+          "taskProjectRow"
         ],
         "props": {
-          "gap": "none",
+          "gap": "xs",
           "grow": true
         },
         "type": "Stack"
       },
       "taskProject": {
         "props": {
+          "size": "xs",
           "text": {
             "$item": "project_label"
           },
           "tone": "muted",
           "truncate": true
         },
-        "type": "Caption",
+        "type": "Text"
+      },
+      "taskProjectDot": {
+        "props": {
+          "size": "xs",
+          "tone": {
+            "$item": "project_tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "taskProjectRow": {
+        "children": [
+          "taskProjectDot",
+          "taskProject"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
         "visible": {
-          "$item": "project_label"
+          "$item": "show_project"
         }
       },
       "taskRow": {
         "children": [
           "taskCircle",
-          "taskInfo",
-          "taskDueBadge"
+          "taskMain",
+          "taskDue"
         ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "url"
+                  }
+                }
+              }
+            }
+          }
+        },
         "props": {
           "align": "center",
-          "gap": "sm"
+          "clickable": {
+            "$item": "has_url"
+          },
+          "gap": "sm",
+          "hover": true
         },
         "type": "Row"
       },
@@ -447,8 +835,11 @@
           "text": {
             "$item": "title"
           },
+          "tone": {
+            "$item": "title_tone"
+          },
           "truncate": true,
-          "weight": "semibold"
+          "weight": "medium"
         },
         "type": "Text"
       },
@@ -474,7 +865,7 @@
         "props": {
           "name": "SquareCheck",
           "size": "sm",
-          "tone": "info"
+          "tone": "brand"
         },
         "type": "Icon"
       },
@@ -485,42 +876,6 @@
         ],
         "props": {
           "gap": "none"
-        },
-        "type": "Stack"
-      },
-      "upcomingContent": {
-        "children": [
-          "upcomingEmpty",
-          "upcomingList"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "type": "Stack",
-        "visible": {
-          "$state": "/ui/tab/upcoming"
-        }
-      },
-      "upcomingEmpty": {
-        "props": {
-          "message": "No upcoming tasks."
-        },
-        "type": "Empty",
-        "visible": {
-          "$state": "/ui/data/upcoming/0",
-          "not": true
-        }
-      },
-      "upcomingList": {
-        "children": [
-          "taskRow"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/ui/data/upcoming"
         },
         "type": "Stack"
       }

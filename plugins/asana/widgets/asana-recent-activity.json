@@ -8,13 +8,13 @@
     "kind": "tool",
     "mcp": "asana",
     "params": {
-      "completed_since": "2026-01-01T00:00:00.000Z",
+      "completed_since": "$days_ago_30",
       "limit": 50,
       "project_gid": "1218344654321276"
     },
     "tool": "list_tasks"
   },
-  "description": "Recent completions and updates in one Asana project, with each task's assignee shown by name and colored initials avatar -- built to match a reference mockup as closely as this platform's components allow. Approximation: the Asana MCP gateway has no stories/events tool yet, so comments, status-column moves, and bulk-add events aren't shown, only real task-level fields (completed/completed_at, modified_at, assignee). Scoped to a single hardcoded project_gid (see dataProvider.params) since this platform has no per-installation widget config mechanism to let an installer pick their own project. The assignee shown is a proxy for who performed the row's action, not a confirmed per-action actor. The header icon is an approximation too: the system Icon component has no solid-fill background, so it can't reproduce the mockup's solid orange rounded-square badge -- only a tone-colored line icon.",
+  "description": "A grouped activity feed for one Asana project: completions and edits as dated cards, filterable by person and by action. Approximations, all re-confirmed live on 2026-11-11: the Asana MCP gateway has no stories/events tool, so comments, status-column moves and bulk-add events aren't available -- only real task fields (completed, modified_at, assignee). The person shown is the task's assignee, a proxy for the actor rather than a confirmed record of who acted, disclosed in the tile's own footnote. completed_at isn't in the response either, so modified_at stands in for the completion time. The project is a hardcoded project_gid (see dataProvider.params) because the platform has no per-installation widget config. The header icon is a tone-coloured line icon, not the reference design's solid orange badge, which the Icon component can't produce.",
   "id": "asana-recent-activity",
   "keywords": [
     "recent activity",
@@ -35,63 +35,31 @@
     },
     "preferred": {
       "colSpan": 5,
-      "rowSpan": 4
+      "rowSpan": 6
     }
   },
   "spec": {
     "elements": {
-      "activityAvatar": {
-        "props": {
-          "initials": {
-            "$item": "initials"
-          },
-          "size": "sm",
-          "tone": {
-            "$item": "avatar_tone"
-          }
-        },
-        "type": "Avatar"
-      },
-      "activityBody": {
+      "body": {
         "children": [
-          "activityTitle",
-          "activityTimestamp"
+          "loading",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "bubble": {
+        "children": [
+          "bubbleClick"
         ],
         "props": {
-          "gap": "none",
-          "grow": true
+          "variant": "muted"
         },
-        "type": "Stack"
+        "type": "Section"
       },
-      "activityList": {
+      "bubbleClick": {
         "children": [
-          "activityRowLink"
-        ],
-        "props": {
-          "gap": "xs",
-          "pt": "sm"
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/ui/rows"
-        },
-        "type": "Stack",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_tasks",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
-            }
-          ]
-        }
-      },
-      "activityRowLink": {
-        "children": [
-          "activityAvatar",
-          "activityBody"
+          "bubbleStack"
         ],
         "on": {
           "click": {
@@ -111,27 +79,25 @@
         },
         "props": {
           "align": "start",
-          "clickable": true,
-          "gap": "sm",
-          "hover": true
+          "clickable": {
+            "$item": "has_url"
+          },
+          "grow": true
         },
         "type": "Row"
       },
-      "activityTimestamp": {
+      "bubbleStack": {
+        "children": [
+          "line1Row",
+          "bubbleTitle"
+        ],
         "props": {
-          "text": {
-            "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$item": "activity_at"
-              }
-            }
-          },
-          "tone": "muted"
+          "gap": "xs",
+          "grow": true
         },
-        "type": "Caption"
+        "type": "Stack"
       },
-      "activityTitle": {
+      "bubbleTitle": {
         "props": {
           "size": "sm",
           "text": {
@@ -142,21 +108,13 @@
         },
         "type": "Text"
       },
-      "body": {
-        "children": [
-          "loading",
-          "empty",
-          "activityList",
-          "footerLabel"
-        ],
-        "props": {},
-        "type": "Body"
-      },
       "card": {
         "children": [
-          "headerRow",
-          "div0",
-          "body"
+          "header",
+          "body",
+          "footnote",
+          "footerDivider",
+          "footerRow"
         ],
         "props": {},
         "type": "Card",
@@ -165,12 +123,76 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/rows",
+                "statePath": "/ui/who",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/type",
+                "value": "all"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
                 "value": {
-                  "$computed": "asana_flatten_recent_activity",
+                  "$computed": "asana_flatten_activity_board",
                   "args": {
+                    "type": {
+                      "$state": "/ui/type"
+                    },
                     "value": {
                       "$state": "/asana/list_tasks/data"
+                    },
+                    "who": {
+                      "$state": "/ui/who"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/type": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_activity_board",
+                  "args": {
+                    "type": {
+                      "$state": "/ui/type"
+                    },
+                    "value": {
+                      "$state": "/asana/list_tasks/data"
+                    },
+                    "who": {
+                      "$state": "/ui/who"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/who": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_activity_board",
+                  "args": {
+                    "type": {
+                      "$state": "/ui/type"
+                    },
+                    "value": {
+                      "$state": "/asana/list_tasks/data"
+                    },
+                    "who": {
+                      "$state": "/ui/who"
                     }
                   }
                 }
@@ -179,27 +201,143 @@
           ]
         }
       },
-      "div0": {
-        "props": {},
-        "type": "Divider"
+      "chipItem": {
+        "children": [
+          "chipOn",
+          "chipOff"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/type",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "type"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "chipOff": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "outline"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected",
+          "not": true
+        }
+      },
+      "chipOn": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected"
+        }
+      },
+      "chipsRow": {
+        "children": [
+          "chipItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/chips"
+        },
+        "type": "Row"
+      },
+      "content": {
+        "children": [
+          "empty",
+          "controlsRow",
+          "feed"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_tasks",
+          "not": true
+        }
+      },
+      "controlsRow": {
+        "children": [
+          "peopleGroup",
+          "chipsRow"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/has_events"
+        }
       },
       "empty": {
         "props": {
-          "message": "No recent activity in this project."
+          "message": {
+            "$state": "/ui/board/empty_message"
+          }
         },
         "type": "Empty",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_tasks",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0",
-              "not": true
-            }
-          ]
+          "$state": "/ui/board/has_events",
+          "not": true
         }
+      },
+      "eventAvatar": {
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "size": "sm",
+          "tone": {
+            "$item": "avatar_tone"
+          }
+        },
+        "type": "Avatar"
+      },
+      "eventRow": {
+        "children": [
+          "eventAvatar",
+          "bubble"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm",
+          "template": "auto minmax(0, 1fr)"
+        },
+        "type": "Row"
       },
       "eyebrow": {
         "props": {
@@ -207,30 +345,172 @@
         },
         "type": "Eyebrow"
       },
-      "footerLabel": {
-        "props": {
-          "text": "Shows completions and edits in this project, by assignee — comments and status-column moves aren't available yet.",
-          "tone": "muted"
-        },
-        "type": "Caption",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_tasks",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
-            }
-          ]
-        }
-      },
-      "headerRow": {
+      "eyebrowRow": {
         "children": [
-          "titleGroup"
+          "eyebrow",
+          "projectBadge"
         ],
         "props": {
           "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "feed": {
+        "children": [
+          "groupHeader",
+          "eventRow"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/board/has_rows"
+        }
+      },
+      "footerDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "footerLabel": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footer_label"
+          }
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/has_events"
+        }
+      },
+      "footerRow": {
+        "children": [
+          "footerLabel",
+          "openProjectBtn"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "footnote": {
+        "children": [
+          "footnoteRow"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/ui/board/has_events"
+        }
+      },
+      "footnoteIcon": {
+        "props": {
+          "name": "Info",
+          "size": "xs",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "footnoteRow": {
+        "children": [
+          "footnoteIcon",
+          "footnoteWrap"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "footnoteText": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footnote"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "footnoteWrap": {
+        "children": [
+          "footnoteText"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "groupDot": {
+        "props": {
+          "size": "xs",
+          "tone": {
+            "$item": "group_tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "groupHeader": {
+        "children": [
+          "groupDot",
+          "groupLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$item": "show_group"
+        }
+      },
+      "groupLabel": {
+        "props": {
+          "text": {
+            "$item": "group_label"
+          },
+          "tone": {
+            "$item": "group_tone"
+          }
+        },
+        "type": "Caption"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "line1Left": {
+        "children": [
+          "nameText",
+          "verbBadge",
+          "newBadge"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "line1Row": {
+        "children": [
+          "line1Left",
+          "timeCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
           "justify": "between"
         },
         "type": "Row"
@@ -247,6 +527,131 @@
         "type": "Stack",
         "visible": {
           "$state": "/_loading/asana.list_tasks"
+        }
+      },
+      "nameText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "name_label"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "newBadge": {
+        "props": {
+          "text": "NEW",
+          "tone": "brand",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "is_new"
+        }
+      },
+      "openProjectBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/board/project_url"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Open project",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "peopleGroup": {
+        "children": [
+          "peopleRow",
+          "whoClear"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "peopleRow": {
+        "children": [
+          "personItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/people"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/show_people"
+        }
+      },
+      "personAvatar": {
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Avatar"
+      },
+      "personItem": {
+        "children": [
+          "personAvatar"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/who",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "click_value"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "projectBadge": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/project_name"
+          },
+          "tone": "brand",
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/show_project"
         }
       },
       "sk1": {
@@ -269,6 +674,15 @@
           "rounded": "md"
         },
         "type": "Skeleton"
+      },
+      "timeCaption": {
+        "props": {
+          "text": {
+            "$item": "time_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
       "title": {
         "props": {
@@ -299,12 +713,56 @@
       "titleStack": {
         "children": [
           "title",
-          "eyebrow"
+          "eyebrowRow"
         ],
         "props": {
           "gap": "none"
         },
         "type": "Stack"
+      },
+      "verbBadge": {
+        "props": {
+          "text": {
+            "$item": "verb_label"
+          },
+          "tone": {
+            "$item": "verb_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "whoClear": {
+        "children": [
+          "whoClearBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/who",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/show_who"
+        }
+      },
+      "whoClearBadge": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/who_label"
+          },
+          "tone": "brand",
+          "variant": "soft"
+        },
+        "type": "Badge"
       }
     },
     "root": "card"
