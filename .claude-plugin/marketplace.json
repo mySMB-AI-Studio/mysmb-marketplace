@@ -4170,6 +4170,97 @@
       "version": "0.0.1",
       "displayName": "Order Desk",
       "source": "./plugins/order-desk"
+    },
+    {
+      "name": "xero-official",
+      "version": "0.0.1",
+      "displayName": "Xero Official",
+      "description": "Connect Workspace to Xero's official hosted MCP server. Read your organisation settings, invoices and the aged receivables/payables, balance sheet and profit and loss reports. Sign in with your Xero login; no Xero developer app needed.",
+      "author": {
+        "name": "mySMB AI Studio"
+      },
+      "homepage": "https://github.com/mySMB-AI-Studio/mysmb-marketplace/tree/main/plugins/xero-official",
+      "license": "MIT",
+      "category": "finance",
+      "keywords": [
+        "xero",
+        "accounting",
+        "invoices",
+        "financial-reports",
+        "oauth",
+        "smb",
+        "official"
+      ],
+      "tags": [],
+      "icon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
+      "branding": {
+        "logo": "assets/logo.svg",
+        "color": "#13B5EA",
+        "tagline": "Xero's own hosted MCP server, one-click sign-in"
+      },
+      "listing": {
+        "longDescription": "**Xero Official** connects Workspace to Xero's own hosted MCP server at `mcp.xero.com`, so Claude can read your Xero data directly from Xero.\n\nClick **Connect**, sign in with your Xero login and choose which organisations to share. mySMB's registered Xero app handles the sign-in, so you never need to create an app in the Xero developer portal.\n\nThe hosted server is **read-only**: it can read organisation settings, invoices, and the aged receivables and payables, balance sheet and profit and loss reports. It cannot create or change anything in Xero. For write access, use the **Xero Accounting** extension.",
+        "highlights": [
+          "Xero's own hosted MCP server",
+          "One-click Connect, no Xero developer app needed",
+          "Invoices, aged receivables and payables, balance sheet, P&L",
+          "Read-only: nothing in Xero is changed"
+        ],
+        "publisher": {
+          "name": "mySMB AI Studio",
+          "url": "https://mysmb.com"
+        },
+        "support": {
+          "url": "https://developer.xero.com/",
+          "privacyUrl": "https://www.xero.com/legal/privacy/"
+        }
+      },
+      "connection": {
+        "authType": "oauth_client",
+        "instructions": "Click Connect and sign in with your Xero login, then choose the organisations to share. If your workspace has not been set up with mySMB's Xero app yet, register an app in the Xero developer portal, add the redirect URL shown above, and paste its Client ID and Secret below.",
+        "docUrl": "https://developer.xero.com/documentation/guides/oauth2/auth-flow/",
+        "scopes": [
+          "openid",
+          "profile",
+          "email",
+          "offline_access",
+          "accounting.settings",
+          "accounting.invoices.read",
+          "accounting.reports.aged.read",
+          "accounting.reports.balancesheet.read",
+          "accounting.reports.profitandloss.read"
+        ],
+        "serverClientEnv": {
+          "clientId": "XERO_MCP_OAUTH_CLIENT_ID",
+          "clientSecret": "XERO_MCP_OAUTH_CLIENT_SECRET"
+        },
+        "fields": [
+          {
+            "name": "OAUTH_CLIENT_ID",
+            "label": "Client ID",
+            "type": "text",
+            "required": true,
+            "role": "client_id",
+            "helpText": "From your Xero app in the Xero developer portal (My Apps)."
+          },
+          {
+            "name": "OAUTH_CLIENT_SECRET",
+            "label": "Client Secret",
+            "type": "password",
+            "required": true,
+            "role": "client_secret",
+            "helpText": "Generate one under your Xero app's configuration. Stored encrypted, per user."
+          }
+        ]
+      },
+      "content": {
+        "agents": [],
+        "automations": [],
+        "formTemplates": [],
+        "forms": [],
+        "workqTemplates": []
+      },
+      "source": "./plugins/xero-official"
     }
   ]
 }
