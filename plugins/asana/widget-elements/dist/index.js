@@ -246,7 +246,7 @@ function daysBetween(to, from) {
 /**
  * Non-status colours for the projects on screen, assigned by position so the
  * visible set is always distinct. Hashing the name (the technique
- * `flatten_recent_activity` uses for people) is stable across refreshes but
+ * `flatten_activity_board` uses for people) is stable across refreshes but
  * collides: three projects in one view can land on the same `chart-*` tone,
  * which defeats the whole point of colouring them. Positional assignment over
  * a deterministic ordering keeps a project's colour stable for as long as the
@@ -973,124 +973,255 @@ function formatPersonName(rawName) {
         : fullName.slice(0, 2)).toUpperCase();
     return { displayName, initials };
 }
+// ── Recent Activity board ────────────────────────────────────────────────────
+// `flatten_activity_board` is the single helper behind the Recent Activity
+// tile. Same one-pass shape as the other three boards: filter, sort, group and
+// label in one go, because a tile spec can only repeat over a flat array.
+//
+// It carries forward every caveat `flatten_recent_activity` documented, all of
+// them re-confirmed against the live workspace on 2026-11-11:
+//
+//  - THIS IS NOT A REAL ACTIVITY STREAM. The Asana MCP gateway has no
+//    stories/events tool, so comments, status-column moves and "added N tasks"
+//    events don't exist here. Activity is derived from task fields that ARE
+//    real: `completed`, `modified_at`, `created_at` and `assignee`.
+//  - THE ACTOR IS A PROXY. `assignee` is who the task belongs to, not a
+//    confirmed record of who completed or edited it — nothing in this gateway
+//    can say that. Disclosed in the tile's own footnote, not just here.
+//  - `completed_at` IS NOT RETURNED. The live response carries exactly gid,
+//    assignee, completed, created_at, due_on, modified_at, name, notes,
+//    permalink_url, projects, resource_subtype, workspace. The previous helper
+//    read `completed_at` and silently fell through to `modified_at` every
+//    time; this one reads `modified_at` directly and says so. Completing a
+//    task does modify it, so the two agree unless the task is edited again
+//    afterwards. Adding `completed_at` to TASK_OPT_FIELDS in
+//    myhub-mcp-servers would make it exact -- a different repo.
+//  - ONE HARDCODED PROJECT. `dataProvider.params.project_gid` is fixed because
+//    the platform has no per-installation widget config. Pointing the tile at
+//    another project means editing that value.
+const MONTH_FULL = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+];
+const ACTIVITY_TYPES = ['completed', 'updated'];
+const ACTIVITY_TONE = {
+    completed: 'success',
+    // Orange, from the tile's own `brandColor` -- an edit isn't a status, so it
+    // gets the connector's accent rather than warning/destructive.
+    updated: 'brand',
+};
+const ACTIVITY_CHIP = {
+    completed: 'Done',
+    updated: 'Updated',
+};
+/** Newest first, so index 0 is the most recent event everywhere below. */
+const MAX_ACTIVITY_ROWS = 20;
+/** "just now" / "5h ago" / "3d ago", then dd-Mmm-yy past a week.
+ *  Relative reads better for a feed, but anything older than a few days is
+ *  more useful as a real date -- and TILE-DISPLAY-STANDARDS fixes that format. */
+function activityTimeLabel(atMs, nowMs) {
+    const diff = nowMs - atMs;
+    if (!Number.isFinite(diff) || diff < 0)
+        return '';
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 1)
+        return 'just now';
+    if (hours < 24)
+        return `${hours}h ago`;
+    const days = Math.floor(diff / 86400000);
+    if (days < 7)
+        return `${days}d ago`;
+    const d = new Date(atMs);
+    return `${pad2(d.getDate())}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(2)}`;
+}
+/** TODAY / YESTERDAY / SEPTEMBER 2026. Upper-cased here because `Caption` has
+ *  no transform prop and plugin elements cannot ship CSS. */
+function activityGroupOf(atMs, now) {
+    const d = new Date(atMs);
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const daysBack = Math.round((startOfToday - startOfDay) / 86400000);
+    if (daysBack <= 0)
+        return { label: 'TODAY', today: true };
+    if (daysBack === 1)
+        return { label: 'YESTERDAY', today: false };
+    return { label: `${MONTH_FULL[d.getMonth()]} ${d.getFullYear()}`.toUpperCase(), today: false };
+}
 /**
- * Flattens a list_tasks response (project_gid-scoped) into rows for the
- * Recent Activity tile.
+ * Builds the whole Recent Activity board from one project-scoped `list_tasks`
+ * response: the people filter, the action filter with its counts, and the
+ * grouped feed for whichever filters are selected.
  *
- * Approximation, not a true activity feed: the Asana MCP gateway has no
- * stories/events tool (no per-task comments, status-column moves, or
- * "added N tasks" grouping) as of 2026-09-15 -- only list_tasks, get_task,
- * list_projects, get_project, list_sections, list_users, get_team_workload,
- * list_milestones, plus the write tools. This derives "activity" purely from
- * task fields that ARE real: `completed`/`completed_at`, `modified_at`, and
- * `assignee` (a real compact-user field, live-confirmed 2026-09-15).
+ * Args: { value: array, type?: string, who?: string }
+ *   value -- `list_tasks`' `data` array, project_gid-scoped.
+ *   type  -- 'all' (default) | 'completed' | 'updated'.
+ *   who   -- an assignee's raw name, or '' / absent for everyone.
  *
- * Scoping history (this function has flip-flopped on user request while
- * chasing a reference mockup -- kept here so a future session doesn't
- * re-derive it from scratch):
- * 1. `assignee: "me"`, no name shown -- every row was implicitly "you".
- * 2. `created_by` instead -- confirmed via a live captured list_tasks
- *    response that this gateway never returns that field, even though it's
- *    a real Asana Task field. Dead end.
- * 3. `project_gid`-scoped + `assignee` -- live-confirmed varied real names,
- *    but only one project's worth of activity.
- * 4. Reverted to (1) on user request (multi-project breadth over names).
- * 5. THIS version: back to (3) on user request ("match the mockup as
- *    closely as possible" -- the mockup's whole visual identity is
- *    per-row colored-initial avatars with varied names, which is only
- *    achievable scoped to one project). `assignee` is still a proxy, not a
- *    confirmed per-action actor (no stories tool exists to say who actually
- *    clicked "complete" or edited a field) -- disclosed in the tile's
- *    footer. Pointing this at a different project means editing
- *    dataProvider.params.project_gid directly -- no per-installation
- *    config mechanism exists on this platform (checked CREATING_PLUGINS.md).
+ * The two filters are faceted: the action counts describe whoever is selected
+ * in the people row, so the chips always add up to what the feed can show.
  *
- * Deliberately NOT done, even in the name of mockup fidelity: fabricating
- * "commented on", "moved ... Done", or "added N tasks to" text. Those need
- * a stories/events tool this gateway doesn't have -- inventing them would
- * misrepresent real task data as activity that didn't happen.
- *
- * Row 0 carries footer_label: "N recent items".
- * Each row has: id, title (`F. Lastname completed "X"` / `... updated "X"`,
- * or plain `Completed "X"` / `Updated "X"` if a task somehow has no
- * assignee), initials ('' if no assignee -- Avatar falls back to a neutral
- * "·" glyph), avatar_tone (chart-1..5, deterministic per person; 'muted' if
- * no assignee), activity_at (ISO timestamp used for sort + relative_time,
- * rendered BELOW the title as a Caption -- hand-rolled instead of
- * ActivityItem specifically so the timestamp sits on its own line rather
- * than ActivityItem's fixed right-hand column, which was getting clipped
- * off-screen on longer titles at this tile's width), url (task deep link,
- * '' if not derivable).
- *
- * `url` prefers the task's own `permalink_url` (a real API field, same as
- * `flatten_projects` trusts for projects); if list_tasks doesn't return it
- * for this task, falls back to the client-built legacy deep link
- * `https://app.asana.com/0/{project_gid}/{gid}` the same way
- * `flatten_milestones` does above -- NOT sandbox-confirmed by actually
- * clicking it, same caveat as that fallback.
- *
- * Args: { value: array } -- list_tasks' `data` array, called with
- * completed_since far enough in the past to include completed tasks too
- * (see asana-my-tasks' tabs redesign for the same technique).
+ * Returns ONE object at `/ui/board`.
  */
-const flatten_recent_activity = (args) => {
+const flatten_activity_board = (args) => {
     const raw = Array.isArray(args.value) ? args.value : [];
-    if (raw.length === 0)
-        return [];
-    const rows = raw.map((task) => {
+    const now = new Date();
+    const nowMs = now.getTime();
+    const events = [];
+    for (const task of raw) {
         const id = String(task.gid ?? task.id ?? '');
-        const title = String(task.name ?? '');
         const isCompleted = Boolean(task.completed);
-        const completedAt = task.completed_at ? String(task.completed_at) : null;
-        const modifiedAt = task.modified_at ? String(task.modified_at) : null;
-        const createdAt = task.created_at ? String(task.created_at) : null;
-        const activityAt = (isCompleted && completedAt) ? completedAt : (modifiedAt ?? createdAt ?? '');
-        const memberships = Array.isArray(task.memberships) ? task.memberships : [];
+        // See the header note: `completed_at` is not in the response, so the
+        // modification time stands in for the completion time.
+        const at = String(task.modified_at ?? task.created_at ?? '');
+        const atMs = Date.parse(at);
+        if (!Number.isFinite(atMs))
+            continue;
+        const assignee = (task.assignee ?? null);
+        const person = assignee?.name ? String(assignee.name) : '';
+        const { displayName, initials } = formatPersonName(person);
         const projects = Array.isArray(task.projects) ? task.projects : [];
-        let projectGid = '';
-        if (memberships.length > 0) {
-            const proj = memberships[0].project;
-            if (proj)
-                projectGid = String(proj.gid ?? '');
-        }
-        else if (projects.length > 0) {
-            projectGid = String(projects[0].gid ?? '');
-        }
-        const permalinkUrl = task.permalink_url ? String(task.permalink_url) : '';
-        const url = permalinkUrl || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '');
-        const assignee = task.assignee;
-        const rawAssigneeName = assignee?.name ? String(assignee.name) : '';
-        const { displayName, initials } = formatPersonName(rawAssigneeName);
-        const verb = isCompleted ? 'completed' : 'updated';
-        const titleText = displayName ? `${displayName} ${verb} "${title}"` : `${verb[0].toUpperCase()}${verb.slice(1)} "${title}"`;
-        // Deterministic per-person color, not a status tone (nothing here
-        // represents state) -- per TILE-DISPLAY-STANDARDS.md §7's "Categorical
-        // (multi-color, non-status) breakdowns" guidance, this is exactly the
-        // chart-1..5 use case: coloring several arbitrary category labels (here,
-        // people) distinctly, where no single accent or status tone fits any
-        // one of them. Hashing the raw name (not initials) keeps two different
-        // people who happen to share initials from also sharing a color.
-        const CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
-        let hash = 0;
-        for (let i = 0; i < rawAssigneeName.length; i++)
-            hash = (hash * 31 + rawAssigneeName.charCodeAt(i)) >>> 0;
-        const avatarTone = rawAssigneeName ? CHART_TONES[hash % CHART_TONES.length] : 'muted';
-        return {
+        const projectGid = projects.length > 0 ? String(projects[0].gid ?? '') : '';
+        const permalink = task.permalink_url ? String(task.permalink_url) : '';
+        events.push({
             id,
-            title: titleText,
+            title: String(task.name ?? ''),
+            person,
+            display_name: displayName,
             initials,
-            avatar_tone: avatarTone,
-            activity_at: activityAt,
-            url,
-            footer_label: '',
+            type: isCompleted ? 'completed' : 'updated',
+            at,
+            at_ms: atMs,
+            url: permalink || (id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : ''),
+        });
+    }
+    events.sort((a, b) => b.at_ms - a.at_ms);
+    const recent = events.slice(0, MAX_ACTIVITY_ROWS);
+    // People, in order of their most recent event -- `recent` is already sorted,
+    // so first-seen is most-recently-active. Positional chart tones for the same
+    // reason as `toneMapFor`: hashing a name is stable but collides, and two
+    // people sharing a colour defeats the avatars entirely.
+    const peopleOrder = [];
+    for (const event of recent) {
+        if (event.person && !peopleOrder.includes(event.person))
+            peopleOrder.push(event.person);
+    }
+    const personTones = toneMapFor(peopleOrder);
+    const requestedWho = String(args.who ?? '');
+    const who = peopleOrder.includes(requestedWho) ? requestedWho : '';
+    const byPerson = who ? recent.filter((event) => event.person === who) : recent;
+    const counts = { completed: 0, updated: 0 };
+    for (const event of byPerson)
+        counts[event.type]++;
+    // A filter nothing matches would strand the user on an empty feed.
+    const requestedType = String(args.type ?? 'all');
+    const type = ACTIVITY_TYPES.includes(requestedType) &&
+        counts[requestedType] > 0
+        ? requestedType
+        : 'all';
+    const visible = type === 'all' ? byPerson : byPerson.filter((event) => event.type === type);
+    const whoLabel = who ? formatPersonName(who).displayName : '';
+    const people = peopleOrder.map((person) => {
+        const selected = person === who;
+        const { displayName, initials } = formatPersonName(person);
+        return {
+            id: person,
+            initials,
+            label: displayName,
+            selected,
+            // Everyone keeps their colour until someone is picked, then the rest go
+            // muted -- the reference design's "dim the others" behaviour, which is
+            // also the only selection signal `Avatar` can carry (it takes initials,
+            // tone and size, and nothing else).
+            tone: !who || selected ? personTones.get(person) ?? 'muted' : 'muted',
+            /** Clicking the selected person clears the filter. */
+            click_value: selected ? '' : person,
         };
     });
-    rows.sort((a, b) => (Date.parse(b.activity_at) || 0) - (Date.parse(a.activity_at) || 0));
-    const top = rows.slice(0, 20);
-    const total = top.length;
-    if (total > 0)
-        top[0].footer_label = `${total} recent item${total === 1 ? '' : 's'}`;
-    return top;
+    const chips = [
+        {
+            id: 'all',
+            type: 'all',
+            chip_text: `All  ${byPerson.length}`,
+            tone: 'default',
+            selected: type === 'all',
+        },
+        ...ACTIVITY_TYPES.filter((key) => counts[key] > 0).map((key) => ({
+            id: key,
+            type: key,
+            chip_text: `${ACTIVITY_CHIP[key]}  ${counts[key]}`,
+            tone: ACTIVITY_TONE[key],
+            selected: type === key,
+        })),
+    ];
+    let lastGroup = '';
+    const rows = visible.map((event) => {
+        const group = activityGroupOf(event.at_ms, now);
+        const isNewGroup = group.label !== lastGroup;
+        lastGroup = group.label;
+        return {
+            id: event.id,
+            title: event.title,
+            initials: event.initials,
+            avatar_tone: event.person ? personTones.get(event.person) ?? 'muted' : 'muted',
+            name_label: event.display_name || 'Unassigned',
+            verb_label: event.type === 'completed' ? 'completed' : 'updated',
+            verb_tone: ACTIVITY_TONE[event.type],
+            /** Flagged in the feed for a day, same window as the "just now"/"Nh ago"
+             *  labels, so "NEW" and the timestamp never disagree. */
+            is_new: nowMs - event.at_ms < 86400000,
+            time_label: activityTimeLabel(event.at_ms, nowMs),
+            url: event.url,
+            has_url: Boolean(event.url),
+            show_group: isNewGroup,
+            group_label: group.label,
+            group_tone: group.today ? 'brand' : 'muted',
+        };
+    });
+    const firstProject = raw.find((task) => {
+        const projects = Array.isArray(task.projects) ? task.projects : [];
+        return projects.length > 0;
+    });
+    const projectEntry = firstProject
+        ? (firstProject.projects[0] ?? null)
+        : null;
+    const projectName = projectEntry ? String(projectEntry.name ?? '') : '';
+    const projectGid = projectEntry ? String(projectEntry.gid ?? '') : '';
+    // The task permalink is `.../project/<gid>/task/<gid>`, so the project's own
+    // page is that URL with the task segment removed -- derived from a real API
+    // value rather than hand-built, the same preference `flatten_projects` has.
+    const sampleUrl = recent.find((event) => event.url.includes('/task/'))?.url ?? '';
+    const projectUrl = sampleUrl
+        ? sampleUrl.slice(0, sampleUrl.indexOf('/task/'))
+        : projectGid
+            ? `https://app.asana.com/0/${projectGid}`
+            : 'https://app.asana.com/';
+    return {
+        project_name: projectName,
+        show_project: Boolean(projectName),
+        project_url: projectUrl,
+        has_events: recent.length > 0,
+        people,
+        show_people: people.length > 1,
+        // A named chip beside the avatars, shown only while a person is picked.
+        // The avatars carry selection by colour alone (`Avatar` takes initials,
+        // tone and size and nothing else), and those colours are `chart-*` --
+        // categorical tones that a platform build without them renders as bare
+        // initials, which would leave the filter with no visible state at all.
+        // This chip is a semantic tone, so it renders everywhere, and it doubles
+        // as the obvious way to clear the filter.
+        who_label: whoLabel,
+        show_who: Boolean(who),
+        chips,
+        show_chips: chips.length > 1,
+        type,
+        rows,
+        has_rows: rows.length > 0,
+        empty_message: 'No activity matches these filters.',
+        footnote: 'Completions and edits only, attributed to each task’s assignee — Asana’s activity stream (comments, column moves) isn’t available to this connector.',
+        footer_label: rows.length === recent.length
+            ? `${recent.length} recent item${recent.length === 1 ? '' : 's'}`
+            : `${rows.length} of ${recent.length}${whoLabel ? ` · ${whoLabel}` : ''}${type === 'all' ? '' : ` · ${ACTIVITY_CHIP[type]}`}`,
+    };
 };
 const elements = {
     slug: 'asana',
@@ -1103,7 +1234,7 @@ const elements = {
         flatten_team_workload,
         flatten_my_tasks_board,
         flatten_milestones,
-        flatten_recent_activity,
+        flatten_activity_board,
     },
 };
 export default elements;
