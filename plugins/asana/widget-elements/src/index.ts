@@ -310,9 +310,26 @@ const flatten_overdue_tasks: ComputedFunction = (args) => {
 
 const CATEGORY_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'] as const;
 
-/** Project chips shown before the list. More than this and the Row overflows:
- *  the system has no horizontally-scrolling container. */
-const MAX_PROJECT_CHIPS = 5;
+/**
+ * Project chips shown before the list, excluding the "All" chip.
+ *
+ * Three, because the chips live in a flex `Row` and `Badge` is `shrink-0`:
+ * past about four pills the row cannot fit them and they overflow the card
+ * instead of wrapping or scrolling. The system has no horizontally-scrolling
+ * container and `Row` has no wrap, so this cap IS the layout. Measured at
+ * the tile's 5-column preferred width.
+ */
+const MAX_PROJECT_CHIPS = 3;
+
+/** Longest project name a chip shows before eliding -- same reason as above.
+ *  The full name is still on every row underneath. */
+const CHIP_LABEL_MAX = 11;
+
+function elide(label: string): string {
+  return label.length > CHIP_LABEL_MAX
+    ? `${label.slice(0, CHIP_LABEL_MAX - 1).trimEnd()}…`
+    : label;
+}
 
 const TAB_KEYS = ['overdue', 'upcoming', 'completed'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -528,6 +545,12 @@ const flatten_my_tasks_board: ComputedFunction = (args) => {
     id: label,
     label,
     count,
+    // One string, because the chip is a single Badge: it is the only system
+    // primitive that renders a true pill (rounded-full), and a Badge styles
+    // its `text` as a whole. Composing dot + label + count as Badge children
+    // instead would let each child's own tone class fight the solid pill's
+    // white text on the selected chip.
+    chip_text: `${elide(label)}  ${count}`,
     tone: projectTones.get(label) ?? 'muted',
     selected: label === project,
   }));
@@ -569,7 +592,10 @@ const flatten_my_tasks_board: ComputedFunction = (args) => {
       url: task.url,
       has_url: Boolean(task.url),
       show_group: isNewGroup,
-      group_label: group.label,
+      // Upper-cased here rather than by a CSS class: `Caption` has no
+      // transform prop and plugin elements can't ship CSS (composites are
+      // JSON sub-specs over system primitives only).
+      group_label: group.label.toUpperCase(),
       group_tone: group.tone,
       group_count: groupSizes.get(group.label) ?? 1,
     };
@@ -594,6 +620,7 @@ const flatten_my_tasks_board: ComputedFunction = (args) => {
     show_projects: chips.length > 1,
     all_selected: activeProject === 'All',
     all_count: total,
+    all_text: `All  ${total}`,
     rows,
     has_rows: rows.length > 0,
     empty_message:

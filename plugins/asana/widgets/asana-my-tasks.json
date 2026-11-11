@@ -44,10 +44,7 @@
       "body": {
         "children": [
           "loading",
-          "tabs",
-          "chipsRow",
-          "empty",
-          "list"
+          "content"
         ],
         "props": {},
         "type": "Body"
@@ -146,8 +143,8 @@
       },
       "chipAll": {
         "children": [
-          "chipAllLabel",
-          "chipAllCount"
+          "chipAllOn",
+          "chipAllOff"
         ],
         "on": {
           "click": {
@@ -160,65 +157,86 @@
         },
         "props": {
           "align": "center",
-          "clickable": true,
-          "gap": "xs",
-          "padded": true,
-          "selected": {
-            "$state": "/ui/board/all_selected"
-          }
+          "clickable": true
         },
         "type": "Row"
       },
-      "chipAllCount": {
+      "chipAllOff": {
         "props": {
           "text": {
-            "$state": "/ui/board/all_count"
+            "$state": "/ui/board/all_text"
           },
-          "tone": "muted"
+          "tone": "muted",
+          "variant": "outline"
         },
-        "type": "Caption"
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/all_selected",
+          "not": true
+        }
       },
-      "chipAllLabel": {
-        "props": {
-          "text": "All",
-          "weight": "medium"
-        },
-        "type": "Caption"
-      },
-      "chipCount": {
+      "chipAllOn": {
         "props": {
           "text": {
-            "$item": "count"
+            "$state": "/ui/board/all_text"
           },
-          "tone": "muted"
+          "tone": "accent",
+          "variant": "solid"
         },
-        "type": "Caption"
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/all_selected"
+        }
       },
-      "chipDot": {
+      "chipBadgeOff": {
         "props": {
-          "size": "xs",
+          "text": {
+            "$item": "chip_text"
+          },
           "tone": {
             "$item": "tone"
-          }
-        },
-        "type": "Dot"
-      },
-      "chipLabel": {
-        "props": {
-          "size": "xs",
-          "text": {
-            "$item": "label"
           },
-          "truncate": true,
-          "weight": "medium"
+          "variant": "outline"
         },
-        "type": "Text"
+        "type": "Badge",
+        "visible": {
+          "$item": "selected",
+          "not": true
+        }
+      },
+      "chipBadgeOn": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "solid"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected"
+        }
+      },
+      "chipList": {
+        "children": [
+          "chipProject"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/projects"
+        },
+        "type": "Row"
       },
       "chipProject": {
         "children": [
-          "chipDot",
-          "chipLabel",
-          "chipCount"
+          "chipBadgeOn",
+          "chipBadgeOff"
         ],
         "on": {
           "click": {
@@ -238,31 +256,38 @@
         },
         "props": {
           "align": "center",
-          "clickable": true,
-          "gap": "xs",
-          "padded": true,
-          "selected": {
-            "$item": "selected"
-          }
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/ui/board/projects"
+          "clickable": true
         },
         "type": "Row"
       },
       "chipsRow": {
         "children": [
           "chipAll",
-          "chipProject"
+          "chipList"
         ],
         "props": {
           "align": "center",
-          "gap": "xs"
+          "gap": "sm"
         },
         "type": "Row",
         "visible": {
           "$state": "/ui/board/show_projects"
+        }
+      },
+      "content": {
+        "children": [
+          "tabs",
+          "chipsRow",
+          "empty",
+          "list"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_tasks",
+          "not": true
         }
       },
       "empty": {
@@ -273,16 +298,8 @@
         },
         "type": "Empty",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_tasks",
-              "not": true
-            },
-            {
-              "$state": "/ui/board/has_rows",
-              "not": true
-            }
-          ]
+          "$state": "/ui/board/has_rows",
+          "not": true
         }
       },
       "eyebrow": {
@@ -367,7 +384,7 @@
           "taskRow"
         ],
         "props": {
-          "gap": "xs"
+          "gap": "sm"
         },
         "repeat": {
           "key": "id",
@@ -375,15 +392,7 @@
         },
         "type": "Stack",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_tasks",
-              "not": true
-            },
-            {
-              "$state": "/ui/board/has_rows"
-            }
-          ]
+          "$state": "/ui/board/has_rows"
         }
       },
       "loading": {
@@ -411,7 +420,7 @@
           }
         },
         "props": {
-          "label": "Open Asana",
+          "label": "Open in Asana",
           "size": "sm",
           "tone": "brand",
           "variant": "primary"
@@ -471,28 +480,43 @@
         },
         "type": "Row"
       },
-      "tabCompletedLabel": {
+      "tabCompletedLabelOff": {
+        "props": {
+          "text": "Completed",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/tab_completed_selected",
+          "not": true
+        }
+      },
+      "tabCompletedLabelOn": {
         "props": {
           "text": "Completed",
           "tone": "success",
-          "weight": "medium"
+          "variant": "solid"
         },
-        "type": "Caption"
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/tab_completed_selected"
+        }
       },
       "tabCompletedStack": {
         "children": [
           "tabCompletedValue",
-          "tabCompletedLabel"
+          "tabCompletedLabelOn",
+          "tabCompletedLabelOff"
         ],
         "props": {
           "align": "center",
-          "gap": "none"
+          "gap": "xs"
         },
         "type": "Stack"
       },
       "tabCompletedValue": {
         "props": {
-          "size": "sm",
+          "size": "md",
           "value": {
             "$state": "/ui/board/completed_count"
           }
@@ -531,28 +555,43 @@
         },
         "type": "Row"
       },
-      "tabOverdueLabel": {
+      "tabOverdueLabelOff": {
+        "props": {
+          "text": "Overdue",
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/tab_overdue_selected",
+          "not": true
+        }
+      },
+      "tabOverdueLabelOn": {
         "props": {
           "text": "Overdue",
           "tone": "destructive",
-          "weight": "medium"
+          "variant": "solid"
         },
-        "type": "Caption"
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/tab_overdue_selected"
+        }
       },
       "tabOverdueStack": {
         "children": [
           "tabOverdueValue",
-          "tabOverdueLabel"
+          "tabOverdueLabelOn",
+          "tabOverdueLabelOff"
         ],
         "props": {
           "align": "center",
-          "gap": "none"
+          "gap": "xs"
         },
         "type": "Stack"
       },
       "tabOverdueValue": {
         "props": {
-          "size": "sm",
+          "size": "md",
           "value": {
             "$state": "/ui/board/overdue_count"
           }
@@ -591,28 +630,43 @@
         },
         "type": "Row"
       },
-      "tabUpcomingLabel": {
+      "tabUpcomingLabelOff": {
         "props": {
           "text": "Upcoming",
-          "tone": "muted",
-          "weight": "medium"
+          "tone": "muted"
         },
-        "type": "Caption"
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/tab_upcoming_selected",
+          "not": true
+        }
+      },
+      "tabUpcomingLabelOn": {
+        "props": {
+          "text": "Upcoming",
+          "tone": "info",
+          "variant": "solid"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/board/tab_upcoming_selected"
+        }
       },
       "tabUpcomingStack": {
         "children": [
           "tabUpcomingValue",
-          "tabUpcomingLabel"
+          "tabUpcomingLabelOn",
+          "tabUpcomingLabelOff"
         ],
         "props": {
           "align": "center",
-          "gap": "none"
+          "gap": "xs"
         },
         "type": "Stack"
       },
       "tabUpcomingValue": {
         "props": {
-          "size": "sm",
+          "size": "md",
           "value": {
             "$state": "/ui/board/upcoming_count"
           }
@@ -629,11 +683,7 @@
           "cols": 3,
           "gap": "sm"
         },
-        "type": "Grid",
-        "visible": {
-          "$state": "/_loading/asana.list_tasks",
-          "not": true
-        }
+        "type": "Grid"
       },
       "taskCircle": {
         "on": {
@@ -683,7 +733,7 @@
           "icon": {
             "$item": "circle_icon"
           },
-          "size": "sm",
+          "size": "md",
           "tone": {
             "$item": "circle_tone"
           }
@@ -708,7 +758,7 @@
           "taskProjectRow"
         ],
         "props": {
-          "gap": "none",
+          "gap": "xs",
           "grow": true
         },
         "type": "Stack"
