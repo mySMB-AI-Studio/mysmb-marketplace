@@ -21,7 +21,7 @@ One run makes both. The balances are a one-page glance that most of a team can s
    - the total change across all the accounts, and beside it the total held — the one figure no row carries
    - one row per account: previous close with the day it closed, balance today, and the movement, with the day's money in and out underneath it. An account that didn't move says "no change" rather than showing a zero in colour.
 
-   The web page goes to **Reports**, the PDF is filed in Knowledge as `Banking/Reports/<name> Bank Balances <dd-Mmm-yy>.pdf`, and it is emailed to the people picked. No AI is involved — there is no prose on the page, only figures Xero gave us.
+   The web page goes to **Reports**, the PDF is filed in Knowledge as `Banking/Reports/<name> Bank Balances <dd-Mmm-yy>.pdf`, and it is emailed to the people picked with a short, plain note: the total held and which accounts moved. No AI is involved — there is no prose on the page, only figures Xero gave us.
 3. **Explain what moved the balances.** AI reads the day's larger transactions and writes, for each account that moved, two or three sentences on what moved it — the handful behind most of the change and who they were with. It then picks up to four points worth a second look: a large or unusual payment, a duplicate-looking pair, bank fees, an account gone negative. It's told to leave that list empty rather than invent a concern, and never to restate a figure it wasn't given. It only sees the transactions the report lists, so it can't explain a movement with a payment the reader can't find on the page.
 4. **Write the transaction detail and email it.** The report, as a PDF and as a web page:
    - the masthead, the total change and the headline sentence
@@ -29,7 +29,7 @@ One run makes both. The balances are a one-page glance that most of a team can s
    - one row counting everything below that amount, so the total still adds up, then the total and the line that proves the transactions match the difference
    - the points worth a look, and Xero's own footer line
 
-   The web page goes to **Reports**, the PDF is filed in Knowledge as `Banking/Reports/<name> Bank Transaction Detail <dd-Mmm-yy>.pdf`, and it is emailed with a link to the report.
+   The web page goes to **Reports**, the PDF is filed in Knowledge as `Banking/Reports/<name> Bank Transaction Detail <dd-Mmm-yy>.pdf`, and it is emailed with a short, plain note: how many transactions qualify and anything worth a look. The PDF has the rest.
 
 An account that moved on nothing that large still gets a line — "nothing at or above A$50,000, 8 smaller transactions, A$276.87 net out" — because "none today" is the answer to the question the report is asking, and silence isn't.
 
