@@ -248,11 +248,129 @@ const document_status_dashboard: ComputedFunction = (args) => {
   };
 };
 
+// Quick Send via Template -------------------------------------------------------------------
+
+const TOP_TEMPLATES = 3;
+// One categorical colour per listed template: blue, teal, violet, amber.
+const TEMPLATE_TONES = ['chart-5', 'chart-2', 'chart-1', 'chart-3'];
+
+/** Template id → name from a `list_templates` response. */
+function templateNames(templates: unknown): Map<string, string> {
+  const t = (templates && typeof templates === 'object' ? templates : {}) as AnyRecord;
+  const list = Array.isArray(t.templates) ? (t.templates as AnyRecord[]) : [];
+  return new Map(list.map((x) => [String(x.template_id ?? ''), String(x.template_name ?? '').trim()]));
+}
+
+/** Names of the templates a request was created from (`templates_used` holds template names; ids or objects are also accepted). */
+function templatesUsed(r: AnyRecord, names: Map<string, string>): string[] {
+  const used = Array.isArray(r.templates_used) ? r.templates_used : [];
+  return used
+    .map((u) => {
+      if (u && typeof u === 'object') {
+        const o = u as AnyRecord;
+        return String(o.template_name ?? '').trim() || names.get(String(o.template_id ?? '')) || '';
+      }
+      const v = String(u ?? '').trim();
+      return names.get(v) || v;
+    })
+    .map((n) => n || 'Unnamed template');
+}
+
+const quick_send_dashboard: ComputedFunction = (args) => {
+  // The MCP passes Zoho API failures (expired token, bad request) back as a plain error string.
+  if (typeof args.report === 'string' && args.report.trim()) return { loaded: false, failed: true, hasData: false };
+  const report = (args.report && typeof args.report === 'object' ? args.report : {}) as AnyRecord;
+  const list = requestList(report);
+  const loaded = list !== null;
+  const all = list ?? [];
+  const names = templateNames(args.templates);
+  const libraryOpen = args.libraryOpen === true || args.libraryOpen === 'open';
+  const now = new Date();
+
+  // Each document counts once, under the first template it was created from.
+  const counts = new Map<string, number>();
+  for (const r of all) {
+    const sent = toDate(r.sign_submitted_time);
+    if (!sent || sent.getFullYear() !== now.getFullYear() || sent.getMonth() !== now.getMonth()) continue;
+    const [name] = templatesUsed(r, names);
+    if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const total = ranked.reduce((n, [, c]) => n + c, 0);
+
+  const top = ranked.length > TOP_TEMPLATES + 1 ? ranked.slice(0, TOP_TEMPLATES) : ranked;
+  const otherCount = ranked.slice(top.length).reduce((n, [, c]) => n + c, 0);
+  const rows = top.map(([label, count], i) => ({
+    id: `t${i}`,
+    label,
+    tone: TEMPLATE_TONES[i % TEMPLATE_TONES.length],
+    countDisplay: count.toLocaleString('en-US'),
+  }));
+  if (otherCount) rows.push({ id: 'other', label: 'Other templates', tone: 'muted', countDisplay: otherCount.toLocaleString('en-US') });
+
+  // Library size: only once `list_templates` has answered with a real response.
+  const tpl = (args.templates && typeof args.templates === 'object' ? args.templates : null) as AnyRecord | null;
+  const tplContext = tpl?.page_context as AnyRecord | undefined;
+  const libraryCount =
+    tpl && Array.isArray(tpl.templates)
+      ? typeof tplContext?.total_count === 'number'
+        ? tplContext.total_count
+        : (tpl.templates as unknown[]).length
+      : null;
+
+  // Library drill-down: most used this month first, then by name.
+  const libraryList = tpl && Array.isArray(tpl.templates) ? (tpl.templates as AnyRecord[]) : [];
+  const libraryRows = libraryList
+    .map((t) => {
+      const name = String(t.template_name ?? '').trim() || 'Unnamed template';
+      const roles = (Array.isArray(t.actions) ? (t.actions as AnyRecord[]) : [])
+        .map((a) => String(a.role ?? a.recipient_name ?? '').trim())
+        .filter(Boolean);
+      const updated = toDate(t.modified_time ?? t.created_time);
+      const sent = counts.get(name) ?? 0;
+      return {
+        id: String(t.template_id ?? name),
+        name,
+        detail: [roles.length > 2 ? `${roles[0]} +${roles.length - 1}` : roles.join(', '), updated ? `updated ${ddMmmYy(updated)}` : '']
+          .filter(Boolean)
+          .join(' · '),
+        sent,
+        usageText: `${sent.toLocaleString('en-US')} sent`,
+        badgeTone: sent > 0 ? 'brand' : 'muted',
+      };
+    })
+    .sort((a, b) => b.sent - a.sent || a.name.localeCompare(b.name));
+  const shownTemplates = libraryRows.slice(0, MAX_DOC_ROWS);
+
+  const pageContext = report.page_context as AnyRecord | undefined;
+
+  return {
+    loaded,
+    hasData: total > 0,
+    totalDisplay: total.toLocaleString('en-US'),
+    totalLabel: 'sent via template this month',
+    rows,
+    libraryDisplay: libraryCount === null ? '' : libraryCount.toLocaleString('en-US'),
+    libraryExpanded: libraryOpen,
+    libraryChevron: libraryOpen ? 'ChevronUp' : 'ChevronDown',
+    // What a click on the library row writes to `/ui/quickSendLibrary`.
+    libraryToggle: libraryOpen ? '' : 'open',
+    libraryTemplates: shownTemplates,
+    libraryEmpty: libraryOpen && shownTemplates.length === 0,
+    libraryNote:
+      libraryCount !== null && libraryCount > shownTemplates.length && shownTemplates.length > 0
+        ? `Showing ${shownTemplates.length} of ${libraryCount.toLocaleString('en-US')} templates.`
+        : '',
+    capNote: pageContext?.has_more_rows === true ? `Based on the newest ${all.length.toLocaleString('en-US')} signature requests.` : '',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'zoho-sign',
   functions: {
     pending_signatures_dashboard,
     document_status_dashboard,
+    quick_send_dashboard,
   },
   actions: {},
 };
