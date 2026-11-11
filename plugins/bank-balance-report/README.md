@@ -52,6 +52,8 @@ No environment variables are required.
 - **Name on the report:** shown at the top. Blank uses the Xero organisation's own name. Either way the report prints the Xero organisation the figures came from beneath the title, because this field is free text and can name any organisation.
 - **Logo file:** a PNG or JPEG in Knowledge, for example `Automations/logo.png`, drawn at the top of the PDF and of the page in Reports in place of the name. The page carries the image inline, so it renders for anyone the report reaches without them needing rights to the file. Leave it blank for the name in text; if the file is missing the report still goes out with the name in text and says so in its summary.
 
+Each run sends two emails, one per report, and the run summary names the addresses they went to. Check it the first time you run, so you know the list is who you meant.
+
 **Changing when it runs:** open the automation, select its Schedule trigger and set Daily, Weekly or Monthly and a time. The time zone comes from the browser of whoever sets it.
 
 **Scopes:**
