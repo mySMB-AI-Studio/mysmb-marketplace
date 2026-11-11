@@ -2,7 +2,7 @@
 
 Connects Workspace to **Xero's own hosted MCP server** (`https://mcp.xero.com/mcp`, HTTP transport).
 
-## Sign-in
+## Configuration
 
 Xero's hosted server uses Xero's normal OAuth 2.0 sign-in (`identity.xero.com`) and does not support dynamic
 client registration, so every client needs an app registered in the Xero developer portal. This plugin uses
