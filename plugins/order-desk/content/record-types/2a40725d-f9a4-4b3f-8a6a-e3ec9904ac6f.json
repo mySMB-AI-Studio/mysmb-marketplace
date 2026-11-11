@@ -1,0 +1,432 @@
+{
+  "contentHash": "2a4bcb4f78d11ffc6bcc77a3024b6e527e4f85b41531320849188af3d6d0830e",
+  "definition": {
+    "color": null,
+    "description": "Every order Order Desk has received, from arrival to release to the warehouse. This is the record the warehouse works from.",
+    "fields": [
+      {
+        "groupLabel": null,
+        "key": "order_number",
+        "kind": "text",
+        "label": "Order number",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "stages": [
+            {
+              "key": "received",
+              "label": "Received",
+              "state": "open"
+            },
+            {
+              "key": "reading",
+              "label": "Being read",
+              "state": "open"
+            },
+            {
+              "key": "needs_review",
+              "label": "Needs review",
+              "state": "open"
+            },
+            {
+              "key": "waiting_info",
+              "label": "Waiting for information",
+              "state": "open"
+            },
+            {
+              "key": "confirmed",
+              "label": "Confirmed",
+              "state": "open"
+            },
+            {
+              "key": "released",
+              "label": "Released to warehouse",
+              "state": "closed"
+            },
+            {
+              "key": "rejected",
+              "label": "Rejected",
+              "state": "closed"
+            },
+            {
+              "key": "not_an_order",
+              "label": "Not an order",
+              "state": "closed"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "order_status",
+        "kind": "pipeline",
+        "label": "Status",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "client"
+        },
+        "groupLabel": null,
+        "key": "client",
+        "kind": "relation",
+        "label": "Customer",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "account_code",
+        "kind": "text",
+        "label": "Account code",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "customer_name_raw",
+        "kind": "text",
+        "label": "Customer as written",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 120
+        },
+        "groupLabel": null,
+        "key": "po_number",
+        "kind": "text",
+        "label": "PO number",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "delivery_date",
+        "kind": "date",
+        "label": "Delivery date",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:od_delivery_addresses"
+        },
+        "groupLabel": null,
+        "key": "delivery_address",
+        "kind": "relation",
+        "label": "Delivery address",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "delivery_address_raw",
+        "kind": "text",
+        "label": "Address as written",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "email",
+              "label": "Email"
+            },
+            {
+              "key": "ticket",
+              "label": "Ticket"
+            },
+            {
+              "key": "erp",
+              "label": "ERP"
+            },
+            {
+              "key": "warehouse_manager",
+              "label": "Warehouse manager"
+            },
+            {
+              "key": "test",
+              "label": "Test order"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "source",
+        "kind": "select",
+        "label": "Source",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "The id of the message this order came from. Used to avoid creating the same order twice.",
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "message_ref",
+        "kind": "text",
+        "label": "Message reference",
+        "position": 10,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "received_on",
+        "kind": "datetime",
+        "label": "Received",
+        "position": 11,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "decimals": 0,
+          "min": 0
+        },
+        "groupLabel": null,
+        "key": "line_count",
+        "kind": "number",
+        "label": "Lines",
+        "position": 12,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "missing_po",
+              "label": "Missing PO"
+            },
+            {
+              "key": "possible_duplicate",
+              "label": "Possible duplicate"
+            },
+            {
+              "key": "unknown_customer",
+              "label": "Unknown customer"
+            },
+            {
+              "key": "unknown_product",
+              "label": "Unknown product"
+            },
+            {
+              "key": "unit_mismatch",
+              "label": "Unit mismatch"
+            },
+            {
+              "key": "unit_missing",
+              "label": "Unit missing"
+            },
+            {
+              "key": "line_count_mismatch",
+              "label": "Line count mismatch"
+            },
+            {
+              "key": "past_cutoff",
+              "label": "Past cut-off"
+            },
+            {
+              "key": "rule_conflict",
+              "label": "Rule conflict"
+            },
+            {
+              "key": "suspicious_content",
+              "label": "Suspicious content"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "flags",
+        "kind": "multi_select",
+        "label": "Flags",
+        "position": 13,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "ready",
+              "label": "Ready"
+            },
+            {
+              "key": "needs_review",
+              "label": "Needs review"
+            },
+            {
+              "key": "waiting_info",
+              "label": "Waiting for information"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "recommended_outcome",
+        "kind": "select",
+        "label": "Agent's recommendation",
+        "position": 14,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 4000
+        },
+        "groupLabel": null,
+        "key": "agent_summary",
+        "kind": "long_text",
+        "label": "Agent's summary",
+        "position": 15,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "auto_confirmed",
+        "kind": "boolean",
+        "label": "Confirmed automatically",
+        "position": 16,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "reviewed_by",
+        "kind": "user",
+        "label": "Reviewed by",
+        "position": 17,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:od_tickets"
+        },
+        "groupLabel": null,
+        "key": "ticket",
+        "kind": "relation",
+        "label": "Ticket",
+        "position": 18,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 20000
+        },
+        "groupLabel": null,
+        "key": "source_text",
+        "kind": "long_text",
+        "label": "Order as received",
+        "position": 19,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "source_file",
+        "kind": "text",
+        "label": "Source file",
+        "position": 20,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "released_on",
+        "kind": "datetime",
+        "label": "Released",
+        "position": 21,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Orders",
+    "labelSingular": "Order",
+    "slug": "od_orders",
+    "titleFieldKey": "order_number"
+  },
+  "kind": "record_type",
+  "name": "Orders",
+  "originKey": "2a40725d-f9a4-4b3f-8a6a-e3ec9904ac6f"
+}

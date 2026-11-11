@@ -1,0 +1,81 @@
+{
+  "contentHash": "d0694fc2629817deda92308ae0e7e280a487014ae2d3fd93cdf5b05b9448030c",
+  "declaredScopes": [
+    "records:od_orders:read",
+    "records:od_tickets:read",
+    "records:od_tickets:write"
+  ],
+  "dependencies": [],
+  "description": "Closes the support ticket an order came from, with a note. Today it updates the Order Desk tickets table. This is the step to swap when Zoho is connected.",
+  "flowIr": {
+    "description": "Closes the support ticket an order came from, with a note. Today it updates the Order Desk tickets table. This is the step to swap when Zoho is connected.",
+    "irVersion": 1,
+    "name": "Order Desk: close ticket",
+    "nodes": [
+      {
+        "code": "import re\nimport datetime\nfrom typing import Any\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_link_ids(row: Any, field: str) -> list[str]:\n    out: list[str] = []\n    for ref in ((row or {}).get(\"links\") or {}).get(field) or []:\n        if isinstance(ref, dict) and ref.get(\"id\"):\n            out.append(str(ref[\"id\"]))\n        elif isinstance(ref, str):\n            out.append(ref)\n    return out\n\n\ndef od_now() -> str:\n    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\n\n\norder_id = params[\"order_id\"]\nnote = od_text(params.get(\"note\")) or \"Order processed by Order Desk.\"\nfound = api.records.get(type_slug=\"od_orders\", record_id=order_id) or {}\norder: dict[str, Any] = dict(found.get(\"record\") or {})\nticket_ids = od_link_ids(order, \"ticket\")\nclosed = False\nticket_number = \"\"\nif ticket_ids:\n    got = api.records.get(type_slug=\"od_tickets\", record_id=ticket_ids[0]) or {}\n    ticket: dict[str, Any] = dict(got.get(\"record\") or {})\n    ticket_number = od_text(od_data(ticket).get(\"ticket_number\"))\n    if od_text(od_data(ticket).get(\"ticket_status\")) != \"closed\":\n        api.records.update(type_slug=\"od_tickets\", record_id=ticket_ids[0], record={\"data\": {\"ticket_status\": \"closed\", \"resolved_on\": od_now(), \"close_note\": (od_text(order.get(\"title\")) + \": \" + note)[:500]}})\n    closed = True\n",
+        "id": "close",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when a ticket was closed",
+            "name": "closed",
+            "type": "bool"
+          },
+          {
+            "description": "Ticket number",
+            "name": "ticket_number",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.order_id }}",
+            "control": "hidden",
+            "name": "order_id",
+            "required": true,
+            "type": "uuid"
+          },
+          {
+            "binding": "{{ params.note }}",
+            "control": "hidden",
+            "name": "note",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Marks the ticket linked to the order as closed and records a closing note.",
+        "title": "Close the ticket"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Order",
+        "name": "order_id",
+        "required": true,
+        "type": "uuid"
+      },
+      {
+        "control": "text",
+        "label": "Closing note",
+        "name": "note",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "close"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: close ticket",
+  "originKey": "cec67e67-4d49-4202-adad-ee0d99ed3fd1",
+  "tags": []
+}

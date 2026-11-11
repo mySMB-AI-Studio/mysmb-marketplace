@@ -1,0 +1,256 @@
+{
+  "contentHash": "bf539dc3f75863dbd327469cf6821e88696d1c98a0766b43600f8a781929318c",
+  "definition": {
+    "color": null,
+    "description": "Every change a person made to an order Order Desk prepared, and why. This is how the agent learns, and how you see where orders go wrong.",
+    "fields": [
+      {
+        "groupLabel": null,
+        "key": "summary",
+        "kind": "text",
+        "label": "What changed",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:od_orders"
+        },
+        "groupLabel": null,
+        "key": "order",
+        "kind": "relation",
+        "label": "Order",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:od_order_lines"
+        },
+        "groupLabel": null,
+        "key": "order_line",
+        "kind": "relation",
+        "label": "Order line",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "account_code",
+        "kind": "text",
+        "label": "Account code",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "customer",
+              "label": "Customer"
+            },
+            {
+              "key": "po_number",
+              "label": "PO number"
+            },
+            {
+              "key": "delivery_date",
+              "label": "Delivery date"
+            },
+            {
+              "key": "delivery_address",
+              "label": "Delivery address"
+            },
+            {
+              "key": "product",
+              "label": "Product"
+            },
+            {
+              "key": "quantity",
+              "label": "Quantity"
+            },
+            {
+              "key": "unit",
+              "label": "Unit"
+            },
+            {
+              "key": "line_added",
+              "label": "Line added"
+            },
+            {
+              "key": "line_removed",
+              "label": "Line removed"
+            },
+            {
+              "key": "other",
+              "label": "Other"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "field_changed",
+        "kind": "select",
+        "label": "Field",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "old_value",
+        "kind": "text",
+        "label": "Agent's value",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "new_value",
+        "kind": "text",
+        "label": "Corrected value",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "misread",
+              "label": "Order was misread"
+            },
+            {
+              "key": "wrong_product",
+              "label": "Wrong product matched"
+            },
+            {
+              "key": "wrong_conversion",
+              "label": "Wrong unit conversion"
+            },
+            {
+              "key": "customer_rule",
+              "label": "Customer rule not applied"
+            },
+            {
+              "key": "missing_mapping",
+              "label": "No catalogue mapping"
+            },
+            {
+              "key": "wrong_customer",
+              "label": "Wrong customer"
+            },
+            {
+              "key": "duplicate",
+              "label": "Duplicate or changed order"
+            },
+            {
+              "key": "customer_changed",
+              "label": "Customer changed their mind"
+            },
+            {
+              "key": "other",
+              "label": "Other"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "reason",
+        "kind": "select",
+        "label": "Reason",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 2000
+        },
+        "groupLabel": null,
+        "key": "reason_note",
+        "kind": "long_text",
+        "label": "Reason in words",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "corrected_by",
+        "kind": "user",
+        "label": "Corrected by",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "corrected_on",
+        "kind": "datetime",
+        "label": "Corrected",
+        "position": 10,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "learned",
+        "kind": "boolean",
+        "label": "Saved as a mapping or rule",
+        "position": 11,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Corrections log",
+    "labelSingular": "Correction",
+    "slug": "od_corrections",
+    "titleFieldKey": "summary"
+  },
+  "kind": "record_type",
+  "name": "Corrections log",
+  "originKey": "0a400a3a-b79b-4004-976f-904e3511dc64"
+}

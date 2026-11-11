@@ -1,0 +1,223 @@
+{
+  "contentHash": "1b6ef89dada5fe201c6d58671703e663aa03f0ffcfb063c25d97d5e941b945da",
+  "definition": {
+    "color": null,
+    "description": "How each customer's own product codes and units map to your products and pack sizes. Order Desk uses these rows to match and convert order lines, and adds a row when a person approves a correction.",
+    "fields": [
+      {
+        "config": {
+          "helpText": "For example: Harbour View / HV-013A box."
+        },
+        "groupLabel": null,
+        "key": "label",
+        "kind": "text",
+        "label": "Mapping",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "client"
+        },
+        "groupLabel": null,
+        "key": "client",
+        "kind": "relation",
+        "label": "Customer",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "account_code",
+        "kind": "text",
+        "label": "Account code",
+        "position": 2,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 120
+        },
+        "groupLabel": null,
+        "key": "customer_code",
+        "kind": "text",
+        "label": "Customer's product code",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "customer_description",
+        "kind": "text",
+        "label": "Customer's description",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "The unit as the customer writes it, for example ea, kg or ctn.",
+          "maxLength": 40
+        },
+        "groupLabel": null,
+        "key": "customer_unit",
+        "kind": "text",
+        "label": "Customer's unit",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "restrict",
+          "target": "record:od_products"
+        },
+        "groupLabel": null,
+        "key": "product",
+        "kind": "relation",
+        "label": "Product",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "item_code",
+        "kind": "text",
+        "label": "Item code",
+        "position": 7,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "decimals": 4,
+          "helpText": "Customer quantity multiplied by this gives your selling units. 1 means no conversion.",
+          "min": 0
+        },
+        "groupLabel": null,
+        "key": "conversion_factor",
+        "kind": "number",
+        "label": "Conversion factor",
+        "position": 8,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "none",
+              "label": "Do not round"
+            },
+            {
+              "key": "up",
+              "label": "Round up"
+            },
+            {
+              "key": "down",
+              "label": "Round down"
+            },
+            {
+              "key": "nearest",
+              "label": "Round to nearest"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "rounding",
+        "kind": "select",
+        "label": "Rounding",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "imported",
+              "label": "Imported"
+            },
+            {
+              "key": "manual",
+              "label": "Entered by a person"
+            },
+            {
+              "key": "learned",
+              "label": "Learned from a correction"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "source",
+        "kind": "select",
+        "label": "Source",
+        "position": 10,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 2000
+        },
+        "groupLabel": null,
+        "key": "mapping_notes",
+        "kind": "long_text",
+        "label": "Notes",
+        "position": 11,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Customer catalogue",
+    "labelSingular": "Catalogue mapping",
+    "slug": "od_customer_catalogue",
+    "titleFieldKey": "label"
+  },
+  "kind": "record_type",
+  "name": "Customer catalogue",
+  "originKey": "23e87f58-261c-4447-ba35-4ad27715fe68"
+}
