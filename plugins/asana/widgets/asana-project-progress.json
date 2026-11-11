@@ -12,7 +12,7 @@
     },
     "tool": "list_projects"
   },
-  "description": "Task completion progress for your active Asana projects with at-risk and behind counts.",
+  "description": "Overall task completion across your active Asana projects, with a per-project card grid, status filters and sorting.",
   "id": "asana-project-progress",
   "keywords": [
     "asana projects",
@@ -28,26 +28,30 @@
       "rowSpan": 12
     },
     "min": {
-      "colSpan": 3,
+      "colSpan": 4,
       "rowSpan": 4
     },
     "preferred": {
-      "colSpan": 5,
+      "colSpan": 6,
       "rowSpan": 6
     }
   },
   "spec": {
     "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
       "card": {
         "children": [
-          "headerRow",
-          "div0",
-          "loading",
-          "empty",
-          "kpiGrid",
-          "div1",
-          "projectList",
-          "projectFooter"
+          "header",
+          "body",
+          "footerDivider",
+          "footerRow"
         ],
         "props": {},
         "type": "Card",
@@ -56,10 +60,74 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/rows",
+                "statePath": "/ui/filter",
+                "value": "all"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sort",
+                "value": "low"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
                 "value": {
-                  "$computed": "asana_flatten_project_progress",
+                  "$computed": "asana_flatten_project_board",
                   "args": {
+                    "filter": {
+                      "$state": "/ui/filter"
+                    },
+                    "sort": {
+                      "$state": "/ui/sort"
+                    },
+                    "value": {
+                      "$state": "/asana/list_projects/data"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/filter": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_project_board",
+                  "args": {
+                    "filter": {
+                      "$state": "/ui/filter"
+                    },
+                    "sort": {
+                      "$state": "/ui/sort"
+                    },
+                    "value": {
+                      "$state": "/asana/list_projects/data"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sort": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_project_board",
+                  "args": {
+                    "filter": {
+                      "$state": "/ui/filter"
+                    },
+                    "sort": {
+                      "$state": "/ui/sort"
+                    },
                     "value": {
                       "$state": "/asana/list_projects/data"
                     }
@@ -70,52 +138,290 @@
           ]
         }
       },
-      "div0": {
-        "props": {},
-        "type": "Divider"
+      "cardBar": {
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": {
+            "$item": "pct"
+          }
+        },
+        "type": "ProgressBar"
       },
-      "div1": {
+      "cardBarRow": {
+        "children": [
+          "cardBar"
+        ],
         "props": {},
-        "type": "Divider",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_projects",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
+        "type": "Row"
+      },
+      "cardCapRow": {
+        "children": [
+          "cardDone",
+          "cardLeft"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "cardClick": {
+        "children": [
+          "cardStack"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "url"
+                  }
+                }
+              }
             }
-          ]
+          }
+        },
+        "props": {
+          "align": "start",
+          "clickable": {
+            "$item": "has_url"
+          },
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "cardDone": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "done_label"
+          },
+          "tone": "muted",
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "cardLeft": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "left_label"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Text",
+        "visible": {
+          "$item": "show_left"
+        }
+      },
+      "cardName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "cardPct": {
+        "props": {
+          "size": "md",
+          "value": {
+            "$item": "pct_label"
+          }
+        },
+        "type": "Stat"
+      },
+      "cardStack": {
+        "children": [
+          "cardName",
+          "cardTopRow",
+          "cardBarRow",
+          "cardCapRow"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "cardStatus": {
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "cardTopRow": {
+        "children": [
+          "cardPct",
+          "cardStatus"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "chipItem": {
+        "children": [
+          "chipOn",
+          "chipOff"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/filter",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "filter"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "chipOff": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "outline"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected",
+          "not": true
+        }
+      },
+      "chipOn": {
+        "props": {
+          "text": {
+            "$item": "chip_text"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$item": "selected"
+        }
+      },
+      "chipsRow": {
+        "children": [
+          "chipItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/chips"
+        },
+        "type": "Row"
+      },
+      "content": {
+        "children": [
+          "empty",
+          "hero",
+          "controlsRow",
+          "grid"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_projects",
+          "not": true
+        }
+      },
+      "controlsRow": {
+        "children": [
+          "chipsRow",
+          "sortToggle"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/show_chips"
         }
       },
       "empty": {
         "props": {
-          "message": "No active projects found."
+          "message": {
+            "$state": "/ui/board/empty_message"
+          }
         },
         "type": "Empty",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_projects",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0",
-              "not": true
-            }
-          ]
+          "$state": "/ui/board/has_projects",
+          "not": true
         }
       },
       "eyebrow": {
         "props": {
-          "text": "Asana"
+          "text": {
+            "$state": "/ui/board/header_label"
+          }
         },
         "type": "Eyebrow"
       },
-      "headerRow": {
+      "footerDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "footerLabel": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footer_label"
+          }
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/has_projects"
+        }
+      },
+      "footerRow": {
         "children": [
-          "titleGroup"
+          "footerLabel",
+          "openInAsanaBtn"
         ],
         "props": {
           "align": "center",
@@ -123,49 +429,119 @@
         },
         "type": "Row"
       },
-      "kpiGrid": {
+      "grid": {
         "children": [
-          "tileActive",
-          "tileAtRisk",
-          "tileBehind"
+          "projectCard"
         ],
         "props": {
-          "cols": 3,
+          "cols": 2,
           "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/cards"
         },
         "type": "Grid",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_projects",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
-            }
-          ]
+          "$state": "/ui/board/has_cards"
         }
       },
-      "lblActive": {
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "hero": {
+        "children": [
+          "heroStack"
+        ],
         "props": {
-          "text": "Active",
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/ui/board/has_projects"
+        }
+      },
+      "heroBar": {
+        "props": {
+          "tone": {
+            "$state": "/ui/board/overall_tone"
+          },
+          "value": {
+            "$state": "/ui/board/overall_pct"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "heroBarRow": {
+        "children": [
+          "heroBar"
+        ],
+        "props": {},
+        "type": "Row"
+      },
+      "heroLabels": {
+        "children": [
+          "heroTasks",
+          "heroProjects"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "heroPct": {
+        "props": {
+          "size": "lg",
+          "value": {
+            "$state": "/ui/board/overall_pct_label"
+          }
+        },
+        "type": "Stat"
+      },
+      "heroProjects": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/hero_projects_label"
+          },
           "tone": "muted"
         },
         "type": "Caption"
       },
-      "lblAtRisk": {
+      "heroStack": {
+        "children": [
+          "heroTop",
+          "heroBarRow"
+        ],
         "props": {
-          "text": "At Risk",
-          "tone": "warning"
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "heroTasks": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/hero_tasks_label"
+          },
+          "tone": "default"
         },
         "type": "Caption"
       },
-      "lblBehind": {
+      "heroTop": {
+        "children": [
+          "heroPct",
+          "heroLabels"
+        ],
         "props": {
-          "text": "Behind",
-          "tone": "destructive"
+          "align": "end",
+          "gap": "sm",
+          "justify": "between"
         },
-        "type": "Caption"
+        "type": "Row"
       },
       "loading": {
         "children": [
@@ -181,103 +557,32 @@
           "$state": "/_loading/asana.list_projects"
         }
       },
-      "projectBar": {
-        "props": {
-          "tone": {
-            "$item": "tone"
-          },
-          "value": {
-            "$item": "pct"
+      "openInAsanaBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://app.asana.com/"
+            }
           }
         },
-        "type": "ProgressBar"
-      },
-      "projectBarRow": {
-        "children": [
-          "projectBar"
-        ],
-        "props": {},
-        "type": "Row"
-      },
-      "projectFooter": {
         "props": {
-          "text": {
-            "$state": "/ui/rows/0/footer_label"
-          },
-          "tone": "muted"
-        },
-        "type": "Caption",
-        "visible": {
-          "$state": "/ui/rows/0/footer_label"
-        }
-      },
-      "projectHeader": {
-        "children": [
-          "projectName",
-          "projectPct"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "projectList": {
-        "children": [
-          "projectRow"
-        ],
-        "props": {
-          "gap": "md"
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/ui/rows"
-        },
-        "type": "Stack",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_projects",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
-            }
-          ]
-        }
-      },
-      "projectName": {
-        "props": {
+          "label": "Open in Asana",
           "size": "sm",
-          "text": {
-            "$item": "name"
-          },
-          "weight": "semibold"
+          "tone": "brand",
+          "variant": "primary"
         },
-        "type": "Text"
+        "type": "Button"
       },
-      "projectPct": {
-        "props": {
-          "size": "sm",
-          "text": {
-            "$item": "pct_label"
-          },
-          "tone": {
-            "$item": "tone"
-          },
-          "weight": "semibold"
-        },
-        "type": "Text"
-      },
-      "projectRow": {
+      "projectCard": {
         "children": [
-          "projectHeader",
-          "projectBarRow"
+          "cardClick"
         ],
         "props": {
-          "gap": "xs"
+          "variant": "muted"
         },
-        "type": "Stack"
+        "type": "Section"
       },
       "sk1": {
         "props": {
@@ -300,65 +605,106 @@
         },
         "type": "Skeleton"
       },
-      "stackActive": {
+      "sortAz": {
         "children": [
-          "valActive",
-          "lblActive"
+          "sortAzBadge"
         ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sort",
+              "value": "low"
+            }
+          }
+        },
         "props": {
           "align": "center",
-          "gap": "none"
+          "clickable": true
         },
-        "type": "Stack"
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/sort_az_selected"
+        }
       },
-      "stackAtRisk": {
+      "sortAzBadge": {
+        "props": {
+          "text": "Sort: A–Z",
+          "tone": "default",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sortHigh": {
         "children": [
-          "valAtRisk",
-          "lblAtRisk"
+          "sortHighBadge"
         ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sort",
+              "value": "az"
+            }
+          }
+        },
         "props": {
           "align": "center",
-          "gap": "none"
+          "clickable": true
         },
-        "type": "Stack"
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/sort_high_selected"
+        }
       },
-      "stackBehind": {
+      "sortHighBadge": {
+        "props": {
+          "text": "Sort: Highest %",
+          "tone": "default",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sortLow": {
         "children": [
-          "valBehind",
-          "lblBehind"
+          "sortLowBadge"
         ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sort",
+              "value": "high"
+            }
+          }
+        },
         "props": {
           "align": "center",
-          "gap": "none"
+          "clickable": true
         },
-        "type": "Stack"
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/sort_low_selected"
+        }
       },
-      "tileActive": {
+      "sortLowBadge": {
+        "props": {
+          "text": "Sort: Lowest %",
+          "tone": "default",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sortToggle": {
         "children": [
-          "stackActive"
+          "sortLow",
+          "sortHigh",
+          "sortAz"
         ],
         "props": {
-          "variant": "muted"
+          "align": "center"
         },
-        "type": "Section"
-      },
-      "tileAtRisk": {
-        "children": [
-          "stackAtRisk"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section"
-      },
-      "tileBehind": {
-        "children": [
-          "stackBehind"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section"
+        "type": "Row"
       },
       "title": {
         "props": {
@@ -395,33 +741,6 @@
           "gap": "none"
         },
         "type": "Stack"
-      },
-      "valActive": {
-        "props": {
-          "size": "md",
-          "value": {
-            "$state": "/ui/rows/0/stat_active"
-          }
-        },
-        "type": "Stat"
-      },
-      "valAtRisk": {
-        "props": {
-          "size": "md",
-          "value": {
-            "$state": "/ui/rows/0/stat_at_risk"
-          }
-        },
-        "type": "Stat"
-      },
-      "valBehind": {
-        "props": {
-          "size": "md",
-          "value": {
-            "$state": "/ui/rows/0/stat_behind"
-          }
-        },
-        "type": "Stat"
       }
     },
     "root": "card"
