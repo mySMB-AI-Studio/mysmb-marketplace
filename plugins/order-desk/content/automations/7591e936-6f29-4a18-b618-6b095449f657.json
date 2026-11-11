@@ -1,0 +1,150 @@
+{
+  "contentHash": "c1005efbc28ee010979b50c10711c14f2f70f869fbd994ef46db9c167e3adfc0",
+  "declaredScopes": [
+    "records:od_orders:read",
+    "records:od_orders:write",
+    "records:od_customer_profiles:read",
+    "records:od_delivery_addresses:read"
+  ],
+  "dependencies": [],
+  "description": "Works out which customer an order is from, using the account code, the sender's email domain or the name on the order, and returns that customer's notes, rules, cut-off time and delivery addresses. Today it looks in the Order Desk customer profiles. This is the step to swap when Pronto is connected.",
+  "flowIr": {
+    "description": "Works out which customer an order is from, using the account code, the sender's email domain or the name on the order, and returns that customer's notes, rules, cut-off time and delivery addresses. Today it looks in the Order Desk customer profiles. This is the step to swap when Pronto is connected.",
+    "irVersion": 1,
+    "name": "Order Desk: find customer",
+    "nodes": [
+      {
+        "code": "import re\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_norm(value: Any) -> str:\n    return re.sub(r\"[^a-z0-9]+\", \" \", od_text(value).lower()).strip()\n\n\ndef od_link_ids(row: Any, field: str) -> list[str]:\n    out: list[str] = []\n    for ref in ((row or {}).get(\"links\") or {}).get(field) or []:\n        if isinstance(ref, dict) and ref.get(\"id\"):\n            out.append(str(ref[\"id\"]))\n        elif isinstance(ref, str):\n            out.append(ref)\n    return out\n\n\nimport difflib\n\norder_id = params[\"order_id\"]\nsender_email = od_text(params.get(\"sender_email\")).lower()\ncustomer_name = od_text(params.get(\"customer_name\"))\nhint = od_text(params.get(\"account_code\")).upper()\ndomain = sender_email.split(\"@\")[-1] if \"@\" in sender_email else \"\"\nprofiles = od_rows(\"od_customer_profiles\")\nchosen: dict[str, Any] = {}\nmatch_how = \"none\"\nfor row in profiles:\n    if hint and od_text(od_data(row).get(\"account_code\")).upper() == hint:\n        chosen = row\n        match_how = \"account_code\"\n        break\nif not chosen and domain:\n    hits = [r for r in profiles if od_text(od_data(r).get(\"email_domain\")).lower() == domain]\n    if len(hits) == 1:\n        chosen = hits[0]\n        match_how = \"email_domain\"\nif not chosen and customer_name:\n    wanted = od_norm(customer_name)\n    best = 0.0\n    for row in profiles:\n        names = [od_text(row.get(\"title\"))] + re.split(r\"[;,\\n]+\", od_text(od_data(row).get(\"other_names\")))\n        for name in names:\n            known = od_norm(name)\n            if not known:\n                continue\n            if known == wanted:\n                score = 1.0\n            elif known in wanted or wanted in known:\n                score = 0.95\n            else:\n                score = difflib.SequenceMatcher(None, known, wanted).ratio()\n            if score > best:\n                best = score\n                if score >= 0.86:\n                    chosen = row\n                    match_how = \"name\" if score >= 0.95 else \"name_guess\"\ncustomer_found = bool(chosen)\nprofile = od_data(chosen)\naccount_code = od_text(profile.get(\"account_code\"))\nknown_name = od_text(chosen.get(\"title\")) if chosen else \"\"\norder_notes = od_text(profile.get(\"order_notes\"))\norder_rules = od_text(profile.get(\"order_rules\"))\ncutoff_time = od_text(profile.get(\"cutoff_time\"))\npo_required = bool(profile.get(\"po_required\"))\nauto_confirm = od_text(profile.get(\"auto_confirm\")) or \"follow_default\"\naddresses: list[dict[str, Any]] = []\nif customer_found:\n    for row in od_rows(\"od_delivery_addresses\", account_code):\n        d = od_data(row)\n        if od_text(d.get(\"account_code\")) != account_code:\n            continue\n        addresses.append({\n            \"address_id\": od_text(row.get(\"id\")),\n            \"label\": od_text(row.get(\"title\")),\n            \"address\": od_text(d.get(\"address\")),\n            \"site_code\": od_text(d.get(\"site_code\")),\n            \"delivery_days\": list(d.get(\"delivery_days\") or []),\n            \"is_default\": bool(d.get(\"is_default\")),\n        })\nupdate: dict[str, Any] = {\"data\": {\"customer_name_raw\": (customer_name or known_name)[:300], \"account_code\": account_code}}\nclient_ids = od_link_ids(chosen, \"client\")\nif client_ids:\n    update[\"links\"] = {\"client\": client_ids[:1]}\napi.records.update(type_slug=\"od_orders\", record_id=order_id, record=update)\ncurrent = api.records.get(type_slug=\"od_orders\", record_id=order_id) or {}\nif od_text((current.get(\"record\") or {}).get(\"stage\")) == \"received\":\n    api.records.change_stage(type_slug=\"od_orders\", record_id=order_id, stage=\"reading\")\n",
+        "id": "find",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when a customer was matched",
+            "name": "customer_found",
+            "type": "bool"
+          },
+          {
+            "description": "Customer account code",
+            "name": "account_code",
+            "type": "str"
+          },
+          {
+            "description": "Customer name on file",
+            "name": "known_name",
+            "type": "str"
+          },
+          {
+            "description": "How the customer was matched",
+            "name": "match_how",
+            "type": "str"
+          },
+          {
+            "description": "Customer order notes",
+            "name": "order_notes",
+            "type": "str"
+          },
+          {
+            "description": "Customer order rules",
+            "name": "order_rules",
+            "type": "str"
+          },
+          {
+            "description": "Order cut-off time",
+            "name": "cutoff_time",
+            "type": "str"
+          },
+          {
+            "description": "Whether a PO number is required",
+            "name": "po_required",
+            "type": "bool"
+          },
+          {
+            "description": "Customer auto-confirm setting",
+            "name": "auto_confirm",
+            "type": "str"
+          },
+          {
+            "description": "Delivery addresses on file",
+            "name": "addresses",
+            "type": "list[dict]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.order_id }}",
+            "control": "hidden",
+            "name": "order_id",
+            "required": true,
+            "type": "uuid"
+          },
+          {
+            "binding": "{{ params.sender_email }}",
+            "control": "hidden",
+            "name": "sender_email",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.customer_name }}",
+            "control": "hidden",
+            "name": "customer_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.account_code }}",
+            "control": "hidden",
+            "name": "account_code",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Looks the customer up in the customer profiles and returns their order notes, rules and delivery addresses.",
+        "title": "Find the customer"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Order",
+        "name": "order_id",
+        "required": true,
+        "type": "uuid"
+      },
+      {
+        "control": "text",
+        "label": "Sender email",
+        "name": "sender_email",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Customer name on the order",
+        "name": "customer_name",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Account code on the order",
+        "name": "account_code",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "find"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: find customer",
+  "originKey": "7591e936-6f29-4a18-b618-6b095449f657",
+  "tags": []
+}

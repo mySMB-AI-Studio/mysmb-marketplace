@@ -1,0 +1,114 @@
+{
+  "contentHash": "fd36d3d7f963f1827fe0d533926e7c75be40d4190cd4cce1948e3b8af69ae5f5",
+  "declaredScopes": [
+    "records:od_orders:read",
+    "records:od_orders:write",
+    "records:od_order_lines:read"
+  ],
+  "dependencies": [],
+  "description": "Marks a reviewed order as released and prepares the hand-over for the warehouse (customer, PO, delivery date and lines). A rejected order is marked rejected instead. Today the hand-over stays in Workspace. This is the step to swap when the warehouse system is connected.",
+  "flowIr": {
+    "description": "Marks a reviewed order as released and prepares the hand-over for the warehouse (customer, PO, delivery date and lines). A rejected order is marked rejected instead. Today the hand-over stays in Workspace. This is the step to swap when the warehouse system is connected.",
+    "irVersion": 1,
+    "name": "Order Desk: release to warehouse",
+    "nodes": [
+      {
+        "code": "import re\nimport datetime\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_link_ids(row: Any, field: str) -> list[str]:\n    out: list[str] = []\n    for ref in ((row or {}).get(\"links\") or {}).get(field) or []:\n        if isinstance(ref, dict) and ref.get(\"id\"):\n            out.append(str(ref[\"id\"]))\n        elif isinstance(ref, str):\n            out.append(ref)\n    return out\n\n\ndef od_order_lines(order_id: str, order_number: str) -> list[dict[str, Any]]:\n    found = [r for r in od_rows(\"od_order_lines\", order_number) if order_id in od_link_ids(r, \"order\")]\n    if not found:\n        found = [r for r in od_rows(\"od_order_lines\") if order_id in od_link_ids(r, \"order\")]\n    found.sort(key=lambda r: float(od_data(r).get(\"line_number\") or 0))\n    return found\n\n\ndef od_now() -> str:\n    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\n\n\norder_id = params[\"order_id\"]\ndecision = od_text(params.get(\"decision\")) or \"release\"\nreviewed_by = od_text(params.get(\"reviewed_by\"))\nfound = api.records.get(type_slug=\"od_orders\", record_id=order_id) or {}\norder: dict[str, Any] = dict(found.get(\"record\") or {})\nstage = od_text(order.get(\"stage\"))\norder_number = od_text(order.get(\"title\"))\nreleased = False\nhandover: dict[str, Any] = {}\nif decision == \"reject\":\n    if stage != \"rejected\":\n        api.records.change_stage(type_slug=\"od_orders\", record_id=order_id, stage=\"rejected\", note=od_text(params.get(\"note\"))[:2000] or \"Rejected in review\")\n    result = \"rejected\"\nelse:\n    d = od_data(order)\n    lines = []\n    for row in od_order_lines(order_id, order_number):\n        line = od_data(row)\n        if not od_text(line.get(\"item_code\")):\n            continue\n        lines.append({\"line_number\": line.get(\"line_number\"), \"item_code\": od_text(line.get(\"item_code\")), \"quantity\": line.get(\"quantity\"), \"unit\": od_text(line.get(\"unit\")), \"note\": od_text(line.get(\"line_note\"))})\n    handover = {\n        \"order_number\": order_number,\n        \"account_code\": od_text(d.get(\"account_code\")),\n        \"po_number\": od_text(d.get(\"po_number\")),\n        \"delivery_date\": od_text(d.get(\"delivery_date\")),\n        \"delivery_address\": od_text(d.get(\"delivery_address_raw\")),\n        \"lines\": lines,\n    }\n    if stage != \"released\":\n        patch: dict[str, Any] = {\"released_on\": od_now()}\n        if re.fullmatch(r\"[0-9a-fA-F-]{36}\", reviewed_by):\n            patch[\"reviewed_by\"] = reviewed_by\n        api.records.update(type_slug=\"od_orders\", record_id=order_id, record={\"data\": patch})\n        if stage != \"confirmed\":\n            api.records.change_stage(type_slug=\"od_orders\", record_id=order_id, stage=\"confirmed\")\n        api.records.change_stage(type_slug=\"od_orders\", record_id=order_id, stage=\"released\", note=\"Released to the warehouse\")\n    released = True\n    result = \"released\"\n",
+        "id": "release",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when released",
+            "name": "released",
+            "type": "bool"
+          },
+          {
+            "description": "released or rejected",
+            "name": "result",
+            "type": "str"
+          },
+          {
+            "description": "What the warehouse receives",
+            "name": "handover",
+            "type": "dict"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.order_id }}",
+            "control": "hidden",
+            "name": "order_id",
+            "required": true,
+            "type": "uuid"
+          },
+          {
+            "binding": "{{ params.decision }}",
+            "control": "hidden",
+            "name": "decision",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.reviewed_by }}",
+            "control": "hidden",
+            "name": "reviewed_by",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.note }}",
+            "control": "hidden",
+            "name": "note",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Marks the order as released, or rejected, and prepares the details the warehouse needs.",
+        "title": "Release the order"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Order",
+        "name": "order_id",
+        "required": true,
+        "type": "uuid"
+      },
+      {
+        "control": "text",
+        "label": "release or reject",
+        "name": "decision",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Reviewer",
+        "name": "reviewed_by",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Note",
+        "name": "note",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "release"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: release to warehouse",
+  "originKey": "33524d73-acc2-405d-bbb8-e6192705a84c",
+  "tags": []
+}

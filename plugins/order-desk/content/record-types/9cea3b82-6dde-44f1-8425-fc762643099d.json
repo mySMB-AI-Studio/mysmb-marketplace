@@ -1,0 +1,171 @@
+{
+  "contentHash": "d6e6e85940ad144a6b719fbb313c6db62a5f2bd27a6ea6b1b8c787406f8e41f4",
+  "definition": {
+    "color": null,
+    "description": "How Order Desk should handle each customer's orders: their account code, helpful notes, the rules that must be followed and their order cut-off time.",
+    "fields": [
+      {
+        "groupLabel": null,
+        "key": "name",
+        "kind": "text",
+        "label": "Customer name",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "The customer record this profile belongs to.",
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "client"
+        },
+        "groupLabel": null,
+        "key": "client",
+        "kind": "relation",
+        "label": "Customer",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "The customer's account number in your accounting or ERP system.",
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "account_code",
+        "kind": "text",
+        "label": "Account code",
+        "position": 2,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "Helps recognise who an order is from, for example harbourview.com.au.",
+          "maxLength": 200
+        },
+        "groupLabel": null,
+        "key": "email_domain",
+        "kind": "text",
+        "label": "Email domain",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "Trading names or abbreviations this customer signs orders with.",
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "other_names",
+        "kind": "text",
+        "label": "Other names",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "Helpful context for reading this customer's orders. Notes guide; they never override the order.",
+          "maxLength": 5000
+        },
+        "groupLabel": null,
+        "key": "order_notes",
+        "kind": "long_text",
+        "label": "Order handling notes",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "Rules that must be followed on every order, one per line, most important first.",
+          "maxLength": 5000
+        },
+        "groupLabel": null,
+        "key": "order_rules",
+        "kind": "long_text",
+        "label": "Order rules",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "24-hour time, for example 14:00.",
+          "maxLength": 5
+        },
+        "groupLabel": null,
+        "key": "cutoff_time",
+        "kind": "text",
+        "label": "Order cut-off time",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "po_required",
+        "kind": "boolean",
+        "label": "PO number required",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "Whether simple orders from this customer may be confirmed without a person.",
+          "options": [
+            {
+              "key": "follow_default",
+              "label": "Follow the default"
+            },
+            {
+              "key": "never",
+              "label": "Never"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "auto_confirm",
+        "kind": "select",
+        "label": "Automatic confirmation",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Customer order profiles",
+    "labelSingular": "Customer order profile",
+    "slug": "od_customer_profiles",
+    "titleFieldKey": "name"
+  },
+  "kind": "record_type",
+  "name": "Customer order profiles",
+  "originKey": "9cea3b82-6dde-44f1-8425-fc762643099d"
+}

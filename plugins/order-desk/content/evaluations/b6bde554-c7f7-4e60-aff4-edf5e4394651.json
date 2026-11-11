@@ -1,0 +1,851 @@
+{
+  "contentHash": "4e16ac5fb9f8b6f957f45cd20dde9387539015bf2d15e4b9bb4aa6a989eb8dcf",
+  "definition": {
+    "key": "order-intake-checks",
+    "kind": "evaluation",
+    "originKey": "b6bde554-c7f7-4e60-aff4-edf5e4394651",
+    "process": "4823e8ad-8253-44be-b035-0c37905747a2",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "release",
+              "step": "reviewDecision"
+            }
+          ],
+          "outcome": "released",
+          "stepsReached": [
+            "read",
+            "findCustomer",
+            "match",
+            "applyRules",
+            "check",
+            "reviewDecision",
+            "release"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": true,
+              "ok": true,
+              "outcome": "ready",
+              "status": "succeeded"
+            },
+            "closeTicket": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "closeTicketRejected": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "findCustomer": {
+              "account_code": "HARB01",
+              "addresses": [],
+              "auto_confirm": "follow_default",
+              "customer_found": true,
+              "cutoff_time": "14:00",
+              "known_name": "Harbour View Cafe",
+              "match_how": "email_domain",
+              "ok": true,
+              "order_notes": "",
+              "order_rules": "",
+              "po_required": true,
+              "status": "succeeded"
+            },
+            "learn": {
+              "ok": true,
+              "saved": 0,
+              "status": "succeeded"
+            },
+            "markNotOrder": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "not_an_order",
+              "status": "succeeded"
+            },
+            "match": {
+              "flags": [],
+              "line_count": 2,
+              "lines": [],
+              "ok": true,
+              "review_count": 0,
+              "status": "succeeded"
+            },
+            "reject": {
+              "decision": "reject",
+              "ok": true,
+              "released": false,
+              "status": "succeeded"
+            },
+            "release": {
+              "decision": "release",
+              "ok": true,
+              "released": true,
+              "status": "succeeded"
+            }
+          },
+          "outputs": {
+            "applyRules": {
+              "brief": {
+                "consequence": "The warehouse gets the order.",
+                "facts": [
+                  "Harbour View Cafe",
+                  "2 lines",
+                  "Delivery 16 November"
+                ],
+                "question": "Release this order to the warehouse?",
+                "recommendation": "Release",
+                "recommendedOption": "release",
+                "uncertainty": "None."
+              },
+              "deliveryAddressId": "",
+              "deliveryDate": "2026-11-16",
+              "lineChanges": [],
+              "ruleFlags": [],
+              "summary": "Harbour View Cafe ordered two lines for 16 November. No customer rules applied."
+            },
+            "read": {
+              "accountCode": "",
+              "customerName": "Harbour View Cafe",
+              "deliveryAddress": "",
+              "deliveryDate": "2026-11-16",
+              "lines": [
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-1015A",
+                  "description": "carrots",
+                  "line_number": 1,
+                  "note": "",
+                  "quantity": 10,
+                  "raw_text": "10 x HV-1015A carrots 1kg",
+                  "unit": "each"
+                },
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-2040B",
+                  "description": "tomatoes",
+                  "line_number": 2,
+                  "note": "",
+                  "quantity": 4,
+                  "raw_text": "4 ctn HV-2040B tomatoes",
+                  "unit": "ctn"
+                }
+              ],
+              "messageKind": "order",
+              "poNumber": "PO-1001",
+              "readSummary": "Two line order from Harbour View Cafe.",
+              "senderEmail": "orders@harbourview.example",
+              "statedLineCount": 2,
+              "suspicious": false
+            }
+          },
+          "responses": [
+            {
+              "option": "release",
+              "step": "reviewDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "orderId": "00000000-0000-4000-8000-000000000001",
+          "orderNumber": "OD-test0001"
+        },
+        "key": "cleanOrderShadow",
+        "title": "Clean order, a person approves it"
+      },
+      {
+        "expected": {
+          "outcome": "released",
+          "stepsReached": [
+            "check",
+            "release"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "auto_confirmed": true,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "ready",
+              "status": "succeeded"
+            },
+            "closeTicket": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "closeTicketRejected": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "findCustomer": {
+              "account_code": "HARB01",
+              "addresses": [],
+              "auto_confirm": "follow_default",
+              "customer_found": true,
+              "cutoff_time": "14:00",
+              "known_name": "Harbour View Cafe",
+              "match_how": "email_domain",
+              "ok": true,
+              "order_notes": "",
+              "order_rules": "",
+              "po_required": true,
+              "status": "succeeded"
+            },
+            "learn": {
+              "ok": true,
+              "saved": 0,
+              "status": "succeeded"
+            },
+            "markNotOrder": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "not_an_order",
+              "status": "succeeded"
+            },
+            "match": {
+              "flags": [],
+              "line_count": 2,
+              "lines": [],
+              "ok": true,
+              "review_count": 0,
+              "status": "succeeded"
+            },
+            "reject": {
+              "decision": "reject",
+              "ok": true,
+              "released": false,
+              "status": "succeeded"
+            },
+            "release": {
+              "decision": "release",
+              "ok": true,
+              "released": true,
+              "status": "succeeded"
+            }
+          },
+          "outputs": {
+            "applyRules": {
+              "brief": {
+                "consequence": "The warehouse gets the order.",
+                "facts": [
+                  "Harbour View Cafe",
+                  "2 lines",
+                  "Delivery 16 November"
+                ],
+                "question": "Release this order to the warehouse?",
+                "recommendation": "Release",
+                "recommendedOption": "release",
+                "uncertainty": "None."
+              },
+              "deliveryAddressId": "",
+              "deliveryDate": "2026-11-16",
+              "lineChanges": [],
+              "ruleFlags": [],
+              "summary": "Harbour View Cafe ordered two lines for 16 November. No customer rules applied."
+            },
+            "read": {
+              "accountCode": "",
+              "customerName": "Harbour View Cafe",
+              "deliveryAddress": "",
+              "deliveryDate": "2026-11-16",
+              "lines": [
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-1015A",
+                  "description": "carrots",
+                  "line_number": 1,
+                  "note": "",
+                  "quantity": 10,
+                  "raw_text": "10 x HV-1015A carrots 1kg",
+                  "unit": "each"
+                },
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-2040B",
+                  "description": "tomatoes",
+                  "line_number": 2,
+                  "note": "",
+                  "quantity": 4,
+                  "raw_text": "4 ctn HV-2040B tomatoes",
+                  "unit": "ctn"
+                }
+              ],
+              "messageKind": "order",
+              "poNumber": "PO-1002",
+              "readSummary": "Two line order from Harbour View Cafe.",
+              "senderEmail": "orders@harbourview.example",
+              "statedLineCount": 2,
+              "suspicious": false
+            }
+          }
+        },
+        "inputs": {
+          "orderId": "00000000-0000-4000-8000-000000000002",
+          "orderNumber": "OD-test0002"
+        },
+        "key": "autoConfirmed",
+        "title": "Clean order released without a person"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "release",
+              "step": "poDecision"
+            }
+          ],
+          "outcome": "released",
+          "stepsReached": [
+            "check",
+            "poDecision",
+            "release"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "missing_po",
+              "flags": [
+                "missing_po"
+              ],
+              "needs_person": true,
+              "ok": true,
+              "outcome": "waiting_info",
+              "status": "succeeded"
+            },
+            "closeTicket": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "closeTicketRejected": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "findCustomer": {
+              "account_code": "HARB01",
+              "addresses": [],
+              "auto_confirm": "follow_default",
+              "customer_found": true,
+              "cutoff_time": "14:00",
+              "known_name": "Harbour View Cafe",
+              "match_how": "email_domain",
+              "ok": true,
+              "order_notes": "",
+              "order_rules": "",
+              "po_required": true,
+              "status": "succeeded"
+            },
+            "learn": {
+              "ok": true,
+              "saved": 0,
+              "status": "succeeded"
+            },
+            "markNotOrder": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "not_an_order",
+              "status": "succeeded"
+            },
+            "match": {
+              "flags": [],
+              "line_count": 2,
+              "lines": [],
+              "ok": true,
+              "review_count": 0,
+              "status": "succeeded"
+            },
+            "reject": {
+              "decision": "reject",
+              "ok": true,
+              "released": false,
+              "status": "succeeded"
+            },
+            "release": {
+              "decision": "release",
+              "ok": true,
+              "released": true,
+              "status": "succeeded"
+            }
+          },
+          "outputs": {
+            "applyRules": {
+              "brief": {
+                "consequence": "The warehouse gets the order.",
+                "facts": [
+                  "Harbour View Cafe",
+                  "2 lines",
+                  "Delivery 16 November"
+                ],
+                "question": "Release this order to the warehouse?",
+                "recommendation": "Release",
+                "recommendedOption": "release",
+                "uncertainty": "None."
+              },
+              "deliveryAddressId": "",
+              "deliveryDate": "2026-11-16",
+              "lineChanges": [],
+              "ruleFlags": [],
+              "summary": "Harbour View Cafe ordered two lines for 16 November. No customer rules applied."
+            },
+            "read": {
+              "accountCode": "",
+              "customerName": "Harbour View Cafe",
+              "deliveryAddress": "",
+              "deliveryDate": "2026-11-16",
+              "lines": [
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-1015A",
+                  "description": "carrots",
+                  "line_number": 1,
+                  "note": "",
+                  "quantity": 10,
+                  "raw_text": "10 x HV-1015A carrots 1kg",
+                  "unit": "each"
+                },
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-2040B",
+                  "description": "tomatoes",
+                  "line_number": 2,
+                  "note": "",
+                  "quantity": 4,
+                  "raw_text": "4 ctn HV-2040B tomatoes",
+                  "unit": "ctn"
+                }
+              ],
+              "messageKind": "order",
+              "poNumber": "",
+              "readSummary": "Two line order from Harbour View Cafe.",
+              "senderEmail": "orders@harbourview.example",
+              "statedLineCount": 2,
+              "suspicious": false
+            }
+          },
+          "responses": [
+            {
+              "option": "release",
+              "step": "poDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "orderId": "00000000-0000-4000-8000-000000000003",
+          "orderNumber": "OD-test0003"
+        },
+        "key": "missingPo",
+        "title": "PO number missing, person adds it and releases"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "reject",
+              "step": "duplicateDecision"
+            }
+          ],
+          "outcome": "rejected",
+          "stepsReached": [
+            "check",
+            "duplicateDecision"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "possible_duplicate",
+              "flags": [
+                "possible_duplicate"
+              ],
+              "needs_person": true,
+              "ok": true,
+              "outcome": "needs_review",
+              "status": "succeeded"
+            },
+            "closeTicket": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "closeTicketRejected": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "findCustomer": {
+              "account_code": "HARB01",
+              "addresses": [],
+              "auto_confirm": "follow_default",
+              "customer_found": true,
+              "cutoff_time": "14:00",
+              "known_name": "Harbour View Cafe",
+              "match_how": "email_domain",
+              "ok": true,
+              "order_notes": "",
+              "order_rules": "",
+              "po_required": true,
+              "status": "succeeded"
+            },
+            "learn": {
+              "ok": true,
+              "saved": 0,
+              "status": "succeeded"
+            },
+            "markNotOrder": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "not_an_order",
+              "status": "succeeded"
+            },
+            "match": {
+              "flags": [],
+              "line_count": 2,
+              "lines": [],
+              "ok": true,
+              "review_count": 0,
+              "status": "succeeded"
+            },
+            "reject": {
+              "decision": "reject",
+              "ok": true,
+              "released": false,
+              "status": "succeeded"
+            },
+            "release": {
+              "decision": "release",
+              "ok": true,
+              "released": true,
+              "status": "succeeded"
+            }
+          },
+          "outputs": {
+            "applyRules": {
+              "brief": {
+                "consequence": "The warehouse gets the order.",
+                "facts": [
+                  "Harbour View Cafe",
+                  "2 lines",
+                  "Delivery 16 November"
+                ],
+                "question": "Release this order to the warehouse?",
+                "recommendation": "Reject",
+                "recommendedOption": "reject",
+                "uncertainty": "None."
+              },
+              "deliveryAddressId": "",
+              "deliveryDate": "2026-11-16",
+              "lineChanges": [],
+              "ruleFlags": [],
+              "summary": "Harbour View Cafe ordered two lines for 16 November. No customer rules applied."
+            },
+            "read": {
+              "accountCode": "",
+              "customerName": "Harbour View Cafe",
+              "deliveryAddress": "",
+              "deliveryDate": "2026-11-16",
+              "lines": [
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-1015A",
+                  "description": "carrots",
+                  "line_number": 1,
+                  "note": "",
+                  "quantity": 10,
+                  "raw_text": "10 x HV-1015A carrots 1kg",
+                  "unit": "each"
+                },
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-2040B",
+                  "description": "tomatoes",
+                  "line_number": 2,
+                  "note": "",
+                  "quantity": 4,
+                  "raw_text": "4 ctn HV-2040B tomatoes",
+                  "unit": "ctn"
+                }
+              ],
+              "messageKind": "order",
+              "poNumber": "PO-1001",
+              "readSummary": "Two line order from Harbour View Cafe.",
+              "senderEmail": "orders@harbourview.example",
+              "statedLineCount": 2,
+              "suspicious": false
+            }
+          },
+          "responses": [
+            {
+              "option": "reject",
+              "step": "duplicateDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "orderId": "00000000-0000-4000-8000-000000000004",
+          "orderNumber": "OD-test0004"
+        },
+        "key": "possibleDuplicate",
+        "title": "Possible duplicate, person rejects it"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "reject",
+              "step": "reviewDecision"
+            }
+          ],
+          "outcome": "rejected",
+          "stepsReached": [
+            "check",
+            "reviewDecision"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "check": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "unknown_product",
+              "flags": [
+                "unknown_product"
+              ],
+              "needs_person": true,
+              "ok": true,
+              "outcome": "needs_review",
+              "status": "succeeded"
+            },
+            "closeTicket": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "closeTicketRejected": {
+              "closed": false,
+              "ok": true,
+              "status": "succeeded",
+              "ticket_number": ""
+            },
+            "findCustomer": {
+              "account_code": "HARB01",
+              "addresses": [],
+              "auto_confirm": "follow_default",
+              "customer_found": true,
+              "cutoff_time": "14:00",
+              "known_name": "Harbour View Cafe",
+              "match_how": "email_domain",
+              "ok": true,
+              "order_notes": "",
+              "order_rules": "",
+              "po_required": true,
+              "status": "succeeded"
+            },
+            "learn": {
+              "ok": true,
+              "saved": 0,
+              "status": "succeeded"
+            },
+            "markNotOrder": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "not_an_order",
+              "status": "succeeded"
+            },
+            "match": {
+              "flags": [
+                "unknown_product"
+              ],
+              "line_count": 2,
+              "lines": [],
+              "ok": true,
+              "review_count": 1,
+              "status": "succeeded"
+            },
+            "reject": {
+              "decision": "reject",
+              "ok": true,
+              "released": false,
+              "status": "succeeded"
+            },
+            "release": {
+              "decision": "release",
+              "ok": true,
+              "released": true,
+              "status": "succeeded"
+            }
+          },
+          "outputs": {
+            "applyRules": {
+              "brief": {
+                "consequence": "The warehouse gets the order.",
+                "facts": [
+                  "Harbour View Cafe",
+                  "2 lines",
+                  "Delivery 16 November"
+                ],
+                "question": "Release this order to the warehouse?",
+                "recommendation": "Reject",
+                "recommendedOption": "reject",
+                "uncertainty": "None."
+              },
+              "deliveryAddressId": "",
+              "deliveryDate": "2026-11-16",
+              "lineChanges": [],
+              "ruleFlags": [],
+              "summary": "Harbour View Cafe ordered two lines for 16 November. No customer rules applied."
+            },
+            "read": {
+              "accountCode": "",
+              "customerName": "Harbour View Cafe",
+              "deliveryAddress": "",
+              "deliveryDate": "2026-11-16",
+              "lines": [
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-1015A",
+                  "description": "carrots",
+                  "line_number": 1,
+                  "note": "",
+                  "quantity": 10,
+                  "raw_text": "10 x HV-1015A carrots 1kg",
+                  "unit": "each"
+                },
+                {
+                  "confidence": "high",
+                  "customer_code": "HV-2040B",
+                  "description": "tomatoes",
+                  "line_number": 2,
+                  "note": "",
+                  "quantity": 4,
+                  "raw_text": "4 ctn HV-2040B tomatoes",
+                  "unit": "ctn"
+                }
+              ],
+              "messageKind": "order",
+              "poNumber": "PO-1005",
+              "readSummary": "Two line order from Harbour View Cafe.",
+              "senderEmail": "orders@harbourview.example",
+              "statedLineCount": 2,
+              "suspicious": false
+            }
+          },
+          "responses": [
+            {
+              "option": "reject",
+              "step": "reviewDecision"
+            }
+          ]
+        },
+        "inputs": {
+          "orderId": "00000000-0000-4000-8000-000000000005",
+          "orderNumber": "OD-test0005"
+        },
+        "key": "reviewRejected",
+        "title": "Unknown product, person rejects the order"
+      },
+      {
+        "expected": {
+          "outcome": "notAnOrder",
+          "stepsReached": [
+            "read",
+            "markNotOrder"
+          ]
+        },
+        "fixtures": {
+          "automations": {
+            "markNotOrder": {
+              "auto_confirmed": false,
+              "final_lines": [],
+              "flag_text": "",
+              "flags": [],
+              "needs_person": false,
+              "ok": true,
+              "outcome": "not_an_order",
+              "status": "succeeded"
+            }
+          },
+          "outputs": {
+            "read": {
+              "accountCode": "",
+              "customerName": "",
+              "deliveryAddress": "",
+              "deliveryDate": "",
+              "lines": [],
+              "messageKind": "not_an_order",
+              "poNumber": "",
+              "readSummary": "A price list request, not an order.",
+              "senderEmail": "orders@harbourview.example",
+              "statedLineCount": 0,
+              "suspicious": false
+            }
+          }
+        },
+        "inputs": {
+          "orderId": "00000000-0000-4000-8000-000000000006",
+          "orderNumber": "OD-test0006"
+        },
+        "key": "notAnOrder",
+        "title": "Email that is not an order"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Order intake checks"
+  },
+  "kind": "evaluation",
+  "name": "Order intake checks",
+  "originKey": "b6bde554-c7f7-4e60-aff4-edf5e4394651"
+}

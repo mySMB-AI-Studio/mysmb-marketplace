@@ -1,0 +1,301 @@
+{
+  "contentHash": "8b925b637b830933164b1f9c0c876e26dc147dcad349079840bf58e43fc21a38",
+  "definition": {
+    "color": null,
+    "description": "The lines of each order: what the customer wrote, and the product, quantity and unit Order Desk matched it to.",
+    "fields": [
+      {
+        "config": {
+          "helpText": "Order number and line number, for example OD-000123 / 4."
+        },
+        "groupLabel": null,
+        "key": "label",
+        "kind": "text",
+        "label": "Line",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "restrict",
+          "target": "record:od_orders"
+        },
+        "groupLabel": null,
+        "key": "order",
+        "kind": "relation",
+        "label": "Order",
+        "position": 1,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "decimals": 0,
+          "min": 1
+        },
+        "groupLabel": null,
+        "key": "line_number",
+        "kind": "number",
+        "label": "Line number",
+        "position": 2,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "raw_text",
+        "kind": "text",
+        "label": "As written",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 120
+        },
+        "groupLabel": null,
+        "key": "customer_code",
+        "kind": "text",
+        "label": "Customer's code",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "decimals": 3
+        },
+        "groupLabel": null,
+        "key": "raw_quantity",
+        "kind": "number",
+        "label": "Quantity as written",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 40
+        },
+        "groupLabel": null,
+        "key": "raw_unit",
+        "kind": "text",
+        "label": "Unit as written",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "line_note",
+        "kind": "text",
+        "label": "Customer's note",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "restrict",
+          "target": "record:od_products"
+        },
+        "groupLabel": null,
+        "key": "product",
+        "kind": "relation",
+        "label": "Product",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "item_code",
+        "kind": "text",
+        "label": "Item code",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "decimals": 3,
+          "helpText": "In your selling unit.",
+          "min": 0
+        },
+        "groupLabel": null,
+        "key": "quantity",
+        "kind": "number",
+        "label": "Quantity",
+        "position": 10,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 40
+        },
+        "groupLabel": null,
+        "key": "unit",
+        "kind": "text",
+        "label": "Unit",
+        "position": 11,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "conversion_note",
+        "kind": "text",
+        "label": "How it was converted",
+        "position": 12,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "matched",
+              "label": "Matched"
+            },
+            {
+              "key": "converted",
+              "label": "Converted"
+            },
+            {
+              "key": "guessed",
+              "label": "Best guess"
+            },
+            {
+              "key": "unmatched",
+              "label": "Not matched"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "match_result",
+        "kind": "select",
+        "label": "Match",
+        "position": 13,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "high",
+              "label": "High"
+            },
+            {
+              "key": "medium",
+              "label": "Medium"
+            },
+            {
+              "key": "low",
+              "label": "Low"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "read_confidence",
+        "kind": "select",
+        "label": "Reading confidence",
+        "position": 14,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "needs_review",
+        "kind": "boolean",
+        "label": "Needs review",
+        "position": 15,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "rule_applied",
+        "kind": "text",
+        "label": "Rule applied",
+        "position": 16,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "corrected",
+        "kind": "boolean",
+        "label": "Corrected by a person",
+        "position": 17,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Order lines",
+    "labelSingular": "Order line",
+    "slug": "od_order_lines",
+    "titleFieldKey": "label"
+  },
+  "kind": "record_type",
+  "name": "Order lines",
+  "originKey": "824bdf43-da6a-4eae-81fb-fdc782255b2c"
+}

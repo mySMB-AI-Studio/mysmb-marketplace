@@ -1,0 +1,127 @@
+{
+  "contentHash": "2baf6e157eae6de5924fbba39fe981ec7b18f036a1ee3282f59676e7643acf68",
+  "dependencies": [],
+  "document": {
+    "actions": [],
+    "bindings": [
+      {
+        "config": {
+          "limit": 100,
+          "typeSlug": "od_orders"
+        },
+        "id": "ordersList",
+        "kind": "records.list"
+      },
+      {
+        "config": {
+          "limit": 100,
+          "typeSlug": "od_order_lines"
+        },
+        "id": "linesList",
+        "kind": "records.list"
+      },
+      {
+        "config": {
+          "limit": 50,
+          "typeSlug": "od_corrections"
+        },
+        "id": "correctionsList",
+        "kind": "records.list"
+      },
+      {
+        "config": {
+          "limit": 50,
+          "status": "not_started"
+        },
+        "id": "openWork",
+        "kind": "workq.list"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "root",
+        "parentId": null,
+        "props": {
+          "gap": "medium"
+        },
+        "type": "section"
+      },
+      {
+        "id": "title",
+        "parentId": "root",
+        "props": {
+          "level": 1,
+          "text": "Order review"
+        },
+        "type": "heading"
+      },
+      {
+        "id": "intro",
+        "parentId": "root",
+        "props": {
+          "text": "Every order Order Desk has read, with what it found. Orders that need a person also appear as a decision in your WorkQ. Open an order to see the original message, fix a line or add a PO number before you approve it."
+        },
+        "type": "text"
+      },
+      {
+        "bindingIds": [
+          "ordersList"
+        ],
+        "id": "orders",
+        "parentId": "root",
+        "props": {
+          "title": "Orders"
+        },
+        "type": "records"
+      },
+      {
+        "id": "cols",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        },
+        "type": "columns"
+      },
+      {
+        "bindingIds": [
+          "linesList"
+        ],
+        "id": "lines",
+        "parentId": "cols",
+        "props": {
+          "title": "Order lines"
+        },
+        "type": "records"
+      },
+      {
+        "bindingIds": [
+          "correctionsList"
+        ],
+        "id": "corrections",
+        "parentId": "cols",
+        "props": {
+          "title": "Corrections learned"
+        },
+        "type": "records"
+      },
+      {
+        "bindingIds": [
+          "openWork"
+        ],
+        "id": "todo",
+        "parentId": "root",
+        "props": {
+          "title": "Waiting on a person"
+        },
+        "type": "workq"
+      }
+    ],
+    "rootId": "root",
+    "schemaVersion": 1
+  },
+  "icon": "ClipboardCheck",
+  "kind": "page",
+  "originKey": "6bb9ab9a-dd36-44a2-a029-8ed0ee1892c3",
+  "slug": "order-desk-review",
+  "title": "Order review"
+}

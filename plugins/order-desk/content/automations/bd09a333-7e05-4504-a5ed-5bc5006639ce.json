@@ -1,0 +1,124 @@
+{
+  "contentHash": "59cc4faedfa7f9d6754b5b7e461bcd987c023be8cc6b38f758a5a3951a4a71b3",
+  "declaredScopes": [
+    "records:od_orders:read",
+    "records:od_order_lines:read",
+    "records:od_order_lines:write",
+    "records:od_corrections:read",
+    "records:od_corrections:write",
+    "records:od_customer_catalogue:read",
+    "records:od_customer_catalogue:write"
+  ],
+  "dependencies": [],
+  "description": "Compares what Order Desk proposed with what the reviewer approved. Each difference is saved as a correction, and a corrected product is added to that customer's catalogue so the same line is matched correctly next time.",
+  "flowIr": {
+    "description": "Compares what Order Desk proposed with what the reviewer approved. Each difference is saved as a correction, and a corrected product is added to that customer's catalogue so the same line is matched correctly next time.",
+    "irVersion": 1,
+    "name": "Order Desk: save correction",
+    "nodes": [
+      {
+        "code": "import re\nimport datetime\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_norm(value: Any) -> str:\n    return re.sub(r\"[^a-z0-9]+\", \" \", od_text(value).lower()).strip()\n\n\ndef od_link_ids(row: Any, field: str) -> list[str]:\n    out: list[str] = []\n    for ref in ((row or {}).get(\"links\") or {}).get(field) or []:\n        if isinstance(ref, dict) and ref.get(\"id\"):\n            out.append(str(ref[\"id\"]))\n        elif isinstance(ref, str):\n            out.append(ref)\n    return out\n\n\ndef od_order_lines(order_id: str, order_number: str) -> list[dict[str, Any]]:\n    found = [r for r in od_rows(\"od_order_lines\", order_number) if order_id in od_link_ids(r, \"order\")]\n    if not found:\n        found = [r for r in od_rows(\"od_order_lines\") if order_id in od_link_ids(r, \"order\")]\n    found.sort(key=lambda r: float(od_data(r).get(\"line_number\") or 0))\n    return found\n\n\ndef od_now() -> str:\n    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\n\n\ndef as_number(value: Any) -> float:\n    try:\n        return float(re.sub(r\"[^0-9.\\-]\", \"\", str(value)) or 0)\n    except ValueError:\n        return 0.0\n\n\ndef show(value: Any) -> str:\n    text = od_text(value)\n    return text.rstrip(\"0\").rstrip(\".\") if re.fullmatch(r\"-?\\d+\\.\\d+\", text) else text\n\n\norder_id = params[\"order_id\"]\nreason = od_text(params.get(\"reason\")) or \"other\"\nif reason not in (\"misread\", \"wrong_product\", \"wrong_conversion\", \"customer_rule\", \"missing_mapping\", \"wrong_customer\", \"duplicate\", \"customer_changed\", \"other\"):\n    reason = \"other\"\nreason_note = od_text(params.get(\"reason_note\"))\ncorrected_by = od_text(params.get(\"corrected_by\"))\nfound = api.records.get(type_slug=\"od_orders\", record_id=order_id) or {}\norder: dict[str, Any] = dict(found.get(\"record\") or {})\norder_number = od_text(order.get(\"title\"))\naccount_code = od_text(od_data(order).get(\"account_code\"))\nproposed: dict[str, dict[str, Any]] = {}\nfor item in (params.get(\"proposed_lines\") or []):\n    if isinstance(item, dict) and item.get(\"line_id\"):\n        proposed[od_text(item.get(\"line_id\"))] = dict(item)\ncatalogue = [r for r in od_rows(\"od_customer_catalogue\", account_code) if od_text(od_data(r).get(\"account_code\")) == account_code] if account_code else []\ncorrections = 0\nlearned_count = 0\nseen: list[str] = []\nfor row in od_order_lines(order_id, order_number):\n    line_id = od_text(row.get(\"id\"))\n    seen.append(line_id)\n    d = od_data(row)\n    before = proposed.get(line_id)\n    label = od_text(row.get(\"title\"))\n    changes: list[tuple[str, str, str]] = []\n    if before is None:\n        changes.append((\"line_added\", \"\", show(d.get(\"quantity\")) + \" \" + od_text(d.get(\"unit\")) + \" \" + od_text(d.get(\"item_code\"))))\n    else:\n        if od_text(before.get(\"item_code\")) != od_text(d.get(\"item_code\")):\n            changes.append((\"product\", od_text(before.get(\"item_code\")), od_text(d.get(\"item_code\"))))\n        if abs(as_number(before.get(\"quantity\")) - as_number(d.get(\"quantity\"))) > 0.0005:\n            changes.append((\"quantity\", show(before.get(\"quantity\")), show(d.get(\"quantity\"))))\n        if od_text(before.get(\"unit\")) != od_text(d.get(\"unit\")):\n            changes.append((\"unit\", od_text(before.get(\"unit\")), od_text(d.get(\"unit\"))))\n    if not changes:\n        continue\n    learned = False\n    customer_code = od_text(d.get(\"customer_code\"))\n    item_code = od_text(d.get(\"item_code\"))\n    if account_code and item_code and any(c[0] == \"product\" for c in changes) and (customer_code or od_text(d.get(\"raw_text\"))):\n        description = od_text(d.get(\"raw_text\"))\n        if customer_code:\n            description = description.replace(customer_code, \" \")\n        description = re.sub(r\"(?i)\\b(x|\\d+(\\.\\d+)?|\" + re.escape(od_text(d.get(\"raw_unit\"))) + r\")\\b\" if od_text(d.get(\"raw_unit\")) else r\"(?i)\\b(x|\\d+(\\.\\d+)?)\\b\", \" \", description)\n        description = re.sub(r\"\\s+\", \" \", description).strip()[:300]\n        known = [r for r in catalogue if (customer_code and od_text(od_data(r).get(\"customer_code\")).upper() == customer_code.upper()) or (not customer_code and od_norm(od_data(r).get(\"customer_description\")) == od_norm(description))]\n        mapping: dict[str, Any] = {\"account_code\": account_code, \"customer_code\": customer_code[:120], \"customer_description\": description, \"customer_unit\": od_text(d.get(\"raw_unit\"))[:40], \"item_code\": item_code, \"conversion_factor\": 1, \"rounding\": \"none\", \"source\": \"learned\", \"mapping_notes\": \"Learned from a correction on \" + label + \".\"}\n        links: dict[str, Any] = {}\n        product_ids = od_link_ids(row, \"product\")\n        if product_ids:\n            links[\"product\"] = product_ids[:1]\n        if known:\n            api.records.update(type_slug=\"od_customer_catalogue\", record_id=known[0][\"id\"], record={\"data\": {\"item_code\": item_code, \"source\": \"learned\", \"mapping_notes\": mapping[\"mapping_notes\"]}, \"links\": links} if links else {\"data\": {\"item_code\": item_code, \"source\": \"learned\", \"mapping_notes\": mapping[\"mapping_notes\"]}})\n        else:\n            new_row: dict[str, Any] = {\"title\": (account_code + \" / \" + (customer_code or description))[:200], \"data\": mapping}\n            if links:\n                new_row[\"links\"] = links\n            api.records.create(type_slug=\"od_customer_catalogue\", record=new_row)\n        learned = True\n        learned_count += 1\n    for field, old, new in changes:\n        data: dict[str, Any] = {\"account_code\": account_code, \"field_changed\": field, \"old_value\": old[:500], \"new_value\": new[:500], \"reason\": reason, \"reason_note\": reason_note[:2000], \"corrected_on\": od_now(), \"learned\": learned and field == \"product\"}\n        if re.fullmatch(r\"[0-9a-fA-F-]{36}\", corrected_by):\n            data[\"corrected_by\"] = corrected_by\n        api.records.create(type_slug=\"od_corrections\", record={\"title\": (label + \": \" + field.replace(\"_\", \" \") + \" \" + old + \" -> \" + new)[:200], \"data\": data, \"links\": {\"order\": [order_id], \"order_line\": [line_id]}})\n        corrections += 1\n    api.records.update(type_slug=\"od_order_lines\", record_id=line_id, record={\"data\": {\"corrected\": True, \"needs_review\": False}})\nfor line_id, before in proposed.items():\n    if line_id not in seen:\n        api.records.create(type_slug=\"od_corrections\", record={\"title\": (order_number + \": line \" + show(before.get(\"line_number\")) + \" removed\")[:200], \"data\": {\"account_code\": account_code, \"field_changed\": \"line_removed\", \"old_value\": (show(before.get(\"quantity\")) + \" \" + od_text(before.get(\"unit\")) + \" \" + od_text(before.get(\"item_code\")))[:500], \"new_value\": \"\", \"reason\": reason, \"reason_note\": reason_note[:2000], \"corrected_on\": od_now(), \"learned\": False}, \"links\": {\"order\": [order_id]}})\n        corrections += 1\n",
+        "id": "learn",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Corrections saved",
+            "name": "corrections",
+            "type": "int"
+          },
+          {
+            "description": "Catalogue entries learned",
+            "name": "learned_count",
+            "type": "int"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.order_id }}",
+            "control": "hidden",
+            "name": "order_id",
+            "required": true,
+            "type": "uuid"
+          },
+          {
+            "binding": "{{ params.proposed_lines }}",
+            "control": "hidden",
+            "name": "proposed_lines",
+            "required": false,
+            "type": "list[dict]"
+          },
+          {
+            "binding": "{{ params.reason }}",
+            "control": "hidden",
+            "name": "reason",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.reason_note }}",
+            "control": "hidden",
+            "name": "reason_note",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.corrected_by }}",
+            "control": "hidden",
+            "name": "corrected_by",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Records every change the reviewer made and teaches the customer's catalogue the corrected product.",
+        "title": "Save corrections and learn"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Order",
+        "name": "order_id",
+        "required": true,
+        "type": "uuid"
+      },
+      {
+        "control": "hidden",
+        "label": "Lines as proposed",
+        "name": "proposed_lines",
+        "required": false,
+        "type": "list[dict]"
+      },
+      {
+        "control": "text",
+        "name": "reason",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "name": "reason_note",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "name": "corrected_by",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "learn"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: save correction",
+  "originKey": "bd09a333-7e05-4504-a5ed-5bc5006639ce",
+  "tags": []
+}
