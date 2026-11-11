@@ -148,51 +148,6 @@ const flatten_projects: ComputedFunction = (args) => {
  *
  * Args: { value: array }
  */
-const flatten_project_progress: ComputedFunction = (args) => {
-  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
-  if (raw.length === 0) return [];
-
-  let atRisk = 0;
-  let behind = 0;
-
-  const rows = raw.map((proj) => {
-    const id = String(proj.gid ?? proj.id ?? '');
-    const name = String(proj.name ?? '');
-
-    const taskCounts = proj.task_counts as Record<string, unknown> | null | undefined;
-    const numTasks = taskCounts ? Number(taskCounts.num_tasks ?? 0) : 0;
-    const numCompleted = taskCounts ? Number(taskCounts.num_completed_tasks ?? 0) : 0;
-    const pct = numTasks > 0 ? Math.round((numCompleted / numTasks) * 100) : 0;
-
-    let tone = 'muted';
-    let pctLabel = '—';
-    if (numTasks > 0) {
-      pctLabel = `${pct}%`;
-      if (pct < 40) { tone = 'destructive'; behind++; }
-      else if (pct < 70) { tone = 'warning'; atRisk++; }
-    }
-
-    return {
-      id,
-      name,
-      pct,
-      pct_label: pctLabel,
-      tone,
-      stat_active: '',
-      stat_at_risk: '',
-      stat_behind: '',
-      footer_label: '',
-    };
-  });
-
-  const total = raw.length;
-  rows[0].stat_active = String(total);
-  rows[0].stat_at_risk = String(atRisk);
-  rows[0].stat_behind = String(behind);
-  rows[0].footer_label = `${total} active project${total === 1 ? '' : 's'}`;
-
-  return rows;
-};
 
 /**
  * Flattens a get_team_workload response into display rows for the Team Workload tile.
@@ -842,6 +797,201 @@ const flatten_overdue_board: ComputedFunction = (args) => {
   };
 };
 
+// ── Project Progress board ───────────────────────────────────────────────────
+// `flatten_project_board` is the single helper behind the Project Progress
+// tile, same one-pass shape as the two boards above.
+//
+// WHAT THE API DOES NOT GIVE US -- the reference design showed an overdue count
+// per project and derived each project's status from it. `list_projects`
+// returns `task_counts` with `num_tasks` and `num_completed_tasks` and nothing
+// else: no due dates, no overdue tally (confirmed against the live workspace on
+// 2026-11-11). Asana has no project-level overdue field either -- getting one
+// would mean listing every task of every project, which is one call per project
+// and not something a tile's single dataProvider can do. So status here is
+// derived from completion instead, on the same thresholds the previous version
+// of this tile already used, and the second caption slot carries the remaining
+// count rather than an overdue count.
+
+const PROGRESS_STATES = ['behind', 'risk', 'ok'] as const;
+type ProgressState = (typeof PROGRESS_STATES)[number];
+
+/** Completion below this is "Behind"; below RISK_BELOW is "At risk". */
+const BEHIND_BELOW = 40;
+const RISK_BELOW = 70;
+
+const PROGRESS_TONE: Record<ProgressState, string> = {
+  behind: 'destructive',
+  risk: 'warning',
+  ok: 'success',
+};
+
+const PROGRESS_LABEL: Record<ProgressState, string> = {
+  behind: 'Behind',
+  risk: 'At risk',
+  ok: 'On track',
+};
+
+const SORT_KEYS = ['low', 'high', 'az'] as const;
+type SortKey = (typeof SORT_KEYS)[number];
+
+/** The sort control is a one-button cycle, so each mode names the next one. */
+const SORT_NEXT: Record<SortKey, SortKey> = { low: 'high', high: 'az', az: 'low' };
+
+function progressStateFor(pct: number): ProgressState {
+  if (pct < BEHIND_BELOW) return 'behind';
+  if (pct < RISK_BELOW) return 'risk';
+  return 'ok';
+}
+
+interface ProjectCard {
+  id: string;
+  name: string;
+  pct: number;
+  /** '' for a project with no tasks at all -- it has no percentage to show. */
+  state: ProgressState | '';
+  done: number;
+  total: number;
+  url: string;
+}
+
+/**
+ * Builds the whole Project Progress board from one `list_projects` response:
+ * the overall completion hero, the status filter chips, and the project cards
+ * for whichever filter and sort are selected.
+ *
+ * Args: { value: array, filter?: string, sort?: string }
+ *   value  -- `list_projects`' `data` array.
+ *   filter -- 'all' (default) | 'behind' | 'risk' | 'ok'.
+ *   sort   -- 'low' (default, worst first) | 'high' | 'az'. Lowest-first is the
+ *             default because the tile is for spotting what is lagging.
+ *
+ * Returns ONE object at `/ui/board` -- the tile needs the hero and the chips
+ * alongside the cards, and a spec can only repeat over a flat array.
+ *
+ * A project with no tasks has no percentage, so it gets its own "No tasks"
+ * state: it stays visible under "All" but is deliberately absent from the
+ * status chips and their counts, rather than being rounded into "Behind" at 0%.
+ */
+const flatten_project_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const requestedSort = String(args.sort ?? 'low');
+  const sort: SortKey = (SORT_KEYS as readonly string[]).includes(requestedSort)
+    ? (requestedSort as SortKey)
+    : 'low';
+
+  const projects: ProjectCard[] = raw.map((proj) => {
+    const counts = (proj.task_counts ?? null) as Record<string, unknown> | null;
+    const total = counts ? Number(counts.num_tasks ?? 0) : 0;
+    const done = counts ? Number(counts.num_completed_tasks ?? 0) : 0;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    return {
+      id: String(proj.gid ?? proj.id ?? ''),
+      name: String(proj.name ?? ''),
+      pct,
+      state: total > 0 ? progressStateFor(pct) : '',
+      done,
+      total,
+      url: proj.permalink_url ? String(proj.permalink_url) : '',
+    };
+  });
+
+  const counts: Record<ProgressState, number> = { behind: 0, risk: 0, ok: 0 };
+  for (const project of projects) {
+    if (project.state) counts[project.state]++;
+  }
+
+  const totalTasks = projects.reduce((sum, p) => sum + p.total, 0);
+  const doneTasks = projects.reduce((sum, p) => sum + p.done, 0);
+  const overallPct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
+  // A filter nothing matches would strand the user on an empty grid, so fall
+  // back to 'all' -- same guard as the other two boards.
+  const requestedFilter = String(args.filter ?? 'all');
+  const filter: string =
+    (PROGRESS_STATES as readonly string[]).includes(requestedFilter) &&
+    counts[requestedFilter as ProgressState] > 0
+      ? requestedFilter
+      : 'all';
+
+  const chips = [
+    {
+      id: 'all',
+      filter: 'all',
+      chip_text: `All  ${projects.length}`,
+      tone: 'default',
+      selected: filter === 'all',
+    },
+    // A status with nothing in it is dropped rather than shown as a dead "0":
+    // the chips are for narrowing, and a chip that can only ever empty the grid
+    // is noise in a row that is already tight for space.
+    ...PROGRESS_STATES.filter((key) => counts[key] > 0).map((key) => ({
+      id: key,
+      filter: key as string,
+      chip_text: `${PROGRESS_LABEL[key]}  ${counts[key]}`,
+      tone: PROGRESS_TONE[key],
+      selected: filter === key,
+    })),
+  ];
+
+  const visible = filter === 'all' ? projects : projects.filter((p) => p.state === filter);
+  const sorted = [...visible].sort((a, b) => {
+    if (sort === 'az') return a.name.localeCompare(b.name);
+    if (sort === 'high') return b.pct - a.pct || a.name.localeCompare(b.name);
+    return a.pct - b.pct || a.name.localeCompare(b.name);
+  });
+
+  const cards = sorted.map((project) => {
+    const hasTasks = project.total > 0;
+    const tone = hasTasks ? PROGRESS_TONE[project.state as ProgressState] : 'muted';
+    const left = project.total - project.done;
+    return {
+      id: project.id,
+      name: project.name,
+      pct: project.pct,
+      pct_label: hasTasks ? `${project.pct}%` : '—',
+      tone,
+      status_label: hasTasks ? PROGRESS_LABEL[project.state as ProgressState] : 'No tasks',
+      done_label: hasTasks ? `${project.done} of ${project.total} done` : 'No tasks yet',
+      left_label: `${left} left`,
+      show_left: hasTasks && left > 0,
+      url: project.url,
+      has_url: Boolean(project.url),
+    };
+  });
+
+  const projectNoun = projects.length === 1 ? 'project' : 'projects';
+
+  return {
+    header_label:
+      projects.length === 0
+        ? 'Asana'
+        : `Asana · ${projects.length} active ${projectNoun}`,
+    has_projects: projects.length > 0,
+    overall_pct: overallPct,
+    overall_pct_label: `${overallPct}%`,
+    overall_tone: totalTasks > 0 ? PROGRESS_TONE[progressStateFor(overallPct)] : 'muted',
+    hero_tasks_label: `${doneTasks} of ${totalTasks} tasks complete`,
+    hero_projects_label: `across ${projects.length} ${projectNoun}`,
+    chips,
+    show_chips: chips.length > 1,
+    sort,
+    sort_label:
+      sort === 'low' ? 'Sort: Lowest %' : sort === 'high' ? 'Sort: Highest %' : 'Sort: A–Z',
+    sort_next: SORT_NEXT[sort],
+    sort_low_selected: sort === 'low',
+    sort_high_selected: sort === 'high',
+    sort_az_selected: sort === 'az',
+    cards,
+    has_cards: cards.length > 0,
+    empty_message: 'No active projects found.',
+    footer_label:
+      filter === 'all'
+        ? `${projects.length} active ${projectNoun} · ${doneTasks} of ${totalTasks} tasks done`
+        : `${cards.length} of ${projects.length} ${projectNoun} · ${PROGRESS_LABEL[filter as ProgressState]}`,
+  };
+};
+
 /**
  * Flattens a list_milestones response into display rows for the Upcoming
  * Milestones tile. `list_milestones` is server-side pre-filtered to
@@ -1067,7 +1217,7 @@ const elements: PluginElementsModule = {
     format_date,
     flatten_my_tasks,
     flatten_projects,
-    flatten_project_progress,
+    flatten_project_board,
     flatten_overdue_board,
     flatten_team_workload,
     flatten_my_tasks_board,
