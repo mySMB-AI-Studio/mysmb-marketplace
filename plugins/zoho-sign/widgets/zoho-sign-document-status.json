@@ -1,0 +1,578 @@
+{
+  "id": "zoho-sign-document-status",
+  "title": "Document Status Tracker",
+  "description": "Zoho Sign documents sent this month and where each one stands: counts for Signed, Viewed, Sent but not yet viewed, Declined and Expired. Click a status to list its documents.",
+  "category": "documents",
+  "tags": [
+    "zoho",
+    "zoho-sign",
+    "esignature",
+    "signatures",
+    "documents"
+  ],
+  "keywords": [
+    "document status",
+    "signature status",
+    "sent documents",
+    "signed documents",
+    "zoho sign"
+  ],
+  "connectorsUsed": [
+    "zoho-sign"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#F26B1D"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-sign",
+    "tool": "list_requests",
+    "params": {
+      "page_context": {
+        "row_count": 100,
+        "start_index": 1,
+        "sort_column": "created_time",
+        "sort_order": "desc"
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-sign/list_requests": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/docStatus",
+              "value": {
+                "$computed": "zoho-sign_document_status_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-sign/list_requests"
+                  },
+                  "selected": {
+                    "$state": "/ui/docStatusGroup"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/docStatusGroup": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/docStatus",
+              "value": {
+                "$computed": "zoho-sign_document_status_dashboard",
+                "args": {
+                  "report": {
+                    "$state": "/zoho-sign/list_requests"
+                  },
+                  "selected": {
+                    "$state": "/ui/docStatusGroup"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Document Status Tracker",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Sign"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/docStatus/loaded",
+              "not": true
+            },
+            {
+              "$state": "/ui/docStatus/failed",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-sign.list_requests",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load documents from Zoho Sign. Please try again in a few minutes."
+        },
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_errors/zoho-sign.list_requests"
+            },
+            {
+              "$state": "/ui/docStatus/failed"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No documents have been sent for signature this month."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/docStatus/loaded"
+            },
+            {
+              "$state": "/ui/docStatus/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "heroStack",
+          "statusList",
+          "capNote",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/docStatus/loaded"
+            },
+            {
+              "$state": "/ui/docStatus/hasData"
+            }
+          ]
+        }
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "heroStat",
+          "heroLabel"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/docStatus/totalDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/docStatus/totalLabel"
+          },
+          "tone": "muted",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "statusList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "statusItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/docStatus/rows",
+          "key": "id"
+        }
+      },
+      "statusItem": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "statusRow",
+          "groupBox"
+        ]
+      },
+      "statusRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "statusDot",
+          "statusLabel",
+          "statusCount",
+          "statusChevron"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/docStatusGroup",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "toggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "statusDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "sm"
+        }
+      },
+      "statusLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "statusCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "statusChevron": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "chevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "groupBox": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "groupStack"
+        ],
+        "visible": {
+          "$item": "expanded"
+        }
+      },
+      "groupStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "docList",
+          "groupEmpty",
+          "groupNote"
+        ]
+      },
+      "docList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "docItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/docStatus/selectedDocs",
+          "key": "id"
+        }
+      },
+      "docItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "docIcon",
+          "docMain",
+          "docBadge"
+        ]
+      },
+      "docIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileSignature",
+          "tone": "muted",
+          "size": "md"
+        }
+      },
+      "docMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "docName",
+          "docDetail"
+        ]
+      },
+      "docName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "docDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "docBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "progressText"
+          },
+          "tone": {
+            "$item": "badgeTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "groupEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No documents with this status."
+        },
+        "visible": {
+          "$state": "/ui/docStatus/selectedEmpty"
+        }
+      },
+      "groupNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/docStatus/selectedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/docStatus/selectedNote"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/docStatus/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/docStatus/capNote"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewIcon",
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://sign.zoho.com/zs",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "SquareArrowOutUpRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Sign",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "brand",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
