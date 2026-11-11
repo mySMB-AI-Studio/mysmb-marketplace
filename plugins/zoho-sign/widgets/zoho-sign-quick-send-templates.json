@@ -1,0 +1,665 @@
+{
+  "id": "zoho-sign-quick-send-templates",
+  "title": "Quick Send via Template",
+  "description": "Zoho Sign documents sent from a template this month, broken down by template, plus how many templates are in your library.",
+  "category": "documents",
+  "tags": [
+    "zoho",
+    "zoho-sign",
+    "esignature",
+    "templates",
+    "documents"
+  ],
+  "keywords": [
+    "templates",
+    "quick send",
+    "sent via template",
+    "template usage",
+    "zoho sign"
+  ],
+  "connectorsUsed": [
+    "zoho-sign"
+  ],
+  "popularity": 0,
+  "branding": {
+    "color": "#F79A5C"
+  },
+  "sizing": {
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 3,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 8
+    }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "zoho-sign",
+    "tool": "list_requests",
+    "params": {
+      "page_context": {
+        "row_count": 100,
+        "start_index": 1,
+        "sort_column": "created_time",
+        "sort_order": "desc"
+      }
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": [
+          "header",
+          "body"
+        ],
+        "watch": {
+          "/zoho-sign/list_requests": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/quickSend",
+                "value": {
+                  "$computed": "zoho-sign_quick_send_dashboard",
+                  "args": {
+                    "report": {
+                      "$state": "/zoho-sign/list_requests"
+                    },
+                    "templates": {
+                      "$state": "/zoho-sign/list_templates"
+                    },
+                    "libraryOpen": {
+                      "$state": "/ui/quickSendLibrary"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/quickSend/loaded": {
+            "action": "zoho-sign.list_templates",
+            "params": {
+              "page_context": {
+                "row_count": 100,
+                "start_index": 1,
+                "sort_column": "created_time",
+                "sort_order": "desc"
+              }
+            }
+          },
+          "/zoho-sign/list_templates": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/quickSend",
+                "value": {
+                  "$computed": "zoho-sign_quick_send_dashboard",
+                  "args": {
+                    "report": {
+                      "$state": "/zoho-sign/list_requests"
+                    },
+                    "templates": {
+                      "$state": "/zoho-sign/list_templates"
+                    },
+                    "libraryOpen": {
+                      "$state": "/ui/quickSendLibrary"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/quickSendLibrary": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/quickSend",
+                "value": {
+                  "$computed": "zoho-sign_quick_send_dashboard",
+                  "args": {
+                    "report": {
+                      "$state": "/zoho-sign/list_requests"
+                    },
+                    "templates": {
+                      "$state": "/zoho-sign/list_templates"
+                    },
+                    "libraryOpen": {
+                      "$state": "/ui/quickSendLibrary"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Send",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Quick Send via Template",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "Zoho Sign"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "loading",
+          "error",
+          "empty",
+          "content"
+        ]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRows",
+          "skFooter"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/quickSend/loaded",
+              "not": true
+            },
+            {
+              "$state": "/ui/quickSend/failed",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-sign.list_requests",
+              "not": true
+            }
+          ]
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        }
+      },
+      "skRows": {
+        "type": "Skeleton",
+        "props": {
+          "height": "8rem",
+          "rounded": "md"
+        }
+      },
+      "skFooter": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3rem",
+          "rounded": "md"
+        }
+      },
+      "error": {
+        "type": "Empty",
+        "props": {
+          "message": "Couldn't load documents from Zoho Sign. Please try again in a few minutes."
+        },
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_errors/zoho-sign.list_requests"
+            },
+            {
+              "$state": "/ui/quickSend/failed"
+            }
+          ]
+        }
+      },
+      "empty": {
+        "type": "Empty",
+        "props": {
+          "message": "No documents sent from a template this month."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/quickSend/loaded"
+            },
+            {
+              "$state": "/ui/quickSend/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "heroStack",
+          "templateList",
+          "capNote",
+          "libraryBox",
+          "footerBox"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/quickSend/loaded"
+            },
+            {
+              "$state": "/ui/quickSend/hasData"
+            }
+          ]
+        }
+      },
+      "heroStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "heroStat",
+          "heroLabel"
+        ]
+      },
+      "heroStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/quickSend/totalDisplay"
+          },
+          "tone": "brand"
+        }
+      },
+      "heroLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/quickSend/totalLabel"
+          },
+          "tone": "muted",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "templateList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "templateRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/quickSend/rows",
+          "key": "id"
+        }
+      },
+      "templateRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "templateDot",
+          "templateLabel",
+          "templateCount"
+        ]
+      },
+      "templateDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "size": "sm"
+        }
+      },
+      "templateLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "templateCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "countDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "capNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/quickSend/capNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/quickSend/capNote"
+        }
+      },
+      "libraryBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "libraryStack"
+        ],
+        "visible": {
+          "$state": "/ui/quickSend/libraryDisplay"
+        }
+      },
+      "libraryStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "libraryRow",
+          "libraryPanel"
+        ]
+      },
+      "libraryRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "libraryIcon",
+          "libraryLabel",
+          "libraryCount",
+          "libraryArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/quickSendLibrary",
+              "value": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$state": "/ui/quickSend/libraryToggle"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "libraryPanel": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "templateLibList",
+          "libraryEmpty",
+          "libraryNote"
+        ],
+        "visible": {
+          "$state": "/ui/quickSend/libraryExpanded"
+        }
+      },
+      "templateLibList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "libItem"
+        ],
+        "repeat": {
+          "statePath": "/ui/quickSend/libraryTemplates",
+          "key": "id"
+        }
+      },
+      "libItem": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "libItemIcon",
+          "libItemMain",
+          "libItemBadge"
+        ]
+      },
+      "libItemIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileSignature",
+          "tone": "muted",
+          "size": "md"
+        }
+      },
+      "libItemMain": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "libItemName",
+          "libItemDetail"
+        ]
+      },
+      "libItemName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "libItemDetail": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "detail"
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "libItemBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "usageText"
+          },
+          "tone": {
+            "$item": "badgeTone"
+          },
+          "variant": "soft"
+        }
+      },
+      "libraryEmpty": {
+        "type": "Caption",
+        "props": {
+          "text": "No templates in your library yet."
+        },
+        "visible": {
+          "$state": "/ui/quickSend/libraryEmpty"
+        }
+      },
+      "libraryNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/quickSend/libraryNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/quickSend/libraryNote"
+        }
+      },
+      "libraryIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "FileText",
+          "tone": "muted",
+          "size": "md"
+        }
+      },
+      "libraryLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Templates in library",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "libraryCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/quickSend/libraryDisplay"
+          },
+          "size": "md",
+          "weight": "semibold"
+        }
+      },
+      "libraryArrow": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/quickSend/libraryChevron"
+          },
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "footerBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewIcon",
+          "viewLabel",
+          "viewArrow"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://sign.zoho.com/zs/945327139#/requests/all",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "SquareArrowOutUpRight",
+          "tone": "brand",
+          "size": "md"
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Sign",
+          "tone": "brand",
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "viewArrow": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronRight",
+          "tone": "brand",
+          "size": "sm"
+        }
+      }
+    }
+  }
+}
