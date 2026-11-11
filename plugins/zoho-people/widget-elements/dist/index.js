@@ -566,8 +566,9 @@ const ON_TRACK_PCT = 50;
  * Args:
  *   report       — `onboarding_progress` result: `{ candidates: [{ recordId, name, joiningDate: "yyyy-MM-dd" | null, onboardingStatus }] }`
  *   showStarting — true when the "N starting next week" box is expanded (`/ui/showStarting`)
+ *   selectedHire — id of the hire whose details are expanded (`/ui/selectedHire`), or ''
  *
- * Spec: `{ "$computed": "zoho-people_onboarding_progress_dashboard", "args": { "report": { "$state": "/zoho-people/onboarding_progress" }, "showStarting": { "$state": "/ui/showStarting" } } }`
+ * Spec: `{ "$computed": "zoho-people_onboarding_progress_dashboard", "args": { "report": { "$state": "/zoho-people/onboarding_progress" }, "showStarting": { "$state": "/ui/showStarting" }, "selectedHire": { "$state": "/ui/selectedHire" } } }`
  */
 const onboarding_progress_dashboard = (args) => {
     const report = (args.report && typeof args.report === 'object' ? args.report : {});
@@ -581,6 +582,10 @@ const onboarding_progress_dashboard = (args) => {
             name: String(c.name ?? '').trim() || String(c.email ?? 'New hire'),
             joining: /^\d{4}-\d{2}-\d{2}$/.test(String(c.joiningDate ?? '')) ? String(c.joiningDate) : '',
             status: String(c.onboardingStatus ?? '').trim() || 'Not Triggered',
+            candidateId: String(c.candidateId ?? '').trim(),
+            email: String(c.email ?? '').trim(),
+            department: String(c.department ?? '').trim(),
+            designation: String(c.designation ?? '').trim(),
             pct,
             pctDisplay: `${pct}%`,
             // Green once onboarding is complete, else the tile's brand blue.
@@ -589,6 +594,7 @@ const onboarding_progress_dashboard = (args) => {
     })
         .sort((a, b) => (a.joining || '9999').localeCompare(b.joining || '9999') || a.name.localeCompare(b.name));
     const count = hires.length;
+    const selectedHire = typeof args.selectedHire === 'string' ? args.selectedHire : '';
     // Next week, Monday to Sunday.
     const monday = new Date();
     monday.setHours(0, 0, 0, 0);
@@ -616,7 +622,36 @@ const onboarding_progress_dashboard = (args) => {
         hasData: count > 0,
         inProgressDisplay: count.toLocaleString('en-US'),
         inProgressLabel: count === 1 ? 'new hire in progress' : 'new hires in progress',
-        hires: hires.slice(0, MAX_ONBOARDING_ROWS).map(({ joining: _joining, status: _status, ...h }) => h),
+        hires: hires.slice(0, MAX_ONBOARDING_ROWS).map((h) => ({
+            id: h.id,
+            name: h.name,
+            pct: h.pct,
+            pctDisplay: h.pctDisplay,
+            barTone: h.barTone,
+            expanded: h.id === selectedHire,
+            chevron: h.id === selectedHire ? 'ChevronUp' : 'ChevronDown',
+            // What a click on this hire writes to `/ui/selectedHire`.
+            toggle: h.id === selectedHire ? '' : h.id,
+        })),
+        // Details of the expanded hire; empty fields are left out.
+        selectedHireDetails: (() => {
+            const h = hires.find((x) => x.id === selectedHire);
+            if (!h)
+                return [];
+            const joining = h.joining
+                ? (zohoDate(h.joining)?.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) ?? h.joining)
+                : 'Not set';
+            return [
+                ['status', 'Onboarding status', `${h.status} (${h.pctDisplay})`],
+                ['joining', 'Joining date', joining],
+                ['candidateId', 'Candidate ID', h.candidateId],
+                ['department', 'Department', h.department],
+                ['designation', 'Designation', h.designation],
+                ['email', 'Email', h.email],
+            ]
+                .filter(([, , value]) => value)
+                .map(([id, label, value]) => ({ id, label, value }));
+        })(),
         hiresNote: count > MAX_ONBOARDING_ROWS
             ? `Showing ${MAX_ONBOARDING_ROWS} of ${count.toLocaleString('en-US')} new hires.`
             : '',
