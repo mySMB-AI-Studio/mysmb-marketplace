@@ -61,7 +61,8 @@ const keyOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/
 
 // ── agent ────────────────────────────────────────────────────────────────────
 
-const agentSrc = readFileSync(join(KIT, 'src', 'agent.md'), 'utf8');
+// LF everywhere: a Windows checkout (core.autocrlf) gives CRLF, which would leak into the JSON rolePrompt.
+const agentSrc = readFileSync(join(KIT, 'src', 'agent.md'), 'utf8').replace(/\r\n/g, '\n');
 const { fm, list, body } = parseAgentMd(agentSrc);
 const agentKey = keyOf(fm.name);
 const agent = withHash({
@@ -162,17 +163,220 @@ const capabilities = [
   capability('abr.abn.read', 'Read one ABN record from the Australian Business Register', 'abr', 'abr_get_abn_details', [],
     { abn: str('The ABN (11 digits; spaces allowed).'), include_history: bool('Include past statuses, GST periods and names.') },
     ['abn'], []),
+  // Finds a client's Xero organisation by name (no tenant id needed): the BAS review step starts from a client name.
+  capability('xero.connections.read', 'List the Xero organisations this connection can see', 'xero-accounting', 'list_connections',
+    ['accounting.settings.read'], {}, [], ['tenants']),
 ];
+const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.key, c.originKey]));
+
+// ── process: BAS readiness review (C3) ───────────────────────────────────────
+// Design: Desktop/Spec Assessments/cra-pra-agents-2-migration/STEP-2-DESIGN.md. The Stop/Note defaults are PROVISIONAL
+// until the bookkeeper answers D6: each check group is a boolean Rules setting (`stopOn<Group>`), and a found group whose
+// setting is on routes the job to a decision without "Ready to lodge". Change a default here and bump PROCESS_VERSION
+// (a process version with runs is immutable).
+const PROCESS_KEY = 'bas-readiness-review';
+const PROCESS_VERSION = '0.1.0';
+const CHECK_GROUPS = [
+  // [found flag, default Stop?]
+  ['gstChargedWhileUnregistered', true],
+  ['gstOnNonClaimableItems', true],
+  ['gstAmountMismatch', true],
+  ['gstWithoutAbn', true],
+  ['gstFromUnregisteredSuppliers', true],
+  ['gstRegistrationRequired', true],
+  ['unreconciledBank', true],
+  ['suspenseBalance', true],
+  ['cancelledAbn', true],
+  ['duplicateBills', true],
+  ['gstStatusMismatch', false],
+  ['gstAccountWithoutGst', false],
+  ['missingReceipts', false],
+  ['draftSalesInvoices', false],
+  ['lockDate', false],
+];
+const stopKey = (group) => `stopOn${group[0].toUpperCase()}${group.slice(1)}`;
+// One transition per group (a `when` is at most 500 characters): the coordinator takes the FIRST transition whose `when`
+// holds, so any found group set to Stop routes to decideBlocked, and the last, unconditional one to decideReady.
+const STOP_TRANSITIONS = CHECK_GROUPS.map(([g]) => ({ from: 'summary', to: 'decideBlocked', when: `steps.review.found.${g} && policy.${stopKey(g)}` }));
+const PROCESS_CAPABILITIES = [
+  'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
+  'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
+  'xero.trial_balance.read', 'abr.abns.check',
+];
+for (const k of PROCESS_CAPABILITIES) if (!capabilityKey[k]) throw new Error(`process capability ${k} is not bundled`);
+
+const decisionOptions = (withReady) => [
+  ...(withReady ? [{
+    key: 'readyToLodge', label: 'Ready to lodge',
+    effect: 'Records that this BAS is ready to lodge. Nothing is lodged and nothing changes in Xero: the registered BAS agent lodges it as usual.',
+    transition: 'readyToLodge',
+  }] : []),
+  {
+    key: 'readyOnceClientAnswers', label: 'Ready once the client answers',
+    effect: 'Hands the drafted client questions to you to send. Nothing is sent by the agent.',
+    transition: 'askClient',
+  },
+  {
+    key: 'notReady', label: 'Not ready: rework',
+    effect: 'Records that the file needs work before this BAS. Nothing changes in Xero.',
+    transition: 'notReady',
+  },
+  {
+    key: 'revise', label: 'Ask for changes',
+    effect: 'Sends the review back to the agent with your note.',
+    transition: 'review',
+  },
+];
+const decisionStep = (key, title, withReady) => ({
+  key, kind: 'decision', title, type: 'bas_readiness',
+  eligible: ['reviewer'],
+  materiality: ['steps.review.found', 'steps.review.findings'],
+  options: decisionOptions(withReady),
+  sla: { remindAfterBusinessDays: 2, expireAfterBusinessDays: 15 },
+});
+const processOriginKey = deterministicUuid(`process:${SLUG}:${PROCESS_KEY}`);
+const processDefinition = {
+  kind: 'process',
+  schemaVersion: 1,
+  originKey: processOriginKey,
+  key: PROCESS_KEY,
+  version: PROCESS_VERSION,
+  title: 'BAS readiness review',
+  description: 'Reviews one client\'s Xero file for one BAS quarter: runs the readiness checks (the CRA-10 GST Check rules plus general readiness checks), writes a BAS readiness summary and asks the reviewer to decide: ready to lodge, ready once the client answers, or not ready. Checks the practice marks as Stop in its Rules remove "Ready to lodge". Read-only: nothing is changed in Xero, nothing is lodged and the client is never contacted by the agent.',
+  vocabulary: { subject: 'Client and quarter' },
+  subject: { kind: 'none', dedupeBy: ['clientName', 'periodStart', 'periodEnd'] },
+  inputs: [
+    { key: 'clientName', type: 'string', required: true, label: 'Client (as named in Xero)' },
+    { key: 'periodStart', type: 'date', required: true, label: 'BAS period start' },
+    { key: 'periodEnd', type: 'date', required: true, label: 'BAS period end' },
+  ],
+  capabilities: [...PROCESS_CAPABILITIES, 'knowledge.read', 'artifacts.write'],
+  roles: { manager: 'installation.manager', reviewer: 'installation.reviewer' },
+  variationPoints: CHECK_GROUPS.map(([g, stop]) => ({ key: stopKey(g), type: 'boolean', default: stop, editableBy: 'manager' })),
+  protectedRules: [
+    { key: 'readOnlyInXero', description: 'The review reads Xero; it never changes it. Findings are fixed by a person in Xero.' },
+    { key: 'neverLodges', description: 'Nothing is lodged with the ATO. "Ready to lodge" is a recorded decision; the registered BAS agent lodges as usual.' },
+    { key: 'noClientContact', description: 'The agent drafts client questions; a person sends them. The agent never contacts the client.' },
+    { key: 'noInventedFigures', description: 'Every figure comes from the client\'s Xero file; anything the source doesn\'t hold is reported as not checked, never estimated.' },
+  ],
+  steps: [
+    { key: 'review', kind: 'agent', title: 'Run the BAS readiness checks', skill: 'client-report-analytics-agent-bas-review',
+      outputs: ['clientResolved', 'clientName', 'xeroTenantId', 'periodLabel', 'found', 'findings', 'clientQuestions', 'summaryMarkdown'] },
+    { key: 'summary', kind: 'output', title: 'BAS readiness summary', template: 'bas-readiness-summary', artifactKind: 'basReadiness' },
+    decisionStep('decideReady', 'Is this BAS ready to lodge?', true),
+    decisionStep('decideBlocked', 'A Stop check was found: how should this BAS proceed?', false),
+    { key: 'askClient', kind: 'human', title: 'Send the client questions', assign: 'reviewer', completion: 'statusDone' },
+    { key: 'readyToLodge', kind: 'gate', title: 'Ready to lodge', outcome: 'readyToLodge',
+      requires: ['steps.summary.artifactId != null'], evidence: ['steps.summary.artifactId', 'steps.review.findings'] },
+    { key: 'clientQueried', kind: 'gate', title: 'Client questions sent', outcome: 'clientQueried',
+      requires: ['steps.askClient.completed == true'], evidence: ['steps.summary.artifactId', 'steps.review.clientQuestions'] },
+    { key: 'notReady', kind: 'gate', title: 'Not ready: rework', outcome: 'notReady',
+      requires: ['steps.summary.artifactId != null'], evidence: ['steps.summary.artifactId', 'steps.review.findings'] },
+  ],
+  transitions: [
+    { from: 'review', to: 'summary' },
+    ...STOP_TRANSITIONS,
+    { from: 'summary', to: 'decideReady' },
+    { from: 'askClient', to: 'clientQueried' },
+  ],
+  exceptions: [],
+  rework: [],
+  outcomes: [
+    { key: 'readyToLodge', terminal: true, evidence: ['basReadiness', 'decision_record'] },
+    { key: 'clientQueried', terminal: true, evidence: ['basReadiness', 'decision_record', 'workq_item'] },
+    { key: 'notReady', terminal: true, evidence: ['basReadiness', 'decision_record'] },
+    { key: 'cancelled', terminal: true, evidence: ['decision_record'] },
+  ],
+  safeTest: {
+    sampleInputs: { clientName: 'Demo Company (AU)', periodStart: '2026-07-01', periodEnd: '2026-09-30' },
+    assertions: ['steps.review.found != null', 'steps.review.summaryMarkdown != null'],
+  },
+  modelPolicy: { brief: 'sonnet', plan: 'sonnet', judgement: 'sonnet' },
+  limits: { maxAgentTurnsPerStep: 40, maxSteps: 20, maxActiveHours: 4, maxWaitingDays: 30, maxAiUnits: 200 },
+};
+const processPayload = withHash({ kind: 'process', originKey: processOriginKey, name: 'BAS readiness review', definition: processDefinition });
+
+// Required evaluation suite (the release gate refuses a process without one).
+const allFound = (overrides = {}) => Object.fromEntries(CHECK_GROUPS.map(([g]) => [g, overrides[g] ?? false]));
+const reviewFixture = (found, findings, questions) => ({
+  clientResolved: true, clientName: 'Demo Company (AU)', xeroTenantId: '00000000-0000-4000-8000-00000000d001', periodLabel: 'Jul–Sep 2026',
+  found, findings, clientQuestions: questions, summaryMarkdown: '## Demo Company (AU), Jul–Sep 2026\n\n(summary)',
+});
+// `outputs` is what the runtime evaluator feeds the agent step; `steps` is what the static evaluator reads conditions from.
+const fixturesFor = (review, extra = {}) => ({ outputs: { review }, steps: { review: { found: review.found } }, responses: [], ...extra });
+const evalOriginKey = deterministicUuid(`evaluation:${SLUG}:${PROCESS_KEY}`);
+const evaluationDefinition = {
+  kind: 'evaluation',
+  schemaVersion: 1,
+  originKey: evalOriginKey,
+  key: `${PROCESS_KEY}-controls`,
+  title: 'BAS readiness review: controls',
+  process: processOriginKey,
+  required: true,
+  thresholds: { requiredScenarioPassRate: 1, rubricMinScore: 0.7 },
+  scenarios: [
+    {
+      key: 'cleanQuarter',
+      title: 'No findings: the reviewer records Ready to lodge',
+      inputs: { clientName: 'Demo Company (AU)', periodStart: '2026-07-01', periodEnd: '2026-09-30' },
+      fixtures: fixturesFor(reviewFixture(allFound(), [], [])),
+      expected: {
+        outcome: 'readyToLodge',
+        stepsReached: ['review', 'summary', 'decideReady', 'readyToLodge'],
+        decisions: [{ step: 'decideReady', option: 'readyToLodge' }],
+      },
+      rubric: [{ criterion: 'The summary states the client, the period, the GST registration and basis, and that nothing was changed in Xero.', weight: 1 }],
+    },
+    {
+      key: 'stopFinding',
+      title: 'A Stop check is found: no Ready to lodge, the reviewer records Not ready',
+      inputs: { clientName: 'Demo Company (AU)', periodStart: '2026-07-01', periodEnd: '2026-09-30' },
+      fixtures: fixturesFor(reviewFixture(allFound({ gstOnNonClaimableItems: true }),
+        [{ group: 'gstOnNonClaimableItems', check: 'CHK-058', title: 'GST claimed on 2 bank fee lines', amount: 3.2, count: 2 }], [])),
+      expected: {
+        outcome: 'notReady',
+        stepsReached: ['review', 'summary', 'decideBlocked', 'notReady'],
+        decisions: [{ step: 'decideBlocked', option: 'notReady' }],
+      },
+      rubric: [{ criterion: 'Each finding names its check code, what was found, the count and the amount, from Xero only.', weight: 1 }],
+    },
+    {
+      key: 'clientQuestions',
+      title: 'Only Note findings: the reviewer sends the client questions',
+      inputs: { clientName: 'Demo Company (AU)', periodStart: '2026-07-01', periodEnd: '2026-09-30' },
+      fixtures: fixturesFor(reviewFixture(allFound({ missingReceipts: true }),
+        [{ group: 'missingReceipts', check: 'CHK-021', title: '1 spend money transaction over $82.50 with nothing attached', amount: 245, count: 1 }],
+        ['Could you send the receipt for the $245.00 payment to Officeworks on 12 Aug 2026?'])),
+      expected: {
+        outcome: 'clientQueried',
+        stepsReached: ['review', 'summary', 'decideReady', 'askClient', 'clientQueried'],
+        decisions: [{ step: 'decideReady', option: 'readyOnceClientAnswers' }],
+      },
+      rubric: [{ criterion: 'Client questions are polite, specific (what, date, contact, amount) and are sent by a person, not the agent.', weight: 1 }],
+    },
+  ],
+};
+const evaluationPayload = withHash({ kind: 'evaluation', originKey: evalOriginKey, name: 'BAS readiness review: controls', definition: evaluationDefinition });
 
 // ── write the package ────────────────────────────────────────────────────────
 
-for (const dir of ['content/agents', 'content/setups', 'content/capabilities', 'skills', 'agents']) rmSync(join(PLUGIN, dir), { recursive: true, force: true });
+for (const dir of ['content/agents', 'content/setups', 'content/capabilities', 'content/processes', 'content/evaluations', 'templates', 'skills', 'agents']) rmSync(join(PLUGIN, dir), { recursive: true, force: true });
 
 mkdirSync(join(PLUGIN, 'agents'), { recursive: true });
 writeFileSync(join(PLUGIN, 'agents', `${agentKey}.md`), agentSrc.replace(/\r\n/g, '\n'));
 writeJson(join(PLUGIN, 'content', 'agents', `${agent.originKey}.json`), agent);
 writeJson(join(PLUGIN, 'content', 'setups', `${setup.originKey}.json`), setup);
 for (const c of capabilities) writeJson(join(PLUGIN, 'content', 'capabilities', `${c.originKey}.json`), c);
+writeJson(join(PLUGIN, 'content', 'processes', `${processPayload.originKey}.json`), processPayload);
+writeJson(join(PLUGIN, 'content', 'evaluations', `${evaluationPayload.originKey}.json`), evaluationPayload);
+mkdirSync(join(PLUGIN, 'templates'), { recursive: true });
+for (const f of readdirSync(join(KIT, 'src', 'templates')).filter((f) => f.endsWith('.md'))) {
+  writeFileSync(join(PLUGIN, 'templates', f), readFileSync(join(KIT, 'src', 'templates', f), 'utf8').replace(/\r\n/g, '\n'));
+}
+for (const step of processDefinition.steps) {
+  if (step.kind === 'output' && !readdirSync(join(KIT, 'src', 'templates')).includes(`${step.template}.md`)) throw new Error(`output template ${step.template} missing`);
+  if (step.kind === 'agent' && !readdirSync(join(KIT, 'src', 'skills')).includes(`${step.skill}.md`)) throw new Error(`step skill ${step.skill} missing`);
+}
 
 mkdirSync(join(PLUGIN, 'skills'), { recursive: true });
 const skillFiles = readdirSync(join(KIT, 'src', 'skills')).filter((f) => f.endsWith('.md')).sort();
@@ -196,8 +400,10 @@ const content = {
   agents: [`content/agents/${agent.originKey}.json`],
   automations: [],
   capabilities: capabilities.map((c) => `content/capabilities/${c.originKey}.json`),
+  evaluations: [`content/evaluations/${evaluationPayload.originKey}.json`],
   formTemplates: [],
   forms: [],
+  processes: [`content/processes/${processPayload.originKey}.json`],
   setups: [`content/setups/${setup.originKey}.json`],
   workqTemplates: [],
 };
@@ -206,10 +412,11 @@ const listingAgent = {
   outcomes: [
     'Every client report request ends with a live, self-checking report linked on its WorkQ item, or one clear question back',
     'Every report comes from a tested Client Report Analytics template; the agent never types a figure',
+    'Every BAS readiness review ends with a decision recorded by a person, against Stop and Note checks the practice sets',
     'Nothing is changed in Xero and nothing is sent to a client',
   ],
-  processes: [],
-  requiredCapabilities: [],
+  processes: [PROCESS_KEY],
+  requiredCapabilities: PROCESS_CAPABILITIES.filter((k) => !k.startsWith('abr.')),
   setupEffort: 'minutes',
 };
 
@@ -235,6 +442,7 @@ An Agents 2.0 agent that turns client report requests into live, self-checking r
 
 - **Read-only.** It never changes anything in Xero and never sends anything to a client.
 - **No reports of its own.** It uses the Client Report Analytics extension's templates (\`artifact_from_template\`, plugin \`client-report-analytics\`), so that extension must be installed and up to date.
+- **BAS readiness review (a process).** Start it for one client and quarter: the agent runs the readiness checks (the CRA-10 GST Check rules plus general readiness checks), writes a summary, and a reviewer decides Ready to lodge, Ready once the client answers, or Not ready. Each practice marks which checks stop lodgement in the agent's **Rules** (Setup → Rules); a Stop check removes "Ready to lodge". Nothing is lodged and the client is never contacted by the agent.
 - **Reports load as the viewer.** A report fetches its data live as the person who opens it, from their own connections.
 
 Generated by \`scripts/client-report-analytics-agent-kit/gen.mjs\`; edit \`src/\` there and re-run it.
