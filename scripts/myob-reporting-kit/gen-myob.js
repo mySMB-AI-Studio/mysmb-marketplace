@@ -1,8 +1,8 @@
 // node gen-myob.js [mysmb-marketplace root] (default: this repository)
 // Writes the MYOB report foundation (build recipe + tested kit + the Phase A rules kept for prose skills) and one skill per
 // kit-built family. A family that replaces a written specification keeps its file stem (the blueprint's skill ids do not change);
-// a new one is named myob-… (so a Developer Instance Pull cannot collide with a standalone Dev Tools key) and is added to the
-// agent's skills, with the blueprint's contentHash recomputed.
+// a new one is named myob-… (so a Developer Instance Pull cannot collide with a standalone Dev Tools key). There is no agent:
+// mySidekick loads the skills.
 // reports/<skill>/ carries each kit report as a report template (artifact_from_template, "Use this report"): the same document
 // the copy path assembles, and the skill's dataBindings.
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
@@ -37,7 +37,9 @@ Use when you build any MYOB report, dashboard or report pack. Load this skill fi
 - **A guide and two export pages** — ${STATIC.map((f) => '`' + f.skill + '` (' + f.m + ')').join(', ')}. Follow the skill itself: the guide works through the kit reports, and an export page is filled from the MYOB export the user attaches (MYOB's API does not expose those reports).
 - **Every other report skill** is still a written specification. Follow *Rules for report skills without a kit config* at the end of this file.
 
-Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: \`myob-accounting\` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).
+**Handling a request.** Match it to one report skill and load it. If it could mean several reports, offer the closest two or three by name (the reports catalogue lists them) instead of guessing. Ask only for essentials that can't be defaulted: the company file, the period or as-at date and the accounting basis. If MYOB isn't connected or the data isn't available, say exactly which connection or MYOB export is needed.
+
+Spec: MYOB Reports Prompt Library v1.2 (M00–M63) with the v1.2 patch (LIB-002 client selector; cross-client isolation). Connector: \`myob-accounting\` (the mySMB custom MCP on the MYOB Business / AccountRight API v2).
 
 ## Build a kit report
 
@@ -180,7 +182,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 
 ## QA test script
 
-1. Ask for the request this guide covers (see *Use when*). Confirm the agent saves the right kit report with the settings and says what is N/A.
+1. Ask for the request this guide covers (see *Use when*). Confirm mySidekick saves the right kit report with the settings and says what is N/A.
 2. Reopen the saved report: it opens on the saved settings, refetches and validates; its Download Excel file has the Validation and Parameters sheets.
 3. ${f.golden}
 4. Cross-client isolation (LIB-002): the kit report the guide saves carries the Client picker. Switching it refetches only that company file's figures, and the saved report and every export carry only one company file.
@@ -237,30 +239,16 @@ FAM.forEach((f) => {
   w('reports/' + f.skill + '/report.json', JSON.stringify(meta, null, 2) + '\n');
   w('reports/' + f.skill + '/report.html', docOf(f));
 });
-for (const d of fs.existsSync(path.join(P, 'reports')) ? fs.readdirSync(path.join(P, 'reports')) : []) if (!FAM.some((f) => f.skill === d)) fs.rmSync(path.join(P, 'reports', d), { recursive: true, force: true });
+// Hand-built templates that ship beside the kit's own and must survive a regeneration (keep-templates.json).
+const KEEP_TEMPLATES = require('./keep-templates.json').templates;
+for (const d of fs.existsSync(path.join(P, 'reports')) ? fs.readdirSync(path.join(P, 'reports')) : []) if (!FAM.some((f) => f.skill === d) && !KEEP_TEMPLATES.includes(d)) fs.rmSync(path.join(P, 'reports', d), { recursive: true, force: true });
 // plugin.json and the catalogue entry declare the templates' folder (Publish copies the entry to the next tier)
 const sortKeys = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
 const pjPath = path.join(P, '.claude-plugin', 'plugin.json'), pj = JSON.parse(fs.readFileSync(pjPath, 'utf8'));
 if (pj.reports !== 'reports') fs.writeFileSync(pjPath, JSON.stringify(sortKeys(Object.assign(pj, { reports: 'reports' })), null, 2) + '\n');
 const mpPath = path.join(ROOT, '.claude-plugin', 'marketplace.json'), mpRaw = fs.readFileSync(mpPath, 'utf8'), mp = JSON.parse(mpRaw), ent = mp.plugins.find((p) => p.name === SLUG);
 if (ent && ent.reports !== 'reports') { ent.reports = 'reports'; fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + (mpRaw.endsWith('\n') ? '\n' : '')); }
-// the role prompt's build step: a kit report is created from its template; the blueprint's contentHash follows the prompt
-const STEP5_OLD = '5. Create one responsive, self-contained HTML document using the shared visual system, then save it with artifact_save to the owner\'s Reports library.';
-const STEP5 = '5. For a kit report, follow the foundation\'s "Build a kit report" steps: create it from its template with artifact_from_template when you have that tool, otherwise copy its blocks and save with artifact_save. For any other report skill, create one responsive, self-contained HTML document using the shared visual system, then save it with artifact_save to the owner\'s Reports library.';
-const amd = path.join(P, 'agents', 'myob-reporting-specialist.md'), bpDir = path.join(P, 'content', 'agents'), bpFile = path.join(bpDir, fs.readdirSync(bpDir).find((x) => x.endsWith('.json')));
-const md0 = fs.readFileSync(amd, 'utf8').replace(/\r\n/g, '\n'), bp = JSON.parse(fs.readFileSync(bpFile, 'utf8'));
-// a kit report with a new skill file joins the agent: its blueprint skills (the foundation first, then by name) and the agent file's skills line
-const missing = FAM.concat(STATIC).map((f) => SLUG + ':' + f.skill).filter((s, i, a) => a.indexOf(s) === i && !bp.skills.includes(s));
-if (missing.length) bp.skills = [bp.skills[0]].concat(bp.skills.slice(1).concat(missing).sort());
-let md1 = md0.replace(STEP5_OLD, STEP5).replace(/^skills: .*$/m, 'skills: ' + bp.skills.join(', '));
-if (md1 !== md0) fs.writeFileSync(amd, md1);
-if (bp.rolePrompt.includes(STEP5_OLD) || missing.length || !bp.contentHash) {
-  bp.rolePrompt = bp.rolePrompt.replace(STEP5_OLD, STEP5);
-  const sortDeep = (v) => (Array.isArray(v) ? v.map(sortDeep) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])])) : v);
-  const payload = Object.assign({}, bp); delete payload.contentHash;
-  bp.contentHash = crypto.createHash('sha256').update(JSON.stringify(sortDeep(payload))).digest('hex');
-  fs.writeFileSync(bpFile, JSON.stringify(sortDeep(bp), null, 2) + '\n');
-}
-// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
-{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'myob'); AS.ensureAgent(P, 'myob'); }
+// MYOB Reporting Studio has no agent since 2026-11-12: mySidekick loads the skills, so no agent file or blueprint is written.
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs).
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'myob'); }
 console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes | kit reports + templates:', FAM.map((f) => f.skill).join(', '), '| guide and export skills:', STATIC.map((f) => f.skill).join(', '));
