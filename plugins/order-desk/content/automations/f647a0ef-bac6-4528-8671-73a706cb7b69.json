@@ -1,0 +1,85 @@
+{
+  "contentHash": "1fed0b6efeb5ce8e138d24823da174cb58f2631d82813562a5e3d4a8e5056703",
+  "declaredScopes": [
+    "records:od_orders:read",
+    "records:od_orders:write"
+  ],
+  "dependencies": [],
+  "description": "Marks an order as rejected, with the reviewer's reason, so it never goes to the warehouse. An order that was already released is left as it is.",
+  "flowIr": {
+    "description": "Marks an order as rejected, with the reviewer's reason, so it never goes to the warehouse. An order that was already released is left as it is.",
+    "irVersion": 1,
+    "name": "Order Desk: reject order",
+    "nodes": [
+      {
+        "code": "from typing import Any\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\norder_id = params[\"order_id\"]\nnote = od_text(params.get(\"note\"))[:2000] or \"Rejected in review\"\nfound = api.records.get(type_slug=\"od_orders\", record_id=order_id) or {}\norder: dict[str, Any] = dict(found.get(\"record\") or {})\norder_number = od_text(order.get(\"title\"))\nstage = od_text(order.get(\"stage\"))\nrejected = False\nif stage == \"released\":\n    result = \"already_released\"\nelse:\n    if stage != \"rejected\":\n        api.records.change_stage(type_slug=\"od_orders\", record_id=order_id, stage=\"rejected\", note=note)\n    rejected = True\n    result = \"rejected\"\n",
+        "id": "reject",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when the order is now rejected",
+            "name": "rejected",
+            "type": "bool"
+          },
+          {
+            "description": "rejected or already_released",
+            "name": "result",
+            "type": "str"
+          },
+          {
+            "description": "Order number",
+            "name": "order_number",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.order_id }}",
+            "control": "hidden",
+            "name": "order_id",
+            "required": true,
+            "type": "uuid"
+          },
+          {
+            "binding": "{{ params.note }}",
+            "control": "hidden",
+            "name": "note",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Marks the order as rejected and records why.",
+        "title": "Reject the order"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Order",
+        "name": "order_id",
+        "required": true,
+        "type": "uuid"
+      },
+      {
+        "control": "text",
+        "label": "Why it was rejected",
+        "name": "note",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "reject"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: reject order",
+  "originKey": "f647a0ef-bac6-4528-8671-73a706cb7b69",
+  "tags": []
+}

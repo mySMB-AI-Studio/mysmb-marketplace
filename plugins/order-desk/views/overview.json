@@ -20,6 +20,14 @@
       {
         "config": {
           "limit": 5,
+          "status": "not_started"
+        },
+        "id": "b_queue",
+        "kind": "agent.jobs"
+      },
+      {
+        "config": {
+          "limit": 5,
           "status": "done"
         },
         "id": "b_done",
@@ -76,10 +84,21 @@
       },
       {
         "bindingIds": [
+          "b_queue"
+        ],
+        "id": "queue",
+        "parentId": "cols",
+        "props": {
+          "title": "Waiting to start"
+        },
+        "type": "workq"
+      },
+      {
+        "bindingIds": [
           "b_done"
         ],
         "id": "done",
-        "parentId": "cols",
+        "parentId": "root",
         "props": {
           "title": "Recently finished"
         },
