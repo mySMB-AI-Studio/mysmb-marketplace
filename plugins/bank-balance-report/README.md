@@ -16,24 +16,29 @@ One run makes both. The balances are a one-page glance that most of a team can s
 "Bank Balance Report: daily" runs on **Run now** and on a schedule — 6:00 pm Sydney time, Monday to Friday, until someone changes it. It has four steps, and the balances go out before the AI step so that page is never held up by it.
 
 1. **Read the balances from Xero.** For each bank account, today's balance against the closing balance on the previous business day (Friday when today is a Monday). These are the figures the Bank Balance Change tile shows, from the same tool, so the report and the tile can't disagree.
-2. **Write the balance report and email it.** One page, as a PDF and as a web page:
-   - a masthead over the reporting line ("2 accounts · today (Mon 02-Nov-26) vs Fri 30-Oct-26, last business day")
-   - the total change across all the accounts, and beside it the total held — the one figure no row carries
-   - one row per account: previous close with the day it closed, balance today, and the movement, with the day's money in and out underneath it. An account that didn't move says "no change" rather than showing a zero in colour.
+2. **Write the balance report and email it.** Exactly one page, as a PDF and as a web page:
+   - the organisation's name on the left, and on the right "BANK BALANCES" over a line with the account count, the date comparison and the organisation ("14 accounts · today (Thu 12-Nov-26) vs Wed 11-Nov-26, last business day · Irvine Jackson Pty Ltd")
+   - three figures across the top: the total change across all accounts (red or green) with its percentage and the previous close it is measured against, the total held with the as-at date, and the day's money in and out
+   - one chart, "Change by account · biggest first": a column for each account that changed, tallest on the left, teal for a rise and red for a fall, with the amount and the percentage above each bar and the name below. Accounts that didn't change are left off and counted in the legend.
+   - an "All accounts" table — account, previous close (with its date), balance today (with its date), change (with money in and out under it) and % change — grouped into "Accounts that changed" and "No change", with a Total row. An account that didn't move says "no change" and 0.0% in a muted style.
 
    The web page goes to **Reports**, the PDF is filed in Knowledge as `Banking/Reports/<name> Bank Balances <dd-Mmm-yy>.pdf`, and it is emailed to the people picked with a short, plain note: the total held and which accounts moved. No AI is involved — there is no prose on the page, only figures Xero gave us.
 3. **Explain what moved the balances.** AI reads the day's larger transactions and writes, for each account that moved, two or three sentences on what moved it — the handful behind most of the change and who they were with. It then picks up to four points worth a second look: a large or unusual payment, a duplicate-looking pair, bank fees, an account gone negative. It's told to leave that list empty rather than invent a concern, and never to restate a figure it wasn't given. It only sees the transactions the report lists, so it can't explain a movement with a payment the reader can't find on the page.
 4. **Write the transaction detail and email it.** The report, as a PDF and as a web page:
-   - the masthead, the total change and the headline sentence
-   - one block per account: the account's change, its previous and current balances, the explanation, then the transactions **at or above the amount set** — account code with the account it was coded to, contact with the detail line, and the signed amount in red when money went out
-   - one row counting everything below that amount, so the total still adds up, then the total and the line that proves the transactions match the difference
-   - the points worth a look, and Xero's own footer line
+   - the same header and three figures as the balance report, then the headline sentence
+   - one block per account that moved, **biggest change first** (the order of the balance report's chart). Each opens with the account's change and percentage, its previous close and balance today, and its money in and out, then the explanation, then the transactions **at or above the amount set**: Xero account, account code with the account it was coded to, date, contact with the detail line, and the signed amount in red when money went out
+   - one row counting everything below that amount, so the total still adds up, then the account's total and the line that proves the transactions match the difference
+   - the accounts with no change in a short table, a grand total across all accounts, and the points worth a look
+
+   A long list runs onto further pages without splitting a transaction across two, and the table heading is repeated at the top of each page. Every page carries Xero's own footer line and "PAGE x OF y".
 
    The web page goes to **Reports**, the PDF is filed in Knowledge as `Banking/Reports/<name> Bank Transaction Detail <dd-Mmm-yy>.pdf`, and it is emailed with a short, plain note: how many transactions qualify and anything worth a look. The PDF has the rest.
 
-An account that moved on nothing that large still gets a line — "nothing at or above A$50,000, 8 smaller transactions, A$276.87 net out" — because "none today" is the answer to the question the report is asking, and silence isn't.
+An account that moved on nothing that large still gets a line — "no transactions of A$50,000 and over; 8 smaller transactions (-A$277 net out)" — because "none today" is the answer to the question the report is asking, and silence isn't.
 
 Reports lists HTML reports only, which is why the page that goes there is a web page rather than the PDF.
+
+**Whole dollars, and percentages.** Neither report shows cents: every amount is rounded half up to whole dollars and written A$1,234, or -A$1,234 for a negative. Rounded totals can therefore differ from the sum of the rounded lines by A$1, and both reports say so in one footnote. A percentage is the change divided by the *absolute* previous close, to one decimal place, and its sign follows the direction of the change — so a credit card that gets further overdrawn is negative. If the previous close is exactly 0 there is nothing to divide by, and the percentage is a dash. The emails use whole dollars too.
 
 ## Configuration
 
@@ -68,4 +73,4 @@ Each run sends two emails, one per report, and the run summary names the address
 - **Transactions sent to AI:** the 40 largest per account that the report lists, by size of the amount. The table is unaffected.
 - **Email attachment:** the PDF has to be 3 MB or less. A day's report is well under that, and the logo is shrunk to keep it there.
 - **Balances are Xero's:** they are the balance in Xero, which is not the same thing as the balance at the bank — anything entered in Xero but not yet through the feed, or sitting in the feed unreconciled, puts the two apart. The statement balance is only available through Xero's Finance API, which Xero opens to financial-services partners.
-- **Figures:** they come straight from the Xero bank transactions and are quoted as Xero formats them. The wording around them is written with the help of AI — the report says so. It isn't financial advice.
+- **Figures:** they come straight from the Xero bank transactions, rounded to whole dollars for the page. The wording around them is written with the help of AI — the report says so. It isn't financial advice.
