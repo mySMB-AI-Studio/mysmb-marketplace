@@ -1,6 +1,6 @@
 # Client Report Analytics
 
-Live, validated reports for **one client at a time** from the user's own Xero, MYOB or QuickBooks connections, plus the **Client Report Analytics Agent** that builds them. This is Wave 1 of the Practice & Client Report Analytics Reporting Library (client side).
+Live, validated reports for **one client at a time** from the user's own Xero, MYOB or QuickBooks connections, as report templates (Reports → From your plugins) and skills that mySidekick uses to build them. The extension has no agent: the **Client Reporting Agent** package (`client-report-analytics-agent`) uses these templates for report requests sent through WorkQ. This is Wave 1 of the Practice & Client Report Analytics Reporting Library (client side).
 
 | ID | Report | Templates |
 |---|---|---|
@@ -18,4 +18,4 @@ No configuration variables are required.
 
 ## Maintaining it
 
-The report templates, skills and agent are generated from `scripts/client-report-analytics-kit` (see its README). **Never Pull this extension into the Developer Instance and never save it there**: the Developer Instance does not keep `reports/` and would delete the templates.
+The report templates and skills are generated from `scripts/client-report-analytics-kit` (see its README). **Never Pull this extension into the Developer Instance and never save it there**: the Developer Instance does not keep `reports/` and would delete the templates.
