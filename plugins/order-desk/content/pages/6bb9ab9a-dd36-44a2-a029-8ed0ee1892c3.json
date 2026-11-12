@@ -1,49 +1,31 @@
 {
-  "contentHash": "2baf6e157eae6de5924fbba39fe981ec7b18f036a1ee3282f59676e7643acf68",
+  "contentHash": "670e8a08e63c6107c24fe08841a0c2e1fd7196d7d0385908b5f2939e40efa9fc",
   "dependencies": [],
   "document": {
     "actions": [],
     "bindings": [
       {
         "config": {
-          "limit": 100,
+          "limit": 50,
+          "status": "in_progress"
+        },
+        "id": "openWork",
+        "kind": "workq.list"
+      },
+      {
+        "config": {
+          "limit": 50,
           "typeSlug": "od_orders"
         },
         "id": "ordersList",
         "kind": "records.list"
-      },
-      {
-        "config": {
-          "limit": 100,
-          "typeSlug": "od_order_lines"
-        },
-        "id": "linesList",
-        "kind": "records.list"
-      },
-      {
-        "config": {
-          "limit": 50,
-          "typeSlug": "od_corrections"
-        },
-        "id": "correctionsList",
-        "kind": "records.list"
-      },
-      {
-        "config": {
-          "limit": 50,
-          "status": "not_started"
-        },
-        "id": "openWork",
-        "kind": "workq.list"
       }
     ],
     "nodes": [
       {
         "id": "root",
         "parentId": null,
-        "props": {
-          "gap": "medium"
-        },
+        "props": {},
         "type": "section"
       },
       {
@@ -59,50 +41,9 @@
         "id": "intro",
         "parentId": "root",
         "props": {
-          "text": "Every order Order Desk has read, with what it found. Orders that need a person also appear as a decision in your WorkQ. Open an order to see the original message, fix a line or add a PO number before you approve it."
+          "text": "1. Click an order under \"Waiting for you\".\n2. Check the customer, the lines and the delivery date.\n3. Choose Release or Reject."
         },
         "type": "text"
-      },
-      {
-        "bindingIds": [
-          "ordersList"
-        ],
-        "id": "orders",
-        "parentId": "root",
-        "props": {
-          "title": "Orders"
-        },
-        "type": "records"
-      },
-      {
-        "id": "cols",
-        "parentId": "root",
-        "props": {
-          "columns": 2
-        },
-        "type": "columns"
-      },
-      {
-        "bindingIds": [
-          "linesList"
-        ],
-        "id": "lines",
-        "parentId": "cols",
-        "props": {
-          "title": "Order lines"
-        },
-        "type": "records"
-      },
-      {
-        "bindingIds": [
-          "correctionsList"
-        ],
-        "id": "corrections",
-        "parentId": "cols",
-        "props": {
-          "title": "Corrections learned"
-        },
-        "type": "records"
       },
       {
         "bindingIds": [
@@ -111,9 +52,20 @@
         "id": "todo",
         "parentId": "root",
         "props": {
-          "title": "Waiting on a person"
+          "title": "Waiting for you"
         },
         "type": "workq"
+      },
+      {
+        "bindingIds": [
+          "ordersList"
+        ],
+        "id": "orders",
+        "parentId": "root",
+        "props": {
+          "title": "All orders (click one to open or correct it)"
+        },
+        "type": "records"
       }
     ],
     "rootId": "root",
