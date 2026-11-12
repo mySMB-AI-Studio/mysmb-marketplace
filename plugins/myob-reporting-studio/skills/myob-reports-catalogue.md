@@ -1,16 +1,16 @@
 ---
 name: MYOB Reports Catalogue
-description: MYOB Reports Catalogue (M63) as a live, validated report in MYOB styling. Use when the user asks for the reports catalogue, the list of MYOB reports, which reports are available, what the agent can build, or wants to browse, search or favourite reports.
+description: MYOB Reports Catalogue (M63) as a live, validated report in MYOB styling. Use when the user asks for the reports catalogue, the list of MYOB reports, which reports are available, what MYOB Reporting Studio can build, or wants to browse, search or favourite reports.
 ---
 # Reports Catalogue (M63)
 
-Use when the user asks for the reports catalogue, the list of MYOB reports, which reports are available, what the agent can build, or wants to browse, search or favourite reports. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Reports Catalogue**. Template: `myob-reporting-studio` / `myob-reports-catalogue` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_company_files`).
+Use when the user asks for the reports catalogue, the list of MYOB reports, which reports are available, what MYOB Reporting Studio can build, or wants to browse, search or favourite reports. Load `myob-report-foundation` first and follow its *Build a kit report* steps. Report title: **MYOB Reports Catalogue**. Template: `myob-reporting-studio` / `myob-reports-catalogue` (for `artifact_from_template`); without that tool, copy the blocks below — do not rewrite them. This skill needs the `myob-accounting` connector (`list_company_files`).
 
 MYOB location: Reporting → Reports → All. Library: MYOB Reports Prompt Library v1.2 → Prompts → M63. Delivery: Wave 2 (P2, delivery order 39).
 
 ## Discovery call
 
-Call `list_company_files` once (the header and the client selector). The catalogue holds no company figures: its rows are the MYOB Reports Prompt Library (M00–M63) with what this agent offers for each, built into the report.
+Call `list_company_files` once (the header and the client selector). The catalogue holds no company figures: its rows are the MYOB Reports Prompt Library (M00–M63) with what MYOB Reporting Studio offers for each, built into the report.
 
 ## Date defaults
 
@@ -24,7 +24,7 @@ No dates. `display.v` opens on a tab (`all`, `Business`, `Banking`, `Payroll`, `
 | Search reports | Search box above the tabs |
 | Favourites | Star a report; the ★ Favourites tab lists them |
 | Status per report | Live template · On request · From your MYOB export · Guide, with the name to ask for |
-| Run a report | Ask the agent for it by the name shown (a catalogue cannot start a chat) |
+| Run a report | Ask mySidekick for it by the name shown, or open it from Reports → From your plugins (a catalogue cannot start a chat) |
 
 ## Validation checks (shown in the banner)
 
@@ -215,8 +215,8 @@ MK.app({
       { name: 'Reports per MYOB tab match MYOB (Business 14 · Banking 5 · Payroll 12 · Sales 8 · Purchases 7 · Inventory 6 · Jobs 6)', pass: tabsOk, detail: K.groups.map(function (g) { return g[1] + ' ' + (byGroup[g[0]] || 0); }).join(' · ') },
       { name: 'Coverage', pass: null, info: true, detail: count('live') + ' live templates · ' + count('request') + ' on request · ' + count('export') + ' from an export · ' + count('guide') + ' guide' + (count('none') ? ' · ' + count('none') + ' not yet' : '') }],
       title: 'Reports Catalogue', period: K.total + ' reports · MYOB Reports Prompt Library v1.2',
-      notes: ['Live template = a tested report the agent creates from its template; ask for it by the name shown. On request = the agent writes the report from its specification each time. From your MYOB export = MYOB\'s API does not expose it: attach the MYOB export and ask for it. Prompt IDs refer to the MYOB Reports Prompt Library v1.2.',
-        'Stars last while this catalogue is open and go into its downloads. To keep favourites, ask the agent to save the catalogue with them.'] };
+      notes: ['Live template = a tested report you open from Reports → From your plugins, or ask mySidekick for by the name shown. On request = mySidekick writes the report from its specification each time. From your MYOB export = MYOB\'s API does not expose it: attach the MYOB export and ask for it. Prompt IDs refer to the MYOB Reports Prompt Library v1.2.',
+        'Stars last while this catalogue is open and go into its downloads. To keep favourites, ask mySidekick to save the catalogue with them.'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];

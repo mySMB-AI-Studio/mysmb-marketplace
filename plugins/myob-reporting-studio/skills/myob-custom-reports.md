@@ -8,7 +8,7 @@ Use when the user asks to customise a report and save it, "Save as", their custo
 
 MYOB location: Reporting → Custom reports (Customise on any report). Library: MYOB Reports Prompt Library v1.2 → Prompts → M62. Delivery: Wave 2 (P2, delivery order 40).
 
-MYOB **custom reports** (Customise → Save as) are **not in the MYOB API**, so the agent cannot read the custom reports a file already has. Instead, any kit report can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
+MYOB **custom reports** (Customise → Save as) are **not in the MYOB API**, so mySidekick cannot read the custom reports a file already has. Instead, any kit report can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
 
 ## Save a customised report ("Save as")
 
@@ -61,7 +61,7 @@ Ask for its name and settings, or a screenshot or export of it, map them with th
 
 ## QA test script
 
-1. Ask for the request this guide covers (see *Use when*). Confirm the agent saves the right kit report with the settings and says what is N/A.
+1. Ask for the request this guide covers (see *Use when*). Confirm mySidekick saves the right kit report with the settings and says what is N/A.
 2. Reopen the saved report: it opens on the saved settings, refetches and validates; its Download Excel file has the Validation and Parameters sheets.
 3. Captured empty (no custom reports in the sample file) — save Profit and Loss as "Monthly board P&L" on Last month, compare last year, and confirm it reopens on the new month next month.
 4. Cross-client isolation (LIB-002): the kit report the guide saves carries the Client picker. Switching it refetches only that company file's figures, and the saved report and every export carry only one company file.
