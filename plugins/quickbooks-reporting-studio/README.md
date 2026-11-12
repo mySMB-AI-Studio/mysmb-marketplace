@@ -1,12 +1,12 @@
 # QuickBooks Reporting Studio
 
-Live, validated QuickBooks Online reports in QuickBooks styling — statements, ageing, GST/BAS, dashboards and management packs — with a specialist reporting agent.
+Live QuickBooks Online reports for your Reports library, including profit and loss, balance sheet, cash flow, trial balance, general ledger, aged receivables and payables, GST and BAS, sales and supplier reports, budgets, dashboards and management report packs. Each report reads your connected QuickBooks company every time it opens, checks its own figures and shows the result. You can download it as PDF or Excel, or share it. Find the reports in Reports, under From your plugins. Read-only in QuickBooks.
 
 Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This initial release delivers **30 report templates** (35 supported families and guides). Payroll, Employee and ATO reports (Q32–Q34) are deferred until their payroll connector is supported.
 
 ## What's in the box
 
-- **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the `quickbooks-accounting` connector.
+- **No agent:** people open the reports from Reports → From your plugins, or ask mySidekick, which loads these skills. Connector: `quickbooks-accounting`.
 - **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + 35 family skills:
   - Q17 Profit and Loss family — `quickbooks-profit-and-loss`
   - Q18 Balance Sheet family — `quickbooks-balance-sheet`
@@ -45,7 +45,7 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This init
   - Q05 Spreadsheet Sync (Excel / Google Sheets) — `quickbooks-spreadsheet-sync`
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
 
-- **Report templates:** every family except the custom report builder also ships as a report template (`reports/<skill>/`), listed in the workspace under Reports → From your plugins (**Use this report**). The agent creates reports from them with `artifact_from_template` when the platform has it, so it never retypes the report.
+- **Report templates:** every family except the custom report builder also ships as a report template (`reports/<skill>/`), listed in the workspace under Reports → From your plugins (**Use this report**). mySidekick creates reports from them with `artifact_from_template`, so it never retypes the report.
 
 Connect QuickBooks under Settings → Connections (OAuth) before asking for a report. No payroll connector is required for this release.
 
@@ -59,7 +59,7 @@ Connect QuickBooks under Settings → Connections (OAuth) before asking for a re
 
 ## Maintenance
 
-The skills and report templates are generated from `scripts/quickbooks-reporting-kit/` (`npm run gen`, then `npm test` and `npm run roundtrip`): a report kit that is tested as one unit, with each family's `dataBindings` and config. Change a report there, in code. **Never Pull this extension into the Developer Instance** and never hand-edit a copy there: publish it from dev.
+The skills and report templates are generated from `scripts/quickbooks-reporting-kit/` (`npm run gen`, then `npm test` and `npm run roundtrip`): a report kit that is tested as one unit, with each family's `dataBindings` and config. Change a report there, in code. Publish it from dev in the Console. Pull it into the Developer Instance after a change on dev, and don't save it there before that Pull: a save commits the Developer Instance's older copy over dev.
 
 ## Configuration
 

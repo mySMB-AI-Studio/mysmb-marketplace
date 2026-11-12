@@ -1,173 +1,173 @@
 {
-  "title": "QuickBooks Purchases Overview",
-  "description": "Live, validated QuickBooks Online Purchases Overview (Q10): Bills funnel, Spend over time, Spend insights, DPO tile.",
-  "tags": [
-    "quickbooks",
-    "expenses",
-    "bills",
-    "dashboard"
-  ],
-  "fileName": "quickbooks-expenses-overview.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "open_bills",
+        "params": {
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          },
+          "orderBy": {
+            "kind": "static",
+            "value": "DueDate"
+          },
+          "where": {
+            "kind": "static",
+            "value": "Balance > '0'"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_bill"
+        }
+      },
+      {
+        "id": "bill_payments",
+        "params": {
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          },
+          "orderBy": {
+            "kind": "static",
+            "value": "TxnDate DESC"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_bill_payment"
+        }
+      },
+      {
+        "id": "aged_payables",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_aged_payables"
+        }
+      },
+      {
+        "id": "spend_monthly",
+        "params": {
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "end_date": {
+            "input": "q_end",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "q_start",
+            "kind": "input"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Month"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        }
+      },
+      {
+        "id": "supplier_spend",
+        "params": {
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "end_date": {
+            "input": "m_end",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "m_start",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_vendor_expenses"
+        }
+      },
+      {
+        "id": "company_info",
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        }
+      },
+      {
+        "id": "prefs",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "q_start",
+        "default": "2026-04-01",
         "label": "Spend chart from",
-        "type": "date",
-        "default": "2026-04-01"
+        "name": "q_start",
+        "type": "date"
       },
       {
-        "name": "q_end",
+        "default": "2026-09-30",
         "label": "Spend chart to",
-        "type": "date",
-        "default": "2026-09-30"
+        "name": "q_end",
+        "type": "date"
       },
       {
-        "name": "m_start",
+        "default": "2026-09-01",
         "label": "Spend insights from",
-        "type": "date",
-        "default": "2026-09-01"
+        "name": "m_start",
+        "type": "date"
       },
       {
-        "name": "m_end",
+        "default": "2026-09-30",
         "label": "Spend insights to",
-        "type": "date",
-        "default": "2026-09-30"
+        "name": "m_end",
+        "type": "date"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "open_bills",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "list_bill"
-        },
-        "params": {
-          "where": {
-            "kind": "static",
-            "value": "Balance > '0'"
-          },
-          "orderBy": {
-            "kind": "static",
-            "value": "DueDate"
-          },
-          "maxResults": {
-            "kind": "static",
-            "value": 1000
-          }
-        }
-      },
-      {
-        "id": "bill_payments",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "list_bill_payment"
-        },
-        "params": {
-          "orderBy": {
-            "kind": "static",
-            "value": "TxnDate DESC"
-          },
-          "maxResults": {
-            "kind": "static",
-            "value": 1000
-          }
-        }
-      },
-      {
-        "id": "aged_payables",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_aged_payables"
-        },
-        "params": {}
-      },
-      {
-        "id": "spend_monthly",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_profit_and_loss"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "q_start"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "q_end"
-          },
-          "accounting_method": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "summarize_column_by": {
-            "kind": "static",
-            "value": "Month"
-          }
-        }
-      },
-      {
-        "id": "supplier_spend",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_vendor_expenses"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "m_start"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "m_end"
-          },
-          "accounting_method": {
-            "kind": "static",
-            "value": "Accrual"
-          }
-        }
-      },
-      {
-        "id": "company_info",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
-        },
-        "params": {
-          "query": {
-            "kind": "static",
-            "value": "SELECT * FROM CompanyInfo"
-          }
-        }
-      },
-      {
-        "id": "prefs",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_preferences"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated QuickBooks Online Purchases Overview (Q10): Bills funnel, Spend over time, Spend insights, DPO tile.",
+  "fileName": "quickbooks-expenses-overview.html",
+  "tags": [
+    "quickbooks",
+    "expenses",
+    "bills",
+    "dashboard"
+  ],
+  "title": "QuickBooks Purchases Overview"
 }

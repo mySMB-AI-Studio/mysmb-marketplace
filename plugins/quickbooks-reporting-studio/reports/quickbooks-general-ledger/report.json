@@ -1,149 +1,149 @@
 {
-  "title": "QuickBooks General Ledger",
-  "description": "Live, validated QuickBooks Online General Ledger (Q23): General Ledger, General Ledger Summary, Journal, Transaction List by Date, Account List.",
-  "tags": [
-    "quickbooks",
-    "general-ledger",
-    "accountant"
-  ],
-  "fileName": "quickbooks-general-ledger.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "general_ledger",
+        "params": {
+          "accounting_method": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "end_date": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "start_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_general_ledger"
+        }
+      },
+      {
+        "id": "journal",
+        "params": {
+          "accounting_method": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "end_date": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "start_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_journal_report"
+        }
+      },
+      {
+        "id": "transaction_list",
+        "params": {
+          "accounting_method": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "end_date": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "start_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_transaction_list"
+        }
+      },
+      {
+        "id": "account_list",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_account_list"
+        }
+      },
+      {
+        "id": "company_info",
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        }
+      },
+      {
+        "id": "prefs",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "start_date",
+        "default": "2026-08-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-08-01"
+        "name": "start_date",
+        "type": "date"
       },
       {
-        "name": "end_date",
+        "default": "2026-08-31",
         "label": "To",
-        "type": "date",
-        "default": "2026-08-31"
+        "name": "end_date",
+        "type": "date"
       },
       {
-        "name": "basis",
+        "default": "Accrual",
         "label": "Accounting method",
-        "type": "enum",
+        "name": "basis",
         "options": [
           "Accrual",
           "Cash"
         ],
-        "default": "Accrual"
+        "type": "enum"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"compact\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"gl\",\"x\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"compact\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"gl\",\"x\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "general_ledger",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_general_ledger"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "start_date"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "accounting_method": {
-            "kind": "input",
-            "input": "basis"
-          }
-        }
-      },
-      {
-        "id": "journal",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_journal_report"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "start_date"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "accounting_method": {
-            "kind": "input",
-            "input": "basis"
-          }
-        }
-      },
-      {
-        "id": "transaction_list",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_transaction_list"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "start_date"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "accounting_method": {
-            "kind": "input",
-            "input": "basis"
-          }
-        }
-      },
-      {
-        "id": "account_list",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_account_list"
-        },
-        "params": {}
-      },
-      {
-        "id": "company_info",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
-        },
-        "params": {
-          "query": {
-            "kind": "static",
-            "value": "SELECT * FROM CompanyInfo"
-          }
-        }
-      },
-      {
-        "id": "prefs",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_preferences"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated QuickBooks Online General Ledger (Q23): General Ledger, General Ledger Summary, Journal, Transaction List by Date, Account List.",
+  "fileName": "quickbooks-general-ledger.html",
+  "tags": [
+    "quickbooks",
+    "general-ledger",
+    "accountant"
+  ],
+  "title": "QuickBooks General Ledger"
 }
