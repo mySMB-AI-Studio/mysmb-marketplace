@@ -11,7 +11,6 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Setup:** Order Desk setup (each person reviews their configuration and account bindings)
 - **Pages:** Order review (installed as Draft — publish in the installing workspace)
 - **Processes:** Order intake
-- **Evaluations:** Order intake checks
 - **Agent views:** Overview, Setup pages
 - **Skills:** 3
 - **Agents:** 1
