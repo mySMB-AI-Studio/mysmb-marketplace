@@ -46,7 +46,7 @@ Always as at today — MYOB's dashboard periods are fixed (last 3 months, this f
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: mySMB.com, 9 Sep 2026: Income $2,115.43 (last 3 months) · Expenses $504.95 · Financial position $1,610.48 · GST $161.03 to pay (collected $161.03 / paid $0.00) · Overdue invoices $2,326.96 (over 30 days 2 / $1,903.00; 16–30 days 10 / $423.96; 1–15 days 0 / $0.00) · Superannuation payable $0.00 · Up next: 12 overdue invoices.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+4. Change every control and confirm the report refetches and still validates; switch Detail level to Summary, then Detail; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.

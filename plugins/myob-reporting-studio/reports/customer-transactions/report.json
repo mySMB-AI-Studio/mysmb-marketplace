@@ -1,174 +1,174 @@
 {
-  "title": "MYOB Customer Transactions",
-  "description": "Live, validated MYOB Customer Transactions (M37): Customer transactions, All transactions, Customer picker.",
-  "tags": [
-    "myob",
-    "customer-transactions",
-    "M37",
-    "sales"
-  ],
-  "fileName": "myob-customer-transactions.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "invoices",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "payments",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "page_size": {
+            "kind": "static",
+            "value": 1000
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_payments"
+        }
+      },
+      {
+        "id": "bs_open",
+        "params": {
+          "date": {
+            "input": "prev_day",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_close",
+        "params": {
+          "date": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "from_date",
+        "default": "2026-09-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-09-01"
+        "name": "from_date",
+        "type": "date"
       },
       {
-        "name": "to_date",
+        "default": "today",
         "label": "To",
-        "type": "date",
-        "default": "today"
+        "name": "to_date",
+        "type": "date"
       },
       {
-        "name": "prev_day",
+        "default": "2026-08-31",
         "label": "Day before the period",
-        "type": "date",
-        "default": "2026-08-31"
+        "name": "prev_day",
+        "type": "date"
       },
       {
-        "name": "company_file",
+        "default": "",
         "label": "Company file",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "company_file",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"customers\",\"x\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"customers\",\"x\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "invoices",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "All"
-          },
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "payments",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_payments"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "page_size": {
-            "kind": "static",
-            "value": 1000
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_open",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "prev_day"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_close",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated MYOB Customer Transactions (M37): Customer transactions, All transactions, Customer picker.",
+  "fileName": "myob-customer-transactions.html",
+  "tags": [
+    "myob",
+    "customer-transactions",
+    "M37",
+    "sales"
+  ],
+  "title": "MYOB Customer Transactions"
 }
