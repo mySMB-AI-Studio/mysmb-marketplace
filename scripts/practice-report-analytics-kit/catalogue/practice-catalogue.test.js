@@ -23,7 +23,7 @@ const { ok, done } = suite('practice-catalogue');
   ok('PRA-14 Actual Time says there is no time source', /Not available/.test(doc.querySelector('[data-row="PRA-14"]').textContent) && /no time source/.test(how('PRA-14')));
   ok('PRA-13 says it was dropped', /dropped/.test(how('PRA-13')));
   ok('the header does not claim QuickBooks is consolidated', /Xero and MYOB connections/.test(doc.querySelector('.hero').textContent));
-  ok('PRA-01 names the right template and agent phrasing', /Practice Client Summary Metrics/.test(doc.querySelector('[data-row="PRA-01"]').textContent) && /Practice Report Analytics agent/.test(doc.querySelector('[data-row="PRA-01"]').textContent));
+  ok('PRA-01 names the right template and the mySidekick phrasing', /Practice Client Summary Metrics/.test(doc.querySelector('[data-row="PRA-01"]').textContent) && /ask mySidekick/.test(doc.querySelector('[data-row="PRA-01"]').textContent));
 
   doc.querySelector('[data-chip="Banking"]').click();
   const banking = rows();

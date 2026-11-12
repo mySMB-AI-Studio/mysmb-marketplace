@@ -61,7 +61,7 @@ const SCRIPT = `
   function match(text) { return !state.q || text.toLowerCase().indexOf(state.q.toLowerCase()) >= 0; }
   function box(it) {
     var isLive = it.state === 'live';
-    var how = isLive ? 'Open: Reports → From your plugins → <b>Practice ' + esc(it.name) + '</b> → Use this report.<br>Or ask the Practice Report Analytics agent: <b>“' + esc(it.name) + ' for the practice”</b>.' : esc(D.na[it.state]);
+    var how = isLive ? 'Open: Reports → From your plugins → <b>Practice ' + esc(it.name) + '</b> → Use this report.<br>Or ask mySidekick: <b>“' + esc(it.name) + ' for the practice”</b>.' : esc(D.na[it.state]);
     return '<article class="box" data-row="' + esc(it.id) + '"><div class="top"><div><h3>' + esc(it.name) + '</h3><span class="id">' + esc(it.id) + ' · ' + esc(it.chip) + '</span></div></div>' +
       '<div><span class="pill ' + (isLive ? 'live">Live' : 'na">Not available') + '</span></div><div>' + esc(it.line) + '</div><div class="how">' + how + '</div></article>';
   }

@@ -18,4 +18,4 @@ No configuration variables are required.
 
 ## Maintaining it
 
-The report templates and skills are generated from `scripts/client-report-analytics-kit` (see its README). **Never Pull this extension into the Developer Instance and never save it there**: the Developer Instance does not keep `reports/` and would delete the templates.
+The report templates and skills are generated from `scripts/client-report-analytics-kit` (see its README). **Don't save this extension in the Developer Instance before you Pull it.** A save commits the Developer Instance's copy over dev; Pull keeps `reports/` (myHubV2's report component kind, since late October 2026), so Pull first and the templates survive. Better still, change it in the kit and publish from dev.

@@ -2,7 +2,7 @@
 
 This folder is the source of `plugins/client-report-analytics`: its report templates (`reports/<slug>/report.json` + `report.html`), and its skills (it has no agent since 2026-11-12; the separate `client-report-analytics-agent` package uses its templates). Change the source here and regenerate; never hand-edit the generated files.
 
-> **Never Pull this extension into the Developer Instance, and never save it there.** The Developer Instance does not keep `reports/`: its next save to dev deletes the templates. Change it only here, then publish from dev in Admin Center.
+> **Don't save this extension in the Developer Instance until it has been Pulled after your change.** A save commits the Developer Instance's copy over dev. Pull keeps `reports/` since myHubV2's report component kind (late October 2026); on 12 Nov 2026 a Pull imported all 39 templates. Change it here, then publish from dev in Admin Center.
 
 ## Design
 

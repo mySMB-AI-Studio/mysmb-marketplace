@@ -1,7 +1,6 @@
-// node gen-ext.js — writes the extension's skills, agent (.md + content/agents/<originKey>.json with
-// contentHash) and plugin.json content block, from reports.js and each template's manifest. Run gen.js
-// first (templates), then this. Mirrors client-report-analytics-kit/gen-ext.js's conventions exactly
-// (same originKey derivation, same parseAgentMarkdown-compatible payload shape).
+// node gen-ext.js — writes the extension's skills and plugin.json content block (no agent since 2026-11-12:
+// mySidekick loads the skills), from reports.js and each template's manifest. Run gen.js
+// first (templates), then this. Mirrors client-report-analytics-kit/gen-ext.js's conventions.
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const { REPORTS, ITEMS, PLUGIN } = require('./reports.js');
 const EXT = path.join(__dirname, '..', '..', 'plugins', PLUGIN);
@@ -18,7 +17,7 @@ const COMMON = `## Rules for every practice report
 - **Confirm the period/as-at and client scope first (never assume):** offer "all clients" as the default; ask only if the user wants to narrow to specific clients, and if so resolve their ids first (Xero \`list_connections\`, MYOB \`list_company_files\`) rather than guessing names.
 - **Create the report with \`artifact_from_template\`**: \`plugin\` = \`${PLUGIN}\`, \`slug\` from the table below, \`title\` = "<Report name> — Practice — <period>", and \`inputs\` = only the declared inputs the request changes (exact names from the table; dates as \`YYYY-MM-DD\`). You write no HTML and no figures: the report fetches live data every time it opens and recomputes its checks.
 - **If \`artifact_from_template\` is not available or returns template_not_found**, say the Practice Report Analytics extension is not installed or not up to date in this workspace; do not hand-write a report instead.
-- **QuickBooks is excluded from every practice-wide report** (one company per connection — there is nothing to consolidate). Its one connected company has its own report in the Client Report Analytics agent; say so if asked.
+- **QuickBooks is excluded from every practice-wide report** (one company per connection — there is nothing to consolidate). Its one connected company has its own reports in the Client Report Analytics extension (Reports → From your plugins, or ask mySidekick); say so if asked.
 - **Reply** with the report button the tool returns, one line on what it shows, and: "The banner at the top shows the validation checks; a red line means a figure did not tie and should not be relied on." Never quote figures you did not read from a tool result.
 - **Errors:** \`needs_connection\` → "Connect <platform> (Settings → Connections)". A tool error → show it word for word; do not retry more than once.
 `;
@@ -57,7 +56,7 @@ ${inputsTable(mf)}
 
 - Every client row comes from \`${toolName}\`; a client that failed to load is named in a notice, not silently dropped from the totals.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
-${id === 'client-summary' ? '' : id === 'financial-overview' ? '- Gross profit and net profit follow the same P&L formulas as the Client agent\'s own Financial Overview, per client — not a separate calculation.\n' : id === 'activity-count' ? '- Xero never sources payroll (a separate Xero Payroll AU connector this agent doesn\'t connect) — shown as N/A with that reason, not estimated.\n' : id === 'user-activity' ? '- This reuses get_practice_client_summary\'s connection-level last-sync field — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.\n' : '- Figures follow the same model as the matching Client Report Analytics report, per client — not a separate calculation.\n'}
+${id === 'client-summary' ? '' : id === 'financial-overview' ? '- Gross profit and net profit follow the same P&L formulas as Client Report Analytics\' own Financial Overview, per client — not a separate calculation.\n' : id === 'activity-count' ? '- Xero never sources payroll (a separate Xero Payroll AU connector this extension doesn\'t connect) — shown as N/A with that reason, not estimated.\n' : id === 'user-activity' ? '- This reuses get_practice_client_summary\'s connection-level last-sync field — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.\n' : '- Figures follow the same model as the matching Client Report Analytics report, per client — not a separate calculation.\n'}
 ## QA test (sandbox / demo organisations only)
 
 On a QA workspace with the Xero demo company and a MYOB sandbox company file connected: ask for the ${it.name} for the practice. The report opens with a green banner (or a named notice for whichever platform isn't connected); every client the connections expose appears as one row; the totals row matches summing the rows by hand.
@@ -93,43 +92,14 @@ for (const s of skills) {
   w('skills/' + PLUGIN + '-' + s.key + '.md', s.body); console.log('skill', s.key, bytes, 'bytes');
 }
 
-// ── the agent ───────────────────────────────────────────────────────────────────────────────────────
-const AGENT = {
-  name: 'Practice Report Analytics Agent',
-  description: 'Builds live, validated practice-wide reports — one row per client — across every Xero and MYOB connection (Client Summary, Sales, Purchases, Bank Reconciliation, Banking, Financial Overview, Activity Count, User Activity). QuickBooks is one company per connection and is not consolidated.',
-  connectors: ['xero-accounting', 'myob-accounting'],
-  skills: skills.map((s) => S(s.key)),
-  model: 'sonnet',
-  prompt: `You are the Practice Report Analytics Agent in mySMB Workspace › Reporting. You produce reports across EVERY client the user's Xero and MYOB connections expose, one row per client, server-side (never by looping calls yourself).
-
-For every request:
-1. Pick the skill: the practice catalogue or "what reports are there" → ${S('catalogue')}; Client Summary Metrics (PRA-01) → ${S('client-summary')}; Sales Summary Metrics (PRA-02) → ${S('sales-summary')}; Purchases Summary Metrics (PRA-03) → ${S('purchases-summary')}; Bank Reconciliation Summary (PRA-04) → ${S('bank-reconciliation-summary')}; Banking Summary Metrics (PRA-05) → ${S('banking-summary')}; Financial Overview (PRA-06) → ${S('financial-overview')}; Activity Count (PRA-08) → ${S('activity-count')}; User Activity (PRA-12) → ${S('user-activity')}. Load it with load_skill before calling any tool.
-2. Confirm the period (or as-at date) and, only if the user wants to narrow it, the client scope. Default is every client the connections expose.
-3. Create the report with artifact_from_template from the template the skill names, setting only the inputs the request changes. You never write report HTML and never type figures: the report fetches live data on every open, fans out server-side across every client, validates itself and shows a checks banner.
-
-Rules:
-- Connections are Xero and MYOB only for practice-wide reports. QuickBooks is one company per connection, so it is never consolidated here — point the user at the Client Report Analytics agent for their one QuickBooks company.
-- Never invent or estimate a figure. A client that fails to load is named in the report's notices, not silently dropped; the totals only sum the clients that loaded.
-- Reports that aren't live yet — say so plainly: ${NOT_LIVE}
-- Activity Count (PRA-08) never sources Xero payroll (that's a separate Xero Payroll AU connector this agent doesn't connect) — show it as N/A with that reason, never estimate it. User Activity (PRA-12) shows each client's last connection sync, not a ledger audit log — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector; say so if asked for "who did what".
-- A needs_connection error means "Connect <platform> (Settings → Connections)". Show tool errors word for word.
-- Reports use the mySMB.com brand by default.`
-};
-const keyOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const key = keyOf(AGENT.name);
-const h = crypto.createHash('sha256').update('agent:' + PLUGIN + ':' + key).digest('hex');
-const originKey = h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-' + ((parseInt(h[16], 16) & 3) | 8).toString(16) + h.slice(17, 20) + '-' + h.slice(20, 32);
-if (AGENT.prompt.length > 20000 || AGENT.description.length > 500 || AGENT.skills.length > 50) throw new Error('agent over the builder limits');
-w('agents/' + key + '.md', `---\nname: ${AGENT.name}\ndescription: ${AGENT.description}\nconnectors: ${AGENT.connectors.join(', ')}\nskills: ${AGENT.skills.join(', ')}\nmodel: ${AGENT.model}\n---\n${AGENT.prompt}\n`);
-const sortKeys = (v) => Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v;
-const payload = { audienceMode: 'everyone', connectors: AGENT.connectors, description: AGENT.description, key, kind: 'agent', model: AGENT.model, name: AGENT.name, originKey, platform: false, rolePrompt: AGENT.prompt, skills: AGENT.skills };
-const contentHash = crypto.createHash('sha256').update(JSON.stringify(sortKeys(payload))).digest('hex');
+// ── no agent (removed 2026-11-12) ───────────────────────────────────────────────────────────────────
+// A plain extension, like Client Report Analytics and the Reporting Studios: templates for Reports → From your plugins and
+// skills for mySidekick. The old-style agent listed prefixed skills, which Publish rejects.
+fs.rmSync(path.join(EXT, 'agents'), { recursive: true, force: true });
 fs.rmSync(path.join(EXT, 'content', 'agents'), { recursive: true, force: true });
-w('content/agents/' + originKey + '.json', JSON.stringify(sortKeys({ ...payload, contentHash }), null, 2) + '\n');
-console.log('agent', key, originKey, contentHash.slice(0, 12));
 
 const pj = path.join(EXT, '.claude-plugin', 'plugin.json'), pjv = JSON.parse(fs.readFileSync(pj, 'utf8'));
-pjv.content.agents = ['content/agents/' + originKey + '.json'];
+pjv.content.agents = [];
 fs.writeFileSync(pj, JSON.stringify(pjv, null, 2) + '\n');
 const mf = path.join(__dirname, '..', '..', '.claude-plugin', 'marketplace.json'), raw = fs.readFileSync(mf, 'utf8'), mj = JSON.parse(raw);
 const entry = mj.plugins.find((p) => p.name === PLUGIN);
@@ -137,4 +107,3 @@ if (entry && JSON.stringify(entry.content) !== JSON.stringify(pjv.content)) {
   entry.content = pjv.content; const out = JSON.stringify(mj, null, 2) + '\n';
   fs.writeFileSync(mf, raw.includes('\r\n') ? out.replace(/\n/g, '\r\n') : out); console.log('marketplace entry content updated');
 }
-module.exports = { originKey };
