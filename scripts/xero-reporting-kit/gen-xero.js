@@ -16,7 +16,9 @@ const prose = rd('foundation-written-spec.md').trim(), noReport = rd('foundation
 const fence = (lang, s) => '```' + lang + '\n' + s.trim() + '\n```';
 // six skills per line, continuing the list item, so no line of the foundation passes the line limit
 const built = FAM.map((f) => '`' + SLUG + ':' + f.skill + '`' + (/^P\d\d$/.test(f.p) ? ' (' + f.p + ')' : '')).reduce((a, x, i) => { if (i % 6 === 0) a.push([]); a[a.length - 1].push(x); return a; }, []).map((g) => g.join(', ')).join(',\n  ');
-const specSkills = fs.readdirSync(path.join(P, 'skills')).map((f) => f.replace(/\.md$/, '')).filter((s) => s !== 'xero-report-foundation' && !FAM.some((f) => f.skill === s)).sort();
+// The shared schedule and report-to-WorkQ skills (reporting-shared/agent-skills.cjs) are not reports: never count them as written specifications.
+const SHARED_SKILLS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')).agentSkillFiles('xero').map((s) => s.file.replace(/\.md$/, ''));
+const specSkills = fs.readdirSync(path.join(P, 'skills')).map((f) => f.replace(/\.md$/, '')).filter((s) => s !== 'xero-report-foundation' && !SHARED_SKILLS.includes(s) && !FAM.some((f) => f.skill === s)).sort();
 const spec = specSkills.map((s) => '`' + SLUG + ':' + s + '`').join(', ');
 // With every report on the kit, the hand-building rules go; the connector facts and the scheduled-delivery rule stay.
 const proseSec = (title) => (prose.split(/\n(?=## )/).find((x) => x.startsWith('## ' + title)) || '').trim();
@@ -45,9 +47,9 @@ Use when you build any Xero report, dashboard or report pack. Load this skill fi
 
 - **Kit reports** (${FAM.length}) — ${built}. The report skill carries a tested \`dataBindings\` manifest and the complete, tested report document, and the extension ships both as a report template. **You never write report code:** the platform copies the template, or you copy the blocks. Follow *Build a kit report* below.
 ${specSkills.length ? '- **Built on request** (' + specSkills.length + ') — ' + spec + '. Each is a written specification: build the report yourself following *Rules for report skills without a kit config* at the end of this file.\n' : ''}
-For a report this agent has no skill for, see *When the user asks for something this agent has no report for*.
+**Handling a request.** Match it to one report skill and load it. If it could mean several reports, offer the closest two or three by name (the *All reports* skill lists them) instead of guessing. Ask a question only when a required choice can't be defaulted: the period, the accounting basis and the organisation all have defaults. For a report Xero Reporting Studio doesn't have, see *When the user asks for a report Xero Reporting Studio doesn't have*.
 
-Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: \`xero-accounting\` (the mySMB custom MCP on the Xero Accounting API). The library's Read Me names the claude.ai Xero connector's tools (get_financial_position, get_organisation_info and the like) — **those do not exist here**; use only the tools named in these skills.
+Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (LIB-002 client selector; cross-client isolation). Connector: \`xero-accounting\` (the mySMB custom MCP on the Xero Accounting API). The library's Read Me names the claude.ai Xero connector's tools (get_financial_position, get_organisation_info and the like) — **those do not exist here**; use only the tools named in these skills.
 
 ## Build a kit report
 
@@ -170,6 +172,6 @@ ${fence('html', doc)}
 });
 // A template whose report is no longer a kit family would linger in Reports → Templates: remove it.
 for (const d of fs.existsSync(path.join(P, 'reports')) ? fs.readdirSync(path.join(P, 'reports')) : []) if (!FAM.some((f) => f.skill === d)) fs.rmSync(path.join(P, 'reports', d), { recursive: true, force: true });
-// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
-{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'xero'); AS.ensureAgent(P, 'xero'); }
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs). Xero Reporting Studio has no agent since 2026-11-12: mySidekick loads the skills.
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'xero'); }
 console.log('generated', SLUG, '| foundation', foundation.length, 'characters | kit reports + templates:', FAM.map((f) => f.skill).join(', '));

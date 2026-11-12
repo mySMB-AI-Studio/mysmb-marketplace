@@ -100,6 +100,7 @@ function writeAgentSkills(pluginDir, platform) {
 // The agent gets the WorkQ skill (the schedule skill is mySidekick's) and the workspace:workq group: in agents/<key>.md (one-line
 // connectors: and skills:) and its blueprint content/agents/<originKey>.json, whose contentHash follows.
 function ensureAgent(pluginDir, platform) {
+  if (!fs.existsSync(path.join(pluginDir, 'agents'))) return; // an extension without an agent (Xero since 2026-11-12)
   const p = PLATFORMS[platform], skill = p.plugin + ':' + p.prefix + '-report-to-workq';
   const mdFile = fs.readdirSync(path.join(pluginDir, 'agents')).find((f) => f.endsWith('.md'));
   const mdPath = path.join(pluginDir, 'agents', mdFile), md0 = fs.readFileSync(mdPath, 'utf8').replace(/\r\n/g, '\n');

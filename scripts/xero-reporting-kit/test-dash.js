@@ -457,7 +457,7 @@ const AGED = () => ({ paid_after: L.listInvoices, pays_after: L.listPayments, in
     const r = await run('rc', man('rc'), { org: L.organisation, connections: L.connections });
     ok('rc: groups in Xero order with Favourites first', ['Favourites', 'Financial statements', 'Payables and receivables', 'Reconciliations', 'Taxes and balances', 'Dashboards and analytics'].every((x, i, a) => body(r).indexOf(x) >= 0 && (i === 0 || body(r).indexOf(x) > body(r).indexOf(a[i - 1]))), body(r).slice(0, 300));
     ok('rc: live reports carry their prompt ID and what to ask', /Profit and Loss Live P06 ?Ask: "Profit and loss this financial year to date"/.test(body(r)) && /Aged Receivables Summary Live P08/.test(body(r)), body(r).slice(0, 600));
-    ok('rc: reports without a prompt are flagged, never implied live', /Journal Report No prompt yet/.test(body(r)) && /Not in this agent yet — open it in Xero → Reporting/.test(body(r)));
+    ok('rc: reports without a prompt are flagged, never implied live', /Journal Report No prompt yet/.test(body(r)) && /Not in Xero Reporting Studio yet — open it in Xero → Reporting/.test(body(r)));
     ok('rc: added skills shown, every one Live (all on the kit) — Trial Balance, General Ledger, Month-end task list, Exceptions dashboard; nothing "Built on request"', /Trial Balance Live Added/.test(body(r)) && /General Ledger Live Added/.test(body(r)) && /Month-end task list Live Added/.test(body(r)) && /Exceptions dashboard Live/.test(body(r)) && !/Built on request/.test(body(r)), body(r).slice(0, 1600));
     ok('rc: both checks pass, green', green(r) && /2\/2 checks passed/.test(banner(r)), banner(r));
     const qi = r.doc.getElementById('rc-q'); qi.value = 'aged'; qi.dispatchEvent(new r.w.Event('change')); await r.settle();

@@ -2,12 +2,14 @@
 
 This folder is the source of the **kit reports** in `plugins/xero-reporting-studio/skills/` and their **report templates** in `plugins/xero-reporting-studio/reports/<skill name>/` (`report.json` + `report.html`). Each kit skill carries a `dataBindings` manifest and its complete report document: the skeleton, the stylesheet (`xk.css`), the kit (`xk-kit.js`) cut down to what that report uses, and the report config. The template is the same document and manifest.
 
-- **With myHubV2's `artifact_from_template` tool**, the agent creates the report from the template: the platform saves an exact copy and the agent sets only the starting inputs (period, organisation …), the title and the description. Nothing is retyped. The templates also appear in Reports → Templates ("Use this report").
-- **Without it**, the agent copies the skill's blocks verbatim, changing only the dates.
+The extension has no agent (removed 2026-11-12). People open the templates from Reports → From your plugins ("Use this report"), or ask mySidekick, which loads the extension's skills:
 
-Either way it never writes report code. The foundation skill carries the build steps and rules, not code.
+- **With myHubV2's `artifact_from_template` tool** (mySidekick has it), the report is created from the template: the platform saves an exact copy, and only the starting inputs (period, organisation …), the title and the description are set. Nothing is retyped.
+- **Without it**, the skill's blocks are copied verbatim, changing only the dates.
 
-> **Never Pull this extension into the Developer Instance, and never save it there.** The Developer Instance does not keep `reports/`: its next save to dev deletes the 17 templates and the `reports` key. Change it only here, then publish from dev in Admin Center.
+Either way nobody writes report code. The foundation skill carries the build steps and rules, not code.
+
+> **Change this extension only here, then publish from dev in the Console. Don't edit or save it in the Developer Instance.** Its copy there is older than dev, and a save would commit that old copy over dev. Pull keeps `reports/` since myHubV2's report component kind (29 Oct 2026), but this kit stays the source of truth.
 
 **Never hand-edit the report document or `dataBindings` blocks in the skill `.md` files.** Change the files here, run the tests, then regenerate.
 

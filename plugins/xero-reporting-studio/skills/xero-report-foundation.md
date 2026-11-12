@@ -12,9 +12,9 @@ Use when you build any Xero report, dashboard or report pack. Load this skill fi
   `xero-reporting-studio:xero-exceptions-dashboard`, `xero-reporting-studio:xero-bank-reconciliation-status`, `xero-reporting-studio:xero-general-ledger`, `xero-reporting-studio:xero-tracking-category-pnl`, `xero-reporting-studio:xero-budget-vs-actual`, `xero-reporting-studio:xero-gst-reconciliation-detail`,
   `xero-reporting-studio:xero-report-pack`. The report skill carries a tested `dataBindings` manifest and the complete, tested report document, and the extension ships both as a report template. **You never write report code:** the platform copies the template, or you copy the blocks. Follow *Build a kit report* below.
 
-For a report this agent has no skill for, see *When the user asks for something this agent has no report for*.
+**Handling a request.** Match it to one report skill and load it. If it could mean several reports, offer the closest two or three by name (the *All reports* skill lists them) instead of guessing. Ask a question only when a required choice can't be defaulted: the period, the accounting basis and the organisation all have defaults. For a report Xero Reporting Studio doesn't have, see *When the user asks for a report Xero Reporting Studio doesn't have*.
 
-Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (one agent per platform; LIB-002 client selector; cross-client isolation). Connector: `xero-accounting` (the mySMB custom MCP on the Xero Accounting API). The library's Read Me names the claude.ai Xero connector's tools (get_financial_position, get_organisation_info and the like) — **those do not exist here**; use only the tools named in these skills.
+Spec: Xero Reports Prompt Library v1.2 (P01–P15) with the v1.2 patch (LIB-002 client selector; cross-client isolation). Connector: `xero-accounting` (the mySMB custom MCP on the Xero Accounting API). The library's Read Me names the claude.ai Xero connector's tools (get_financial_position, get_organisation_info and the like) — **those do not exist here**; use only the tools named in these skills.
 
 ## Build a kit report
 
@@ -53,11 +53,11 @@ The user never has to choose an output format: every report is HTML with Downloa
 - Every report recomputes its checks on every load and change. Each report includes at least one **independent tie** — a figure matched against a different Xero report (e.g. P&L Net Profit = Balance Sheet Current Year Earnings) — so a check never just re-adds the report's own numbers. Only real checks count in "x/y passed"; N/A and information lines are counted separately.
 - Financial output is decision support, not audit, tax or legal advice.
 
-## When the user asks for something this agent has no report for
+## When the user asks for a report Xero Reporting Studio doesn't have
 
 The *All reports* skill (`xero-reporting-studio:xero-reports-catalog`) lists every Xero report with its status. For a report marked **No prompt yet** (e.g. Journal Report, Account Transactions, Statement of Cash Flows):
 
-- Say plainly that this agent doesn't build that report yet, and name the closest **Live** report (e.g. the Trial Balance or Balance Sheet for an account-balances question).
+- Say plainly that Xero Reporting Studio doesn't have that report yet, and name the closest **Live** report (e.g. the Trial Balance or Balance Sheet for an account-balances question).
 - You may answer a specific question in chat from the connector's tools — state the tool and the figures it returned. Never assemble an improvised report document for it, and never approximate a report from adjacent data.
 - Anything the Xero API does not hold is "N/A — not in source".
 
@@ -85,4 +85,4 @@ The *All reports* skill (`xero-reporting-studio:xero-reports-catalog`) lists eve
 
 ## Scheduled delivery
 
-**If a user asks whether a report can be "automated" or scheduled to regenerate periodically (e.g. "can this run automatically every month"), don't build a regeneration.** Every report is already live: it re-fetches current data every time it's opened, including one generated last month, so the saved report is never stale and a scheduled "regenerate and re-save" only multiplies copies of the same document. What the user usually wants is the report *delivered* on a schedule. If you have the `automation_draft` tool (the agent's `workspace:automations` connector), create that yourself: ask how often (default monthly, 9:00am on the 1st, in the organisation's timezone), then draft a scheduled automation named "Deliver <report title> – <organisation>" whose only step creates one WorkQ item per run, titled "<report title> – <organisation> – <period>", assigned to the user, with the live report's `/reports/<id>` link in the description. Declare only the `workq:write` scope; it calls no connector. Tell the user it is saved as a draft and that they publish it from Automations to start the schedule. If you do not have `automation_draft`, say plainly that scheduled delivery can't be set up from this chat yet; do not hand the user a prompt to build it themselves.
+**If a user asks whether a report can be "automated" or scheduled (e.g. "send me the P&L every Monday", "can this run automatically every month"), load `xero-reporting-studio:xero-schedule-report` and follow it.** It uses mySidekick's scheduled tasks and says plainly when they aren't available; never draft an automation or hand the user a prompt to build one instead. Tell the user every report is already live: it fetches current data each time it's opened, so a saved report is never stale, and each scheduled run saves a fresh copy and tells them it's ready.
