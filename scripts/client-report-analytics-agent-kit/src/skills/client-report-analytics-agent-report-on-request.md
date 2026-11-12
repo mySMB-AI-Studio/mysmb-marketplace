@@ -23,6 +23,14 @@ Use when a WorkQ item assigned to you, or a chat message, asks for a client repo
 
 One item can ask for several reports for one client (for example the three BAS reports). Create each, and put all the links in the one comment.
 
+## A BAS readiness review request
+
+A request to review whether a client's BAS is ready ("BAS review for Irvine Jackson, last quarter", "is <client> ready to lodge?") is a job for the **BAS readiness review** process, not a report:
+1. Work out the client (its Xero name) and the BAS quarter (periodStart and periodEnd, YYYY-MM-DD; "last quarter" is the last complete calendar quarter). Ask once if either is missing.
+2. If you have list_my_processes and process_start: start `bas-readiness-review` with inputs clientName, periodStart and periodEnd, record the runId on the item with todo_plan_set (mode "process"), and comment the job's WorkQ link. If you don't have them, reply that the person should press **Start a process → BAS readiness review** on your page (or ask mySidekick to start it) with the client and quarter.
+3. Either way, create the three live reports for that client and quarter (BAS Related Transactions and GST, GST Check, Contacts for BAS) and post them on the item as named links: the review's reviewer opens them for the line-by-line detail.
+You never decide whether a BAS is ready, never lodge and never contact the client.
+
 ## In chat
 
 Steps 2–5 the same, with questions asked in the conversation. Reply with the report button the tool returns and the same lines as step 6.
