@@ -1,210 +1,210 @@
 {
-  "title": "MYOB Dashboard",
-  "description": "Live, validated MYOB Dashboard (M00): Up next, Your business, Accounts, GST, Overdue invoices, Superannuation payable, PAYG withholding.",
-  "tags": [
-    "myob",
-    "dashboard",
-    "M00",
-    "overview"
-  ],
-  "fileName": "myob-dashboard.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "pnl_3m",
+        "params": {
+          "from_date": {
+            "input": "m3_start",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "to_date": {
+            "input": "as_at",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss_3m"
+        }
+      },
+      {
+        "id": "pnl_fy",
+        "params": {
+          "from_date": {
+            "input": "fy_start",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "to_date": {
+            "input": "as_at",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "bs",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "journals",
+        "params": {
+          "from_date": {
+            "input": "chart_from",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "as_at",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_journal_transactions"
+        }
+      },
+      {
+        "id": "invoices",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "tax_codes",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_tax_codes"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "as_at",
+        "default": "today",
         "label": "As at",
-        "type": "date",
-        "default": "today"
+        "name": "as_at",
+        "type": "date"
       },
       {
-        "name": "m3_start",
+        "default": "2026-07-01",
         "label": "Start of the last 3 months",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "m3_start",
+        "type": "date"
       },
       {
-        "name": "fy_start",
+        "default": "2026-07-01",
         "label": "Financial year start",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "fy_start",
+        "type": "date"
       },
       {
-        "name": "chart_from",
+        "default": "2026-07-01",
         "label": "Chart from",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "chart_from",
+        "type": "date"
       },
       {
-        "name": "company_file",
+        "default": "",
         "label": "Company file",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "company_file",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "pnl_3m",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_profit_and_loss_3m"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "m3_start"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "pnl_fy",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "fy_start"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "journals",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_journal_transactions"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "chart_from"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "invoices",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "Open"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "tax_codes",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_tax_codes"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated MYOB Dashboard (M00): Up next, Your business, Accounts, GST, Overdue invoices, Superannuation payable, PAYG withholding.",
+  "fileName": "myob-dashboard.html",
+  "tags": [
+    "myob",
+    "dashboard",
+    "M00",
+    "overview"
+  ],
+  "title": "MYOB Dashboard"
 }

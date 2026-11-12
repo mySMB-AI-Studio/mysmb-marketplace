@@ -1,6 +1,103 @@
 {
-  "title": "MYOB Receivables Reconciliation",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "invoices",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "bs",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "today",
+        "label": "As at",
+        "name": "as_at",
+        "type": "date"
+      },
+      {
+        "default": "",
+        "label": "Company file",
+        "maxLength": 64,
+        "name": "company_file",
+        "type": "string"
+      },
+      {
+        "default": "Bookkeeper",
+        "label": "View as",
+        "name": "persona",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"recon\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Live, validated MYOB Receivables Reconciliation (M33, M34): Receivables reconciliation with tax (M33), Receivables reconciliation exceptions (M34).",
+  "fileName": "myob-receivables-reconciliation.html",
   "tags": [
     "myob",
     "receivables",
@@ -8,102 +105,5 @@
     "M33",
     "M34"
   ],
-  "fileName": "myob-receivables-reconciliation.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "as_at",
-        "label": "As at",
-        "type": "date",
-        "default": "today"
-      },
-      {
-        "name": "company_file",
-        "label": "Company file",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "persona",
-        "label": "View as",
-        "type": "enum",
-        "options": [
-          "Client",
-          "Bookkeeper",
-          "Practitioner",
-          "Executive"
-        ],
-        "default": "Bookkeeper"
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"recon\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "invoices",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "Open"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "MYOB Receivables Reconciliation"
 }

@@ -1,227 +1,227 @@
 {
-  "title": "MYOB Exceptions Dashboard",
-  "description": "Live, validated MYOB Exceptions Dashboard (M59): Transaction review, Tax review, Tax code exceptions (invoice transactions), Readiness and dollarised risk.",
-  "tags": [
-    "myob",
-    "exceptions-dashboard",
-    "M59",
-    "review"
-  ],
-  "fileName": "myob-exceptions-dashboard.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "inv_open",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "bills_open",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        }
+      },
+      {
+        "id": "bs",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "inv_period",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "bills_period",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        }
+      },
+      {
+        "id": "journals_after",
+        "params": {
+          "from_date": {
+            "input": "day_after",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "kind": "static",
+            "value": "2099-12-31"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_journal_transactions"
+        }
+      },
+      {
+        "id": "tax_codes",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_tax_codes"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "from_date",
+        "default": "2026-07-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "from_date",
+        "type": "date"
       },
       {
-        "name": "to_date",
+        "default": "today",
         "label": "To",
-        "type": "date",
-        "default": "today"
+        "name": "to_date",
+        "type": "date"
       },
       {
-        "name": "as_at",
+        "default": "today",
         "label": "Today",
-        "type": "date",
-        "default": "today"
+        "name": "as_at",
+        "type": "date"
       },
       {
-        "name": "day_after",
+        "default": "2026-09-29",
         "label": "The day after today",
-        "type": "date",
-        "default": "2026-09-29"
+        "name": "day_after",
+        "type": "date"
       },
       {
-        "name": "company_file",
+        "default": "",
         "label": "Company file",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "company_file",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"today\",\"c\":\"none\",\"v\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"today\",\"c\":\"none\",\"v\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "inv_open",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "Open"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bills_open",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_bills"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "Open"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "inv_period",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "All"
-          },
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bills_period",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_bills"
-        },
-        "params": {
-          "status": {
-            "kind": "static",
-            "value": "All"
-          },
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "journals_after",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_journal_transactions"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "day_after"
-          },
-          "to_date": {
-            "kind": "static",
-            "value": "2099-12-31"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "tax_codes",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_tax_codes"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated MYOB Exceptions Dashboard (M59): Transaction review, Tax review, Tax code exceptions (invoice transactions), Readiness and dollarised risk.",
+  "fileName": "myob-exceptions-dashboard.html",
+  "tags": [
+    "myob",
+    "exceptions-dashboard",
+    "M59",
+    "review"
+  ],
+  "title": "MYOB Exceptions Dashboard"
 }

@@ -89,7 +89,7 @@ Every report has a company-file picker (when the connection reaches several file
 
 ## Configuration
 
-No configuration variables are required. Connect MYOB under Settings → Connections.
+No configuration variables are required.
 
 ## Maintaining it
 
