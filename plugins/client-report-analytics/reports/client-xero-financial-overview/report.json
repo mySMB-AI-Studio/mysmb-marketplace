@@ -1,237 +1,166 @@
 {
-  "title": "Xero Financial Overview",
-  "description": "Client Report Analytics CRA-01 for one Xero client: revenue, gross and net profit with margins against last year, bank balances and receivables / payables ageing, cash or accrual. Live and validated on every open; mySMB branding by default.",
-  "tags": [
-    "client-report-analytics",
-    "CRA-01",
-    "xero",
-    "financial-overview"
-  ],
-  "fileName": "client-xero-financial-overview.html",
   "dataBindings": {
-    "inputs": [
-      {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
-        "type": "date",
-        "default": "today"
-      },
-      {
-        "name": "prior_from",
-        "label": "Last year from",
-        "type": "date",
-        "default": "2025-07-01"
-      },
-      {
-        "name": "prior_to",
-        "label": "Last year to",
-        "type": "date",
-        "default": "2025-09-25"
-      },
-      {
-        "name": "basis",
-        "label": "Accounting method",
-        "type": "enum",
-        "options": [
-          "Accrual",
-          "Cash"
-        ],
-        "default": "Accrual"
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "page",
-        "label": "Page",
-        "type": "number",
-        "min": 1,
-        "max": 20,
-        "default": 1
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}"
-      }
-    ],
     "bindings": [
       {
         "id": "pnl",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
         "params": {
           "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
+            "input": "from_date",
+            "kind": "input"
           },
           "paymentsOnly": {
             "kind": "static",
             "value": false
           },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
         }
       },
       {
         "id": "pnl_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
         "params": {
           "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
+            "input": "from_date",
+            "kind": "input"
           },
           "paymentsOnly": {
             "kind": "static",
             "value": true
           },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
         }
       },
       {
         "id": "pnl_ly",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
         "params": {
           "fromDate": {
-            "kind": "input",
-            "input": "prior_from"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "prior_to"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
+            "input": "prior_from",
+            "kind": "input"
           },
           "paymentsOnly": {
             "kind": "static",
             "value": false
           },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "prior_to",
+            "kind": "input"
+          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
         }
       },
       {
         "id": "pnl_ly_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
         "params": {
           "fromDate": {
-            "kind": "input",
-            "input": "prior_from"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "prior_to"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
+            "input": "prior_from",
+            "kind": "input"
           },
           "paymentsOnly": {
             "kind": "static",
             "value": true
           },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "prior_to",
+            "kind": "input"
+          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
         }
       },
       {
         "id": "bank",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
         "tool": {
           "mcp": "xero-accounting",
           "name": "get_bank_summary"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
         }
       },
       {
         "id": "tb",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_trial_balance"
-        },
         "params": {
           "date": {
-            "kind": "input",
-            "input": "to_date"
+            "input": "to_date",
+            "kind": "input"
           },
           "paymentsOnly": {
             "kind": "static",
             "value": false
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_trial_balance"
         }
       },
       {
         "id": "tb_now",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_trial_balance"
-        },
         "params": {
           "date": {
             "kind": "context",
@@ -242,99 +171,170 @@
             "value": false
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_trial_balance"
         }
       },
       {
         "id": "invoices",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_invoices"
-        },
         "params": {
-          "statuses": {
-            "kind": "static",
-            "value": "AUTHORISED"
-          },
           "order": {
             "kind": "static",
             "value": "DueDate ASC"
           },
           "page": {
-            "kind": "input",
-            "input": "page"
+            "input": "page",
+            "kind": "input"
+          },
+          "statuses": {
+            "kind": "static",
+            "value": "AUTHORISED"
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
         }
       },
       {
         "id": "credit_notes",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_credit_notes"
-        },
         "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
           "where": {
             "kind": "static",
             "value": "Status==\"AUTHORISED\""
           },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_credit_notes"
         }
       },
       {
         "id": "overpayments",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_overpayments"
-        },
         "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
           "where": {
             "kind": "static",
             "value": "Status==\"AUTHORISED\""
           },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_overpayments"
         }
       },
       {
         "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
         "tool": {
           "mcp": "xero-accounting",
           "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
         }
       },
       {
         "id": "connections",
+        "params": {},
         "tool": {
           "mcp": "xero-accounting",
           "name": "list_connections"
-        },
-        "params": {}
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-07-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "today",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "2025-07-01",
+        "label": "Last year from",
+        "name": "prior_from",
+        "type": "date"
+      },
+      {
+        "default": "2025-09-25",
+        "label": "Last year to",
+        "name": "prior_to",
+        "type": "date"
+      },
+      {
+        "default": "Accrual",
+        "label": "Accounting method",
+        "name": "basis",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": 1,
+        "label": "Page",
+        "max": 20,
+        "min": 1,
+        "name": "page",
+        "type": "number"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Client Report Analytics CRA-01 for one Xero client: revenue, gross and net profit with margins against last year, bank balances and receivables / payables ageing, cash or accrual. Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-xero-financial-overview.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-01",
+    "xero",
+    "financial-overview"
+  ],
+  "title": "Xero Financial Overview"
 }

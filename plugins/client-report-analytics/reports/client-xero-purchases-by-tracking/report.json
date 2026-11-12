@@ -1,218 +1,218 @@
 {
-  "title": "Xero Purchases by Tracking Category",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "by_cat",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "trackingCategoryID": {
+            "input": "tracking",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "by_cat_cash",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "trackingCategoryID": {
+            "input": "tracking",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl_cash",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "cats",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_tracking_categories"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-07-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "today",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "Accrual",
+        "label": "Accounting method",
+        "name": "basis",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "",
+        "label": "Tracking category",
+        "maxLength": 64,
+        "name": "tracking",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"o\":\"opt=\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Client Report Analytics CRA-04 for one Xero client: purchases and spend split by one tracking category / class / job at a time, with each option's share of the total, tied to the platform's own purchases figure. Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-xero-purchases-by-tracking.html",
   "tags": [
     "client-report-analytics",
     "CRA-04",
     "xero",
     "purchases-by-tracking"
   ],
-  "fileName": "client-xero-purchases-by-tracking.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
-        "type": "date",
-        "default": "today"
-      },
-      {
-        "name": "basis",
-        "label": "Accounting method",
-        "type": "enum",
-        "options": [
-          "Accrual",
-          "Cash"
-        ],
-        "default": "Accrual"
-      },
-      {
-        "name": "tracking",
-        "label": "Tracking category",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"o\":\"opt=\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "by_cat",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "trackingCategoryID": {
-            "kind": "input",
-            "input": "tracking"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "by_cat_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "trackingCategoryID": {
-            "kind": "input",
-            "input": "tracking"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "cats",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_tracking_categories"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "Xero Purchases by Tracking Category"
 }
