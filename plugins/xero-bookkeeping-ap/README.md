@@ -1,6 +1,6 @@
 # Bookkeeping AP
 
-Reads each supplier bill and enters it in Xero as a draft, so your team checks and approves bills instead of typing them in.
+Reads supplier bills from your mailbox, Hubdoc or Dext, checks and codes them, and enters or approves each one in the client's Xero once a person says yes.
 
 Packaged from a MyHub workspace via the /developer Plugins page.
 
