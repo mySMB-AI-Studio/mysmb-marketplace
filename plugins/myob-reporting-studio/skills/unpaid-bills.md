@@ -40,7 +40,7 @@ Always as at today — MYOB's API gives today's open balances (the kit sets `as_
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: mySMB.com as at 9 Sep 2026: no unpaid bills (the sample file is empty — the columns mirror Unpaid invoices); on a file with bills, the total due = the payables account.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+4. Change every control and confirm the report refetches and still validates; switch Detail level to Summary, then Detail; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.

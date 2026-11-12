@@ -43,7 +43,7 @@ Call `get_profit_and_loss_3m` once with `from_date` = the financial-year start, 
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: mySMB.com, 1 Jul – 9 Sep 2026 accrual: Sales / Total income / Gross profit 2,115.43; Electricity & Gas 290.91; Office Supplies 132.27; Telephone & Internet 81.77; Total expenses 504.95; Net profit 1,610.48; last year 0.00. Live on 28 Sep 2026 (FY to date): Income 4,317.25, Expenses 2,134.49, Net profit 2,182.76.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+4. Change every control and confirm the report refetches and still validates; switch Detail level to Summary, then Detail; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.
@@ -233,7 +233,7 @@ MK.app({
     var tot = function (k) { return b.totals[k] ? b.totals[k][0] : 0; }, calc = function (k) { return b.calc[k] ? b.calc[k][0] : null; };
     var inc = tot('Income'), cos = tot('CostOfSales'), exp = tot('Expense'), oi = tot('OtherIncome'), oe = tot('OtherExpense'), gp = calc('GrossProfit'), np = calc('NetProfit');
     var npCmp = cmpOn && b.calc.NetProfit ? b.calc.NetProfit[1] : null;
-    var extra = cmpOn ? MK.compareCols({ prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
+    var extra = cmpOn ? MK.compareCols(c.compareLabel || { prev_period: 'Previous period', prev_year: 'Previous year', ytd: 'Year to date' }[c.compareMode]) : [];
     if (c.view === 'pct') extra.push({ title: '% of Income', fmt: 'pct', value: function (l) { return inc ? MK.val(l) / inc : null; } });
     var empty = !b.rows.length;
     body.innerHTML = MK.kpis([{ label: 'Total Income', value: inc }, { label: 'Gross Profit', value: gp }, { label: 'Total Expenses', value: exp },

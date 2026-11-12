@@ -1,6 +1,172 @@
 {
-  "title": "MYOB GST Summary (BAS)",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "gst",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_gst_summary"
+        }
+      },
+      {
+        "id": "tax_codes",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_tax_codes"
+        }
+      },
+      {
+        "id": "payroll",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_payroll_category_summary"
+        }
+      },
+      {
+        "id": "journals",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_journal_transactions"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-07-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-09-30",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "Accrual",
+        "label": "Accounting method",
+        "name": "basis",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "",
+        "label": "Company file",
+        "maxLength": 64,
+        "name": "company_file",
+        "type": "string"
+      },
+      {
+        "default": "Bookkeeper",
+        "label": "View as",
+        "name": "persona",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"bas\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      },
+      {
+        "default": "G2=EXP;G3=FRE;G4=ITS;G10=CAP;X=N-T",
+        "label": "BAS label mapping (tax codes)",
+        "maxLength": 160,
+        "name": "bas_map",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Live, validated MYOB GST Summary (BAS) (M06): BAS (activity statement), GST return (BAS labels), GST report by tax code, Simpler BAS.",
+  "fileName": "myob-gst-summary-bas.html",
   "tags": [
     "myob",
     "gst",
@@ -10,171 +176,5 @@
     "M61",
     "tax"
   ],
-  "fileName": "myob-gst-summary-bas.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
-        "type": "date",
-        "default": "2026-09-30"
-      },
-      {
-        "name": "basis",
-        "label": "Accounting method",
-        "type": "enum",
-        "options": [
-          "Accrual",
-          "Cash"
-        ],
-        "default": "Accrual"
-      },
-      {
-        "name": "company_file",
-        "label": "Company file",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "persona",
-        "label": "View as",
-        "type": "enum",
-        "options": [
-          "Client",
-          "Bookkeeper",
-          "Practitioner",
-          "Executive"
-        ],
-        "default": "Bookkeeper"
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"bas\"}"
-      },
-      {
-        "name": "bas_map",
-        "label": "BAS label mapping (tax codes)",
-        "type": "string",
-        "maxLength": 160,
-        "default": "G2=EXP;G3=FRE;G4=ITS;G10=CAP;X=N-T"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "gst",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_gst_summary"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "input",
-            "input": "basis"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "tax_codes",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_tax_codes"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "payroll",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_payroll_category_summary"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "input",
-            "input": "basis"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "journals",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_journal_transactions"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "MYOB GST Summary (BAS)"
 }

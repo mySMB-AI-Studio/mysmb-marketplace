@@ -1,0 +1,84 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      },
+      {
+        "id": "invoices",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "bills",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "Open"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        }
+      },
+      {
+        "id": "contacts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "type": {
+            "kind": "static",
+            "value": "All"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_contacts"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "",
+        "label": "Company file",
+        "maxLength": 64,
+        "name": "company_file",
+        "type": "string"
+      }
+    ]
+  },
+  "description": "Unpaid sales invoices and purchase bills across your MYOB company files, aged into buckets, with one grouped payment-reminder draft per contact.",
+  "fileName": "myob-unpaid-aged-accounts.html",
+  "tags": [
+    "myob",
+    "aged-receivables",
+    "aged-payables",
+    "unpaid",
+    "ageing"
+  ],
+  "title": "Unpaid & Aged Accounts — MYOB"
+}

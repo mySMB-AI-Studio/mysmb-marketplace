@@ -1,149 +1,149 @@
 {
-  "title": "MYOB Coding",
-  "description": "Live, validated MYOB Coding (M18): Coding, Bank transactions, Account picker.",
-  "tags": [
-    "myob",
-    "coding",
-    "M18",
-    "banking"
-  ],
-  "fileName": "myob-coding.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "lines",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bank_statement_lines"
+        }
+      },
+      {
+        "id": "bs_open",
+        "params": {
+          "date": {
+            "input": "prev_day",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_close",
+        "params": {
+          "date": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "from_date",
+        "default": "2026-09-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-09-01"
+        "name": "from_date",
+        "type": "date"
       },
       {
-        "name": "to_date",
+        "default": "today",
         "label": "To",
-        "type": "date",
-        "default": "today"
+        "name": "to_date",
+        "type": "date"
       },
       {
-        "name": "prev_day",
+        "default": "2026-08-31",
         "label": "Day before the period",
-        "type": "date",
-        "default": "2026-08-31"
+        "name": "prev_day",
+        "type": "date"
       },
       {
-        "name": "company_file",
+        "default": "",
         "label": "Company file",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "company_file",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"coding\",\"x\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"myob\",\"dens\":\"100\",\"p\":\"this_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"coding\",\"x\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "lines",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_bank_statement_lines"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "status": {
-            "kind": "static",
-            "value": "All"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_open",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "prev_day"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_close",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated MYOB Coding (M18): Coding, Bank transactions, Account picker.",
+  "fileName": "myob-coding.html",
+  "tags": [
+    "myob",
+    "coding",
+    "M18",
+    "banking"
+  ],
+  "title": "MYOB Coding"
 }

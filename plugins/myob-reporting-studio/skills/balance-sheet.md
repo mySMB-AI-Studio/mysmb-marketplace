@@ -42,7 +42,7 @@ Call `get_balance_sheet` once with `date` = today and `reporting_basis` = `Accru
 1. On the golden-set file, ask for this report at the library's example period; confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures: mySMB.com as at 9 Sep 2026: Bank (555.45); Accounts receivable 2,326.96; Total assets 1,771.51; GST 161.03; Total liabilities 161.03; Net assets / Current year earnings / Total equity 1,610.48. Live on 28 Sep 2026: Total assets 3,896.01 (receivables 4,328.96, bank (432.95)), Total liabilities 1,713.25, Total equity 2,182.76.
 3. Validation banner: every check passes (the independent tie included), or shows N/A with a stated reason.
-4. Change every control and confirm the report refetches and still validates; switch View as to Client, then Bookkeeper; toggle Style and the dark theme.
+4. Change every control and confirm the report refetches and still validates; switch Detail level to Summary, then Detail; toggle Style and the dark theme.
 5. Download PDF and Download Excel and confirm they match the screen (the Excel file has Validation and Parameters sheets).
 6. Download or Share from the report window: the snapshot keeps the period and figures and disables the refetching controls.
 7. Cross-client isolation (LIB-002): the saved report and every export carry only this company file's figures and name.
@@ -266,7 +266,7 @@ MK.app({
     }
     var cyeLine = MK.currentYearEarnings(lines.length && c.view !== 'summary' ? lines : b.lines), cye = cyeLine ? MK.val(cyeLine) : null;
     var pl = c.data.pnl_ytd ? MK.breakdown([c.data.pnl_ytd], idx, MK.PL_LAYOUT) : null, np = pl ? pl.calc.NetProfit[0] : null;
-    var extra = cmpOn ? MK.compareCols(c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end') : [];
+    var extra = cmpOn ? MK.compareCols(c.compareLabel || (c.compareMode === 'prev_year' ? 'Previous year' : 'Previous month end')) : [];
     body.innerHTML = MK.kpis([{ label: 'Total Assets', value: A }, { label: 'Total Liabilities', value: L }, { label: 'Net Assets', value: NA }, { label: 'Total Equity', value: E }], c) +
       '<div class="mk-scroll">' + MK.statement(lines, ['', MK.asOfLine(c.inputs.as_at).replace(/^As at /, '')], c, extra) + '</div>' +
       '<div class="mk-card detail-block" style="margin-top:16px"><h3>Assets vs liabilities + equity</h3><div id="ch1"></div></div>';
