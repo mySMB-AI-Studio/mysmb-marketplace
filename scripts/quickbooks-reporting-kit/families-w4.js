@@ -49,11 +49,11 @@ module.exports = [
     trigger: "the user asks to save a customised report, 'Save As' / 'Save customisations', their custom reports, a report group, or to recreate a QuickBooks custom report they already use",
     description: 'Save any QuickBooks Online report with the reader\'s own settings (period preset, basis, columns, compare, view, display, branding) as a named live report in the Reports library — the equivalent of QuickBooks Custom reports (Q03)',
     checks: ['The saved report passes the same validation as its family report'],
-    body: `This replaces QuickBooks' **Custom reports** list. QuickBooks saved customisations are **not in the Accounting API**, so the agent cannot read the user's existing custom reports. Instead, every report this agent builds can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
+    body: `This replaces QuickBooks' **Custom reports** list. QuickBooks saved customisations are **not in the Accounting API**, so mySidekick cannot read the user's existing custom reports. Instead, every QuickBooks Reporting Studio report can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
 
 ## Save a customised report ("Save As")
 
-1. Identify the base report and load \`${SLUG}:quickbooks-report-foundation\` and its family skill (the agent's routing list).
+1. Identify the base report and load \`${SLUG}:quickbooks-report-foundation\` and its family skill (the foundation's *Which skill for which report* list).
 2. Collect the settings the user wants. Map each QuickBooks customisation to a control:
 
 | QuickBooks customisation | Set in the family's dataBindings defaults |
@@ -95,9 +95,9 @@ To change a saved report, rebuild it with the new settings and save it again wit
     golden: 'Captured empty (no custom reports in the sample file).' },
   { id: 'spreadsheet-sync', q: 'Q05', skill: 'quickbooks-spreadsheet-sync', title: 'Spreadsheet Sync (Excel / Google Sheets)', menu: 'Reports › Spreadsheet sync', wave: 'Wave 4 (Feature F6)', static: 'doc',
     trigger: 'the user asks for a report in Excel or Google Sheets, Spreadsheet Sync, refreshable spreadsheets, exporting QuickBooks data to a spreadsheet, or a multi-company (consolidated) spreadsheet',
-    description: 'Get any QuickBooks Online report into Excel or Google Sheets from this agent — the equivalent of QuickBooks Spreadsheet Sync (Q05)',
+    description: 'Get any QuickBooks Online report into Excel or Google Sheets from QuickBooks Reporting Studio — the equivalent of QuickBooks Spreadsheet Sync (Q05)',
     checks: ['The Excel file carries the report\'s Validation sheet'],
-    body: `QuickBooks **Spreadsheet Sync** is an Excel add-in for QuickBooks Online Advanced, **not an API**, so it is not available here. Every report this agent builds already has **Download Excel**, which is the replacement.
+    body: `QuickBooks **Spreadsheet Sync** is an Excel add-in for QuickBooks Online Advanced, **not an API**, so it is not available here. Every QuickBooks Reporting Studio report already has **Download Excel**, which is the replacement.
 
 ## Steps
 
@@ -112,7 +112,7 @@ To change a saved report, rebuild it with the new settings and save it again wit
 | Run report in Excel | Download Excel in any report |
 | Run report in Google Sheets | Download Excel, then in Google Sheets use File › Import (or upload the file to Google Drive and open it with Google Sheets) |
 | Refresh the spreadsheet | Open the live report (it refetches on open) and Download Excel again |
-| 2-way sync and bulk edits | N/A — this is a reporting agent; it never writes to QuickBooks. Make edits in QuickBooks |
+| 2-way sync and bulk edits | N/A — QuickBooks Reporting Studio only reads QuickBooks; it never writes to it. Make edits in QuickBooks |
 | Multi-company groups (consolidation) | N/A — one QuickBooks company per connection, and a report never mixes companies (LIB-002). Build the report for each company on its own connection and combine the Excel files outside the workspace |`,
     members: [['Run report in Excel', 'Download Excel in every report (.xlsx with formulas, Validation and Parameters sheets)'], ['Run report in Google Sheets', 'Import the downloaded .xlsx'], ['2-way sync (bulk edits)', 'N/A — read-only reporting'], ['Multi-company groups', 'N/A — one company per connection']],
     golden: 'Feature page only (add-in) — confirm a downloaded .xlsx opens in Excel and imports into Google Sheets with totals intact.' }

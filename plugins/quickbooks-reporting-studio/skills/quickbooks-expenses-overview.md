@@ -39,7 +39,7 @@ No manual dates: last quarter + this quarter (spend chart) and this month (spend
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Unpaid A$80,932.81 (4 overdue) · Paid A$15,012.95 (10 bills) · Spend Q3 2026 A$565,789.63 · September A$312,081.07.
 3. Compare the layout with the Q10 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

@@ -42,7 +42,7 @@ As-of preset `today` (`a` in `display`): `as_at` = `"today"` (config: today's da
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): As of 31 Aug 2026: Wise-AUD A$147,337.00 · ANZ A$99.00 · PHP A$2.69 · A/R A$91,905.00 · Prepaid expenses A$11,966.18 · Security Deposit A$28,800.00 · Intangibles – Trademarks A$18,294.11 · A/P A$175,222.57 · A/P – USD A$95,858.82 · Doug's Amex Card A$25,803.79 · Total for Liabilities and Shareholders' Equity A$298,398.60.
 3. Compare the layout with the Q18 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

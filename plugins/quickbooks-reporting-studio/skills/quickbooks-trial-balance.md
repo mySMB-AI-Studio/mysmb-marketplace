@@ -37,7 +37,7 @@ As-of preset `today`: `as_at` = `"today"`; `fy_start` = FY start of `as_at`.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): As of 31 Aug 2026: TOTAL A$4,021,894.41 / A$4,021,894.41 (Wise-AUD A$147,337.00 · A/R A$91,905.00 · A/P A$175,222.57 …).
 3. Compare the layout with the Q22 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

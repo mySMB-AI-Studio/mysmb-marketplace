@@ -44,7 +44,7 @@ Preset `this_fy_td`: `start_date` = first day of the financial year (CompanyInfo
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): August 2026 (accrual): SaaS – Consulting Services A$7,000.00 · SaaS – Subscription Licence A$57,833.33 · Total for Income A$64,833.33 · Gross Profit A$78,608.34 · Total for Expenses A$261,712.88 · Net Earnings −A$175,286.75. Note: Gross Profit above Income means Cost of Sales is a net credit (−A$13,775.01) — the report flags this in Sources & limitations.
 3. Compare the layout with the Q17 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
