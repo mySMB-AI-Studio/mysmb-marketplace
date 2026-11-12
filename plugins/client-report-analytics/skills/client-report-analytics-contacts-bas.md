@@ -49,6 +49,9 @@ Use when the user asks for the Contact Details for BAS Preparation (CRA-06) of o
 
 | Input | Label | Type | Default |
 |---|---|---|---|
+| `start_date` | From | date | `2026-04-01` |
+| `end_date` | To | date | `2026-06-30` |
+| `txn_where` | Transaction date filter | string | `TxnDate >= '2026-04-01' AND TxnDate <= '2026-06-30'` |
 | `persona` | View as | enum (Client / Bookkeeper / Practitioner / Executive) | `Practitioner` |
 | `display` | Display settings | string | `{"cents":0,"k":0,"zeros":1,"neg":"paren","red":0,"hdr":1,…` |
 

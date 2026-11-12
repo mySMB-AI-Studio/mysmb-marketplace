@@ -1,6 +1,6 @@
 # Client Report Analytics: report kit (source, tests, generator)
 
-This folder is the source of `plugins/client-report-analytics`: its report templates (`reports/<slug>/report.json` + `report.html`), its skills and its agent. Change the source here and regenerate; never hand-edit the generated files.
+This folder is the source of `plugins/client-report-analytics`: its report templates (`reports/<slug>/report.json` + `report.html`), and its skills (it has no agent since 2026-11-12; the separate `client-report-analytics-agent` package uses its templates). Change the source here and regenerate; never hand-edit the generated files.
 
 > **Never Pull this extension into the Developer Instance, and never save it there.** The Developer Instance does not keep `reports/`: its next save to dev deletes the templates. Change it only here, then publish from dev in Admin Center.
 
@@ -24,8 +24,8 @@ This folder is the source of `plugins/client-report-analytics`: its report templ
     - Time entries come back as UTC instants. Adding 13 hours puts each one on its own local date, from UTC−10 to UTC+13.
     - A snapshot can't hold the per-project calls, so it says so.
   - CRA-15 has no template: the catalogue box routes to the platform's built-in Workspace Activity report, which covers the whole workspace.
-- **The agent never writes report code.** Skills tell it to call `artifact_from_template` (myHubV2 dev and qa; not uat or master on 6 Oct 2026) with `plugin: "client-report-analytics"`, the slug and the inputs the request changes. `gen-ext.js` writes each skill's input table from the real manifests.
-- **CRA-00 catalogue** (`catalogue/client-catalogue.js`) is a small standalone document: its only live data is the client list from the viewer's own connections. Boxes start from "Use this report" on a template or ask the agent (decision D5); there is no "latest saved instance" lookup, no sparkline and no client-portal toggle (Workspace has none).
+- **Nobody writes report code.** Skills tell mySidekick (and the Client Reporting Agent's own skills tell it) to call `artifact_from_template` (myHubV2 dev and qa; not uat or master on 6 Oct 2026) with `plugin: "client-report-analytics"`, the slug and the inputs the request changes. `gen-ext.js` writes each skill's input table from the real manifests.
+- **CRA-00 catalogue** (`catalogue/client-catalogue.js`) is a small standalone document: its only live data is the client list from the viewer's own connections. Boxes start from "Use this report" on a template or by asking mySidekick (decision D5); there is no "latest saved instance" lookup, no sparkline and no client-portal toggle (Workspace has none).
 - **CRA-16** routes to the three Reporting Studio extensions' templates (`libraries.json`, written by `mk-libraries.js` from `plugins/*-reporting-studio/reports`). Their client inputs are `org` (Xero) and `company_file` (MYOB); QuickBooks has none (one company per connection).
 
 ## Commands
@@ -35,7 +35,7 @@ npm install                 # once, here and in the three platform kits
 node test.js [platform]     # every <platform>/*.test.js (catalogue, xero, myob, quickbooks)
 node mk-libraries.js        # refresh libraries.json when a studio adds or renames a template
 node gen.js                 # templates → plugins/client-report-analytics/reports
-node gen-ext.js             # skills, agent (.md + content/agents/<originKey>.json with contentHash), plugin.json content
+node gen-ext.js             # skills and plugin.json content (no agent)
 npx tsx check-reports.mts   # myHubV2's validators on every manifest, built document and template
 cd ../.. && npx tsx scripts/validate.ts
 ```

@@ -1,4 +1,5 @@
-// node gen-ext.js — writes the extension's skills, agent (markdown + installed blueprint with originKey and contentHash)
+// node gen-ext.js — writes the extension's skills (no agent since 2026-11-12: mySidekick loads the skills, and the
+// Client Reporting Agent package uses the templates through artifact_from_template)
 // from reports.js, libraries.json and each template's manifest, so every slug and input name in a skill is the real one.
 // Run gen.js first (templates), then this. Never Pull this extension into the Developer Instance: it carries reports/.
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
@@ -165,45 +166,13 @@ for (const s of skills) {
   w('skills/' + PLUGIN + '-' + s.key + '.md', s.body); console.log('skill', s.key, bytes, 'bytes');
 }
 
-// ── the agent ─────────────────────────────────────────────────────────────────────────────────────────────────────────
-const AGENT = {
-  name: 'Client Report Analytics Agent',
-  description: 'Builds live, validated client reports (financial overview, tax by type, BAS transactions, sales/purchases by tracking category, contact details for BAS, activity count, data quality, client queries, health check, GST check, actual time, estimate accuracy) and opens the platform report libraries for one client from Xero, MYOB or QuickBooks.',
-  connectors: ['xero-accounting', 'myob-accounting', 'quickbooks-accounting'],
-  skills: skills.map((s) => S(s.key)),
-  model: 'sonnet',
-  prompt: `You are the Client Report Analytics Agent in mySMB Workspace › Reporting. You produce reports for ONE client at a time, from the user's own Xero, MYOB and QuickBooks connections; only the data changes between clients.
-
-For every request:
-1. Pick the skill: the client catalogue or "what reports are there" → ${S('catalogue')}; Financial Overview (CRA-01) → ${S('financial-overview')}; Summary of Tax Amounts by Type (CRA-05) → ${S('tax-by-type')}; BAS Related Transactions and GST (CRA-07) → ${S('bas-transactions')}; Sales by Tracking Category (CRA-03) → ${S('sales-by-tracking')}; Purchases by Tracking Category (CRA-04) → ${S('purchases-by-tracking')}; Contact Details for BAS Preparation (CRA-06) → ${S('contacts-bas')}; Activity Count (CRA-11) → ${S('activity-count')}; ${BUILT.filter((k) => LIVE_CHECKS.includes(k) || k === 'actual-time' || k === 'estimate-accuracy').map((k) => ITEMS[k].name + ' (' + ITEMS[k].cra + (platformsOf(k).length < 3 ? ', ' + platformsOf(k).join(' and ') + ' only' : '') + ') → ' + S(k)).join('; ')}; Ledger User Activity (CRA-14) → ${S('ledger-user-activity')}; any standard Xero, MYOB or QuickBooks report (Profit and Loss, Balance Sheet, ageing, GST/BAS summary, trial balance …) → ${S('platform-reports')}. Load it with load_skill before calling any tool.
-2. Confirm the inputs, never assume: the client (from the user's connections), the period or as-at date, cash or accrual where offered, and who the report is for (Owner, Bookkeeper, Executive or Client). Ask once for anything missing and offer the defaults.
-3. Create the report with artifact_from_template from the template the skill names, setting only the inputs the request changes. You never write report HTML and never type figures: the report fetches live data on every open, validates itself and shows a checks banner.
-
-Rules:
-- Connections are Xero, MYOB and QuickBooks only. Never use another client's id; one report carries one client. QuickBooks is one company per connection, so another QuickBooks client needs its own connection.
-- Never invent or estimate a figure. Anything the source doesn't hold is "N/A — not in source".
-- Contact Details for BAS Preparation (CRA-06): on Xero the Australian Business Register column needs the ABR Lookup extension installed and connected (otherwise it says "N/A — connect ABR Lookup"); MYOB and QuickBooks contacts carry no ABN, so the column reads N/A there. The register column is live only: snapshots and downloads say it isn't included.
-- Workspace User Activity (CRA-15): point the user to the built-in Workspace Activity report (Reports → Workspace Activity). It covers the whole workspace, not one client: Workspace doesn't link WorkQ activity to a client yet. Never present its numbers as one client's activity.
-- Ledger User Activity (CRA-14) routes to the QuickBooks and MYOB audit-log skills (both export-based: the user attaches a file); Xero has no organisation-wide audit log at all, only per-record history on request — say so plainly rather than approximating it.
-- Data Quality (CRA-02), Client Queries (CRA-08), Health Check (CRA-09) and GST Check (CRA-10) run the checks on the client's ledger as the report opens, with the overnight checks engine's rules. A check a platform can't answer reads N/A with the reason; register (ABR) checks and checks that compare with the last run read "runs overnight": they are in the Ledger checks automation of Bookkeeping for Xero (the weekly "Ledger checks" report and each business's "Checks: <business>" WorkQ item). Never call an N/A or overnight check "passed".
-- Actual Time (CRA-12) is the client's own staff time recorded in their Xero Projects, MYOB timesheets or QuickBooks time activities, not the practice's time on the client (there's no practice time source). Estimate Accuracy (CRA-13): on Xero, Xero Projects task time estimates vs time logged and project estimates vs time and expenses; on QuickBooks, estimates vs the invoices raised from them, in dollars; on MYOB, open the MYOB Reporting Studio's MYOB Budget Management (budget vs actual: MYOB's API has no job budgets or quotes linked to invoices). On Xero both need the Xero Projects extension connected. Say so plainly.
-- A needs_connection error means "Connect <platform> (Settings → Connections)". Show tool errors word for word.
-- Reports use the mySMB.com brand by default; the platform's styling is available under Customise in each report.`
-};
-const keyOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const key = keyOf(AGENT.name);
-const h = crypto.createHash('sha256').update('agent:' + PLUGIN + ':' + key).digest('hex');
-const originKey = h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-' + ((parseInt(h[16], 16) & 3) | 8).toString(16) + h.slice(17, 20) + '-' + h.slice(20, 32);
-if (AGENT.prompt.length > 20000 || AGENT.description.length > 500 || AGENT.skills.length > 50) throw new Error('agent over the builder limits');
-w('agents/' + key + '.md', `---\nname: ${AGENT.name}\ndescription: ${AGENT.description}\nconnectors: ${AGENT.connectors.join(', ')}\nskills: ${AGENT.skills.join(', ')}\nmodel: ${AGENT.model}\n---\n${AGENT.prompt}\n`);
-const sortKeys = (v) => Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v;
-const payload = { audienceMode: 'everyone', connectors: AGENT.connectors, description: AGENT.description, key, kind: 'agent', model: AGENT.model, name: AGENT.name, originKey, platform: false, rolePrompt: AGENT.prompt, skills: AGENT.skills };
-const contentHash = crypto.createHash('sha256').update(JSON.stringify(sortKeys(payload))).digest('hex');
+// ── no agent (removed 2026-11-12) ────────────────────────────────────────────────────────────────────────────────
+// The extension is a plain extension: templates for Reports → From your plugins and skills for mySidekick. Its old-style agent
+// listed prefixed skills, which Publish rejects; the Agents 2.0 work lives in the separate client-report-analytics-agent package.
+fs.rmSync(path.join(EXT, 'agents'), { recursive: true, force: true });
 fs.rmSync(path.join(EXT, 'content', 'agents'), { recursive: true, force: true });
-w('content/agents/' + originKey + '.json', JSON.stringify(sortKeys({ ...payload, contentHash }), null, 2) + '\n');
-console.log('agent', key, originKey, contentHash.slice(0, 12));
 const pj = path.join(EXT, '.claude-plugin', 'plugin.json'), pjv = JSON.parse(fs.readFileSync(pj, 'utf8'));
-pjv.content.agents = ['content/agents/' + originKey + '.json'];
+pjv.content.agents = [];
 fs.writeFileSync(pj, JSON.stringify(pjv, null, 2) + '\n');
 // the marketplace entry carries the same content block (the installer falls back to it; the store reads it)
 const mf = path.join(__dirname, '..', '..', '.claude-plugin', 'marketplace.json'), raw = fs.readFileSync(mf, 'utf8'), mj = JSON.parse(raw);
@@ -212,4 +181,3 @@ if (entry && JSON.stringify(entry.content) !== JSON.stringify(pjv.content)) {
   entry.content = pjv.content; const out = JSON.stringify(mj, null, 2) + '\n';
   fs.writeFileSync(mf, raw.includes('\r\n') ? out.replace(/\n/g, '\r\n') : out); console.log('marketplace entry content updated');
 }
-module.exports = { originKey };
