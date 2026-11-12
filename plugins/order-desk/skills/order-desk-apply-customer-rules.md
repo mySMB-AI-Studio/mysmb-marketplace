@@ -56,4 +56,15 @@ Return ONLY a JSON object with exactly these keys:
 - `deliveryDate`: the delivery date as YYYY-MM-DD after any rule that moves it, or "".
 - `deliveryAddressId`: the `address_id` of the one address in `findCustomer.addresses` that fits this order, or "" if none or several fit.
 - `summary`: one short paragraph for the reviewer: who ordered, how many lines, for when, which rules you applied, and what to look at first.
-- `brief`: an object with `question` ("Release this order to the warehouse?"), `facts` (a list of short lines), `recommendation`, `recommendedOption` (`release` or `reject`), `consequence` and `uncertainty`.
+- `brief`: an object with `question`, `facts`, `recommendation`, `recommendedOption` (`release` or `reject`), `consequence` and `uncertainty`. The reviewer reads this in a small popup, so keep it short and scannable:
+  - `question`: at most 12 words, no details. Example: "Release PO VO-6172 for Zambrero Wanneroo to the warehouse?"
+  - `facts`: short lines of at most 12 words each, in this order. Never write sentences or explain your reasoning.
+    1. `Customer: <name> (<account code>)`
+    2. `PO: <number>` or `PO: missing`
+    3. `Delivery: <day month year>, <address in a few words>`
+    4. `Total: <amount>` only if the order states one
+    5. One line per order line: `<qty> <unit> | <item code> | <description>`, and add ` | CHECK: <reason in a few words>` only on a line the reviewer must look at
+    6. `Rules applied: <a few words>` only if a rule changed something
+    7. `Look at: <the one thing to check first>` only for `needs_review`
+  - Leave out anything that passed and needs no attention (totals that add up, settings, how a date was read).
+  - `recommendation`: one sentence of at most 15 words. `consequence`: one sentence. `uncertainty`: "" unless something is genuinely unclear, then one short sentence.
