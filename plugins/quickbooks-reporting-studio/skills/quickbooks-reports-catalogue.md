@@ -1,11 +1,11 @@
 ---
 name: quickbooks-reports-catalogue
-description: QuickBooks Online Reports catalogue (Q02) as a live, validated report in QuickBooks styling. Use when the user asks what QuickBooks reports are available, for the reports list or catalogue, which reports the agent can build, or to search for a report by name.
+description: QuickBooks Online Reports catalogue (Q02) as a live, validated report in QuickBooks styling. Use when the user asks what QuickBooks reports are available, for the reports list or catalogue, which reports QuickBooks Reporting Studio has, or to search for a report by name.
 ---
 
 # Reports catalogue (Q02)
 
-Use when the user asks what QuickBooks reports are available, for the reports list or catalogue, which reports the agent can build, or to search for a report by name. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Reports Catalogue**. Template: `quickbooks-reporting-studio` / `quickbooks-reports-catalogue` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`qbo_query`, `get_preferences`).
+Use when the user asks what QuickBooks reports are available, for the reports list or catalogue, which reports QuickBooks Reporting Studio has, or to search for a report by name. Load `quickbooks-report-foundation` first and follow its *Build a report* steps. Report title: **QuickBooks Reports Catalogue**. Template: `quickbooks-reporting-studio` / `quickbooks-reports-catalogue` (for `artifact_from_template`); without that tool, use the blocks below. This skill needs the `quickbooks-accounting` connector (`qbo_query`, `get_preferences`).
 
 QuickBooks location: Reports › Standard reports. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q02. Delivery: Wave 2 (Train 04).
 
@@ -35,7 +35,7 @@ None.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Same layout as the Xero Reports Catalog: company header, search, category chips, cards marked Live or Not yet implemented.
 3. Compare the layout with the Q02 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

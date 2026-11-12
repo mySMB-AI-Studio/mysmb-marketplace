@@ -41,7 +41,7 @@ No date inputs: QuickBooks ages as of today.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): A/P as of 10 Sep 2026: Total A$265,179.79 — current A$68,299.44 · 1-30 A$17,233.37 · 31-60 A$63,062.81 · 61-90 A$48,324.50 · 91+ A$68,259.67.
 3. Compare the layout with the Q26 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

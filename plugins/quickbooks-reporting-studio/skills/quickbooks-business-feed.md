@@ -23,7 +23,7 @@ No manual dates: the six-month window is set on every open.
 |---|---|
 | Report ready — Profit and Loss card | Net profit, income and expenses for last month with a net-profit sparkline |
 | Insight cards | Net profit vs the month before, biggest expense change, money owed to you, bills to pay — worded from the figures only |
-| Intuit Intelligence assistants, Ask a question | N/A — use mySidekick or the QuickBooks Reporting Specialist |
+| Intuit Intelligence assistants, Ask a question | N/A — ask mySidekick |
 
 ## Validation checks (STEP 4 — shown in the banner)
 
@@ -36,7 +36,7 @@ No manual dates: the six-month window is set on every open.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): 'Report ready' card: Net profit from August −A$175,286.75 with income and expense lines.
 3. Compare the layout with the Q01 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

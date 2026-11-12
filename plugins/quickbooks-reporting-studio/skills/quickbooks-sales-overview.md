@@ -38,7 +38,7 @@ No manual dates: the 12-month (or 30-day) window and the previous-year window ar
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Income over time A$27,500.03 last quarter · Unpaid A$39,105 (overdue A$0, not due yet A$39,105) · Paid A$92,400 (not deposited A$0, deposited A$92,400).
 3. Compare the layout with the Q11 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

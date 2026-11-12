@@ -41,7 +41,7 @@ Preset `this_fy_td`; compare dates one year earlier.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): This year to date: Total expenses A$1,628,002.07 · Total revenue A$110,333.35 · Gross profit −A$18,498.38 · Net profit −A$1,637,546.28 · Net cash flow A$20,292.19 · A/R A$39,105.00 · A/P A$265,179.79 · Current ratio 1.00 · Quick ratio 1.00.
 3. Compare the layout with the Q06 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

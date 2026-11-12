@@ -1,6 +1,6 @@
 ---
 name: quickbooks-spreadsheet-sync
-description: Get any QuickBooks Online report into Excel or Google Sheets from this agent — the equivalent of QuickBooks Spreadsheet Sync (Q05). Use when the user asks for a report in Excel or Google Sheets, Spreadsheet Sync, refreshable spreadsheets, exporting QuickBooks data to a spreadsheet, or a multi-company (consolidated) spreadsheet.
+description: Get any QuickBooks Online report into Excel or Google Sheets from QuickBooks Reporting Studio — the equivalent of QuickBooks Spreadsheet Sync (Q05). Use when the user asks for a report in Excel or Google Sheets, Spreadsheet Sync, refreshable spreadsheets, exporting QuickBooks data to a spreadsheet, or a multi-company (consolidated) spreadsheet.
 ---
 
 # Spreadsheet Sync (Excel / Google Sheets) (Q05)
@@ -9,7 +9,7 @@ Use when the user asks for a report in Excel or Google Sheets, Spreadsheet Sync,
 
 QuickBooks location: Reports › Spreadsheet sync. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q05. Delivery: Wave 4 (Feature F6).
 
-QuickBooks **Spreadsheet Sync** is an Excel add-in for QuickBooks Online Advanced, **not an API**, so it is not available here. Every report this agent builds already has **Download Excel**, which is the replacement.
+QuickBooks **Spreadsheet Sync** is an Excel add-in for QuickBooks Online Advanced, **not an API**, so it is not available here. Every QuickBooks Reporting Studio report already has **Download Excel**, which is the replacement.
 
 ## Steps
 
@@ -24,7 +24,7 @@ QuickBooks **Spreadsheet Sync** is an Excel add-in for QuickBooks Online Advance
 | Run report in Excel | Download Excel in any report |
 | Run report in Google Sheets | Download Excel, then in Google Sheets use File › Import (or upload the file to Google Drive and open it with Google Sheets) |
 | Refresh the spreadsheet | Open the live report (it refetches on open) and Download Excel again |
-| 2-way sync and bulk edits | N/A — this is a reporting agent; it never writes to QuickBooks. Make edits in QuickBooks |
+| 2-way sync and bulk edits | N/A — QuickBooks Reporting Studio only reads QuickBooks; it never writes to it. Make edits in QuickBooks |
 | Multi-company groups (consolidation) | N/A — one QuickBooks company per connection, and a report never mixes companies (LIB-002). Build the report for each company on its own connection and combine the Excel files outside the workspace |
 
 ## Members
@@ -42,7 +42,7 @@ QuickBooks **Spreadsheet Sync** is an Excel add-in for QuickBooks Online Advance
 
 ## QA test script
 
-1. Ask for the request this guide covers (see *Use when*). Confirm the agent builds or saves the right family report and says what is N/A.
+1. Ask for the request this guide covers (see *Use when*). Confirm mySidekick builds or saves the right family report and says what is N/A.
 2. Confirm the saved report validates and its Download Excel file opens with the Validation and Parameters sheets.
 3. Compare with QuickBooks: Feature page only (add-in) — confirm a downloaded .xlsx opens in Excel and imports into Google Sheets with totals intact.
 4. Cross-client isolation (LIB-002): the saved report and every export carry only this connection's company and its figures. For another company, the user connects that company first.

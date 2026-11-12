@@ -43,7 +43,7 @@ Preset `last_12m` (the last 12 complete months) as the base period. Set `horizon
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Captured empty state (no forecast saved in QuickBooks) — compare the base-period months with the Profit and Loss by month for the same dates.
 3. Compare the layout with the Q09 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

@@ -37,7 +37,7 @@ No manual dates: quotes and invoices from the last 365 days, recomputed on every
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Funnel counts 0 · 0 · 0 · 1 · 0; overdue invoices A$0.00.
 3. Compare the layout with the Q12 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
