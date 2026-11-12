@@ -6,7 +6,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 
 ## What's in the box
 
-- **Automations:** Bookkeeping AP: Read bill emails (Outlook), Bookkeeping AP: Attach bill PDFs in Xero (installed as Draft — publish in the installing workspace)
+- **Automations:** Bookkeeping AP: Read bill emails (Outlook), Bookkeeping AP: Attach bill PDFs in Xero, Bookkeeping AP: Read bill emails (Hotmail), Bookkeeping AP: Read bill emails (Gmail) (installed as Draft — publish in the installing workspace)
 - **Custom tables:** AP bills (review and publish during extension setup)
 - **Fields on built-in tables:** Client AP settings (10 fields) (added on install; uninstalling keeps them and their data)
 - **Setup:** Bookkeeping AP setup (each person reviews their configuration and account bindings)
