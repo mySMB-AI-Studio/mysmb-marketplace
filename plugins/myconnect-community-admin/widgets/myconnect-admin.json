@@ -48,7 +48,25 @@
         "visible": { "$state": "/myconnect-community-admin/list_communities/1" }
       },
       "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["communitySelect", "infoBtn"] },
-      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "header": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["titleGroup", "pillsRow"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_access_groups",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-community-admin.list_access_groups",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ]
+        }
+      },
 
       "analyticsTabBtn": {
         "type": "Button",
@@ -903,20 +921,12 @@
             {
               "action": "myconnect-community-admin.list_members",
               "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
-            },
-            {
-              "action": "myconnect-community-admin.list_access_groups",
-              "params": { "community": { "$state": "/ui/selectedCommunity" } }
             }
           ],
           "/ui/activeTab": [
             {
               "action": "myconnect-community-admin.list_members",
               "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
-            },
-            {
-              "action": "myconnect-community-admin.list_access_groups",
-              "params": { "community": { "$state": "/ui/selectedCommunity" } }
             }
           ],
           "/ui/selectedMemberId": [
