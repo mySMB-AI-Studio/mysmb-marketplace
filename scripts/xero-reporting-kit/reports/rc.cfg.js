@@ -6,8 +6,8 @@ XK.app({
   tools: { org: 'get_organisation', connections: 'list_connections' },
   render: function (c) {
     var body = c.body, q = String(c.opt('q') || '').toLowerCase();
-    // Xero's report catalogue (Reporting → All reports) with this agent's coverage. live = a tested report skill in this agent.
-    // live = a tested kit report; spec = the agent builds it from a written specification (results can vary); part = partly covered.
+    // Xero's report catalogue (Reporting → All reports) with Xero Reporting Studio's coverage. live = a tested report in the extension.
+    // live = a tested kit report; spec = mySidekick builds it from a written specification (results can vary); part = partly covered.
     var L = 'live', W = 'spec', P = 'part', N = 'none';
     // [name, status, prompt id ('' = an added skill), what to ask, skill]
     var CAT = [
@@ -22,7 +22,7 @@ XK.app({
     var FAV = favO == null || favO === '' ? DEF : favO === '-' ? [] : String(favO).split(',').map(function (i) { return (all0[+i] || [])[0]; }).filter(Boolean);
     var chip = { live: '<span class="xk-chip on">Live</span>', spec: '<span class="xk-chip">Built on request</span>', part: '<span class="xk-chip">Partly</span>', none: '<span class="xk-chip">No prompt yet</span>' };
     var star = function (r) { var on = FAV.indexOf(r[0]) >= 0; return '<button type="button" class="rc-star no-print" data-i="' + all0.indexOf(r) + '" title="' + (on ? 'Remove from favourites' : 'Add to favourites') + '" aria-pressed="' + on + '" style="background:none;border:0;cursor:pointer;color:var(--accent);font-size:15px;padding:0 4px 0 0">' + (on ? '★' : '☆') + '</button>'; };
-    var card = function (r) { return '<div class="xk-kpi" style="margin-bottom:8px"><div class="lbl">' + star(r) + XK.h(r[0]) + ' ' + chip[r[1]] + (r[2] ? ' <span class="muted">' + r[2] + '</span>' : r[1] !== N ? ' <span class="muted">Added</span>' : '') + '</div>' + (r[3] ? '<div class="sub">Ask: "' + XK.h(r[3]) + '"</div>' : '<div class="sub muted">Not in this agent yet — open it in Xero → Reporting</div>') + '</div>'; };
+    var card = function (r) { return '<div class="xk-kpi" style="margin-bottom:8px"><div class="lbl">' + star(r) + XK.h(r[0]) + ' ' + chip[r[1]] + (r[2] ? ' <span class="muted">' + r[2] + '</span>' : r[1] !== N ? ' <span class="muted">Added</span>' : '') + '</div>' + (r[3] ? '<div class="sub">Ask: "' + XK.h(r[3]) + '"</div>' : '<div class="sub muted">Not in Xero Reporting Studio yet — open it in Xero → Reporting</div>') + '</div>'; };
     var match = function (r) { return !q || r[0].toLowerCase().indexOf(q) >= 0; }, all = [].concat.apply([], CAT.map(function (g) { return g[1]; }));
     var favRows = all.filter(function (r) { return FAV.indexOf(r[0]) >= 0 && match(r); });
     body.innerHTML = '<div class="xk-card"><label>Search reports <input type="search" id="rc-q" value="' + XK.h(q) + '" placeholder="e.g. aged"></label> <span class="muted">' + all.filter(function (r) { return r[1] === L; }).length + ' live · ' + all.filter(function (r) { return r[1] === W; }).length + ' built on request · ' + all.filter(function (r) { return r[1] === P; }).length + ' partly · ' + all.filter(function (r) { return r[1] === N; }).length + ' not yet</span></div>' +
@@ -38,7 +38,7 @@ XK.app({
     var missing = SKILLS.filter(function (k) { return listed.indexOf(k) < 0; });
     return { checks: [
       { name: 'Every listed report maps to a Prompt ID, an added skill, or is flagged "no prompt yet"', pass: mapped, detail: all.length + ' reports' },
-      { name: 'Every report skill in this agent is listed', pass: missing.length === 0, detail: missing.join(', ') || SKILLS.length + ' skills' }], notes: [JSON.stringify(CAT).indexOf('"spec"') >= 0 ? '"Built on request" reports are written by the agent from a specification each time, so their layout can vary; "Live" reports are tested kit reports.' : '"Live" reports are tested kit reports: the same tested document every time, checked against Xero on every open.'], na: ['Custom saved reports and Xero\'s own favourites (not in the Xero API — favourites here are the ones you star)'], period: 'Xero → Reporting → All reports' };
+      { name: 'Every report in Xero Reporting Studio is listed', pass: missing.length === 0, detail: missing.join(', ') || SKILLS.length + ' skills' }], notes: [JSON.stringify(CAT).indexOf('"spec"') >= 0 ? '"Built on request" reports are written by mySidekick from a specification each time, so their layout can vary; "Live" reports are tested kit reports.' : '"Live" reports are tested kit reports: the same tested document every time, checked against Xero on every open.'], na: ['Custom saved reports and Xero\'s own favourites (not in the Xero API — favourites here are the ones you star)'], period: 'Xero → Reporting → All reports' };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];
