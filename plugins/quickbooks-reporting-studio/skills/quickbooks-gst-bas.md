@@ -38,7 +38,7 @@ Preset `this_quarter` (current BAS quarter) or `last_quarter` when the user is p
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Jul–Sep 2026: G1 A$140,305.00 · 1A A$12,755.00 · 1B A$19,687.77 · 9 Refund or payment due A$−6,932.77.
 3. Compare the layout with the Q28 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

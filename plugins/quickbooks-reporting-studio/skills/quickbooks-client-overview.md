@@ -39,7 +39,7 @@ No manual dates: the transaction-volume window (last 30 days) is set on every op
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Banking: Wise-AUD A$145,221.70 in QuickBooks · ANZ A$99.00 · Doug's Amex A$16,708.64. Common issues: A/P ageing over 90 days −A$46,500.00 (10 transactions); negative asset/liability accounts 2.
 3. Compare the layout with the Q16 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

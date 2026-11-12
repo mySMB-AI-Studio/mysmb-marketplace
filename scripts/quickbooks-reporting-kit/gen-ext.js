@@ -28,6 +28,8 @@ const NAME = { pnl: 'Profit and Loss', bs: 'Balance Sheet', scf: 'Statement of C
 const mcpsOf = (f) => [...new Set(JSON.parse(rd('reports/' + f.id + '.manifest.json')).bindings.map((b) => b.tool.mcp))];
 const CONNECTORS = ['quickbooks-accounting'];
 const templated = (f) => !f.static && !f.custom;
+// Which skill for which report (the routing list the agent's role prompt carried until 2026-11-12).
+const ROUTE = FAM.map((f) => `- ${f.q} ${f.title} → \`${SLUG}:${f.skill}\``).join('\n');
 FAM.filter((f) => !f.static).forEach((f) => { if (!NAME[f.id]) throw new Error('no report name for ' + f.id); });
 // One report document, exactly as the copy path assembles it (build.js on the code extracted from the skills gives the same bytes).
 const docOf = (f) => (skeleton + '\n').replace('{{TITLE}}', NAME[f.id]).replace('{{CSS}}', () => css).replace('{{KIT}}', () => kitCompact.trim()).replace('{{CFG}}', () => rd('reports/' + f.id + '.cfg.js').trim());
@@ -44,11 +46,33 @@ Use when you build any QuickBooks Online report, dashboard or report pack. Load 
 
 Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). The initial release includes the supported QuickBooks families. Payroll, Employee and ATO reports (Q32–Q34) are deferred until their payroll connector is supported; do not build them or ask the user to reconnect for them. Each family skill traces its FULL PROMPT sections to this build.
 
+## Handling a request
+
+Pick the family skill from *Which skill for which report* below, and load this skill and that one before calling any tool. Ask only for what can't be defaulted, such as a period the user named ambiguously. Never ask for an output format: every report is HTML with Download PDF and Download Excel buttons. Reply with a short completion note (3–6 lines) and the report.
+
+## Which skill for which report
+
+${ROUTE}
+
+${((todo) => todo.length ? `Families not built yet: ${todo.map((r) => r.family.split(' (')[0] + ' (' + r.q + ', Wave ' + r.wave + ')').join(', ')}. For these, say the report is on the Reporting Library roadmap. Offer the closest built report, or offer to reproduce a QuickBooks export the user attaches. Never improvise one of these from adjacent data.`
+  : 'All included Reporting Library families are built. For a QuickBooks report or view that no family covers, say so, offer the closest built report or the Custom report builder, or offer to reproduce a QuickBooks export the user attaches. Never improvise a report from adjacent data.')(JSON.parse(rd('reports/catalogue.data.json')).filter((r) => !r.skill))}
+
+## Rules for every request
+
+- Use only the quickbooks-accounting connector and only what it returns. Never invent, estimate or reuse example figures. Missing data is "N/A — not in source", and empty data is unavailable, not zero.
+- The client is the company this QuickBooks connection is authorised for (one company per connection). To report on another client, the user connects that company under Settings → Connections. Never type or guess a client name, and never mix two companies in one report.
+- QuickBooks connection mechanisms named in the prompt library other than this connector (the Intuit connector, Intuit's open-source MCP, CData, Spreadsheet Sync) are not available in the workspace. Do not mention them to the user unless they ask.
+- State connector limits plainly when they apply: ageing is as of today; the GST Tax Summary needs the tax agency (the GST reports use the ATO); Payroll, Employee and ATO reports (Q32–Q34) are deferred and unavailable in this release. Do not build them, route to a deferred skill or ask for payroll installation, API keys or reconnects. QuickBooks employee contacts and time activities remain available in Q31.
+- A forecast is an estimate projected from QuickBooks actuals. Always call it an estimate, and never present a forecast figure as a QuickBooks figure.
+- If QuickBooks is not connected, say so and point to Settings → Connections. Do not build an empty report.
+- Branding: reports use QuickBooks branding by default. If the user asks for their own or their customer's branding, set the brand colour as the foundation skill describes (the display input; on the copy path also the config defaults); never guess a colour.
+- Financial outputs are decision support, not audit, tax or legal advice. Be concise and factual.
+
 ## Build a report (every family)
 
 Every report skill except *Custom report builder* names its **template**: the extension \`${SLUG}\` and the report skill's own name as the slug (for example \`quickbooks-profit-and-loss\`). The template is the same tested document the copy path below assembles, with the skill's \`dataBindings\`.
 
-1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
+1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see *Which skill for which report* above). Never approximate a report from adjacent data.
 2. **Discovery call.** Call the family's primary tool once, with the family's default inputs, and call \`qbo_query\` with \`SELECT * FROM CompanyInfo\` once. You need three things from these calls:
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is \`Header\` / \`Columns\` / \`Rows.Row[]\`, with sections carrying \`group\`, \`Header\`, \`Rows\` and \`Summary\`).
@@ -161,7 +185,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 
 ## QA test script
 
-1. Ask the agent for the reports catalogue. Confirm it saved and opens.
+1. Ask mySidekick for the reports catalogue. Confirm it saved and opens.
 2. Search "ageing": the A/R and A/P families appear. Filter Status = Built: ${FAM.length} families (+ the Q38/Q39 contracts). Filter Status = On the roadmap: the rest.
 3. Toggle a favourite star, then filter Status = ★ Favourites. Switch Style and the workspace theme.
 4. Compare the groups and counts with the library: ${f.golden}
@@ -270,7 +294,7 @@ ${routes}
 
 1. Ask five questions covering profit, a supplier, who owes the most, the bank balance and GST. Each answer states the figure, the exact period, the basis and the source line, and matches the same QuickBooks report.
 2. Example: ${f.golden}
-3. Ask an ambiguous question ("how did we do?") — the agent asks one short clarifying question or picks a stated default period.
+3. Ask an ambiguous question ("how did we do?") — mySidekick asks one short clarifying question or picks a stated default period.
 4. Cross-client isolation (LIB-002): every answer comes from the one company this QuickBooks connection is authorised for, and names it. For another company, the user connects that company first.
 `);
 });
@@ -300,7 +324,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 
 ## QA test script
 
-1. Ask for the request this guide covers (see *Use when*). Confirm the agent builds or saves the right family report and says what is N/A.
+1. Ask for the request this guide covers (see *Use when*). Confirm mySidekick builds or saves the right family report and says what is N/A.
 2. Confirm the saved report validates and its Download Excel file opens with the Validation and Parameters sheets.
 3. Compare with QuickBooks: ${f.golden}
 4. Cross-client isolation (LIB-002): the saved report and every export carry only this connection's company and its figures. For another company, the user connects that company first.
@@ -344,7 +368,7 @@ ${f.checks.map((c) => '- ' + c).join('\n')}
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): ${f.golden}
 3. Compare the layout with the ${f.q} screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
@@ -381,48 +405,16 @@ for (const d of fs.existsSync(path.join(P, 'reports')) ? fs.readdirSync(path.joi
 // Deferred source stays in the kit, outside every runtime discovery directory.
 for (const f of deferredFamilies) fs.rmSync(path.join(P, 'skills', f.skill + '.md'), { force: true });
 
-// ---------------------------------------------------------------- agent
-const route = FAM.map((f) => `- ${f.q} ${f.title} → ${SLUG}:${f.skill}`).join('\n');
-const rolePrompt = `You are the QuickBooks Reporting Specialist (AGT-003). You build accurate, validated, live QuickBooks Online reports, dashboards and report packs in QuickBooks' own styling, from the connected QuickBooks company.
-
-For every report request:
-1. Choose the family skill from the routing list below. Load ${SLUG}:quickbooks-report-foundation and that family skill before calling any tool.
-2. Follow the foundation's "Build a report" steps exactly. Make one discovery call to the family's primary tool and one qbo_query for CompanyInfo. When you have the artifact_from_template tool and the family skill names a template, create the report with it, passing only the inputs the request changes (the date defaults and the display settings). Otherwise copy the family's dataBindings and report config with those changes, assemble the skeleton with the stylesheet, kit and config verbatim, and save with artifact_save, passing dataBindings.
-3. Ask only for what cannot be defaulted, such as a specific period the user named ambiguously. Never ask for an output format: every report is HTML with Download PDF and Download Excel buttons.
-4. Reply with a short completion note (3–6 lines) and the report button.
-
-Routing (built):
-${route}
-
-${((todo) => todo.length ? `Families not built yet: ${todo.map((r) => r.family.split(' (')[0] + ' (' + r.q + ', Wave ' + r.wave + ')').join(', ')}. For these, say the report is on the Reporting Library roadmap. Offer the closest built report, or offer to reproduce a QuickBooks export the user attaches. Never improvise one of these from adjacent data.`
-  : 'All included Reporting Library families are built. For a QuickBooks report or view that no family covers, say so, offer the closest built report or the Custom report builder, or offer to reproduce a QuickBooks export the user attaches. Never improvise a report from adjacent data.')(JSON.parse(rd('reports/catalogue.data.json')).filter((r) => !r.skill))}
-
-Rules:
-- Use only the quickbooks-accounting connector and only what it returns. Never invent, estimate or reuse example figures. Missing data is "N/A — not in source", and empty data is unavailable, not zero.
-- The client is the company this QuickBooks connection is authorised for (one company per connection). To report on another client, the user connects that company under Settings → Connections. Never type or guess a client name, and never mix two companies in one report.
-- QuickBooks connection mechanisms named in the prompt library other than this connector (the Intuit connector, Intuit's open-source MCP, CData, Spreadsheet Sync) are not available in the workspace. Do not mention them to the user unless they ask.
-- State connector limits plainly when they apply: ageing is as of today; the GST Tax Summary needs the tax agency (the GST reports use the ATO); Payroll, Employee and ATO reports (Q32–Q34) are deferred and unavailable in this release. Do not build them, route to a deferred skill or ask for payroll installation, API keys or reconnects. QuickBooks employee contacts and time activities remain available in Q31.
-- A forecast is an estimate projected from QuickBooks actuals. Always call it an estimate, and never present a forecast figure as a QuickBooks figure.
-- If QuickBooks is not connected, say so and point to Settings → Connections. Do not build an empty report.
-- Branding: reports use QuickBooks branding by default. If the user asks for their own or their customer's branding, set the brand colour as the foundation skill describes (the display input; on the copy path also the config defaults); never guess a colour.
-- Financial outputs are decision support, not audit, tax or legal advice. Be concise and factual.`;
-if (rolePrompt.length > 20000) throw new Error('role prompt too long');
-const skills = ['quickbooks-report-foundation'].concat(FAM.map((f) => f.skill)).map((s) => SLUG + ':' + s);
-const agent = { name: 'QuickBooks Reporting Specialist', key: 'quickbooks-reporting-specialist', description: 'Builds live, validated QuickBooks Online reports, dashboards and report packs in QuickBooks styling (Reporting Library AGT-003).', model: 'sonnet' };
-w('agents/' + agent.key + '.md', `---\nname: ${agent.name}\ndescription: ${agent.description}\nconnectors: ${CONNECTORS.join(', ')}\nskills: ${skills.join(', ')}\nmodel: ${agent.model}\n---\n${rolePrompt}\n`);
-const h = crypto.createHash('sha256').update('agent:' + SLUG + ':' + agent.key).digest('hex');
-const originKey = h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-' + ((parseInt(h[16], 16) & 3) | 8).toString(16) + h.slice(17, 20) + '-' + h.slice(20, 32);
-const payload = { audienceMode: 'everyone', connectors: CONNECTORS, description: agent.description, key: agent.key, kind: 'agent', model: agent.model, name: agent.name, originKey, platform: false, rolePrompt, skills };
-const sortDeep = (v) => (Array.isArray(v) ? v.map(sortDeep) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])])) : v);
-const contentHash = crypto.createHash('sha256').update(JSON.stringify(sortDeep(payload))).digest('hex');
-const blueprint = sortDeep(Object.assign({}, payload, { contentHash }));
-w('content/agents/' + originKey + '.json', JSON.stringify(blueprint, null, 2) + '\n');
+// No agent since 2026-11-12: mySidekick loads the skills, and the foundation carries the routing list and rules the role prompt had.
 
 // ---------------------------------------------------------------- bundle files
-const description = 'Live, validated QuickBooks Online reports in QuickBooks styling — statements, ageing, GST/BAS, dashboards and management packs — with a specialist reporting agent.';
-const pjPath = path.join(P, '.claude-plugin', 'plugin.json'), pjVersion = fs.existsSync(pjPath) ? JSON.parse(fs.readFileSync(pjPath, 'utf8')).version : '0.0.0';
-w('.claude-plugin/plugin.json', JSON.stringify({ category: 'Finance', content: { agents: ['content/agents/' + originKey + '.json'], automations: [], formTemplates: [], forms: [], workqTemplates: [] },
-  description, icon: 'chart-line', keywords: ['quickbooks', 'qbo', 'reports', 'finance', 'bas', 'gst', 'html'], name: SLUG, reports: 'reports', tags: [], version: pjVersion }, null, 2) + '\n');
+const description = 'Live QuickBooks Online reports for your Reports library, including profit and loss, balance sheet, cash flow, trial balance, general ledger, aged receivables and payables, GST and BAS, sales and supplier reports, budgets, dashboards and management report packs. Each report reads your connected QuickBooks company every time it opens, checks its own figures and shows the result. You can download it as PDF or Excel, or share it. Find the reports in Reports, under From your plugins. Read-only in QuickBooks.';
+const KEYWORDS = ['quickbooks', 'qbo', 'reports', 'finance', 'profit and loss', 'balance sheet', 'cash flow', 'aged receivables', 'aged payables', 'gst', 'bas', 'budget', 'dashboard'];
+const pjPath = path.join(P, '.claude-plugin', 'plugin.json'), pjOld = fs.existsSync(pjPath) ? JSON.parse(fs.readFileSync(pjPath, 'utf8')) : {};
+// Keep what the generator doesn't own (branding, tags, …): the Developer Instance and the console write those.
+const pjNew = Object.assign({}, pjOld, { category: 'Finance', content: { agents: [], automations: [], formTemplates: [], forms: [], workqTemplates: [] },
+  description, icon: 'chart-line', keywords: KEYWORDS, name: SLUG, reports: 'reports', tags: pjOld.tags || [], version: pjOld.version || '0.0.0' });
+w('.claude-plugin/plugin.json', JSON.stringify(Object.fromEntries(Object.keys(pjNew).sort().map((k) => [k, pjNew[k]])), null, 2) + '\n');
 w('.mcp.json', JSON.stringify({ mcpServers: { 'quickbooks-accounting': { type: 'http', url: 'https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/quickbooks-accounting/mcp' } } }, null, 2) + '\n');
 w('assets/logo.svg', `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="QuickBooks Reporting Studio"><rect width="64" height="64" rx="14" fill="#2CA01C"/><rect x="14" y="34" width="8" height="16" rx="2" fill="#fff"/><rect x="28" y="24" width="8" height="26" rx="2" fill="#fff"/><rect x="42" y="14" width="8" height="36" rx="2" fill="#fff"/><path d="M12 22 L26 16 L36 20 L52 8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/></svg>\n`);
 w('README.md', `# QuickBooks Reporting Studio
@@ -433,12 +425,12 @@ Reporting Library: QuickBooks Reports Prompt Library v1.1 (Q00–Q39). This init
 
 ## What's in the box
 
-- **Agent:** QuickBooks Reporting Specialist (AGT-003), on Sonnet, with the \`quickbooks-accounting\` connector.
+- **No agent:** people open the reports from Reports → From your plugins, or ask mySidekick, which loads these skills. Connector: \`quickbooks-accounting\`.
 - **Skills:** 1 foundation (build recipe, controls contract, validation rules, the tested report kit and stylesheet) + ${FAM.length} family skills:
 ${FAM.map((f) => '  - ' + f.q + ' ' + f.title + ' — `' + f.skill + '`').join('\n')}
 - **Every report:** live data, client selector (one company per connection), period presets that roll forward, Cash/Accrual, Display columns by, Compare to, Customise (cents, divide by 1000, zero rows, negatives, header/footer), persona modes, QuickBooks look with a mySMB house-style toggle, light and dark themes, a validation banner, Download PDF and Download Excel (.xlsx), and Open in QuickBooks where a deep link exists.
 
-- **Report templates:** every family except the custom report builder also ships as a report template (\`reports/<skill>/\`), listed in the workspace under Reports → From your plugins (**Use this report**). The agent creates reports from them with \`artifact_from_template\` when the platform has it, so it never retypes the report.
+- **Report templates:** every family except the custom report builder also ships as a report template (\`reports/<skill>/\`), listed in the workspace under Reports → From your plugins (**Use this report**). mySidekick creates reports from them with \`artifact_from_template\`, so it never retypes the report.
 
 Connect QuickBooks under Settings → Connections (OAuth) before asking for a report. No payroll connector is required for this release.
 
@@ -452,7 +444,7 @@ Connect QuickBooks under Settings → Connections (OAuth) before asking for a re
 
 ## Maintenance
 
-The skills and report templates are generated from \`scripts/quickbooks-reporting-kit/\` (\`npm run gen\`, then \`npm test\` and \`npm run roundtrip\`): a report kit that is tested as one unit, with each family's \`dataBindings\` and config. Change a report there, in code. **Never Pull this extension into the Developer Instance** and never hand-edit a copy there: publish it from dev.
+The skills and report templates are generated from \`scripts/quickbooks-reporting-kit/\` (\`npm run gen\`, then \`npm test\` and \`npm run roundtrip\`): a report kit that is tested as one unit, with each family's \`dataBindings\` and config. Change a report there, in code. Publish it from dev in the Console. Pull it into the Developer Instance after a change on dev, and don't save it there before that Pull: a save commits the Developer Instance's older copy over dev.
 
 ## Configuration
 
@@ -460,18 +452,19 @@ No configuration variables are required.
 `);
 // ---------------------------------------------------------------- marketplace entry
 const mpPath = path.join(ROOT, '.claude-plugin', 'marketplace.json'), raw = fs.readFileSync(mpPath, 'utf8'), mp = JSON.parse(raw);
-const entry = { category: 'Finance', content: { agents: ['content/agents/' + originKey + '.json'], automations: [], formTemplates: [], forms: [], workqTemplates: [] }, description, icon: 'chart-line',
-  keywords: ['quickbooks', 'qbo', 'reports', 'finance', 'bas', 'gst', 'html'], name: SLUG, reports: 'reports', version: '0.0.0', displayName: 'QuickBooks Reporting Studio', source: './plugins/' + SLUG,
+const entry = { category: 'Finance', content: { agents: [], automations: [], formTemplates: [], forms: [], workqTemplates: [] }, description, icon: 'chart-line',
+  keywords: KEYWORDS, name: SLUG, reports: 'reports', version: '0.0.0', displayName: 'QuickBooks Reporting Studio', source: './plugins/' + SLUG,
   branding: { logo: 'assets/logo.svg', color: '#2CA01C', tagline: 'Live QuickBooks reports that look like QuickBooks — and check their own maths.' },
-  listing: { longDescription: 'The **QuickBooks Reporting Specialist** builds live QuickBooks Online reports on request: statements (Profit and Loss, Balance Sheet, Statement of Cash Flows, Trial Balance, General Ledger), A/R and A/P ageing, GST Summary (BAS labels) and GST overview, sales and supplier reports, Budget vs Actuals, dashboards (Business at a glance, Business Snapshot, Business feed, Cash flow, Sales and Expenses overviews, Performance centre, Client overview), management report packs and a searchable reports catalogue.\n\nEvery report refreshes on open, keeps QuickBooks\' layout and number formats (with a mySMB house-style toggle), validates its own arithmetic in a banner, and downloads to PDF or Excel.',
+  listing: { longDescription: 'Live QuickBooks Online reports in your Reports library: statements (Profit and Loss, Balance Sheet, Statement of Cash Flows, Trial Balance, General Ledger), A/R and A/P ageing, GST Summary (BAS labels) and GST overview, sales and supplier reports, Budget vs Actuals, dashboards (Business at a glance, Business Snapshot, Business feed, Cash flow, Sales and Expenses overviews, Performance centre, Client overview), management report packs and a searchable reports catalogue.\n\nEvery report refreshes on open, keeps QuickBooks\' layout and number formats (with a mySMB house-style toggle), validates its own arithmetic in a banner, and downloads to PDF or Excel.',
     highlights: [FAM.length + ' QuickBooks report families, live on every open', 'QuickBooks styling with a mySMB house-style toggle', 'Built-in validation banner on every report', 'Download PDF and Excel (.xlsx) from the report'], publisher: { name: 'mySMB AI Studio', url: 'https://mysmb.com' } },
-  onboarding: { pitch: 'Ask for any core QuickBooks report and get a live, validated version in seconds.', firstStep: 'Ask the QuickBooks Reporting Specialist for last month\'s Profit and Loss.', relevantTo: ['finance', 'accounting', 'bookkeeping'] } };
+  onboarding: { pitch: 'Ask for any core QuickBooks report and get a live, validated version in seconds.', firstStep: 'Open the QuickBooks Profit and Loss from Reports → From your plugins.', relevantTo: ['finance', 'accounting', 'bookkeeping'] } };
 if (entry.branding.tagline.length > 90) throw new Error('tagline too long ' + entry.branding.tagline.length);
 // Once the extension is in AI Studio the Developer Instance owns this entry (it rewrites it on publish; store branding is set in the console). Only add it when missing.
 const i = mp.plugins.findIndex((p) => p.name === SLUG); if (i < 0) mp.plugins.push(entry);
 // Except the report templates' folder, which Publish copies from this entry to the next tier: declare it on the existing entry.
-else if (mp.plugins[i].reports !== 'reports') mp.plugins[i].reports = 'reports';
+// and the fields this generator owns: no agent, the description and the keywords.
+else Object.assign(mp.plugins[i], { reports: 'reports', content: Object.assign({}, mp.plugins[i].content, { agents: [] }), description, keywords: KEYWORDS });
 fs.writeFileSync(mpPath, JSON.stringify(mp, null, 2) + (raw.endsWith('\n') ? '\n' : ''));
-// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs), and the WorkQ skill and workspace:workq on the agent.
-{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'quickbooks'); AS.ensureAgent(P, 'quickbooks'); }
-console.log('generated', SLUG, '| originKey', originKey, '| contentHash', contentHash.slice(0, 12), '| role prompt', rolePrompt.length, 'chars | foundation', Buffer.byteLength(foundation), 'bytes');
+// The schedule and report-to-WorkQ skills (scripts/reporting-shared/agent-skills.cjs).
+{ const AS = require(path.join(__dirname, '..', 'reporting-shared', 'agent-skills.cjs')); AS.writeAgentSkills(P, 'quickbooks'); }
+console.log('generated', SLUG, '| foundation', Buffer.byteLength(foundation), 'bytes');

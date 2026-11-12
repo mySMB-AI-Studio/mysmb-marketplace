@@ -9,11 +9,66 @@ Use when you build any QuickBooks Online report, dashboard or report pack. Load 
 
 Spec: QuickBooks Reports Prompt Library v1.1 (Q00–Q39, Reporting Library Catalogue RPT/LIB rows, Operating Model v0.1). The initial release includes the supported QuickBooks families. Payroll, Employee and ATO reports (Q32–Q34) are deferred until their payroll connector is supported; do not build them or ask the user to reconnect for them. Each family skill traces its FULL PROMPT sections to this build.
 
+## Handling a request
+
+Pick the family skill from *Which skill for which report* below, and load this skill and that one before calling any tool. Ask only for what can't be defaulted, such as a period the user named ambiguously. Never ask for an output format: every report is HTML with Download PDF and Download Excel buttons. Reply with a short completion note (3–6 lines) and the report.
+
+## Which skill for which report
+
+- Q17 Profit and Loss family → `quickbooks-reporting-studio:quickbooks-profit-and-loss`
+- Q18 Balance Sheet family → `quickbooks-reporting-studio:quickbooks-balance-sheet`
+- Q19 Statement of Cash Flows → `quickbooks-reporting-studio:quickbooks-statement-of-cash-flows`
+- Q24 Accounts receivable family → `quickbooks-reporting-studio:quickbooks-aged-receivables`
+- Q26 Accounts payable family → `quickbooks-reporting-studio:quickbooks-aged-payables`
+- Q22 Trial Balance family → `quickbooks-reporting-studio:quickbooks-trial-balance`
+- Q28 GST and PAYG family (BAS) → `quickbooks-reporting-studio:quickbooks-gst-bas`
+- Q15 GST overview (BAS centre) → `quickbooks-reporting-studio:quickbooks-gst-overview`
+- Q20 Business Snapshot → `quickbooks-reporting-studio:quickbooks-business-snapshot`
+- Q00 Homepage — Business at a glance → `quickbooks-reporting-studio:quickbooks-homepage`
+- Q07 Cash flow overview → `quickbooks-reporting-studio:quickbooks-cash-flow-overview`
+- Q06 Performance centre (KPI charts) → `quickbooks-reporting-studio:quickbooks-performance-centre`
+- Q04 Management reports (report packs) → `quickbooks-reporting-studio:quickbooks-management-reports`
+- Q16 Client overview (accountant-only) → `quickbooks-reporting-studio:quickbooks-client-overview`
+- Q23 General Ledger and transaction-list family → `quickbooks-reporting-studio:quickbooks-general-ledger`
+- Q25 Sales and customers family → `quickbooks-reporting-studio:quickbooks-sales-and-customers`
+- Q27 Expenses and suppliers family → `quickbooks-reporting-studio:quickbooks-expenses-and-suppliers`
+- Q01 Business feed → `quickbooks-reporting-studio:quickbooks-business-feed`
+- Q08 Budgets (Budget vs Actuals) → `quickbooks-reporting-studio:quickbooks-budgets`
+- Q10 Expenses & Pay Bills overview → `quickbooks-reporting-studio:quickbooks-expenses-overview`
+- Q11 Sales & Get Paid overview → `quickbooks-reporting-studio:quickbooks-sales-overview`
+- Q02 Reports catalogue → `quickbooks-reporting-studio:quickbooks-reports-catalogue`
+- Q14 Inventory overview → `quickbooks-reporting-studio:quickbooks-inventory-overview`
+- Q30 Inventory family → `quickbooks-reporting-studio:quickbooks-inventory`
+- Q12 Customer Hub overview → `quickbooks-reporting-studio:quickbooks-customer-hub`
+- Q13 Projects overview → `quickbooks-reporting-studio:quickbooks-projects-overview`
+- Q29 Projects family → `quickbooks-reporting-studio:quickbooks-projects`
+- Q36 Exchange gains and losses (multi-currency) → `quickbooks-reporting-studio:quickbooks-exchange-gains-losses`
+- Q35 Custom report builder → `quickbooks-reporting-studio:quickbooks-custom-report-builder`
+- Q21 Audit Log → `quickbooks-reporting-studio:quickbooks-audit-log`
+- Q37 Ask a question → `quickbooks-reporting-studio:quickbooks-ask-a-question`
+- Q09 Forecasts → `quickbooks-reporting-studio:quickbooks-forecasts`
+- Q31 Employees and time family → `quickbooks-reporting-studio:quickbooks-employees-and-time`
+- Q03 Custom reports (saved customisations) → `quickbooks-reporting-studio:quickbooks-custom-reports`
+- Q05 Spreadsheet Sync (Excel / Google Sheets) → `quickbooks-reporting-studio:quickbooks-spreadsheet-sync`
+
+All included Reporting Library families are built. For a QuickBooks report or view that no family covers, say so, offer the closest built report or the Custom report builder, or offer to reproduce a QuickBooks export the user attaches. Never improvise a report from adjacent data.
+
+## Rules for every request
+
+- Use only the quickbooks-accounting connector and only what it returns. Never invent, estimate or reuse example figures. Missing data is "N/A — not in source", and empty data is unavailable, not zero.
+- The client is the company this QuickBooks connection is authorised for (one company per connection). To report on another client, the user connects that company under Settings → Connections. Never type or guess a client name, and never mix two companies in one report.
+- QuickBooks connection mechanisms named in the prompt library other than this connector (the Intuit connector, Intuit's open-source MCP, CData, Spreadsheet Sync) are not available in the workspace. Do not mention them to the user unless they ask.
+- State connector limits plainly when they apply: ageing is as of today; the GST Tax Summary needs the tax agency (the GST reports use the ATO); Payroll, Employee and ATO reports (Q32–Q34) are deferred and unavailable in this release. Do not build them, route to a deferred skill or ask for payroll installation, API keys or reconnects. QuickBooks employee contacts and time activities remain available in Q31.
+- A forecast is an estimate projected from QuickBooks actuals. Always call it an estimate, and never present a forecast figure as a QuickBooks figure.
+- If QuickBooks is not connected, say so and point to Settings → Connections. Do not build an empty report.
+- Branding: reports use QuickBooks branding by default. If the user asks for their own or their customer's branding, set the brand colour as the foundation skill describes (the display input; on the copy path also the config defaults); never guess a colour.
+- Financial outputs are decision support, not audit, tax or legal advice. Be concise and factual.
+
 ## Build a report (every family)
 
 Every report skill except *Custom report builder* names its **template**: the extension `quickbooks-reporting-studio` and the report skill's own name as the slug (for example `quickbooks-profit-and-loss`). The template is the same tested document the copy path below assembles, with the skill's `dataBindings`.
 
-1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see the agent's routing table). Never approximate a report from adjacent data.
+1. **Pick the family skill** that matches the request. If the family is not built yet, say so and offer the closest built report or a QuickBooks export (see *Which skill for which report* above). Never approximate a report from adjacent data.
 2. **Discovery call.** Call the family's primary tool once, with the family's default inputs, and call `qbo_query` with `SELECT * FROM CompanyInfo` once. You need three things from these calls:
    - Confirm that QuickBooks is connected. If a call fails with a connection error, tell the user to connect QuickBooks under Settings → Connections, and stop.
    - Check that the response has the shape the family skill describes (QuickBooks report JSON is `Header` / `Columns` / `Rows.Row[]`, with sections carrying `group`, `Header`, `Rows` and `Summary`).

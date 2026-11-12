@@ -40,7 +40,7 @@ Preset `last_month`. Keep General Ledger periods to a month or a quarter — lar
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): PHP Bank: opening −A$8.52 → closing −A$2.69; loan payments to the Philippines Branch Office; Wise transfers.
 3. Compare the layout with the Q23 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.

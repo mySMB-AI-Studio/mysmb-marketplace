@@ -9,11 +9,11 @@ Use when the user asks to save a customised report, 'Save As' / 'Save customisat
 
 QuickBooks location: Reports › Custom reports. Library: QuickBooks Reports Prompt Library v1.1 → Prompts → Q03. Delivery: Wave 4 (Feature F6).
 
-This replaces QuickBooks' **Custom reports** list. QuickBooks saved customisations are **not in the Accounting API**, so the agent cannot read the user's existing custom reports. Instead, every report this agent builds can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
+This replaces QuickBooks' **Custom reports** list. QuickBooks saved customisations are **not in the Accounting API**, so mySidekick cannot read the user's existing custom reports. Instead, every QuickBooks Reporting Studio report can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
 
 ## Save a customised report ("Save As")
 
-1. Identify the base report and load `quickbooks-reporting-studio:quickbooks-report-foundation` and its family skill (the agent's routing list).
+1. Identify the base report and load `quickbooks-reporting-studio:quickbooks-report-foundation` and its family skill (the foundation's *Which skill for which report* list).
 2. Collect the settings the user wants. Map each QuickBooks customisation to a control:
 
 | QuickBooks customisation | Set in the family's dataBindings defaults |
@@ -68,7 +68,7 @@ To change a saved report, rebuild it with the new settings and save it again wit
 
 ## QA test script
 
-1. Ask for the request this guide covers (see *Use when*). Confirm the agent builds or saves the right family report and says what is N/A.
+1. Ask for the request this guide covers (see *Use when*). Confirm mySidekick builds or saves the right family report and says what is N/A.
 2. Confirm the saved report validates and its Download Excel file opens with the Validation and Parameters sheets.
 3. Compare with QuickBooks: Captured empty (no custom reports in the sample file).
 4. Cross-client isolation (LIB-002): the saved report and every export carry only this connection's company and its figures. For another company, the user connects that company first.

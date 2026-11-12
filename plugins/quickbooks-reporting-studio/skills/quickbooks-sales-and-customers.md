@@ -41,7 +41,7 @@ Preset `this_fy_td`: `start_date` = FY start, `end_date` = `"today"`.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): Income A$72,532 (from the homepage) — Sales by Customer should tie to the period's sales income.
 3. Compare the layout with the Q25 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
