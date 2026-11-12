@@ -1,215 +1,215 @@
 {
-  "title": "Xero Budget vs Actual",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "budget_fwd",
+        "params": {
+          "date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "periods": {
+            "kind": "static",
+            "value": 12
+          },
+          "timeframe": {
+            "kind": "static",
+            "value": 1
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_budget_summary"
+        }
+      },
+      {
+        "id": "budget_back",
+        "params": {
+          "date": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "periods": {
+            "kind": "static",
+            "value": 12
+          },
+          "timeframe": {
+            "kind": "static",
+            "value": 1
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_budget_summary"
+        }
+      },
+      {
+        "id": "actual",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "actual_m",
+        "params": {
+          "fromDate": {
+            "input": "m_from",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "periods": {
+            "input": "m_n",
+            "kind": "input"
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "timeframe": {
+            "kind": "static",
+            "value": "MONTH"
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "budgets",
+        "params": {
+          "dateFrom": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "dateTo": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_budgets"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-07-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-08-31",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-08-01",
+        "label": "Last month of the period (start)",
+        "name": "m_from",
+        "type": "date"
+      },
+      {
+        "default": 1,
+        "label": "Earlier months",
+        "max": 11,
+        "min": 1,
+        "name": "m_n",
+        "type": "number"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"fy_lm\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Live, validated Xero Budget vs Actual — the overall budget against the Profit and Loss by account and by month, with $ and % variance coloured favourable or unfavourable.",
+  "fileName": "xero-budget-vs-actual.html",
   "tags": [
     "xero",
     "budget",
     "variance",
     "profit-and-loss"
   ],
-  "fileName": "xero-budget-vs-actual.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
-        "type": "date",
-        "default": "2026-08-31"
-      },
-      {
-        "name": "m_from",
-        "label": "Last month of the period (start)",
-        "type": "date",
-        "default": "2026-08-01"
-      },
-      {
-        "name": "m_n",
-        "label": "Earlier months",
-        "type": "number",
-        "min": 1,
-        "max": 11,
-        "default": 1
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"fy_lm\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "budget_fwd",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_budget_summary"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "periods": {
-            "kind": "static",
-            "value": 12
-          },
-          "timeframe": {
-            "kind": "static",
-            "value": 1
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "budget_back",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_budget_summary"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "periods": {
-            "kind": "static",
-            "value": 12
-          },
-          "timeframe": {
-            "kind": "static",
-            "value": 1
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "actual",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "actual_m",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "m_from"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "periods": {
-            "kind": "input",
-            "input": "m_n"
-          },
-          "timeframe": {
-            "kind": "static",
-            "value": "MONTH"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "budgets",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_budgets"
-        },
-        "params": {
-          "dateFrom": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "dateTo": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "Xero Budget vs Actual"
 }

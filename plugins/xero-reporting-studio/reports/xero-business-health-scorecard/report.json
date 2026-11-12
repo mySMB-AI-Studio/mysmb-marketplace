@@ -1,242 +1,242 @@
 {
-  "title": "Xero Business Health Scorecard",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "pnl",
+        "params": {
+          "fromDate": {
+            "input": "m_start",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl_cash",
+        "params": {
+          "fromDate": {
+            "input": "m_start",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl_prev",
+        "params": {
+          "fromDate": {
+            "input": "prev_start",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "prev_end",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl_prev_cash",
+        "params": {
+          "fromDate": {
+            "input": "prev_start",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "prev_end",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "bs",
+        "params": {
+          "date": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "periods": {
+            "kind": "static",
+            "value": 1
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "timeframe": {
+            "kind": "static",
+            "value": "MONTH"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-08-31",
+        "label": "Month ending",
+        "name": "end_date",
+        "type": "date"
+      },
+      {
+        "default": "Accrual",
+        "label": "Accounting method",
+        "name": "basis",
+        "options": [
+          "Accrual",
+          "Cash"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "2026-08-01",
+        "label": "Month start",
+        "name": "m_start",
+        "type": "date"
+      },
+      {
+        "default": "2026-07-31",
+        "label": "Previous month end",
+        "name": "prev_end",
+        "type": "date"
+      },
+      {
+        "default": "2026-07-01",
+        "label": "Previous month start",
+        "name": "prev_start",
+        "type": "date"
+      },
+      {
+        "default": "{}",
+        "label": "Targets",
+        "maxLength": 500,
+        "name": "targets",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_last_month\",\"c\":\"none\",\"v\":\"target\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Live, validated Xero Business health scorecard (P14) — health score, pinned net profit and current ratio, insight chips, and a scorecard of 12 metrics (equation, this month vs last, target, status, importance).",
+  "fileName": "xero-business-health-scorecard.html",
   "tags": [
     "xero",
     "business-health-scorecard",
     "P14",
     "analytics"
   ],
-  "fileName": "xero-business-health-scorecard.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "end_date",
-        "label": "Month ending",
-        "type": "date",
-        "default": "2026-08-31"
-      },
-      {
-        "name": "basis",
-        "label": "Accounting method",
-        "type": "enum",
-        "options": [
-          "Accrual",
-          "Cash"
-        ],
-        "default": "Accrual"
-      },
-      {
-        "name": "m_start",
-        "label": "Month start",
-        "type": "date",
-        "default": "2026-08-01"
-      },
-      {
-        "name": "prev_end",
-        "label": "Previous month end",
-        "type": "date",
-        "default": "2026-07-31"
-      },
-      {
-        "name": "prev_start",
-        "label": "Previous month start",
-        "type": "date",
-        "default": "2026-07-01"
-      },
-      {
-        "name": "targets",
-        "label": "Targets",
-        "type": "string",
-        "maxLength": 500,
-        "default": "{}"
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":0,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_last_month\",\"c\":\"none\",\"v\":\"target\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "pnl",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "m_start"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "m_start"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl_prev",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "prev_start"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "prev_end"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl_prev_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "prev_start"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "prev_end"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "periods": {
-            "kind": "static",
-            "value": 1
-          },
-          "timeframe": {
-            "kind": "static",
-            "value": "MONTH"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "Xero Business Health Scorecard"
 }

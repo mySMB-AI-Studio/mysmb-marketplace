@@ -1,250 +1,250 @@
 {
-  "title": "Xero Purchases Overview",
-  "description": "Live, validated Xero Purchases overview dashboard (P03) — bills strip (Draft / Awaiting approval / Awaiting payment / Overdue), money going out by day, purchase orders and repeating bills.",
-  "tags": [
-    "xero",
-    "purchases-overview",
-    "P03",
-    "dashboard"
-  ],
-  "fileName": "xero-purchases-overview.html",
   "dataBindings": {
-    "inputs": [
-      {
-        "name": "as_at",
-        "label": "As at",
-        "type": "date",
-        "default": "today"
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "page",
-        "label": "Page",
-        "type": "number",
-        "min": 1,
-        "max": 20,
-        "default": 1
-      },
-      {
-        "name": "persona",
-        "label": "View as",
-        "type": "enum",
-        "options": [
-          "Client",
-          "Bookkeeper",
-          "Practitioner",
-          "Executive"
-        ],
-        "default": "Bookkeeper"
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"docs\",\"o\":\"r=30\"}"
-      }
-    ],
     "bindings": [
       {
         "id": "invoices",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_invoices"
-        },
         "params": {
-          "where": {
-            "kind": "static",
-            "value": "Type==\"ACCPAY\""
-          },
-          "statuses": {
-            "kind": "static",
-            "value": "DRAFT,SUBMITTED,AUTHORISED"
-          },
           "order": {
             "kind": "static",
             "value": "DueDate ASC"
           },
           "page": {
-            "kind": "input",
-            "input": "page"
+            "input": "page",
+            "kind": "input"
+          },
+          "statuses": {
+            "kind": "static",
+            "value": "DRAFT,SUBMITTED,AUTHORISED"
+          },
+          "where": {
+            "kind": "static",
+            "value": "Type==\"ACCPAY\""
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
         }
       },
       {
         "id": "credit_notes",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_credit_notes"
-        },
         "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
           "where": {
             "kind": "static",
             "value": "Type==\"ACCPAYCREDIT\" AND Status==\"AUTHORISED\""
           },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_credit_notes"
         }
       },
       {
         "id": "overpayments",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_overpayments"
-        },
         "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
           "where": {
             "kind": "static",
             "value": "Type==\"SPEND-OVERPAYMENT\" AND Status==\"AUTHORISED\""
           },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_overpayments"
         }
       },
       {
         "id": "prepayments",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_prepayments"
-        },
         "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
           "where": {
             "kind": "static",
             "value": "Type==\"SPEND-PREPAYMENT\" AND Status==\"AUTHORISED\""
           },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_prepayments"
         }
       },
       {
         "id": "purchase_orders",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
         "tool": {
           "mcp": "xero-accounting",
           "name": "list_purchase_orders"
-        },
-        "params": {
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
         }
       },
       {
         "id": "repeating",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_repeating_invoices"
-        },
         "params": {
           "where": {
             "kind": "static",
             "value": "Type==\"ACCPAY\" AND Status==\"AUTHORISED\""
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_repeating_invoices"
         }
       },
       {
         "id": "paid",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_invoices"
-        },
         "params": {
-          "where": {
+          "order": {
             "kind": "static",
-            "value": "Type==\"ACCPAY\""
+            "value": "Date DESC"
           },
           "statuses": {
             "kind": "static",
             "value": "PAID"
           },
-          "order": {
+          "where": {
             "kind": "static",
-            "value": "Date DESC"
+            "value": "Type==\"ACCPAY\""
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
         }
       },
       {
         "id": "tb",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_trial_balance"
-        },
         "params": {
           "date": {
-            "kind": "input",
-            "input": "as_at"
+            "input": "as_at",
+            "kind": "input"
           },
           "paymentsOnly": {
             "kind": "static",
             "value": false
           },
           "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
+            "input": "org",
+            "kind": "input"
           }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_trial_balance"
         }
       },
       {
         "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
         "tool": {
           "mcp": "xero-accounting",
           "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
         }
       },
       {
         "id": "connections",
+        "params": {},
         "tool": {
           "mcp": "xero-accounting",
           "name": "list_connections"
-        },
-        "params": {}
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "today",
+        "label": "As at",
+        "name": "as_at",
+        "type": "date"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": 1,
+        "label": "Page",
+        "max": 20,
+        "min": 1,
+        "name": "page",
+        "type": "number"
+      },
+      {
+        "default": "Bookkeeper",
+        "label": "View as",
+        "name": "persona",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"docs\",\"o\":\"r=30\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated Xero Purchases overview dashboard (P03) — bills strip (Draft / Awaiting approval / Awaiting payment / Overdue), money going out by day, purchase orders and repeating bills.",
+  "fileName": "xero-purchases-overview.html",
+  "tags": [
+    "xero",
+    "purchases-overview",
+    "P03",
+    "dashboard"
+  ],
+  "title": "Xero Purchases Overview"
 }
