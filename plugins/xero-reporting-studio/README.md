@@ -55,7 +55,7 @@ What the Xero API doesn't hold is shown as "N/A — not in source": for example 
 
 ## Configuration
 
-No configuration variables are required. Connect Xero under Settings → Connections.
+No configuration variables are required.
 
 ## Maintaining it
 
