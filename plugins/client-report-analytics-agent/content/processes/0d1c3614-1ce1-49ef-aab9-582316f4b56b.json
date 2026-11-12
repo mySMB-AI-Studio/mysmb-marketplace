@@ -1,5 +1,5 @@
 {
-  "contentHash": "a26cbd68419fa9151fdc8c474d49fcfce15e383e7fe0b54dd5e1e5ca07a378d6",
+  "contentHash": "ff0e44d842d6d635cc328b8b84d40bac584c9d7c1a2174d65fa684aaea821272",
   "definition": {
     "capabilities": [
       "xero.connections.read",
@@ -236,19 +236,22 @@
       {
         "evidence": [
           "steps.summary.artifactId",
+          "steps.review.summaryMarkdown",
           "steps.review.findings"
         ],
         "key": "readyToLodge",
         "kind": "gate",
         "outcome": "readyToLodge",
         "requires": [
-          "steps.summary.artifactId != null"
+          "steps.review.clientResolved == true",
+          "steps.review.summaryMarkdown != null"
         ],
         "title": "Ready to lodge"
       },
       {
         "evidence": [
           "steps.summary.artifactId",
+          "steps.review.summaryMarkdown",
           "steps.review.clientQuestions"
         ],
         "key": "clientQueried",
@@ -262,13 +265,14 @@
       {
         "evidence": [
           "steps.summary.artifactId",
+          "steps.review.summaryMarkdown",
           "steps.review.findings"
         ],
         "key": "notReady",
         "kind": "gate",
         "outcome": "notReady",
         "requires": [
-          "steps.summary.artifactId != null"
+          "steps.review.summaryMarkdown != null"
         ],
         "title": "Not ready: rework"
       }
@@ -286,6 +290,11 @@
       {
         "from": "review",
         "to": "summary"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "!steps.review.clientResolved"
       },
       {
         "from": "summary",

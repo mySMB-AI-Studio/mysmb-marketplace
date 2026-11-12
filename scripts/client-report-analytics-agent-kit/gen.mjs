@@ -266,15 +266,22 @@ const processDefinition = {
     decisionStep('decideReady', 'Is this BAS ready to lodge?', true),
     decisionStep('decideBlocked', 'A Stop check was found: how should this BAS proceed?', false),
     { key: 'askClient', kind: 'human', title: 'Send the client questions', assign: 'reviewer', completion: 'statusDone' },
+    // Gates rest on the review itself, not on the summary document: an output step creates no artifact in the
+    // evaluator's dry run, and the document is evidence when it exists (`steps.summary.artifactId`).
     { key: 'readyToLodge', kind: 'gate', title: 'Ready to lodge', outcome: 'readyToLodge',
-      requires: ['steps.summary.artifactId != null'], evidence: ['steps.summary.artifactId', 'steps.review.findings'] },
+      requires: ['steps.review.clientResolved == true', 'steps.review.summaryMarkdown != null'],
+      evidence: ['steps.summary.artifactId', 'steps.review.summaryMarkdown', 'steps.review.findings'] },
     { key: 'clientQueried', kind: 'gate', title: 'Client questions sent', outcome: 'clientQueried',
-      requires: ['steps.askClient.completed == true'], evidence: ['steps.summary.artifactId', 'steps.review.clientQuestions'] },
+      requires: ['steps.askClient.completed == true'],
+      evidence: ['steps.summary.artifactId', 'steps.review.summaryMarkdown', 'steps.review.clientQuestions'] },
     { key: 'notReady', kind: 'gate', title: 'Not ready: rework', outcome: 'notReady',
-      requires: ['steps.summary.artifactId != null'], evidence: ['steps.summary.artifactId', 'steps.review.findings'] },
+      requires: ['steps.review.summaryMarkdown != null'],
+      evidence: ['steps.summary.artifactId', 'steps.review.summaryMarkdown', 'steps.review.findings'] },
   ],
   transitions: [
     { from: 'review', to: 'summary' },
+    // A review that couldn't find the client checked nothing: never offer "Ready to lodge" on it.
+    { from: 'summary', to: 'decideBlocked', when: '!steps.review.clientResolved' },
     ...STOP_TRANSITIONS,
     { from: 'summary', to: 'decideReady' },
     { from: 'askClient', to: 'clientQueried' },
@@ -298,12 +305,19 @@ const processPayload = withHash({ kind: 'process', originKey: processOriginKey, 
 
 // Required evaluation suite (the release gate refuses a process without one).
 const allFound = (overrides = {}) => Object.fromEntries(CHECK_GROUPS.map(([g]) => [g, overrides[g] ?? false]));
+// Realistic proposals: the runtime evaluator's rubric model reads these outputs (the run transcript), so they must carry
+// the evidence each criterion asks for.
+const SUMMARY_HEAD = '## Demo Company (AU): BAS readiness, Jul–Sep 2026 (1 Jul – 30 Sep 2026)\n\nRegistered for GST, accrual basis, quarterly BAS. Read from Xero only: nothing was changed in Xero and nothing was lodged.\n\n';
+const SUMMARY_TAIL = '\n\nNot checked: none (ABR lookups ran).\n\nFor the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter.';
+const findingsTable = (findings) => findings.length === 0
+  ? '**No findings** in the 15 check groups.'
+  : '| Check | What was found | Count | Amount |\n|---|---|---|---|\n' + findings.map((f) => `| ${f.check} | ${f.title} | ${f.count} | $${f.amount.toFixed(2)} |`).join('\n');
 const reviewFixture = (found, findings, questions) => ({
   clientResolved: true, clientName: 'Demo Company (AU)', xeroTenantId: '00000000-0000-4000-8000-00000000d001', periodLabel: 'Jul–Sep 2026',
-  found, findings, clientQuestions: questions, summaryMarkdown: '## Demo Company (AU), Jul–Sep 2026\n\n(summary)',
+  found, findings, clientQuestions: questions, summaryMarkdown: SUMMARY_HEAD + findingsTable(findings) + SUMMARY_TAIL,
 });
 // `outputs` is what the runtime evaluator feeds the agent step; `steps` is what the static evaluator reads conditions from.
-const fixturesFor = (review, extra = {}) => ({ outputs: { review }, steps: { review: { found: review.found } }, responses: [], ...extra });
+const fixturesFor = (review, extra = {}) => ({ outputs: { review }, steps: { review: { found: review.found, clientResolved: review.clientResolved } }, responses: [], ...extra });
 const evalOriginKey = deterministicUuid(`evaluation:${SLUG}:${PROCESS_KEY}`);
 const evaluationDefinition = {
   kind: 'evaluation',
@@ -353,6 +367,22 @@ const evaluationDefinition = {
         decisions: [{ step: 'decideReady', option: 'readyOnceClientAnswers' }],
       },
       rubric: [{ criterion: 'Client questions are polite, specific (what, date, contact, amount) and are sent by a person, not the agent.', weight: 1 }],
+    },
+    {
+      key: 'clientNotFound',
+      title: 'The client is not found in Xero: no Ready to lodge, the reviewer asks for changes then records Not ready',
+      inputs: { clientName: 'Unknown Client Pty Ltd', periodStart: '2026-07-01', periodEnd: '2026-09-30' },
+      fixtures: fixturesFor({
+        clientResolved: false, clientName: 'Unknown Client Pty Ltd', xeroTenantId: '', periodLabel: 'Jul–Sep 2026',
+        found: allFound(), findings: [], clientQuestions: [],
+        summaryMarkdown: '## Unknown Client Pty Ltd: BAS readiness, Jul–Sep 2026\n\nNo Xero organisation named "Unknown Client Pty Ltd" is connected, so **no checks were run**. Connected organisations: Demo Company (AU). Nothing was changed in Xero and nothing was lodged.',
+      }),
+      expected: {
+        outcome: 'notReady',
+        stepsReached: ['review', 'summary', 'decideBlocked', 'notReady'],
+        decisions: [{ step: 'decideBlocked', option: 'notReady' }],
+      },
+      rubric: [{ criterion: 'The summary says plainly that the client was not found and no checks were run, and names the organisations that are connected.', weight: 1 }],
     },
   ],
 };

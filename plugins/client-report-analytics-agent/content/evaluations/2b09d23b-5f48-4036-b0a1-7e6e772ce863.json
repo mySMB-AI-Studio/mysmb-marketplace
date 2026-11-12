@@ -1,5 +1,5 @@
 {
-  "contentHash": "0da8fbf11d27844138cae058a4890a6b75d752b129cb63ae1698748f375bb49a",
+  "contentHash": "b793eed684bd149694e797c21e254b9bcd1dd4d133b08d3da5c62b15971d8188",
   "definition": {
     "key": "bas-readiness-review-controls",
     "kind": "evaluation",
@@ -48,13 +48,14 @@
                 "unreconciledBank": false
               },
               "periodLabel": "Jul–Sep 2026",
-              "summaryMarkdown": "## Demo Company (AU), Jul–Sep 2026\n\n(summary)",
+              "summaryMarkdown": "## Demo Company (AU): BAS readiness, Jul–Sep 2026 (1 Jul – 30 Sep 2026)\n\nRegistered for GST, accrual basis, quarterly BAS. Read from Xero only: nothing was changed in Xero and nothing was lodged.\n\n**No findings** in the 15 check groups.\n\nNot checked: none (ABR lookups ran).\n\nFor the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter.",
               "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
             }
           },
           "responses": [],
           "steps": {
             "review": {
+              "clientResolved": true,
               "found": {
                 "cancelledAbn": false,
                 "draftSalesInvoices": false,
@@ -138,13 +139,14 @@
                 "unreconciledBank": false
               },
               "periodLabel": "Jul–Sep 2026",
-              "summaryMarkdown": "## Demo Company (AU), Jul–Sep 2026\n\n(summary)",
+              "summaryMarkdown": "## Demo Company (AU): BAS readiness, Jul–Sep 2026 (1 Jul – 30 Sep 2026)\n\nRegistered for GST, accrual basis, quarterly BAS. Read from Xero only: nothing was changed in Xero and nothing was lodged.\n\n| Check | What was found | Count | Amount |\n|---|---|---|---|\n| CHK-058 | GST claimed on 2 bank fee lines | 2 | $3.20 |\n\nNot checked: none (ABR lookups ran).\n\nFor the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter.",
               "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
             }
           },
           "responses": [],
           "steps": {
             "review": {
+              "clientResolved": true,
               "found": {
                 "cancelledAbn": false,
                 "draftSalesInvoices": false,
@@ -231,13 +233,14 @@
                 "unreconciledBank": false
               },
               "periodLabel": "Jul–Sep 2026",
-              "summaryMarkdown": "## Demo Company (AU), Jul–Sep 2026\n\n(summary)",
+              "summaryMarkdown": "## Demo Company (AU): BAS readiness, Jul–Sep 2026 (1 Jul – 30 Sep 2026)\n\nRegistered for GST, accrual basis, quarterly BAS. Read from Xero only: nothing was changed in Xero and nothing was lodged.\n\n| Check | What was found | Count | Amount |\n|---|---|---|---|\n| CHK-021 | 1 spend money transaction over $82.50 with nothing attached | 1 | $245.00 |\n\nNot checked: none (ABR lookups ran).\n\nFor the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter.",
               "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
             }
           },
           "responses": [],
           "steps": {
             "review": {
+              "clientResolved": true,
               "found": {
                 "cancelledAbn": false,
                 "draftSalesInvoices": false,
@@ -271,6 +274,89 @@
           }
         ],
         "title": "Only Note findings: the reviewer sends the client questions"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "notReady",
+              "step": "decideBlocked"
+            }
+          ],
+          "outcome": "notReady",
+          "stepsReached": [
+            "review",
+            "summary",
+            "decideBlocked",
+            "notReady"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "review": {
+              "clientName": "Unknown Client Pty Ltd",
+              "clientQuestions": [],
+              "clientResolved": false,
+              "findings": [],
+              "found": {
+                "cancelledAbn": false,
+                "draftSalesInvoices": false,
+                "duplicateBills": false,
+                "gstAccountWithoutGst": false,
+                "gstAmountMismatch": false,
+                "gstChargedWhileUnregistered": false,
+                "gstFromUnregisteredSuppliers": false,
+                "gstOnNonClaimableItems": false,
+                "gstRegistrationRequired": false,
+                "gstStatusMismatch": false,
+                "gstWithoutAbn": false,
+                "lockDate": false,
+                "missingReceipts": false,
+                "suspenseBalance": false,
+                "unreconciledBank": false
+              },
+              "periodLabel": "Jul–Sep 2026",
+              "summaryMarkdown": "## Unknown Client Pty Ltd: BAS readiness, Jul–Sep 2026\n\nNo Xero organisation named \"Unknown Client Pty Ltd\" is connected, so **no checks were run**. Connected organisations: Demo Company (AU). Nothing was changed in Xero and nothing was lodged.",
+              "xeroTenantId": ""
+            }
+          },
+          "responses": [],
+          "steps": {
+            "review": {
+              "clientResolved": false,
+              "found": {
+                "cancelledAbn": false,
+                "draftSalesInvoices": false,
+                "duplicateBills": false,
+                "gstAccountWithoutGst": false,
+                "gstAmountMismatch": false,
+                "gstChargedWhileUnregistered": false,
+                "gstFromUnregisteredSuppliers": false,
+                "gstOnNonClaimableItems": false,
+                "gstRegistrationRequired": false,
+                "gstStatusMismatch": false,
+                "gstWithoutAbn": false,
+                "lockDate": false,
+                "missingReceipts": false,
+                "suspenseBalance": false,
+                "unreconciledBank": false
+              }
+            }
+          }
+        },
+        "inputs": {
+          "clientName": "Unknown Client Pty Ltd",
+          "periodEnd": "2026-09-30",
+          "periodStart": "2026-07-01"
+        },
+        "key": "clientNotFound",
+        "rubric": [
+          {
+            "criterion": "The summary says plainly that the client was not found and no checks were run, and names the organisations that are connected.",
+            "weight": 1
+          }
+        ],
+        "title": "The client is not found in Xero: no Ready to lodge, the reviewer asks for changes then records Not ready"
       }
     ],
     "schemaVersion": 1,
