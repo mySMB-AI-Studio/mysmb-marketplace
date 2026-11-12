@@ -1,111 +1,111 @@
 {
-  "title": "QuickBooks Aged Payables",
-  "description": "Live, validated QuickBooks Online Aged Payables (Q26): A/P ageing summary, A/P ageing detail, Unpaid Bills, Supplier Balance Summary.",
-  "tags": [
-    "quickbooks",
-    "payables",
-    "ageing",
-    "finance"
-  ],
-  "fileName": "quickbooks-aged-payables.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "aged_payables",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_aged_payables"
+        }
+      },
+      {
+        "id": "aged_payable_detail",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_aged_payable_detail"
+        }
+      },
+      {
+        "id": "open_bills",
+        "params": {
+          "maxResults": {
+            "kind": "static",
+            "value": 1000
+          },
+          "orderBy": {
+            "kind": "static",
+            "value": "DueDate"
+          },
+          "where": {
+            "kind": "static",
+            "value": "Balance > '0'"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "list_bill"
+        }
+      },
+      {
+        "id": "bs_today",
+        "params": {
+          "accounting_method": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "end_date": {
+            "kind": "context",
+            "source": "now.date"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_balance_sheet"
+        }
+      },
+      {
+        "id": "company_info",
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        }
+      },
+      {
+        "id": "prefs",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"summary\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"summary\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "aged_payables",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_aged_payables"
-        },
-        "params": {}
-      },
-      {
-        "id": "aged_payable_detail",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_aged_payable_detail"
-        },
-        "params": {}
-      },
-      {
-        "id": "open_bills",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "list_bill"
-        },
-        "params": {
-          "where": {
-            "kind": "static",
-            "value": "Balance > '0'"
-          },
-          "orderBy": {
-            "kind": "static",
-            "value": "DueDate"
-          },
-          "maxResults": {
-            "kind": "static",
-            "value": 1000
-          }
-        }
-      },
-      {
-        "id": "bs_today",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_balance_sheet"
-        },
-        "params": {
-          "end_date": {
-            "kind": "context",
-            "source": "now.date"
-          },
-          "accounting_method": {
-            "kind": "static",
-            "value": "Accrual"
-          }
-        }
-      },
-      {
-        "id": "company_info",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
-        },
-        "params": {
-          "query": {
-            "kind": "static",
-            "value": "SELECT * FROM CompanyInfo"
-          }
-        }
-      },
-      {
-        "id": "prefs",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_preferences"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated QuickBooks Online Aged Payables (Q26): A/P ageing summary, A/P ageing detail, Unpaid Bills, Supplier Balance Summary.",
+  "fileName": "quickbooks-aged-payables.html",
+  "tags": [
+    "quickbooks",
+    "payables",
+    "ageing",
+    "finance"
+  ],
+  "title": "QuickBooks Aged Payables"
 }

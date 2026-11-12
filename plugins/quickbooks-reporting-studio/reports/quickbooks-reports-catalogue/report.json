@@ -1,56 +1,56 @@
 {
-  "title": "QuickBooks Reports Catalogue",
-  "description": "Live, validated QuickBooks Online Reports Catalogue (Q02): Every included QuickBooks report family as a card, Search and category chips.",
-  "tags": [
-    "quickbooks",
-    "catalogue",
-    "library"
-  ],
-  "fileName": "quickbooks-reports-catalogue.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "company_info",
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        }
+      },
+      {
+        "id": "prefs",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "persona",
+        "default": "Client",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Client"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":0,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"minus\",\"red\":0,\"hdr\":1,\"ftr\":0,\"style\":\"qbo\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "company_info",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
-        },
-        "params": {
-          "query": {
-            "kind": "static",
-            "value": "SELECT * FROM CompanyInfo"
-          }
-        }
-      },
-      {
-        "id": "prefs",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_preferences"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated QuickBooks Online Reports Catalogue (Q02): Every included QuickBooks report family as a card, Search and category chips.",
+  "fileName": "quickbooks-reports-catalogue.html",
+  "tags": [
+    "quickbooks",
+    "catalogue",
+    "library"
+  ],
+  "title": "QuickBooks Reports Catalogue"
 }

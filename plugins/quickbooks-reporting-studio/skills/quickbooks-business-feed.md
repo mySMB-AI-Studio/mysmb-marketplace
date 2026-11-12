@@ -23,7 +23,7 @@ No manual dates: the six-month window is set on every open.
 |---|---|
 | Report ready — Profit and Loss card | Net profit, income and expenses for last month with a net-profit sparkline |
 | Insight cards | Net profit vs the month before, biggest expense change, money owed to you, bills to pay — worded from the figures only |
-| Intuit Intelligence assistants, Ask a question | N/A — use mySidekick or the QuickBooks Reporting Specialist |
+| Intuit Intelligence assistants, Ask a question | N/A — ask mySidekick |
 
 ## Validation checks (STEP 4 — shown in the banner)
 
@@ -36,11 +36,11 @@ No manual dates: the six-month window is set on every open.
 
 ## QA test script (golden set)
 
-1. On the golden-set company, ask the agent for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
+1. On the golden-set company, ask mySidekick for this report at the library's example period (below). Confirm the discovery call succeeded and the report saved.
 2. Compare the headline figures with the library example (illustrative, from Enterprise AI Pty Ltd — recompute on the golden set): 'Report ready' card: Net profit from August −A$175,286.75 with income and expense lines.
 3. Compare the layout with the Q01 screenshots (row order, "Total for" rows, header block, footer, number format).
 4. Validation banner: every check passes, or shows N/A with a stated reason.
-5. Change every control in the control row, and confirm the report refetches and still validates. Switch View as to Client, then Bookkeeper.
+5. Change every control in the control row, and confirm the report refetches and still validates. Switch Detail level to Summary, then Detail.
 6. Toggle Style to the mySMB house style and back, then switch the workspace to the dark theme.
 7. Download PDF and Download Excel. Confirm they match the screen (the Excel file has Validation and Parameters sheets).
 8. Use Download or Share from the report window, open the snapshot and confirm the period and figures are frozen and the controls that refetch are disabled.

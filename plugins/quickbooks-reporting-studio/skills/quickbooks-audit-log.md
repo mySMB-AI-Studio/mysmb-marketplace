@@ -33,6 +33,7 @@ QuickBooks location: Reports › Standard reports › Business overview › Audi
 1. Export the Audit Log for a week from the golden-set company and attach it. Confirm every row appears once and the counts by type add up.
 2. Filter by user, event type and date; search a document number. Compare with QuickBooks: '10 Sept, 9:24 am — Melanie Burrows — Added Bill Payment (Cheque) to Yucheng Sun - USD for $1000.00'; system rows 'Online Banking Administration — Manually updated Online Banking accounts for Wise Business'.
 3. Include an event whose text contains `<` or `</script>` and confirm the page still renders.
+4. Cross-client isolation (LIB-002): the page holds only the company in the attached export. Another company needs its own export and page.
 
 ## Page
 
