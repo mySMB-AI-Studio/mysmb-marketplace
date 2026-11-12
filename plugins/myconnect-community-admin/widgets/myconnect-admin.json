@@ -1,7 +1,7 @@
 {
   "category": "productivity",
   "connectorsUsed": ["myconnect-community-admin"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. The other tabs (Members, Access Groups, Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. The other tabs (Access Groups, Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -19,7 +19,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
@@ -608,9 +608,112 @@
         }
       },
 
-      "membersPanel": {
+      "membersErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load members: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+      },
+      "membersLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "membersLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "membersLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["membersLoading1", "membersLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
+      },
+      "membersEmpty": {
         "type": "Empty",
-        "props": { "message": "Members tab is coming in a later iteration." },
+        "props": { "message": "No members found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/myconnect-community-admin/list_members/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_members", "not": true }
+          ]
+        }
+      },
+      "membersColHeaderIdentity": { "type": "Caption", "props": { "text": "Member (click a name for details)", "tone": "muted", "weight": "semibold" } },
+      "membersColHeaderLastSeen": { "type": "Caption", "props": { "text": "Last seen", "tone": "muted", "weight": "semibold", "align": "right" } },
+      "membersColumnHeader": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["membersColHeaderIdentity", "membersColHeaderLastSeen"],
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+      "memberStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "status", "eq": "active" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "invited" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$computed": "initials", "args": { "value": { "$item": "displayName" } } },
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "role", "eq": "owner" },
+            "$then": "info",
+            "$else": {
+              "$cond": { "$item": "role", "eq": "admin" },
+              "$then": "accent",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberAvatarGroup": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["memberStatusDot", "memberAvatar"] },
+      "memberName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "displayName" } } },
+      "memberEmail": { "type": "Caption", "props": { "text": { "$item": "email" }, "tone": "muted" } },
+      "memberNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberName", "memberEmail"] },
+      "memberIdentity": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberAvatarGroup", "memberNameStack"] },
+      "memberLastSeen": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$item": "lastSeenAt", "eq": null },
+            "$then": "Never",
+            "$else": { "$computed": "relative_time", "args": { "value": { "$item": "lastSeenAt" } } }
+          },
+          "tone": {
+            "$cond": { "$item": "lastSeenAt", "eq": null },
+            "$then": "muted",
+            "$else": "success"
+          },
+          "align": "right"
+        }
+      },
+      "memberRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["memberIdentity", "memberLastSeen"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedMemberId", "value": { "$bindItem": "id" } } } }
+      },
+      "membersList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_members/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+      "membersMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — narrow your search to see more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/nextCursor" }
+      },
+      "membersPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["membersErrorBanner", "membersLoading", "membersEmpty", "membersColumnHeader", "membersList", "membersMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "members" }
       },
       "accessGroupsPanel": {
@@ -727,6 +830,34 @@
                 }
               }
             }
+          ],
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
+            }
+          ],
+          "/ui/selectedMemberId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedMemberRecord",
+                "value": {
+                  "$computed": "filter_by",
+                  "args": {
+                    "value": { "$state": "/myconnect-community-admin/list_members/items" },
+                    "field": "id",
+                    "equals": { "$state": "/ui/selectedMemberId" }
+                  }
+                }
+              }
+            }
           ]
         }
       },
@@ -751,7 +882,7 @@
       "infoWhatText": {
         "type": "Text",
         "props": {
-          "text": "A multi-tab admin dashboard for a myConnect community you administer. The community picker only appears if you administer more than one — otherwise it's just yours. Being built incrementally — only Analytics is live so far.",
+          "text": "A multi-tab admin dashboard for a myConnect community you administer. The community picker only appears if you administer more than one — otherwise it's just yours. Being built incrementally — Analytics and Members are live so far.",
           "size": "sm"
         }
       },
@@ -802,6 +933,115 @@
         }
       },
       "missingDatesCard": { "type": "Card", "props": {}, "children": ["missingDatesCloseBtn", "missingDatesTitleRow", "missingDatesDivider", "missingDatesBodyText"] },
+
+      "memberDetailOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "26rem" },
+        "children": ["memberDetailCard"],
+        "visible": { "$state": "/ui/selectedMemberId" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/selectedMemberId", "value": null } } }
+      },
+      "memberDetailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedMemberId", "value": null } } }
+      },
+      "memberDetailAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$computed": "initials", "args": { "value": { "$state": "/ui/selectedMemberRecord/0/displayName" } } },
+          "size": "lg",
+          "tone": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "owner" },
+            "$then": "info",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "admin" },
+              "$then": "accent",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberDetailName": { "type": "Heading", "props": { "level": "h2", "text": { "$state": "/ui/selectedMemberRecord/0/displayName" } } },
+      "memberDetailEmail": { "type": "Caption", "props": { "text": { "$state": "/ui/selectedMemberRecord/0/email" }, "tone": "muted" } },
+      "memberDetailNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberDetailName", "memberDetailEmail"] },
+      "memberDetailIdentityRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberDetailAvatar", "memberDetailNameStack"] },
+      "memberDetailRoleBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$state": "/ui/selectedMemberRecord/0/role" },
+          "variant": "soft",
+          "tone": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "owner" },
+            "$then": "info",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedMemberRecord/0/role", "eq": "admin" },
+              "$then": "accent",
+              "$else": "default"
+            }
+          }
+        }
+      },
+      "memberDetailStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$state": "/ui/selectedMemberRecord/0/status", "eq": "active" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$state": "/ui/selectedMemberRecord/0/status", "eq": "invited" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberDetailStatusText": { "type": "Caption", "props": { "text": { "$state": "/ui/selectedMemberRecord/0/status" }, "tone": "muted" } },
+      "memberDetailBadgeRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberDetailRoleBadge", "memberDetailStatusDot", "memberDetailStatusText"] },
+      "memberDetailDivider": { "type": "Divider", "props": {} },
+      "memberDetailTagBadge": { "type": "Badge", "props": { "text": { "$item": "label" }, "tone": "info", "variant": "soft" } },
+      "memberDetailTagsList": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs", "wrap": true },
+        "children": ["memberDetailTagBadge"],
+        "repeat": { "key": "id", "statePath": "/ui/selectedMemberRecord/0/tags" },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/tags/0" }
+      },
+      "memberDetailTagsEmpty": {
+        "type": "Caption",
+        "props": { "text": "No tags", "tone": "muted" },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/tags/0", "not": true }
+      },
+      "memberDetailTagsLabel": { "type": "Caption", "props": { "text": "Tags", "tone": "muted", "weight": "semibold" } },
+      "memberDetailTagsSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["memberDetailTagsLabel", "memberDetailTagsList", "memberDetailTagsEmpty"] },
+      "memberDetailAccessGroupBadge": { "type": "Badge", "props": { "text": { "$item": "name" }, "tone": "success", "variant": "soft" } },
+      "memberDetailAccessGroupsList": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs", "wrap": true },
+        "children": ["memberDetailAccessGroupBadge"],
+        "repeat": { "key": "id", "statePath": "/ui/selectedMemberRecord/0/accessGroups" },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/accessGroups/0" }
+      },
+      "memberDetailAccessGroupsEmpty": {
+        "type": "Caption",
+        "props": { "text": "No access groups", "tone": "muted" },
+        "visible": { "$state": "/ui/selectedMemberRecord/0/accessGroups/0", "not": true }
+      },
+      "memberDetailAccessGroupsLabel": { "type": "Caption", "props": { "text": "Access groups", "tone": "muted", "weight": "semibold" } },
+      "memberDetailAccessGroupsSection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["memberDetailAccessGroupsLabel", "memberDetailAccessGroupsList", "memberDetailAccessGroupsEmpty"] },
+      "memberDetailJoined": {
+        "type": "KeyValue",
+        "props": {
+          "label": "Joined",
+          "value": { "$computed": "format_date", "args": { "value": { "$state": "/ui/selectedMemberRecord/0/createdAt" }, "format": "dd-mmm-yy" } }
+        }
+      },
+      "memberDetailCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["memberDetailCloseBtn", "memberDetailIdentityRow", "memberDetailBadgeRow", "memberDetailDivider", "memberDetailTagsSection", "memberDetailAccessGroupsSection", "memberDetailJoined"]
+      },
 
       "memberPopupOverlay": {
         "type": "Overlay",
