@@ -14,7 +14,7 @@ Live, validated reports **across every client** the user's Xero and MYOB connect
 
 Each report fans out server-side across every client (new `get_practice_*` tools on the existing `xero-accounting` and `myob-accounting` connectors — **not** a separate connector; same OAuth connections users already have, no extra Connect step), recomputes its validation checks on every open, and has PDF/Excel downloads with the mySMB.com brand by default.
 
-**QuickBooks is excluded** from every practice-wide report: it is one company per connection, so there is nothing to consolidate. Its one connected company has its own report in the Client Report Analytics agent instead.
+**QuickBooks is excluded** from every practice-wide report: it is one company per connection, so there is nothing to consolidate. Its one connected company has its own reports in the Client Report Analytics extension instead.
 
 ## Configuration
 
@@ -22,4 +22,4 @@ No configuration variables are required. Users connect Xero and/or MYOB in Setti
 
 ## Maintaining it
 
-The report templates, skills and agent are generated from `scripts/practice-report-analytics-kit` (see its README). **Never Pull this extension into the Developer Instance and never save it there**: the Developer Instance does not keep `reports/` and would delete the templates.
+The report templates and skills are generated from `scripts/practice-report-analytics-kit` (see its README). **Don't save this extension in the Developer Instance before you Pull it.** A save commits the Developer Instance's copy over dev; Pull keeps `reports/` (myHubV2's report component kind, since late October 2026), so Pull first and the templates survive. Better still, change it in the kit and publish from dev.
