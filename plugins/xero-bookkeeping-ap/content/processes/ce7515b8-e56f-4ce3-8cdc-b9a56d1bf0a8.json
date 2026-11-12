@@ -1,16 +1,18 @@
 {
-  "contentHash": "bd28afce8259d40d825af1d1bb14ddea4f1ada054871a4051d15e0b354e9ae93",
+  "contentHash": "b1dc6f88f9156a9cfbb9a6719eaeeff2f64a25c7a102cdcc5f66b4998f2b3187",
   "definition": {
     "capabilities": [
       "records.read",
       "xero.bills.read",
+      "xero.bill.get",
       "xero.contacts.read",
       "xero.accounts.read",
       "xero.tax_rates.read",
       "xero.tracking.read",
-      "xero.bill.create"
+      "xero.bill.create",
+      "xero.bill.update"
     ],
-    "description": "Each new AP bill is checked, coded and prepared for the client's Xero. A person approves it (and, where the client needs it, an internal reviewer too); only that approval creates the bill in Xero, in the status the client's approval route sets.",
+    "description": "Each new AP bill is checked and coded. A bill from email is created in the client's Xero once a person approves it. A bill already in Xero (from Hubdoc, Dext or keyed in) is compared with its PDF and the client's coding, and a person approves any correction and the approval status. Clients that approve before Xero are only checked.",
     "exceptions": [],
     "inputs": [
       {
@@ -46,6 +48,35 @@
       },
       {
         "evidence": [
+          "decision_record",
+          "xero_bill"
+        ],
+        "key": "approvedInXero",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "coding_summary"
+        ],
+        "key": "checked",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "findings"
+        ],
+        "key": "findingsOwned",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "leftInXero",
+        "terminal": true
+      },
+      {
+        "evidence": [
           "decision_record"
         ],
         "key": "rejected",
@@ -68,11 +99,11 @@
     ],
     "protectedRules": [
       {
-        "description": "A bill is created in Xero only as the effect of a person's recorded approval. Elapsed time is never approval.",
+        "description": "A bill is created or changed in Xero only as the effect of a person's recorded approval. Elapsed time is never approval.",
         "key": "noXeroWithoutApproval"
       },
       {
-        "description": "Agent steps only read Xero and the workspace. The only write is the approved bill.",
+        "description": "Agent steps only read Xero and the workspace. The only writes are the approved bill and the approved correction.",
         "key": "agentReadsOnly"
       },
       {
@@ -86,6 +117,14 @@
       {
         "description": "A bill that is already in the client's Xero is never entered again.",
         "key": "duplicatesStop"
+      },
+      {
+        "description": "A bill for a client that approves before Xero (Dext, Restock, ApprovalMax) is never changed; it is only checked.",
+        "key": "upstreamApprovalsKept"
+      },
+      {
+        "description": "The agent never changes an amount on a bill already in Xero, never voids or deletes a bill; differences go to a person.",
+        "key": "amountsNeverChanged"
       },
       {
         "description": "The agent never logs in to, uploads to or pays through a bank.",
@@ -107,6 +146,21 @@
         "from": "secondReview",
         "requires": "manager",
         "to": "prepare"
+      },
+      {
+        "from": "approveInXero",
+        "requires": "reviewer",
+        "to": "prepareInXero"
+      },
+      {
+        "from": "firstReviewInXero",
+        "requires": "reviewer",
+        "to": "prepareInXero"
+      },
+      {
+        "from": "secondReviewInXero",
+        "requires": "manager",
+        "to": "prepareInXero"
       }
     ],
     "roles": {
@@ -122,6 +176,7 @@
         "outputs": [
           "ready",
           "problem",
+          "inXero",
           "client",
           "xeroTenantId",
           "route",
@@ -274,6 +329,154 @@
         "type": "bill_review"
       },
       {
+        "key": "prepareInXero",
+        "kind": "agent",
+        "outputs": [
+          "xeroUpdate",
+          "changesProposed",
+          "clean",
+          "findings",
+          "codingSummary",
+          "status",
+          "total",
+          "warnings"
+        ],
+        "skill": "xero-bookkeeping-ap-bill-in-xero",
+        "title": "Check the bill in Xero against its PDF and coding"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "approveInXero",
+        "kind": "decision",
+        "materiality": [
+          "steps.prepareInXero.xeroUpdate",
+          "steps.prepareInXero.findings",
+          "steps.check.findings"
+        ],
+        "options": [
+          {
+            "effect": "Updates the bill in the client's Xero with the corrected coding shown and moves it to the status shown (Awaiting Approval or Awaiting Payment). Amounts aren't changed.",
+            "intent": {
+              "capability": "xero.bill.update",
+              "payloadFrom": "steps.prepareInXero.xeroUpdate"
+            },
+            "key": "approve",
+            "label": "Apply the corrections and approve in Xero",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the bill back to the agent with your note. Nothing changes in Xero.",
+            "key": "changes",
+            "label": "Change something first",
+            "transition": "prepareInXero"
+          },
+          {
+            "effect": "Ends the job and leaves the bill exactly as it is in Xero for you to handle there.",
+            "key": "leave",
+            "label": "Leave it for me in Xero"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Approve the bill in Xero",
+        "type": "bill_approval"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "firstReviewInXero",
+        "kind": "decision",
+        "materiality": [
+          "steps.prepareInXero.xeroUpdate",
+          "steps.prepareInXero.findings",
+          "steps.check.findings"
+        ],
+        "options": [
+          {
+            "effect": "Passes the bill to the internal reviewer. Nothing changes in Xero yet.",
+            "key": "approve",
+            "label": "Approve and send to the internal reviewer",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the bill back to the agent with your note. Nothing changes in Xero.",
+            "key": "changes",
+            "label": "Change something first",
+            "transition": "prepareInXero"
+          },
+          {
+            "effect": "Ends the job and leaves the bill exactly as it is in Xero.",
+            "key": "leave",
+            "label": "Leave it for me in Xero"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Bookkeeper approves the bill in Xero",
+        "type": "bill_approval"
+      },
+      {
+        "eligible": [
+          "manager",
+          "backupManager"
+        ],
+        "key": "secondReviewInXero",
+        "kind": "decision",
+        "materiality": [
+          "steps.prepareInXero.xeroUpdate",
+          "steps.prepareInXero.findings",
+          "steps.check.findings"
+        ],
+        "options": [
+          {
+            "effect": "Updates the bill in the client's Xero with the corrected coding shown and moves it to Awaiting Payment. Amounts aren't changed.",
+            "intent": {
+              "capability": "xero.bill.update",
+              "payloadFrom": "steps.prepareInXero.xeroUpdate"
+            },
+            "key": "approve",
+            "label": "Apply the corrections and approve in Xero",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the bill back to the agent with your note. Nothing changes in Xero.",
+            "key": "changes",
+            "label": "Change something first",
+            "transition": "prepareInXero"
+          },
+          {
+            "effect": "Ends the job and leaves the bill exactly as it is in Xero.",
+            "key": "leave",
+            "label": "Leave it for me in Xero"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Internal reviewer approves the bill in Xero",
+        "type": "bill_approval"
+      },
+      {
+        "assign": "reviewer",
+        "completion": "statusDone",
+        "key": "lookAtFindings",
+        "kind": "human",
+        "title": "Look at what the agent flagged and fix it in Xero if needed"
+      },
+      {
         "evidence": [
           "steps.review.responseId",
           "steps.prepare.xeroBill"
@@ -338,6 +541,94 @@
       },
       {
         "evidence": [
+          "steps.approveInXero.responseId",
+          "steps.prepareInXero.xeroUpdate"
+        ],
+        "key": "approvedInXero",
+        "kind": "gate",
+        "outcome": "approvedInXero",
+        "requires": [
+          "steps.approveInXero.decision == 'approve'"
+        ],
+        "title": "Corrected and approved in Xero"
+      },
+      {
+        "evidence": [
+          "steps.firstReviewInXero.responseId",
+          "steps.secondReviewInXero.responseId",
+          "steps.prepareInXero.xeroUpdate"
+        ],
+        "key": "approvedInXeroAfterReview",
+        "kind": "gate",
+        "outcome": "approvedInXero",
+        "requires": [
+          "steps.secondReviewInXero.decision == 'approve'"
+        ],
+        "title": "Corrected and approved in Xero after internal review"
+      },
+      {
+        "evidence": [
+          "steps.approveInXero.responseId"
+        ],
+        "key": "leftInXero",
+        "kind": "gate",
+        "outcome": "leftInXero",
+        "requires": [
+          "steps.approveInXero.decision == 'leave'"
+        ],
+        "title": "Left for the bookkeeper in Xero"
+      },
+      {
+        "evidence": [
+          "steps.firstReviewInXero.responseId"
+        ],
+        "key": "leftInXeroAtFirstReview",
+        "kind": "gate",
+        "outcome": "leftInXero",
+        "requires": [
+          "steps.firstReviewInXero.decision == 'leave'"
+        ],
+        "title": "Left for the bookkeeper in Xero"
+      },
+      {
+        "evidence": [
+          "steps.secondReviewInXero.responseId"
+        ],
+        "key": "leftInXeroAtSecondReview",
+        "kind": "gate",
+        "outcome": "leftInXero",
+        "requires": [
+          "steps.secondReviewInXero.decision == 'leave'"
+        ],
+        "title": "Left for the bookkeeper in Xero"
+      },
+      {
+        "evidence": [
+          "steps.prepareInXero.codingSummary"
+        ],
+        "key": "checkedClean",
+        "kind": "gate",
+        "outcome": "checked",
+        "requires": [
+          "steps.prepareInXero.clean == true"
+        ],
+        "title": "Checked: nothing to fix"
+      },
+      {
+        "evidence": [
+          "steps.prepareInXero.findings",
+          "steps.check.findings"
+        ],
+        "key": "findingsOwned",
+        "kind": "gate",
+        "outcome": "findingsOwned",
+        "requires": [
+          "steps.lookAtFindings.completed == true"
+        ],
+        "title": "Flagged items looked at"
+      },
+      {
+        "evidence": [
           "steps.check.duplicateOf"
         ],
         "key": "duplicate",
@@ -383,7 +674,12 @@
       {
         "from": "check",
         "to": "prepare",
-        "when": "steps.check.ready == true && steps.check.duplicate == false"
+        "when": "steps.check.ready == true && steps.check.duplicate == false && steps.check.inXero != true"
+      },
+      {
+        "from": "check",
+        "to": "prepareInXero",
+        "when": "steps.check.ready == true && steps.check.duplicate == false && steps.check.inXero == true"
       },
       {
         "from": "prepare",
@@ -424,6 +720,60 @@
         "from": "secondReview",
         "to": "rejectedAtSecondReview",
         "when": "steps.secondReview.decision == 'reject'"
+      },
+      {
+        "from": "prepareInXero",
+        "to": "checkedClean",
+        "when": "steps.prepareInXero.clean == true && (steps.check.route == 'approved_upstream' || (steps.check.route == 'draft_only' && steps.prepareInXero.changesProposed == false) || policy.cleanBillsNeedApproval == false)"
+      },
+      {
+        "from": "prepareInXero",
+        "to": "lookAtFindings",
+        "when": "steps.prepareInXero.clean == false && (steps.check.route == 'approved_upstream' || (steps.check.route == 'draft_only' && steps.prepareInXero.changesProposed == false))"
+      },
+      {
+        "from": "prepareInXero",
+        "to": "approveInXero",
+        "when": "steps.check.route != 'approved_upstream' && steps.check.route != 'hj_reviewer' && !(steps.check.route == 'draft_only' && steps.prepareInXero.changesProposed == false) && (steps.prepareInXero.clean == false || policy.cleanBillsNeedApproval == true)"
+      },
+      {
+        "from": "prepareInXero",
+        "to": "firstReviewInXero",
+        "when": "steps.check.route == 'hj_reviewer' && (steps.prepareInXero.clean == false || policy.cleanBillsNeedApproval == true)"
+      },
+      {
+        "from": "approveInXero",
+        "to": "approvedInXero",
+        "when": "steps.approveInXero.decision == 'approve'"
+      },
+      {
+        "from": "approveInXero",
+        "to": "leftInXero",
+        "when": "steps.approveInXero.decision == 'leave'"
+      },
+      {
+        "from": "firstReviewInXero",
+        "to": "secondReviewInXero",
+        "when": "steps.firstReviewInXero.decision == 'approve'"
+      },
+      {
+        "from": "firstReviewInXero",
+        "to": "leftInXeroAtFirstReview",
+        "when": "steps.firstReviewInXero.decision == 'leave'"
+      },
+      {
+        "from": "secondReviewInXero",
+        "to": "approvedInXeroAfterReview",
+        "when": "steps.secondReviewInXero.decision == 'approve'"
+      },
+      {
+        "from": "secondReviewInXero",
+        "to": "leftInXeroAtSecondReview",
+        "when": "steps.secondReviewInXero.decision == 'leave'"
+      },
+      {
+        "from": "lookAtFindings",
+        "to": "findingsOwned"
       }
     ],
     "triggers": [
@@ -446,9 +796,15 @@
         "max": 10,
         "min": 1,
         "type": "number"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "cleanBillsNeedApproval",
+        "type": "boolean"
       }
     ],
-    "version": "0.1.0",
+    "version": "0.2.0",
     "vocabulary": {
       "subject": "Bill"
     }
