@@ -1,0 +1,64 @@
+{
+  "contentHash": "bda09d4e9cf1990fdf367bbb8a55793dc456af0e6edb4477d950ad1ae2a4cdcb",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "order": "order",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_tax_rates"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.tax_rates.read",
+    "kind": "capability",
+    "originKey": "907d7aa3-a206-40a2-bada-c3ca251d75ed",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "TaxRates": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read Xero tax rates"
+  },
+  "kind": "capability",
+  "name": "Read Xero tax rates",
+  "originKey": "907d7aa3-a206-40a2-bada-c3ca251d75ed"
+}

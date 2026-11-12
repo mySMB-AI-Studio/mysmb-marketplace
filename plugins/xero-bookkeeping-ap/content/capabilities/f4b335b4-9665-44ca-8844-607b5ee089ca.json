@@ -1,0 +1,62 @@
+{
+  "contentHash": "43c8a8d3cabc8d83d1aca9db557544fd73273e783ace22ca70b237a69ecfa84a",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoiceId": "invoiceId",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_invoice"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoiceId": {
+          "description": "The Xero InvoiceID of the bill.",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "invoiceId"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bill.get",
+    "kind": "capability",
+    "originKey": "f4b335b4-9665-44ca-8844-607b5ee089ca",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read one Xero bill"
+  },
+  "kind": "capability",
+  "name": "Read one Xero bill",
+  "originKey": "f4b335b4-9665-44ca-8844-607b5ee089ca"
+}

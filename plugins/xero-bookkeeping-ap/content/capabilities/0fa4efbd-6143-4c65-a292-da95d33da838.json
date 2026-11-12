@@ -1,0 +1,68 @@
+{
+  "contentHash": "21b5d70ca67f44c55a00b571fffe8e8e2591268dfe92e06e79fe4bcff2a6f122",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "includeArchived": "includeArchived",
+          "order": "order",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_tracking_categories"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "includeArchived": {
+          "type": "boolean"
+        },
+        "order": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.tracking.read",
+    "kind": "capability",
+    "originKey": "0fa4efbd-6143-4c65-a292-da95d33da838",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "TrackingCategories": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read Xero tracking categories"
+  },
+  "kind": "capability",
+  "name": "Read Xero tracking categories",
+  "originKey": "0fa4efbd-6143-4c65-a292-da95d33da838"
+}

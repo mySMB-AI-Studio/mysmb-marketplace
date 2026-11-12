@@ -1,0 +1,150 @@
+{
+  "contentHash": "d888c7ce70f51d83152101df95ac140ee2edc435a6b4f4268d79a0f1190ff620",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoiceId": "invoiceId",
+          "patch": "patch",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "update_invoice"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoiceId": {
+          "description": "The Xero InvoiceID of the bill.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "patch": {
+          "additionalProperties": false,
+          "properties": {
+            "DueDate": {
+              "type": "string"
+            },
+            "LineAmountTypes": {
+              "enum": [
+                "Exclusive",
+                "Inclusive",
+                "NoTax"
+              ]
+            },
+            "LineItems": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "AccountCode": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "LineAmount": {
+                    "type": "number"
+                  },
+                  "LineItemID": {
+                    "type": "string"
+                  },
+                  "Quantity": {
+                    "type": "number"
+                  },
+                  "TaxAmount": {
+                    "type": "number"
+                  },
+                  "TaxType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "Tracking": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "Name": {
+                          "type": "string"
+                        },
+                        "Option": {
+                          "type": "string"
+                        },
+                        "TrackingCategoryID": {
+                          "type": "string"
+                        },
+                        "TrackingOptionID": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "UnitAmount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "AccountCode",
+                  "TaxType"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "Status": {
+              "enum": [
+                "DRAFT",
+                "SUBMITTED",
+                "AUTHORISED"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "xero_tenant_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "invoiceId",
+        "patch"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bill.update",
+    "kind": "capability",
+    "originKey": "7d6a1d34-87cc-4e06-8f0f-dc07e31b852a",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "financial",
+    "title": "Correct and approve a bill in Xero"
+  },
+  "kind": "capability",
+  "name": "Correct and approve a bill in Xero",
+  "originKey": "7d6a1d34-87cc-4e06-8f0f-dc07e31b852a"
+}

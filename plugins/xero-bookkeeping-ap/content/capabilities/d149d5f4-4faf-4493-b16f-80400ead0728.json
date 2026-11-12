@@ -1,0 +1,81 @@
+{
+  "contentHash": "75509473ec51909a025ce87988db64f2604999c563cfaff422507269f42d43b9",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "ids": "ids",
+          "includeArchived": "includeArchived",
+          "page": "page",
+          "searchTerm": "searchTerm",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.contacts.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_contacts"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "includeArchived": {
+          "type": "boolean"
+        },
+        "page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "searchTerm": {
+          "description": "Name, email or ABN fragment.",
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.contacts.read",
+    "kind": "capability",
+    "originKey": "d149d5f4-4faf-4493-b16f-80400ead0728",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Contacts": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Find Xero contacts"
+  },
+  "kind": "capability",
+  "name": "Find Xero contacts",
+  "originKey": "d149d5f4-4faf-4493-b16f-80400ead0728"
+}

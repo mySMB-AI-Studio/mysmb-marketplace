@@ -1,0 +1,423 @@
+{
+  "contentHash": "23ac7252e02a4c8a0a19427e096d88efddb02859d88c3956b34aee6f534712c5",
+  "definition": {
+    "key": "bills-in-xero-controls",
+    "kind": "evaluation",
+    "originKey": "ef347c0b-2ea8-4c55-bc3f-37b58ff64e70",
+    "process": "ce7515b8-e56f-4ce3-8cdc-b9a56d1bf0a8",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "approve",
+              "step": "approveInXero"
+            }
+          ],
+          "outcome": "approvedInXero",
+          "stepsReached": [
+            "check",
+            "prepareInXero",
+            "approveInXero",
+            "approvedInXero"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "check": {
+              "blocking": false,
+              "client": {
+                "id": "11111111-0000-4000-8000-000000000001",
+                "name": "Demo Company (AU)"
+              },
+              "duplicate": false,
+              "duplicateOf": null,
+              "findings": [],
+              "inXero": true,
+              "problem": "",
+              "ready": true,
+              "route": "bookkeeper",
+              "summary": "Hubdoc bill Ridgeway INV-3001 for $352.00.",
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "isNew": false,
+                "name": "Ridgeway Office Supplies"
+              },
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            },
+            "prepareInXero": {
+              "changesProposed": true,
+              "clean": false,
+              "codingSummary": [
+                {
+                  "account": "461",
+                  "amount": 320,
+                  "description": "Copy paper A4 x 10",
+                  "reason": "Hubdoc coded it to 400; the last 5 Ridgeway bills are 461.",
+                  "source": "history",
+                  "taxType": "INPUT"
+                }
+              ],
+              "findings": [],
+              "status": "AUTHORISED",
+              "total": 352,
+              "warnings": [
+                "Changed: account 400 to 461 (supplier history)"
+              ],
+              "xeroUpdate": {
+                "invoiceId": "b2220000-0000-4000-8000-000000000001",
+                "patch": {
+                  "LineItems": [
+                    {
+                      "AccountCode": "461",
+                      "Description": "Copy paper A4 x 10",
+                      "LineItemID": "l1110000-0000-4000-8000-000000000001",
+                      "Quantity": 10,
+                      "TaxType": "INPUT",
+                      "UnitAmount": 32
+                    }
+                  ],
+                  "Status": "AUTHORISED"
+                },
+                "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+              }
+            }
+          },
+          "responses": [
+            {
+              "option": "approve",
+              "step": "approveInXero"
+            }
+          ]
+        },
+        "inputs": {
+          "billRecordId": "bbbbbbbb-0000-4000-8000-000000000001"
+        },
+        "key": "hubdocCorrectedApproved",
+        "title": "Hubdoc bill coded to the wrong account: the reviewer approves the correction and it moves to Awaiting Payment"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "leave",
+              "step": "approveInXero"
+            }
+          ],
+          "intentsNotAllowed": [
+            "xero.bill.update",
+            "xero.bill.create"
+          ],
+          "outcome": "leftInXero",
+          "stepsReached": [
+            "check",
+            "prepareInXero",
+            "approveInXero",
+            "leftInXero"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "check": {
+              "blocking": false,
+              "client": {
+                "id": "11111111-0000-4000-8000-000000000001",
+                "name": "Demo Company (AU)"
+              },
+              "duplicate": false,
+              "duplicateOf": null,
+              "findings": [],
+              "inXero": true,
+              "problem": "",
+              "ready": true,
+              "route": "bookkeeper",
+              "summary": "Dext bill Ridgeway INV-3002.",
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "isNew": false,
+                "name": "Ridgeway Office Supplies"
+              },
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            },
+            "prepareInXero": {
+              "changesProposed": false,
+              "clean": false,
+              "codingSummary": [],
+              "findings": [
+                {
+                  "code": "CAPTURE_GST_TYPE",
+                  "message": "Dext published it GST inclusive; the PDF shows GST exclusive.",
+                  "severity": "warn"
+                }
+              ],
+              "status": "AUTHORISED",
+              "total": 352,
+              "warnings": [],
+              "xeroUpdate": {
+                "invoiceId": "b2220000-0000-4000-8000-000000000002",
+                "patch": {
+                  "Status": "AUTHORISED"
+                },
+                "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+              }
+            }
+          },
+          "responses": [
+            {
+              "option": "leave",
+              "step": "approveInXero"
+            }
+          ]
+        },
+        "inputs": {
+          "billRecordId": "bbbbbbbb-0000-4000-8000-000000000002"
+        },
+        "key": "leftForBookkeeper",
+        "title": "Reviewer chooses to handle it in Xero: nothing changes in Xero"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.update",
+            "xero.bill.create"
+          ],
+          "stepsReached": [
+            "check",
+            "prepareInXero",
+            "approveInXero"
+          ]
+        },
+        "fixtures": {
+          "elapsedBusinessDays": 5,
+          "outputs": {
+            "check": {
+              "blocking": false,
+              "client": {
+                "id": "11111111-0000-4000-8000-000000000001",
+                "name": "Demo Company (AU)"
+              },
+              "duplicate": false,
+              "duplicateOf": null,
+              "findings": [],
+              "inXero": true,
+              "problem": "",
+              "ready": true,
+              "route": "bookkeeper",
+              "summary": "Hubdoc bill Ridgeway INV-3003.",
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "isNew": false,
+                "name": "Ridgeway Office Supplies"
+              },
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            },
+            "prepareInXero": {
+              "changesProposed": false,
+              "clean": false,
+              "codingSummary": [],
+              "findings": [
+                {
+                  "code": "CAPTURE_TOTAL",
+                  "message": "Xero shows $532.00; the PDF shows $352.00.",
+                  "severity": "block"
+                }
+              ],
+              "status": "AUTHORISED",
+              "total": 532,
+              "warnings": [],
+              "xeroUpdate": {
+                "invoiceId": "b2220000-0000-4000-8000-000000000003",
+                "patch": {
+                  "Status": "AUTHORISED"
+                },
+                "xero_tenant_id": "00000000-0000-4000-8000-00000000d001"
+              }
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "billRecordId": "bbbbbbbb-0000-4000-8000-000000000003"
+        },
+        "key": "captureMismatchNoDecision",
+        "title": "The Xero total doesn't match the PDF and nobody decides: nothing changes in Xero"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.update",
+            "xero.bill.create"
+          ],
+          "outcome": "checked",
+          "stepsReached": [
+            "check",
+            "prepareInXero",
+            "checkedClean"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "check": {
+              "blocking": false,
+              "client": {
+                "id": "11111111-0000-4000-8000-000000000004",
+                "name": "Upstream Approvals Pty Ltd"
+              },
+              "duplicate": false,
+              "duplicateOf": null,
+              "findings": [],
+              "inXero": true,
+              "problem": "",
+              "ready": true,
+              "route": "approved_upstream",
+              "summary": "Dext bill Harbour Cleaning HC-990.",
+              "supplier": {
+                "abn": "53004085616",
+                "contactId": "c0ffee00-0000-4000-8000-000000000401",
+                "isNew": false,
+                "name": "Harbour Cleaning Co"
+              },
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d004"
+            },
+            "prepareInXero": {
+              "changesProposed": false,
+              "clean": true,
+              "codingSummary": [],
+              "findings": [],
+              "status": "unchanged",
+              "total": 440,
+              "warnings": [],
+              "xeroUpdate": null
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "billRecordId": "bbbbbbbb-0000-4000-8000-000000000004"
+        },
+        "key": "upstreamCheckedClean",
+        "title": "Client approves in Dext before Xero and nothing is wrong: checked only, never changed"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.update",
+            "xero.bill.create"
+          ],
+          "outcome": "findingsOwned",
+          "stepsReached": [
+            "check",
+            "prepareInXero",
+            "lookAtFindings",
+            "findingsOwned"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "check": {
+              "blocking": false,
+              "client": {
+                "id": "11111111-0000-4000-8000-000000000004",
+                "name": "Upstream Approvals Pty Ltd"
+              },
+              "duplicate": false,
+              "duplicateOf": null,
+              "findings": [
+                {
+                  "code": "BANK_DETAILS_CHANGED",
+                  "message": "Bank details on the bill differ from the contact in Xero. Confirm the new bank details with the supplier by phone before paying.",
+                  "severity": "warn"
+                }
+              ],
+              "inXero": true,
+              "problem": "",
+              "ready": true,
+              "route": "approved_upstream",
+              "summary": "Dext bill Harbour Cleaning HC-991 with new bank details.",
+              "supplier": {
+                "abn": "53004085616",
+                "contactId": "c0ffee00-0000-4000-8000-000000000401",
+                "isNew": false,
+                "name": "Harbour Cleaning Co"
+              },
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d004"
+            },
+            "prepareInXero": {
+              "changesProposed": false,
+              "clean": false,
+              "codingSummary": [],
+              "findings": [],
+              "status": "unchanged",
+              "total": 440,
+              "warnings": [],
+              "xeroUpdate": null
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "billRecordId": "bbbbbbbb-0000-4000-8000-000000000005"
+        },
+        "key": "upstreamFindings",
+        "title": "Client approves before Xero and the agent finds a problem: a person looks, nothing is changed by the agent"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "xero.bill.update",
+            "xero.bill.create"
+          ],
+          "outcome": "needsAttention",
+          "stepsReached": [
+            "check",
+            "needsAttention"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "check": {
+              "blocking": false,
+              "client": {
+                "id": "11111111-0000-4000-8000-000000000001",
+                "name": "Demo Company (AU)"
+              },
+              "duplicate": false,
+              "duplicateOf": null,
+              "findings": [],
+              "inXero": true,
+              "problem": "alreadyHandled",
+              "ready": false,
+              "route": "bookkeeper",
+              "summary": "Already Awaiting Payment in Xero.",
+              "supplier": {
+                "abn": "51824753556",
+                "contactId": "c0ffee00-0000-4000-8000-000000000101",
+                "isNew": false,
+                "name": "Ridgeway Office Supplies"
+              },
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
+          },
+          "responses": []
+        },
+        "inputs": {
+          "billRecordId": "bbbbbbbb-0000-4000-8000-000000000006"
+        },
+        "key": "alreadyHandled",
+        "title": "Someone approved the bill in Xero before the agent got to it: the job needs no decision"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Enter a supplier bill: bills already in Xero"
+  },
+  "kind": "evaluation",
+  "name": "Enter a supplier bill: bills already in Xero",
+  "originKey": "ef347c0b-2ea8-4c55-bc3f-37b58ff64e70"
+}
