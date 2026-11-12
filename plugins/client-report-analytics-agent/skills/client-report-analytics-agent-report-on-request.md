@@ -1,6 +1,6 @@
 ---
 name: client-report-analytics-agent-report-on-request
-description: Work a WorkQ item that asks the Client Report Analytics Agent for a client report - read the request, confirm the client and period, reuse or create the live report from the Client Report Analytics template, link it on the item and close it. Use for every report request that reaches the agent's inbox or chat.
+description: Work a WorkQ item that asks the Client Reporting Agent for a client report - read the request, confirm the client and period, reuse or create the live report from the Client Report Analytics template, link it on the item and close it. Use for every report request that reaches the agent's inbox or chat.
 ---
 
 # Client report on request
@@ -15,7 +15,7 @@ Use when a WorkQ item assigned to you, or a chat message, asks for a client repo
 4. Check for an existing copy: `artifact_list` with `query` = the title you would give it (foundation, Inputs 4). If a report for the same template, client and period exists, reuse it: don't create a second copy. The report refetches its data on every open, so an existing copy is current.
 5. Otherwise call `artifact_from_template` exactly as the foundation skill says.
 6. Post one `todo_comment` with:
-   - the report link (the URL the tool returned),
+   - each report as a named Markdown link: `[<report title>](<the URL the tool returned>)`, for example `[Health Check — Irvine Jackson Pty Ltd — Jul–Sep 2026](/reports/…)`. Never post a bare path,
    - one line on what the report shows and for which client and period,
    - "The banner at the top shows the report's own checks; a red line means a figure didn't tie and shouldn't be relied on.",
    - the connections the person opening it needs, if more than Xero (foundation, "What the person opening the report needs").
