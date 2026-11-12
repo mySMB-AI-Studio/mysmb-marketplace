@@ -1,0 +1,110 @@
+{
+  "document": {
+    "actions": [],
+    "bindings": [
+      {
+        "config": {
+          "limit": 25
+        },
+        "id": "b_review",
+        "kind": "agent.decisions"
+      },
+      {
+        "config": {
+          "limit": 25,
+          "status": "in_progress"
+        },
+        "id": "b_open",
+        "kind": "agent.jobs"
+      },
+      {
+        "config": {
+          "limit": 10,
+          "status": "done"
+        },
+        "id": "b_done",
+        "kind": "agent.jobs"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "root",
+        "parentId": null,
+        "props": {
+          "padding": "none"
+        },
+        "type": "section"
+      },
+      {
+        "id": "h",
+        "parentId": "root",
+        "props": {
+          "level": 2,
+          "text": "Order drafts"
+        },
+        "type": "heading"
+      },
+      {
+        "id": "intro",
+        "parentId": "root",
+        "props": {
+          "text": "Order Desk drafts every order it reads. Drafts it is not sure about wait here for a person. Open one to see the order, what was flagged, and to release or reject it."
+        },
+        "type": "text"
+      },
+      {
+        "bindingIds": [
+          "b_review"
+        ],
+        "id": "review",
+        "parentId": "root",
+        "props": {
+          "title": "Order drafts waiting for your review"
+        },
+        "type": "workq"
+      },
+      {
+        "id": "cols",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        },
+        "type": "columns"
+      },
+      {
+        "bindingIds": [
+          "b_open"
+        ],
+        "id": "open",
+        "parentId": "cols",
+        "props": {
+          "title": "Orders being worked on"
+        },
+        "type": "workq"
+      },
+      {
+        "bindingIds": [
+          "b_done"
+        ],
+        "id": "done",
+        "parentId": "cols",
+        "props": {
+          "title": "Orders finished"
+        },
+        "type": "workq"
+      },
+      {
+        "id": "orders",
+        "parentId": "root",
+        "props": {
+          "href": "/records/od_orders",
+          "label": "Open the Orders table"
+        },
+        "type": "button"
+      }
+    ],
+    "rootId": "root",
+    "schemaVersion": 1
+  },
+  "version": 1
+}

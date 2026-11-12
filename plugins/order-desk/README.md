@@ -12,7 +12,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Pages:** Order review (installed as Draft — publish in the installing workspace)
 - **Processes:** Order intake
 - **Evaluations:** Order intake checks
-- **Agent views:** Setup pages
+- **Agent views:** Overview, Setup pages
 - **Skills:** 3
 - **Agents:** 1
 
