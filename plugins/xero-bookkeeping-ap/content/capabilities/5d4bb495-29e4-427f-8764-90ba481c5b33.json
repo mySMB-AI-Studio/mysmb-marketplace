@@ -1,0 +1,65 @@
+{
+  "contentHash": "3777c2c2f20d5ed0065ab12a1019db4744752455136dc5f1b32c4f1be3a36069",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "order": "order",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_accounts"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "type": "string"
+        },
+        "where": {
+          "description": "e.g. Status==\"ACTIVE\"",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.accounts.read",
+    "kind": "capability",
+    "originKey": "5d4bb495-29e4-427f-8764-90ba481c5b33",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Accounts": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read Xero chart of accounts"
+  },
+  "kind": "capability",
+  "name": "Read Xero chart of accounts",
+  "originKey": "5d4bb495-29e4-427f-8764-90ba481c5b33"
+}

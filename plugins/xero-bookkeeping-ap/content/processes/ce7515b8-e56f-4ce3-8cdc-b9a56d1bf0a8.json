@@ -1,0 +1,459 @@
+{
+  "contentHash": "bd28afce8259d40d825af1d1bb14ddea4f1ada054871a4051d15e0b354e9ae93",
+  "definition": {
+    "capabilities": [
+      "records.read",
+      "xero.bills.read",
+      "xero.contacts.read",
+      "xero.accounts.read",
+      "xero.tax_rates.read",
+      "xero.tracking.read",
+      "xero.bill.create"
+    ],
+    "description": "Each new AP bill is checked, coded and prepared for the client's Xero. A person approves it (and, where the client needs it, an internal reviewer too); only that approval creates the bill in Xero, in the status the client's approval route sets.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "billRecordId",
+        "label": "AP bill (record ID)",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "key": "enter-supplier-bill",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 4,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 200,
+      "maxSteps": 30,
+      "maxWaitingDays": 30
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "ce7515b8-e56f-4ce3-8cdc-b9a56d1bf0a8",
+    "outcomes": [
+      {
+        "evidence": [
+          "decision_record",
+          "xero_bill"
+        ],
+        "key": "entered",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "rejected",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "duplicate_of"
+        ],
+        "key": "duplicate",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "problem"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "A bill is created in Xero only as the effect of a person's recorded approval. Elapsed time is never approval.",
+        "key": "noXeroWithoutApproval"
+      },
+      {
+        "description": "Agent steps only read Xero and the workspace. The only write is the approved bill.",
+        "key": "agentReadsOnly"
+      },
+      {
+        "description": "Every Xero call uses the Xero organisation ID of this bill's client. One job never touches another client's organisation.",
+        "key": "oneClientPerJob"
+      },
+      {
+        "description": "An unknown client, a client that isn't set up, an unreadable document or something that isn't a tax invoice ends as needsAttention. No approval is asked for on guesses.",
+        "key": "evidenceFirst"
+      },
+      {
+        "description": "A bill that is already in the client's Xero is never entered again.",
+        "key": "duplicatesStop"
+      },
+      {
+        "description": "The agent never logs in to, uploads to or pays through a bank.",
+        "key": "noBanking"
+      }
+    ],
+    "rework": [
+      {
+        "from": "review",
+        "requires": "reviewer",
+        "to": "prepare"
+      },
+      {
+        "from": "firstReview",
+        "requires": "reviewer",
+        "to": "prepare"
+      },
+      {
+        "from": "secondReview",
+        "requires": "manager",
+        "to": "prepare"
+      }
+    ],
+    "roles": {
+      "backupManager": "installation.backupManager",
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "check",
+        "kind": "agent",
+        "outputs": [
+          "ready",
+          "problem",
+          "client",
+          "xeroTenantId",
+          "route",
+          "supplier",
+          "duplicate",
+          "duplicateOf",
+          "findings",
+          "blocking",
+          "summary"
+        ],
+        "skill": "xero-bookkeeping-ap-bill-checks",
+        "title": "Check the bill"
+      },
+      {
+        "key": "prepare",
+        "kind": "agent",
+        "outputs": [
+          "xeroBill",
+          "status",
+          "total",
+          "codingSummary",
+          "warnings"
+        ],
+        "skill": "xero-bookkeeping-ap-bill-coding",
+        "title": "Code the bill and prepare it for Xero"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "review",
+        "kind": "decision",
+        "materiality": [
+          "steps.prepare.xeroBill",
+          "steps.prepare.total",
+          "steps.check.findings"
+        ],
+        "options": [
+          {
+            "effect": "Creates the bill in the client's Xero organisation with this coding, in the status shown (Draft, Awaiting Approval or Awaiting Payment).",
+            "intent": {
+              "capability": "xero.bill.create",
+              "payloadFrom": "steps.prepare.xeroBill"
+            },
+            "key": "enter",
+            "label": "Enter in Xero as prepared",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the bill back to the agent with your note. Nothing is created in Xero.",
+            "key": "changes",
+            "label": "Change something first",
+            "transition": "prepare"
+          },
+          {
+            "effect": "Ends the job. Nothing is created in Xero.",
+            "key": "reject",
+            "label": "Don't enter this bill"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Approve the bill for Xero",
+        "type": "bill_review"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "firstReview",
+        "kind": "decision",
+        "materiality": [
+          "steps.prepare.xeroBill",
+          "steps.prepare.total",
+          "steps.check.findings"
+        ],
+        "options": [
+          {
+            "effect": "Passes the bill to the internal reviewer. Nothing is created in Xero yet.",
+            "key": "approve",
+            "label": "Approve and send to the internal reviewer",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the bill back to the agent with your note. Nothing is created in Xero.",
+            "key": "changes",
+            "label": "Change something first",
+            "transition": "prepare"
+          },
+          {
+            "effect": "Ends the job. Nothing is created in Xero.",
+            "key": "reject",
+            "label": "Don't enter this bill"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Bookkeeper approves the bill",
+        "type": "bill_review"
+      },
+      {
+        "eligible": [
+          "manager",
+          "backupManager"
+        ],
+        "key": "secondReview",
+        "kind": "decision",
+        "materiality": [
+          "steps.prepare.xeroBill",
+          "steps.prepare.total",
+          "steps.check.findings"
+        ],
+        "options": [
+          {
+            "effect": "Creates the bill in the client's Xero organisation with this coding, in the status shown (Awaiting Payment).",
+            "intent": {
+              "capability": "xero.bill.create",
+              "payloadFrom": "steps.prepare.xeroBill"
+            },
+            "key": "enter",
+            "label": "Enter in Xero as prepared",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the bill back to the agent with your note. Nothing is created in Xero.",
+            "key": "changes",
+            "label": "Change something first",
+            "transition": "prepare"
+          },
+          {
+            "effect": "Ends the job. Nothing is created in Xero.",
+            "key": "reject",
+            "label": "Don't enter this bill"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Internal reviewer approves the bill",
+        "type": "bill_review"
+      },
+      {
+        "evidence": [
+          "steps.review.responseId",
+          "steps.prepare.xeroBill"
+        ],
+        "key": "entered",
+        "kind": "gate",
+        "outcome": "entered",
+        "requires": [
+          "steps.review.decision == 'enter'"
+        ],
+        "title": "Bill entered in Xero"
+      },
+      {
+        "evidence": [
+          "steps.firstReview.responseId",
+          "steps.secondReview.responseId",
+          "steps.prepare.xeroBill"
+        ],
+        "key": "enteredAfterSecondReview",
+        "kind": "gate",
+        "outcome": "entered",
+        "requires": [
+          "steps.secondReview.decision == 'enter'"
+        ],
+        "title": "Bill entered in Xero after internal review"
+      },
+      {
+        "evidence": [
+          "steps.review.responseId"
+        ],
+        "key": "rejectedAtReview",
+        "kind": "gate",
+        "outcome": "rejected",
+        "requires": [
+          "steps.review.decision == 'reject'"
+        ],
+        "title": "Not entered"
+      },
+      {
+        "evidence": [
+          "steps.firstReview.responseId"
+        ],
+        "key": "rejectedAtFirstReview",
+        "kind": "gate",
+        "outcome": "rejected",
+        "requires": [
+          "steps.firstReview.decision == 'reject'"
+        ],
+        "title": "Not entered (bookkeeper)"
+      },
+      {
+        "evidence": [
+          "steps.secondReview.responseId"
+        ],
+        "key": "rejectedAtSecondReview",
+        "kind": "gate",
+        "outcome": "rejected",
+        "requires": [
+          "steps.secondReview.decision == 'reject'"
+        ],
+        "title": "Not entered (internal reviewer)"
+      },
+      {
+        "evidence": [
+          "steps.check.duplicateOf"
+        ],
+        "key": "duplicate",
+        "kind": "gate",
+        "outcome": "duplicate",
+        "requires": [
+          "steps.check.duplicate == true"
+        ],
+        "title": "Already in Xero"
+      },
+      {
+        "evidence": [
+          "steps.check.problem",
+          "steps.check.summary"
+        ],
+        "key": "needsAttention",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "steps.check.ready == false"
+        ],
+        "title": "Needs a person"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "billRecordId"
+      ],
+      "kind": "none"
+    },
+    "title": "Enter a supplier bill",
+    "transitions": [
+      {
+        "from": "check",
+        "to": "needsAttention",
+        "when": "steps.check.ready == false"
+      },
+      {
+        "from": "check",
+        "to": "duplicate",
+        "when": "steps.check.ready == true && steps.check.duplicate == true"
+      },
+      {
+        "from": "check",
+        "to": "prepare",
+        "when": "steps.check.ready == true && steps.check.duplicate == false"
+      },
+      {
+        "from": "prepare",
+        "to": "review",
+        "when": "steps.check.route != 'hj_reviewer'"
+      },
+      {
+        "from": "prepare",
+        "to": "firstReview",
+        "when": "steps.check.route == 'hj_reviewer'"
+      },
+      {
+        "from": "review",
+        "to": "entered",
+        "when": "steps.review.decision == 'enter'"
+      },
+      {
+        "from": "review",
+        "to": "rejectedAtReview",
+        "when": "steps.review.decision == 'reject'"
+      },
+      {
+        "from": "firstReview",
+        "to": "secondReview",
+        "when": "steps.firstReview.decision == 'approve'"
+      },
+      {
+        "from": "firstReview",
+        "to": "rejectedAtFirstReview",
+        "when": "steps.firstReview.decision == 'reject'"
+      },
+      {
+        "from": "secondReview",
+        "to": "enteredAfterSecondReview",
+        "when": "steps.secondReview.decision == 'enter'"
+      },
+      {
+        "from": "secondReview",
+        "to": "rejectedAtSecondReview",
+        "when": "steps.secondReview.decision == 'reject'"
+      }
+    ],
+    "triggers": [
+      {
+        "event": "record.created",
+        "filter": {
+          "type_slug": "ap_bill"
+        },
+        "inputsFrom": {
+          "billRecordId": "subject.record_id"
+        },
+        "kind": "event"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 1,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Bill"
+    }
+  },
+  "kind": "process",
+  "name": "Enter a supplier bill",
+  "originKey": "ce7515b8-e56f-4ce3-8cdc-b9a56d1bf0a8"
+}

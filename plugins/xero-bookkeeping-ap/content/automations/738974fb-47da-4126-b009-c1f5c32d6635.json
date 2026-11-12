@@ -1,0 +1,62 @@
+{
+  "contentHash": "61aa307912ff8da83b66972a651853768f81561e1873ffc872bbbcb6f3f6b9ac",
+  "declaredScopes": [
+    "connectors:xero-accounting",
+    "records:ap_bill:read",
+    "records:ap_bill:write",
+    "artifacts:read"
+  ],
+  "dependencies": [],
+  "description": "Every 30 minutes on weekdays, finds AP bills that have been entered in Xero but don't have their PDF attached yet, and attaches the stored PDF to the bill in the client's Xero organisation. It changes nothing else in Xero.",
+  "flowIr": {
+    "description": "Attaches each entered bill's PDF to the bill in the client's Xero organisation.",
+    "irVersion": 1,
+    "name": "Bookkeeping AP: Attach bill PDFs in Xero",
+    "nodes": [
+      {
+        "code": "import base64\nimport json\nimport re\n\n\ndef as_data(value):\n    if isinstance(value, str):\n        try:\n            return json.loads(value)\n        except Exception:\n            return value\n    return value\n\n\ndef as_list(value, *keys):\n    value = as_data(value)\n    if isinstance(value, list):\n        return value\n    if isinstance(value, dict):\n        for key in keys:\n            if isinstance(value.get(key), list):\n                return value[key]\n    return []\n\n\ndef norm(text):\n    text = str(text or \"\").lower()\n    text = re.sub(r\"\\b(pty|ltd|limited|the|trust)\\b\", \" \", text)\n    return re.sub(r\"[^a-z0-9]+\", \" \", text).strip()\n\n\ndef field(row, key):\n    data = row.get(\"data\") or row.get(\"fields\") or {}\n    return data.get(key, row.get(key))\n\n\npending = []\ncursor = None\nfor _ in range(25):\n    page = api.records.list(type_slug=\"ap_bill\", limit=200, cursor=cursor) if cursor else api.records.list(type_slug=\"ap_bill\", limit=200)\n    for row in page.get(\"records\") or page.get(\"items\") or []:\n        if field(row, \"pdf_attached\") is True:\n            continue\n        if field(row, \"document_artifact_id\") and field(row, \"xero_tenant_id\") and field(row, \"invoice_number\"):\n            pending.append(row)\n    cursor = page.get(\"nextCursor\") or page.get(\"next_cursor\")\n    if not cursor:\n        break\n\nattached = 0\nwaiting = 0\nissues = []\nfor row in pending[:100]:\n    tenant = field(row, \"xero_tenant_id\")\n    number = str(field(row, \"invoice_number\"))\n    supplier = norm(field(row, \"supplier_name\"))\n    try:\n        found = as_list(api.connectors.invoke(server=\"xero-accounting\", tool=\"list_invoices\", args={\"xero_tenant_id\": tenant, \"invoiceNumbers\": [number], \"where\": \"Type==\\\"ACCPAY\\\"\"}), \"Invoices\", \"invoices\")\n        live = [b for b in found if b.get(\"Status\") not in (\"DELETED\", \"VOIDED\")]\n        same = [b for b in live if not supplier or norm((b.get(\"Contact\") or {}).get(\"Name\")) in (supplier,) or supplier in norm((b.get(\"Contact\") or {}).get(\"Name\")) or norm((b.get(\"Contact\") or {}).get(\"Name\")) in supplier]\n        if len(same) != 1:\n            waiting += 1\n            continue\n        bill = same[0]\n        path = api.artifacts.get(artifact_id=field(row, \"document_artifact_id\"))\n        if not isinstance(path, str):\n            issues.append(f\"{number}: the stored PDF couldn't be read\")\n            continue\n        with open(path, \"rb\") as fh:\n            content = base64.b64encode(fh.read()).decode(\"ascii\")\n        name = str(field(row, \"attachment_name\") or f\"{number}.pdf\")\n        mime = \"application/pdf\" if name.lower().endswith(\".pdf\") else \"image/jpeg\"\n        api.connectors.invoke(server=\"xero-accounting\", tool=\"upload_attachment\", args={\"xero_tenant_id\": tenant, \"hostType\": \"Invoices\", \"hostId\": bill.get(\"InvoiceID\"), \"fileName\": name, \"base64Content\": content, \"mimeType\": mime, \"includeOnline\": False})\n        api.records.update(type_slug=\"ap_bill\", record_id=row.get(\"id\"), record={\"pdf_attached\": True, \"xero_bill_id\": bill.get(\"InvoiceID\")})\n        attached += 1\n    except Exception as err:\n        issues.append(f\"{number}: {err}\")\n\nproblems = \"\\n\".join(issues)",
+        "id": "attach_pdfs",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "How many PDFs were attached.",
+            "name": "attached",
+            "type": "int"
+          },
+          {
+            "description": "Bills not in Xero yet.",
+            "name": "waiting",
+            "type": "int"
+          },
+          {
+            "description": "Anything that went wrong, one per line.",
+            "name": "problems",
+            "type": "str"
+          }
+        ],
+        "params": [],
+        "summary": "For each AP bill entered in Xero without its PDF, finds the bill in the client's Xero and attaches the stored PDF.",
+        "title": "Attach PDFs to entered bills"
+      }
+    ],
+    "params": [],
+    "rootOrder": [
+      "attach_pdfs"
+    ],
+    "triggers": [
+      {
+        "cron": "*/30 6-20 * * 1-5",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      },
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Bookkeeping AP: Attach bill PDFs in Xero",
+  "originKey": "738974fb-47da-4126-b009-c1f5c32d6635",
+  "tags": []
+}

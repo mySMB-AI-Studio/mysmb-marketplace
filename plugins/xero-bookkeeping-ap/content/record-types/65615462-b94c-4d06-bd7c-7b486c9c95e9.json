@@ -1,0 +1,423 @@
+{
+  "contentHash": "5733adb9f4fdb7f5e9e955d5449ed3fc30e05d5c1682d94d53b9252aabb60b97",
+  "definition": {
+    "color": null,
+    "description": "One row per supplier bill the Bookkeeping AP agent receives. Each new row starts a job that checks the bill, proposes coding and asks a person to approve before anything goes into Xero.",
+    "fields": [
+      {
+        "config": {
+          "helpText": "Supplier and invoice number, for example Acme Supplies · INV-1042."
+        },
+        "groupLabel": null,
+        "key": "bill_name",
+        "kind": "text",
+        "label": "Bill",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "client"
+        },
+        "groupLabel": null,
+        "key": "client",
+        "kind": "relation",
+        "label": "Client",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "xero_org_name",
+        "kind": "text",
+        "label": "Xero organisation",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Xero",
+        "key": "xero_tenant_id",
+        "kind": "text",
+        "label": "Xero organisation ID",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "Copied from the client's AP settings when the bill arrived.",
+          "options": [
+            {
+              "key": "bookkeeper",
+              "label": "Bookkeeper approves (Awaiting Payment)"
+            },
+            {
+              "key": "hj_reviewer",
+              "label": "Bookkeeper, then internal reviewer (Awaiting Payment)"
+            },
+            {
+              "key": "client_each_bill",
+              "label": "Client approves each bill (Awaiting Approval)"
+            },
+            {
+              "key": "draft_only",
+              "label": "Enter as draft only"
+            },
+            {
+              "key": "approved_upstream",
+              "label": "Approved before Xero (check only)"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "approval_route",
+        "kind": "select",
+        "label": "Approval route",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "outlook",
+              "label": "Outlook"
+            },
+            {
+              "key": "hotmail",
+              "label": "Hotmail"
+            },
+            {
+              "key": "gmail",
+              "label": "Gmail"
+            },
+            {
+              "key": "hubdoc",
+              "label": "Hubdoc"
+            },
+            {
+              "key": "dext",
+              "label": "Dext"
+            },
+            {
+              "key": "xero",
+              "label": "Xero"
+            },
+            {
+              "key": "manual",
+              "label": "Added by hand"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "source",
+        "kind": "select",
+        "label": "Came from",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Email",
+        "key": "email_received_at",
+        "kind": "datetime",
+        "label": "Received",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Email",
+        "key": "mailbox",
+        "kind": "text",
+        "label": "Mailbox",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Email",
+        "key": "email_from",
+        "kind": "text",
+        "label": "From",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Email",
+        "key": "email_subject",
+        "kind": "text",
+        "label": "Subject",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Email",
+        "key": "email_message_id",
+        "kind": "text",
+        "label": "Email ID",
+        "position": 10,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Email",
+        "key": "attachment_name",
+        "kind": "text",
+        "label": "Attachment",
+        "position": 11,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Email",
+        "key": "attachment_id",
+        "kind": "text",
+        "label": "Attachment ID",
+        "position": 12,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "The workspace file that holds the bill's PDF."
+        },
+        "groupLabel": "Email",
+        "key": "document_artifact_id",
+        "kind": "text",
+        "label": "Stored PDF",
+        "position": 13,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "Which pages of the attachment hold this bill, when one file holds several."
+        },
+        "groupLabel": "Email",
+        "key": "page_range",
+        "kind": "text",
+        "label": "Pages",
+        "position": 14,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "supplier_name",
+        "kind": "text",
+        "label": "Supplier",
+        "position": 15,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "supplier_abn",
+        "kind": "text",
+        "label": "Supplier ABN",
+        "position": 16,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "invoice_number",
+        "kind": "text",
+        "label": "Invoice number",
+        "position": 17,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "invoice_date",
+        "kind": "date",
+        "label": "Invoice date",
+        "position": 18,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "due_date",
+        "kind": "date",
+        "label": "Due date",
+        "position": 19,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "currency",
+        "kind": "text",
+        "label": "Currency",
+        "position": 20,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "total",
+        "kind": "money",
+        "label": "Total",
+        "position": 21,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "gst",
+        "kind": "money",
+        "label": "GST",
+        "position": 22,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "amounts_include_tax",
+        "kind": "boolean",
+        "label": "Amounts include GST",
+        "position": 23,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "supplier_bank_details",
+        "kind": "text",
+        "label": "Bank details on the bill",
+        "position": 24,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "helpText": "Each line as read: description, quantity, unit amount, GST.",
+          "maxLength": 20000
+        },
+        "groupLabel": "Read from the bill",
+        "key": "lines_json",
+        "kind": "long_text",
+        "label": "Lines read from the bill",
+        "position": 25,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "read_confidence",
+        "kind": "percent",
+        "label": "Reading confidence",
+        "position": 26,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Read from the bill",
+        "key": "read_notes",
+        "kind": "long_text",
+        "label": "Reading notes",
+        "position": 27,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Xero",
+        "key": "xero_bill_id",
+        "kind": "text",
+        "label": "Xero bill ID",
+        "position": 28,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "Xero",
+        "key": "pdf_attached",
+        "kind": "boolean",
+        "label": "PDF attached in Xero",
+        "position": 29,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": null,
+    "labelPlural": "AP bills",
+    "labelSingular": "AP bill",
+    "slug": "ap_bill",
+    "titleFieldKey": "bill_name"
+  },
+  "kind": "record_type",
+  "name": "AP bills",
+  "originKey": "65615462-b94c-4d06-bd7c-7b486c9c95e9"
+}

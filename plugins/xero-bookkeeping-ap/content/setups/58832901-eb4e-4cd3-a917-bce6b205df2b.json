@@ -1,0 +1,94 @@
+{
+  "contentHash": "fb2990f38d520f36f4488b1edcfea18a026df7a948670209bbd9ab46551dea2e",
+  "definition": {
+    "connections": [
+      {
+        "key": "xero",
+        "label": "Xero (reaches each client's organisation)",
+        "oneOf": [
+          "xero-accounting"
+        ],
+        "required": true,
+        "scope": "service"
+      },
+      {
+        "key": "outlook_mailbox",
+        "label": "Outlook mailbox that receives bills",
+        "oneOf": [
+          "m365-mail-read"
+        ],
+        "required": false,
+        "scope": "either"
+      },
+      {
+        "key": "hotmail_mailbox",
+        "label": "Hotmail or Outlook.com mailbox that receives bills",
+        "oneOf": [
+          "hotmail-mail"
+        ],
+        "required": false,
+        "scope": "either"
+      },
+      {
+        "key": "gmail_mailbox",
+        "label": "Gmail mailbox that receives bills",
+        "oneOf": [
+          "google-workspace-gmail"
+        ],
+        "required": false,
+        "scope": "either"
+      }
+    ],
+    "knowledge": [],
+    "people": [
+      {
+        "required": true,
+        "role": "manager"
+      },
+      {
+        "required": true,
+        "role": "reviewer"
+      },
+      {
+        "required": false,
+        "role": "backupManager"
+      }
+    ],
+    "settings": {
+      "properties": {
+        "mail_folders": {
+          "default": [
+            "Inbox"
+          ],
+          "description": "The folders that hold supplier bills, for example Inbox or Inbox/Bills. Leave it as Inbox if bills arrive there.",
+          "items": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Mail folders to read",
+          "type": "array"
+        },
+        "start_reading_from": {
+          "description": "Emails received before this date are ignored, so old bills aren't entered again.",
+          "format": "date",
+          "title": "Read emails received from",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mail_folders"
+      ],
+      "type": "object"
+    },
+    "tasks": [],
+    "tenantSettings": [],
+    "version": 2
+  },
+  "description": "What Bookkeeping AP needs before it can start: the practice's Xero connection, at least one mailbox that receives supplier bills (Outlook, Hotmail or Gmail), which mail folders to read, and the people who approve bills.",
+  "kind": "setup",
+  "name": "Bookkeeping AP setup",
+  "originKey": "58832901-eb4e-4cd3-a917-bce6b205df2b"
+}

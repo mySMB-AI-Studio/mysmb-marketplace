@@ -1,0 +1,182 @@
+{
+  "contentHash": "4aa13f3ef6049a0bffb6183001d9ac831dd95e6d4cf67e24f43c0229447590df",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoice": "invoice",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "create_invoice"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoice": {
+          "additionalProperties": false,
+          "properties": {
+            "Contact": {
+              "additionalProperties": false,
+              "properties": {
+                "ContactID": {
+                  "type": "string"
+                },
+                "Name": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "CurrencyCode": {
+              "type": "string"
+            },
+            "Date": {
+              "description": "Invoice date, YYYY-MM-DD.",
+              "type": "string"
+            },
+            "DueDate": {
+              "description": "Due date, YYYY-MM-DD.",
+              "type": "string"
+            },
+            "InvoiceNumber": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "LineAmountTypes": {
+              "enum": [
+                "Exclusive",
+                "Inclusive",
+                "NoTax"
+              ]
+            },
+            "LineItems": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "AccountCode": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "LineAmount": {
+                    "type": "number"
+                  },
+                  "Quantity": {
+                    "type": "number"
+                  },
+                  "TaxAmount": {
+                    "type": "number"
+                  },
+                  "TaxType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "Tracking": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "Name": {
+                          "type": "string"
+                        },
+                        "Option": {
+                          "type": "string"
+                        },
+                        "TrackingCategoryID": {
+                          "type": "string"
+                        },
+                        "TrackingOptionID": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "UnitAmount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "Description",
+                  "AccountCode",
+                  "TaxType"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "Reference": {
+              "type": "string"
+            },
+            "Status": {
+              "enum": [
+                "DRAFT",
+                "SUBMITTED",
+                "AUTHORISED"
+              ]
+            },
+            "Type": {
+              "const": "ACCPAY"
+            }
+          },
+          "required": [
+            "Type",
+            "Status",
+            "Contact",
+            "Date",
+            "DueDate",
+            "InvoiceNumber",
+            "LineAmountTypes",
+            "LineItems"
+          ],
+          "type": "object"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation ID.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "invoice"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bill.create",
+    "kind": "capability",
+    "originKey": "6617abec-d5a3-4fc7-be41-4c39648f212f",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "financial",
+    "title": "Create bill in Xero"
+  },
+  "kind": "capability",
+  "name": "Create bill in Xero",
+  "originKey": "6617abec-d5a3-4fc7-be41-4c39648f212f"
+}
