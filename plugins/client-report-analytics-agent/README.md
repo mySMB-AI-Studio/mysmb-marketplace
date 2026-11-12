@@ -1,4 +1,4 @@
-# Client Report Analytics
+# Client Reporting Agent
 
 An Agents 2.0 agent that turns client report requests into live, self-checking reports. Assign it a WorkQ item ("Health check for <client>, last quarter") or ask it in chat: it creates the report from the **Client Report Analytics** extension's tested templates, posts the link on the item and closes it. Xero clients for now (MYOB and QuickBooks later).
 
