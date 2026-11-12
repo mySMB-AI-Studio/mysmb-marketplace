@@ -1,0 +1,144 @@
+{
+  "contentHash": "c8a0b08d5ec8e1c00c6130ab54f50564557e8eb7b666c0b5f879f4b3ac06a9c7",
+  "declaredScopes": [
+    "records:od_orders:read",
+    "records:od_orders:write"
+  ],
+  "dependencies": [],
+  "description": "Creates the order in the Orders table for one order file that was uploaded to Order Desk's Orders folder, and gives back the order number. If that file was registered before, it returns the same order instead of making a second one. Uses no AI.",
+  "flowIr": {
+    "description": "Creates the order in the Orders table for one order file that was uploaded to Order Desk's Orders folder, and gives back the order number. If that file was registered before, it returns the same order instead of making a second one. Uses no AI.",
+    "irVersion": 1,
+    "name": "Order Desk: register order",
+    "nodes": [
+      {
+        "code": "import re\nimport datetime\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_now() -> str:\n    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\n\n\n\ndef od_order_number(message_ref: str) -> str:\n    import hashlib\n\n    return \"OD-\" + hashlib.sha1(message_ref.encode(\"utf-8\")).hexdigest()[:8].upper()\n\n\nfile_path = od_text(params.get(\"file_path\"))\nfile_name = od_text(params.get(\"file_name\")) or file_path.split(\"/\")[-1]\nsender = od_text(params.get(\"sender\"))\nsubject = od_text(params.get(\"subject\")) or file_name\nsource_text = od_text(params.get(\"source_text\"))\nif not file_path:\n    raise ValueError(\"file_path is required: the path of the order file in the agent's files, for example Orders/po-1042.pdf\")\nfingerprint = od_text(params.get(\"fingerprint\"))\nmessage_ref = \"file:\" + (fingerprint or file_path)\norder_number = od_order_number(message_ref)\nexisting = [r for r in od_rows(\"od_orders\", order_number) if od_text(r.get(\"title\")) == order_number]\nalready = bool(existing)\nif existing:\n    order_id = od_text(existing[0].get(\"id\"))\nelse:\n    header = [x for x in [\"From: \" + sender if sender else \"\", \"Subject: \" + subject if subject else \"\", \"File: \" + file_path] if x]\n    text = (\"\\n\".join(header) + \"\\n\\n\" + source_text).strip()\n    if len(text) > 60000:\n        text = text[:60000] + \"\\n[The rest of this order was too long to keep here. Open the original file.]\"\n    data: dict[str, Any] = {\"message_ref\": message_ref[:300], \"received_on\": od_now(), \"source_text\": text, \"source_file\": file_path[:500]}\n    order = api.records.create(type_slug=\"od_orders\", record={\"title\": order_number, \"data\": data})\n    order_id = od_text(order.get(\"id\"))\n",
+        "id": "register",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "Id of the order",
+            "name": "order_id",
+            "type": "str"
+          },
+          {
+            "description": "Order number",
+            "name": "order_number",
+            "type": "str"
+          },
+          {
+            "description": "True when this file had already been registered",
+            "name": "already",
+            "type": "bool"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.file_path }}",
+            "control": "hidden",
+            "name": "file_path",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.file_name }}",
+            "control": "hidden",
+            "name": "file_name",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.fingerprint }}",
+            "control": "hidden",
+            "name": "fingerprint",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.sender }}",
+            "control": "hidden",
+            "name": "sender",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.subject }}",
+            "control": "hidden",
+            "name": "subject",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.source_text }}",
+            "control": "hidden",
+            "name": "source_text",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Creates the order record for an uploaded order file and returns its id and order number.",
+        "title": "Register the order"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "description": "Path of the file in the agent's files, for example Orders/po-1042.pdf",
+        "label": "Order file",
+        "name": "file_path",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "File name",
+        "name": "file_name",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "The fingerprint the job was started with; keeps two different files with the same name apart",
+        "label": "File fingerprint",
+        "name": "fingerprint",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Who sent it, if the file says",
+        "name": "sender",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Subject or title, if the file has one",
+        "name": "subject",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "The words of the order as you read them, shortened if very long",
+        "label": "The order as written",
+        "name": "source_text",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "register"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: register order",
+  "originKey": "26225954-ba4a-435a-a6fd-634b87108aac",
+  "tags": []
+}
