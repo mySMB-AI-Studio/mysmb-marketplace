@@ -6,7 +6,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 
 ## What's in the box
 
-- **Automations:** Order Desk: order received, Order Desk: find customer, Order Desk: match and convert, Order Desk: check order, Order Desk: close ticket, Order Desk: release to warehouse, Order Desk: save correction, Order Desk: import catalogue and customers (installed as Draft — publish in the installing workspace)
+- **Automations:** Order Desk: order received, Order Desk: find customer, Order Desk: match and convert, Order Desk: check order, Order Desk: close ticket, Order Desk: release to warehouse, Order Desk: save correction, Order Desk: import catalogue and customers, Order Desk: read dropped orders (installed as Draft — publish in the installing workspace)
 - **Custom tables:** Order Desk products, Customer order profiles, Delivery addresses, Order Desk tickets, Customer catalogue, Orders, Order lines, Corrections log (review and publish during extension setup)
 - **Setup:** Order Desk setup (each person reviews their configuration and account bindings)
 - **Pages:** Order review (installed as Draft — publish in the installing workspace)
