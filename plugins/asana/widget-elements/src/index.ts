@@ -149,58 +149,200 @@ const flatten_projects: ComputedFunction = (args) => {
  * Args: { value: array }
  */
 
+// ── Team Workload board ──────────────────────────────────────────────────────
+// `flatten_workload_board` is the single helper behind the Team Workload tile,
+// in the same one-pass shape as the other boards: sort, scale, tone and label
+// together, because a tile spec can only repeat over a flat array in state.
+//
+// What `get_team_workload` can and cannot tell us, read off the server source and
+// confirmed against the live workspace on 2026-11-12:
+//
+//  - CAPACITY IS NOT AN ASANA FIELD. Nothing on this connector reports a
+//    per-person task capacity, so the tile makes capacity an explicit control
+//    the viewer sets, defaulting to 8. Every "% load", "Over by N" and colour
+//    below is measured against that number, not against anything Asana says.
+//  - `task_count` SATURATES AT 100. The server counts incomplete tasks with
+//    `limit: 100` and does not paginate, so a member with more than 100 active
+//    tasks reads as exactly 100. The tile says so when it happens rather than
+//    presenting the number as exact.
+//  - THE MEMBER LIST IS NOT A CURATED TEAM. It is the first `member_limit`
+//    users `/users` returns for the workspace, so it can include people with
+//    no tasks and omit people who have them.
+//  - ONE NUMBER PER PERSON. No due dates, no projects, no overdue split --
+//    so the tile cannot break a member's load down any further.
+
+const CAP_MIN = 1;
+const CAP_MAX = 20;
+const CAP_DEFAULT = 8;
+const COUNT_SATURATION = 100;
+const NEAR_CAPACITY = 0.8;
+
+type WorkloadStatus = 'ok' | 'busy' | 'over';
+const WORKLOAD_TONE: Record<WorkloadStatus, string> = {
+  ok: 'brand',
+  busy: 'warning',
+  over: 'destructive',
+};
+
+const WORKLOAD_SORTS = ['most', 'least', 'az'] as const;
+type WorkloadSort = (typeof WORKLOAD_SORTS)[number];
+const WORKLOAD_SORT_LABEL: Record<WorkloadSort, string> = {
+  most: 'Most tasks',
+  least: 'Fewest first',
+  az: 'A–Z',
+};
+
+function clampCapacity(raw: unknown): number {
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n)) return CAP_DEFAULT;
+  return Math.min(CAP_MAX, Math.max(CAP_MIN, n));
+}
+
 /**
- * Flattens a get_team_workload response into display rows for the Team Workload tile.
- * Expects data already sorted descending by task_count from the MCP tool.
+ * Clamped step for the capacity stepper's − / + buttons. Kept separate from
+ * the board helper because the buttons write `/ui/cap`, and the board is
+ * recomputed from the watch on that path.
  *
- * Row 0 carries footer_label: "N active tasks across team".
- * Each row has: id, display_name ("F. Lastname"), initials ("AC"), task_count,
- * task_label ("N task(s)"), pct (0–100 relative to max), footer_label.
+ * Args: { value: number, delta: number }
  *
- * Args: { value: array }
+ * Spec example:
+ *   { "$computed": "asana_step_capacity",
+ *     "args": { "value": { "$state": "/ui/cap" }, "delta": 1 } }
  */
-const flatten_team_workload: ComputedFunction = (args) => {
+const step_capacity: ComputedFunction = (args) => {
+  const delta = Math.round(Number(args.delta)) || 0;
+  return clampCapacity(clampCapacity(args.value) + delta);
+};
+
+/**
+ * Builds the whole Team Workload view from a `get_team_workload` response.
+ *
+ * Args: { value: array, cap: number, sort: "most" | "least" | "az" }
+ *
+ * Returns an object written to `/ui/board`:
+ *   header_label, has_members, empty_message
+ *   stat_total, total_caption, balance_label, balance_tone, avg_label,
+ *   busiest_label
+ *   cap_value, cap_at_min, cap_at_max
+ *   sort_label, sort_most_selected, sort_least_selected, sort_az_selected
+ *   bar_template, rows[], legend[], footnote, footer_label
+ */
+const flatten_workload_board: ComputedFunction = (args) => {
   const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
-  if (raw.length === 0) return [];
+  const cap = clampCapacity(args.cap);
+  const sort: WorkloadSort = (WORKLOAD_SORTS as readonly string[]).includes(String(args.sort))
+    ? (String(args.sort) as WorkloadSort)
+    : 'most';
 
-  // already sorted desc by task_count from the MCP tool
-  const maxCount = Number((raw[0] as Record<string, unknown>).task_count ?? 0);
-
-  const rows = raw.map((member) => {
-    const m = member as Record<string, unknown>;
-    const id = String(m.user_gid ?? '');
-    const fullName = String(m.name ?? '');
-    const taskCount = Number(m.task_count ?? 0);
-
-    // "F. Lastname" format
-    const parts = fullName.trim().split(/\s+/);
-    const displayName = parts.length >= 2
-      ? `${parts[0][0]}. ${parts[parts.length - 1]}`
-      : fullName;
-
-    // "AC" initials
-    const initials = parts.length >= 2
-      ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-      : fullName.slice(0, 2).toUpperCase();
-
-    const pct = maxCount > 0 ? Math.round((taskCount / maxCount) * 100) : 0;
-    const taskLabel = `${taskCount} task${taskCount === 1 ? '' : 's'}`;
-
+  const members = raw.map((entry, index) => {
+    const m = entry as Record<string, unknown>;
+    const { displayName, initials } = formatPersonName(String(m.name ?? m.email ?? ''));
+    const count = Math.max(0, Math.round(Number(m.task_count ?? 0)) || 0);
     return {
-      id,
-      display_name: displayName,
-      initials,
-      task_count: taskCount,
-      task_label: taskLabel,
-      pct,
-      footer_label: '',
+      id: String(m.user_gid ?? m.email ?? `member-${index}`),
+      display_name: displayName || 'Unknown',
+      initials: initials || '?',
+      count,
     };
   });
 
-  const totalTasks = raw.reduce((sum, m) => sum + Number((m as Record<string, unknown>).task_count ?? 0), 0);
-  rows[0].footer_label = `${totalTasks} active task${totalTasks === 1 ? '' : 's'} across team`;
+  const total = members.reduce((sum, m) => sum + m.count, 0);
+  const maxCount = members.reduce((max, m) => Math.max(max, m.count), 0);
+  const avg = members.length > 0 ? total / members.length : 0;
+  const saturated = members.filter((m) => m.count >= COUNT_SATURATION).length;
 
-  return rows;
+  // Each member's bar is two grid tracks: `cap` units of within-capacity width
+  // and `headroom` units past it. The track sizes are the same on every row,
+  // so the gap between the two tracks falls at the same x on all of them --
+  // that gap IS the capacity line the reference design draws as a dashed rule.
+  //
+  // Headroom is clamped at both ends. It is never zero, so the capacity line
+  // never sits flush against the card edge; and it is never wider than the
+  // capacity zone itself, so one person on 100 tasks against a capacity of 8
+  // cannot squeeze everyone else's bar down to a sliver. The over-capacity
+  // segment therefore saturates at twice capacity -- past that the "Over by N"
+  // label carries the magnitude, which a bar that long could not anyway.
+  const headroom = Math.min(cap, Math.max(maxCount - cap, Math.ceil(cap * 0.15), 1));
+
+  const sorted = [...members].sort((a, b) => {
+    if (sort === 'az') return a.display_name.localeCompare(b.display_name);
+    if (sort === 'least') return a.count - b.count || a.display_name.localeCompare(b.display_name);
+    return b.count - a.count || a.display_name.localeCompare(b.display_name);
+  });
+
+  let busy = 0;
+  let over = 0;
+  const rows = sorted.map((m) => {
+    const status: WorkloadStatus =
+      m.count > cap ? 'over' : m.count >= cap * NEAR_CAPACITY ? 'busy' : 'ok';
+    if (status === 'busy') busy += 1;
+    if (status === 'over') over += 1;
+
+    return {
+      id: m.id,
+      display_name: m.display_name,
+      initials: m.initials,
+      tone: WORKLOAD_TONE[status],
+      count_label: `${m.count}${m.count >= COUNT_SATURATION ? '+' : ''} task${m.count === 1 ? '' : 's'}`,
+      fill_pct: Math.round((Math.min(m.count, cap) / cap) * 100),
+      over_pct: m.count > cap ? Math.min(100, Math.round(((m.count - cap) / headroom) * 100)) : 0,
+      load_label: m.count > cap ? `Over by ${m.count - cap}` : `${Math.round((m.count / cap) * 100)}% load`,
+      load_tone: status === 'ok' ? 'muted' : WORKLOAD_TONE[status],
+      share_label: total > 0 ? `${Math.round((m.count / total) * 100)}% of team` : '',
+    };
+  });
+
+  // Spread, not range: max/avg says "how far above everyone else is the
+  // busiest person", which is the question the badge answers. A range would
+  // read the same for a team of 1 and 9 as for a team of 5 and 13.
+  const ratio = avg > 0 ? maxCount / avg : 1;
+  const balance =
+    ratio <= 1.2
+      ? { label: 'Well balanced', tone: 'success' }
+      : ratio <= 1.5
+        ? { label: 'Slightly uneven', tone: 'warning' }
+        : { label: 'Uneven', tone: 'destructive' };
+
+  const busiest = [...members].sort(
+    (a, b) => b.count - a.count || a.display_name.localeCompare(b.display_name),
+  )[0];
+
+  return {
+    header_label: `Asana · ${members.length} team member${members.length === 1 ? '' : 's'}`,
+    has_members: members.length > 0,
+    empty_message: 'No team members found.',
+
+    stat_total: String(total),
+    total_caption: `active task${total === 1 ? '' : 's'} across team`,
+    balance_label: balance.label,
+    balance_tone: balance.tone,
+    avg_label: `avg ${avg.toFixed(1)} per person`,
+    busiest_label: busiest ? `busiest ${busiest.display_name} · ${busiest.count}` : '',
+
+    cap_value: String(cap),
+    cap_at_min: cap <= CAP_MIN,
+    cap_at_max: cap >= CAP_MAX,
+
+    sort_label: `Sort: ${WORKLOAD_SORT_LABEL[sort]}`,
+    sort_most_selected: sort === 'most',
+    sort_least_selected: sort === 'least',
+    sort_az_selected: sort === 'az',
+
+    bar_template: `minmax(0, ${cap}fr) minmax(0, ${headroom}fr)`,
+    rows,
+
+    legend: [
+      { id: 'ok', label: 'Under 80%', tone: WORKLOAD_TONE.ok },
+      { id: 'busy', label: busy > 0 ? `Near capacity (${busy})` : 'Near capacity', tone: WORKLOAD_TONE.busy },
+      { id: 'over', label: over > 0 ? `Over capacity (${over})` : 'Over capacity', tone: WORKLOAD_TONE.over },
+    ],
+
+    footnote:
+      saturated > 0
+        ? `Capacity is your setting, not an Asana field. ${saturated} member${saturated === 1 ? '' : 's'} hit the connector's 100-task counting limit, so the real total may be higher.`
+        : 'Capacity is your setting, not an Asana field — % load and colour are measured against it. Counts are every active task in the workspace.',
+    footer_label: `${total} active task${total === 1 ? '' : 's'} across team`,
+  };
 };
 
 // ── My Tasks board ───────────────────────────────────────────────────────────
@@ -1379,7 +1521,8 @@ const elements: PluginElementsModule = {
     flatten_projects,
     flatten_project_board,
     flatten_overdue_board,
-    flatten_team_workload,
+    flatten_workload_board,
+    step_capacity,
     flatten_my_tasks_board,
     flatten_milestones,
     flatten_activity_board,

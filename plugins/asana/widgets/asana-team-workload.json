@@ -1,4 +1,5 @@
 {
+  "brandColor": "#6C5CE7",
   "category": "tasks",
   "connectorsUsed": [
     "asana"
@@ -11,13 +12,16 @@
     },
     "tool": "get_team_workload"
   },
-  "description": "Active task counts per team member in your Asana workspace, sorted by workload.",
+  "description": "Active task load per workspace member against a capacity you set: a team total with a balance read, a per-person bar that changes colour at capacity, and a legend counting who is near it and who is past it. Capacity is a tile control, not an Asana field -- this connector reports no per-person capacity, so every '% load', 'Over by N' and colour is measured against the number in the stepper (default 8). Three further limits, all read off the server source and confirmed live on 2026-11-12: get_team_workload counts incomplete tasks with limit 100 and no pagination, so anyone past 100 active tasks reads as exactly 100 (the tile's footnote says so when it happens); the member list is the first member_limit users /users returns for the workspace, not a curated team, so it can include people with no tasks and omit people who have them; and the response is one number per person, with no due dates, projects or overdue split, so a member's load cannot be broken down any further. The reference design's vertical column chart is drawn as horizontal bars -- no system element has a settable height, and the capacity rule is the gap between the two bar tracks rather than a dashed overlay, which absolute positioning would be needed for.",
   "id": "asana-team-workload",
   "keywords": [
     "team workload",
     "asana team",
     "task distribution",
-    "active tasks"
+    "active tasks",
+    "capacity",
+    "over capacity",
+    "workload balance"
   ],
   "popularity": 60,
   "sizing": {
@@ -36,14 +40,174 @@
   },
   "spec": {
     "elements": {
+      "avgCaption": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/avg_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "balanceBadge": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/balance_label"
+          },
+          "tone": {
+            "$state": "/ui/board/balance_tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "barFill": {
+        "props": {
+          "tone": {
+            "$item": "tone"
+          },
+          "value": {
+            "$item": "fill_pct"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "barOver": {
+        "props": {
+          "tone": "destructive",
+          "value": {
+            "$item": "over_pct"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "barRow": {
+        "children": [
+          "barFill",
+          "barOver"
+        ],
+        "props": {
+          "gap": "xs",
+          "template": {
+            "$state": "/ui/board/bar_template"
+          }
+        },
+        "type": "Row"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "content"
+        ],
+        "props": {},
+        "type": "Body"
+      },
+      "busiestCaption": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/busiest_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "capGroup": {
+        "children": [
+          "capLabel",
+          "capMinus",
+          "capValue",
+          "capPlus"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "capLabel": {
+        "props": {
+          "text": "Capacity",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "capMinus": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/cap",
+              "value": {
+                "$computed": "asana_step_capacity",
+                "args": {
+                  "delta": -1,
+                  "value": {
+                    "$state": "/ui/cap"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Decrease capacity",
+          "disabled": {
+            "$state": "/ui/board/cap_at_min"
+          },
+          "icon": "Minus",
+          "size": "sm",
+          "tone": "muted",
+          "variant": "outlined"
+        },
+        "type": "IconButton"
+      },
+      "capPlus": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/cap",
+              "value": {
+                "$computed": "asana_step_capacity",
+                "args": {
+                  "delta": 1,
+                  "value": {
+                    "$state": "/ui/cap"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Increase capacity",
+          "disabled": {
+            "$state": "/ui/board/cap_at_max"
+          },
+          "icon": "Plus",
+          "size": "sm",
+          "tone": "muted",
+          "variant": "outlined"
+        },
+        "type": "IconButton"
+      },
+      "capValue": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/board/cap_value"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
       "card": {
         "children": [
-          "headerRow",
-          "div0",
-          "loading",
-          "empty",
-          "memberList",
-          "memberFooter"
+          "header",
+          "body",
+          "footnote",
+          "footerDivider",
+          "footerRow"
         ],
         "props": {},
         "type": "Card",
@@ -52,10 +216,74 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/rows",
+                "statePath": "/ui/cap",
+                "value": 8
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sort",
+                "value": "most"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
                 "value": {
-                  "$computed": "asana_flatten_team_workload",
+                  "$computed": "asana_flatten_workload_board",
                   "args": {
+                    "cap": {
+                      "$state": "/ui/cap"
+                    },
+                    "sort": {
+                      "$state": "/ui/sort"
+                    },
+                    "value": {
+                      "$state": "/asana/get_team_workload/data"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/cap": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_workload_board",
+                  "args": {
+                    "cap": {
+                      "$state": "/ui/cap"
+                    },
+                    "sort": {
+                      "$state": "/ui/sort"
+                    },
+                    "value": {
+                      "$state": "/asana/get_team_workload/data"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sort": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_workload_board",
+                  "args": {
+                    "cap": {
+                      "$state": "/ui/cap"
+                    },
+                    "sort": {
+                      "$state": "/ui/sort"
+                    },
                     "value": {
                       "$state": "/asana/get_team_workload/data"
                     }
@@ -66,43 +294,277 @@
           ]
         }
       },
-      "div0": {
-        "props": {},
-        "type": "Divider"
+      "content": {
+        "children": [
+          "empty",
+          "hero",
+          "controlsRow",
+          "list",
+          "legendRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.get_team_workload",
+          "not": true
+        }
+      },
+      "controlsRow": {
+        "children": [
+          "capGroup",
+          "sortToggle"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/has_members"
+        }
       },
       "empty": {
         "props": {
-          "message": "No team members found."
+          "message": {
+            "$state": "/ui/board/empty_message"
+          }
         },
         "type": "Empty",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.get_team_workload",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0",
-              "not": true
-            }
-          ]
+          "$state": "/ui/board/has_members",
+          "not": true
         }
       },
       "eyebrow": {
         "props": {
-          "text": "Asana"
+          "text": {
+            "$state": "/ui/board/header_label"
+          }
         },
         "type": "Eyebrow"
       },
-      "headerRow": {
+      "footerDivider": {
+        "props": {},
+        "type": "Divider"
+      },
+      "footerLabel": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footer_label"
+          }
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/board/has_members"
+        }
+      },
+      "footerRow": {
         "children": [
-          "titleGroup"
+          "footerLabel",
+          "openInAsanaBtn"
         ],
         "props": {
           "align": "center",
           "justify": "between"
         },
         "type": "Row"
+      },
+      "footnote": {
+        "children": [
+          "footnoteRow"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/ui/board/has_members"
+        }
+      },
+      "footnoteIcon": {
+        "props": {
+          "name": "Info",
+          "size": "xs",
+          "tone": "muted"
+        },
+        "type": "Icon"
+      },
+      "footnoteRow": {
+        "children": [
+          "footnoteIcon",
+          "footnoteWrap"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "footnoteText": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footnote"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "footnoteWrap": {
+        "children": [
+          "footnoteText"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "props": {},
+        "type": "Header"
+      },
+      "hero": {
+        "children": [
+          "heroRow"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/ui/board/has_members"
+        }
+      },
+      "heroCaption": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/total_caption"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "heroLeft": {
+        "children": [
+          "heroStat",
+          "heroCaption"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "heroRight": {
+        "children": [
+          "balanceBadge",
+          "avgCaption",
+          "busiestCaption"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "heroRow": {
+        "children": [
+          "heroLeft",
+          "heroRight"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "heroStat": {
+        "props": {
+          "size": "lg",
+          "value": {
+            "$state": "/ui/board/stat_total"
+          }
+        },
+        "type": "Stat"
+      },
+      "legendDot": {
+        "props": {
+          "size": "xs",
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Dot"
+      },
+      "legendItem": {
+        "children": [
+          "legendDot",
+          "legendLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "legendLabel": {
+        "props": {
+          "text": {
+            "$item": "label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "legendRow": {
+        "children": [
+          "legendItem"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/legend"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/has_members"
+        }
+      },
+      "list": {
+        "children": [
+          "memberRow"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/rows"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/board/has_members"
+        }
+      },
+      "loadCaption": {
+        "props": {
+          "text": {
+            "$item": "load_label"
+          },
+          "tone": {
+            "$item": "load_tone"
+          }
+        },
+        "type": "Caption"
       },
       "loading": {
         "children": [
@@ -123,112 +585,96 @@
           "initials": {
             "$item": "initials"
           },
-          "size": "sm"
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
+          }
         },
         "type": "Avatar"
       },
-      "memberBar": {
+      "memberCount": {
         "props": {
-          "tone": "success",
-          "value": {
-            "$item": "pct"
-          }
-        },
-        "type": "ProgressBar"
-      },
-      "memberBarRow": {
-        "children": [
-          "memberBar"
-        ],
-        "props": {},
-        "type": "Row"
-      },
-      "memberFooter": {
-        "props": {
+          "size": "sm",
           "text": {
-            "$state": "/ui/rows/0/footer_label"
+            "$item": "count_label"
           },
           "tone": "muted"
         },
-        "type": "Caption",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.get_team_workload",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0/footer_label"
-            }
-          ]
-        }
-      },
-      "memberList": {
-        "children": [
-          "memberRow"
-        ],
-        "props": {
-          "gap": "sm"
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/ui/rows"
-        },
-        "type": "Stack",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.get_team_workload",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
-            }
-          ]
-        }
+        "type": "Text"
       },
       "memberName": {
         "props": {
-          "grow": true,
           "size": "sm",
           "text": {
             "$item": "display_name"
           },
-          "weight": "semibold"
+          "truncate": true,
+          "weight": "medium"
         },
         "type": "Text"
       },
       "memberRow": {
         "children": [
-          "memberTopRow",
-          "memberBarRow"
+          "memberTop",
+          "barRow",
+          "metaRow"
         ],
         "props": {
           "gap": "xs"
         },
         "type": "Stack"
       },
-      "memberTaskCount": {
-        "props": {
-          "size": "sm",
-          "text": {
-            "$item": "task_label"
-          },
-          "tone": "muted"
-        },
-        "type": "Text"
-      },
-      "memberTopRow": {
+      "memberTop": {
         "children": [
           "memberAvatar",
           "memberName",
-          "memberTaskCount"
+          "memberCount"
         ],
         "props": {
           "align": "center",
-          "gap": "sm"
+          "gap": "sm",
+          "template": "auto minmax(0, 1fr) auto"
         },
         "type": "Row"
+      },
+      "metaRow": {
+        "children": [
+          "loadCaption",
+          "shareCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "openInAsanaBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://app.asana.com/"
+            }
+          }
+        },
+        "props": {
+          "label": "Open in Asana",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "shareCaption": {
+        "props": {
+          "text": {
+            "$item": "share_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
       "sk1": {
         "props": {
@@ -251,6 +697,107 @@
         },
         "type": "Skeleton"
       },
+      "sortAz": {
+        "children": [
+          "sortAzBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sort",
+              "value": "most"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/sort_az_selected"
+        }
+      },
+      "sortAzBadge": {
+        "props": {
+          "text": "Sort: A–Z",
+          "tone": "default",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sortLeast": {
+        "children": [
+          "sortLeastBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sort",
+              "value": "az"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/sort_least_selected"
+        }
+      },
+      "sortLeastBadge": {
+        "props": {
+          "text": "Sort: Fewest first",
+          "tone": "default",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sortMost": {
+        "children": [
+          "sortMostBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sort",
+              "value": "least"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/sort_most_selected"
+        }
+      },
+      "sortMostBadge": {
+        "props": {
+          "text": "Sort: Most tasks",
+          "tone": "default",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sortToggle": {
+        "children": [
+          "sortMost",
+          "sortLeast",
+          "sortAz"
+        ],
+        "props": {
+          "align": "center"
+        },
+        "type": "Row"
+      },
       "title": {
         "props": {
           "level": "h2",
@@ -272,8 +819,8 @@
       "titleIcon": {
         "props": {
           "name": "UsersRound",
-          "size": "sm",
-          "tone": "accent"
+          "size": "lg",
+          "tone": "brand"
         },
         "type": "Icon"
       },
@@ -295,7 +842,8 @@
     "team",
     "workload",
     "tasks",
-    "assignee"
+    "assignee",
+    "capacity"
   ],
   "title": "Team Workload"
 }
