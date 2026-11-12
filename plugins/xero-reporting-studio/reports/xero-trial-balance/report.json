@@ -1,156 +1,156 @@
 {
-  "title": "Xero Trial Balance",
-  "description": "Live, validated Xero Trial Balance — every account's debit and credit (and year to date) as at a date, accrual or cash basis, with debits = credits and a tie to Current Year Earnings.",
-  "tags": [
-    "xero",
-    "trial-balance",
-    "financial-statement"
-  ],
-  "fileName": "xero-trial-balance.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "tb",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_trial_balance"
+        }
+      },
+      {
+        "id": "tb_cash",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_trial_balance"
+        }
+      },
+      {
+        "id": "pnl_tie",
+        "params": {
+          "fromDate": {
+            "input": "fy_start",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "as_at",
+        "default": "today",
         "label": "As at",
-        "type": "date",
-        "default": "today"
+        "name": "as_at",
+        "type": "date"
       },
       {
-        "name": "fy_start",
+        "default": "2026-07-01",
         "label": "Financial year start",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "fy_start",
+        "type": "date"
       },
       {
-        "name": "basis",
+        "default": "Accrual",
         "label": "Accounting basis",
-        "type": "enum",
+        "name": "basis",
         "options": [
           "Accrual",
           "Cash"
         ],
-        "default": "Accrual"
+        "type": "enum"
       },
       {
-        "name": "org",
+        "default": "",
         "label": "Organisation",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "org",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"tb\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"today\",\"c\":\"none\",\"v\":\"tb\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "tb",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_trial_balance"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "tb_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_trial_balance"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl_tie",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "fy_start"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated Xero Trial Balance — every account's debit and credit (and year to date) as at a date, accrual or cash basis, with debits = credits and a tie to Current Year Earnings.",
+  "fileName": "xero-trial-balance.html",
+  "tags": [
+    "xero",
+    "trial-balance",
+    "financial-statement"
+  ],
+  "title": "Xero Trial Balance"
 }

@@ -1,221 +1,221 @@
 {
-  "title": "Xero Balance Sheet",
-  "description": "Live, validated Xero Balance Sheet (P07) — as-at presets, accrual/cash basis, comparison column and an organisation picker.",
-  "tags": [
-    "xero",
-    "balance-sheet",
-    "P07",
-    "financial-statement"
-  ],
-  "fileName": "xero-balance-sheet.html",
   "dataBindings": {
-    "inputs": [
+    "bindings": [
       {
-        "name": "as_at",
-        "label": "As at",
-        "type": "date",
-        "default": "today"
+        "id": "bs",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
       },
       {
-        "name": "basis",
+        "id": "bs_cash",
+        "params": {
+          "date": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_compare",
+        "params": {
+          "date": {
+            "input": "compare_as_at",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_compare_cash",
+        "params": {
+          "date": {
+            "input": "compare_as_at",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "pnl_ytd",
+        "params": {
+          "fromDate": {
+            "input": "fy_start",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "as_at",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "today",
+        "label": "As at",
+        "name": "as_at",
+        "type": "date"
+      },
+      {
+        "default": "Accrual",
         "label": "Accounting basis",
-        "type": "enum",
+        "name": "basis",
         "options": [
           "Accrual",
           "Cash"
         ],
-        "default": "Accrual"
+        "type": "enum"
       },
       {
-        "name": "compare_as_at",
+        "default": "2025-09-30",
         "label": "Compare as at",
-        "type": "date",
-        "default": "2025-09-30"
+        "name": "compare_as_at",
+        "type": "date"
       },
       {
-        "name": "fy_start",
+        "default": "2026-07-01",
         "label": "Financial year start",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "fy_start",
+        "type": "date"
       },
       {
-        "name": "org",
+        "default": "",
         "label": "Organisation",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "org",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_this_month\",\"c\":\"none\",\"v\":\"bs\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"custom\",\"a\":\"end_this_month\",\"c\":\"none\",\"v\":\"bs\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "bs",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_compare",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "compare_as_at"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_compare_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "compare_as_at"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "pnl_ytd",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "fy_start"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "as_at"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated Xero Balance Sheet (P07) — as-at presets, accrual/cash basis, comparison column and an organisation picker.",
+  "fileName": "xero-balance-sheet.html",
+  "tags": [
+    "xero",
+    "balance-sheet",
+    "P07",
+    "financial-statement"
+  ],
+  "title": "Xero Balance Sheet"
 }

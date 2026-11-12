@@ -1,220 +1,220 @@
 {
-  "title": "Xero Bank Reconciliation Status",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "open_tx",
+        "params": {
+          "order": {
+            "kind": "static",
+            "value": "Date ASC"
+          },
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "open_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_bank_transactions"
+        }
+      },
+      {
+        "id": "open_pay",
+        "params": {
+          "order": {
+            "kind": "static",
+            "value": "Date ASC"
+          },
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "open_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_payments"
+        }
+      },
+      {
+        "id": "done_tx",
+        "params": {
+          "order": {
+            "kind": "static",
+            "value": "Date ASC"
+          },
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "done_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_bank_transactions"
+        }
+      },
+      {
+        "id": "done_pay",
+        "params": {
+          "order": {
+            "kind": "static",
+            "value": "Date ASC"
+          },
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "done_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_payments"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "bank",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_bank_summary"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-07-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "today",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "Status==\"AUTHORISED\" AND IsReconciled==false AND Date<=DateTime(2026,09,25)",
+        "label": "Unreconciled filter",
+        "maxLength": 200,
+        "name": "open_where",
+        "type": "string"
+      },
+      {
+        "default": "Status==\"AUTHORISED\" AND IsReconciled==true AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)",
+        "label": "Reconciled filter",
+        "maxLength": 200,
+        "name": "done_where",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": 1,
+        "label": "Page",
+        "max": 20,
+        "min": 1,
+        "name": "page",
+        "type": "number"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Live, validated Xero bank reconciliation status — per bank account, the unreconciled bank transactions and payments (oldest first, with age) and what was reconciled in the period.",
+  "fileName": "xero-bank-reconciliation-status.html",
   "tags": [
     "xero",
     "bank-reconciliation",
     "unreconciled",
     "bank"
   ],
-  "fileName": "xero-bank-reconciliation-status.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
-        "type": "date",
-        "default": "today"
-      },
-      {
-        "name": "open_where",
-        "label": "Unreconciled filter",
-        "type": "string",
-        "maxLength": 200,
-        "default": "Status==\"AUTHORISED\" AND IsReconciled==false AND Date<=DateTime(2026,09,25)"
-      },
-      {
-        "name": "done_where",
-        "label": "Reconciled filter",
-        "type": "string",
-        "maxLength": 200,
-        "default": "Status==\"AUTHORISED\" AND IsReconciled==true AND Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)"
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "page",
-        "label": "Page",
-        "type": "number",
-        "min": 1,
-        "max": 20,
-        "default": 1
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"accounts\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "open_tx",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_bank_transactions"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "open_where"
-          },
-          "order": {
-            "kind": "static",
-            "value": "Date ASC"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "open_pay",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_payments"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "open_where"
-          },
-          "order": {
-            "kind": "static",
-            "value": "Date ASC"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "done_tx",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_bank_transactions"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "done_where"
-          },
-          "order": {
-            "kind": "static",
-            "value": "Date ASC"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "done_pay",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_payments"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "done_where"
-          },
-          "order": {
-            "kind": "static",
-            "value": "Date ASC"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bank",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_bank_summary"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "Xero Bank Reconciliation Status"
 }

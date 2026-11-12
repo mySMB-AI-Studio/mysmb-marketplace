@@ -1,229 +1,229 @@
 {
-  "title": "Xero Cash Summary",
-  "description": "Live, validated Xero Cash Summary (P10) — cash received and spent by account (cash basis), net cash flows, other cash movements, and opening and closing bank balances, with month columns.",
-  "tags": [
-    "xero",
-    "cash-summary",
-    "P10",
-    "cash"
-  ],
-  "fileName": "xero-cash-summary.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "pnl_cash",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "bank",
+        "params": {
+          "fromDate": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "toDate": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_bank_summary"
+        }
+      },
+      {
+        "id": "bs_start",
+        "params": {
+          "date": {
+            "input": "prev_end",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_end",
+        "params": {
+          "date": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_m",
+        "params": {
+          "date": {
+            "input": "m_end",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": true
+          },
+          "periods": {
+            "input": "bs_periods",
+            "kind": "input"
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "timeframe": {
+            "kind": "static",
+            "value": "MONTH"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "from_date",
+        "default": "2026-07-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "from_date",
+        "type": "date"
       },
       {
-        "name": "to_date",
+        "default": "today",
         "label": "To",
-        "type": "date",
-        "default": "today"
+        "name": "to_date",
+        "type": "date"
       },
       {
-        "name": "prev_end",
+        "default": "2026-06-30",
         "label": "Day before the period",
-        "type": "date",
-        "default": "2026-06-30"
+        "name": "prev_end",
+        "type": "date"
       },
       {
-        "name": "m_end",
+        "default": "2026-08-31",
         "label": "Last full month end",
-        "type": "date",
-        "default": "2026-08-31"
+        "name": "m_end",
+        "type": "date"
       },
       {
-        "name": "bs_periods",
+        "default": 1,
         "label": "Month ends",
-        "type": "number",
-        "min": 1,
         "max": 11,
-        "default": 1
+        "min": 1,
+        "name": "bs_periods",
+        "type": "number"
       },
       {
-        "name": "org",
+        "default": "",
         "label": "Organisation",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "org",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"months\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"xero\",\"dens\":\"100\",\"p\":\"this_fy_td\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"months\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "pnl_cash",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bank",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_bank_summary"
-        },
-        "params": {
-          "fromDate": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "toDate": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_start",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "prev_end"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_end",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_m",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "m_end"
-          },
-          "periods": {
-            "kind": "input",
-            "input": "bs_periods"
-          },
-          "timeframe": {
-            "kind": "static",
-            "value": "MONTH"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": true
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Live, validated Xero Cash Summary (P10) — cash received and spent by account (cash basis), net cash flows, other cash movements, and opening and closing bank balances, with month columns.",
+  "fileName": "xero-cash-summary.html",
+  "tags": [
+    "xero",
+    "cash-summary",
+    "P10",
+    "cash"
+  ],
+  "title": "Xero Cash Summary"
 }
