@@ -1,111 +1,111 @@
 {
-  "title": "QuickBooks Sales by Tracking Category",
-  "description": "Client Report Analytics CRA-03 for one QuickBooks client: sales split by one tracking category / class / job at a time, with each option's share of the total, tied to the platform's own sales figure. Live and validated on every open; mySMB branding by default.",
-  "tags": [
-    "client-report-analytics",
-    "CRA-03",
-    "quickbooks",
-    "sales-by-tracking"
-  ],
-  "fileName": "client-quickbooks-sales-by-tracking.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "by_class",
+        "params": {
+          "end_date": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "start_date",
+            "kind": "input"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Classes"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl",
+        "params": {
+          "end_date": {
+            "input": "end_date",
+            "kind": "input"
+          },
+          "start_date": {
+            "input": "start_date",
+            "kind": "input"
+          },
+          "summarize_column_by": {
+            "kind": "static",
+            "value": "Total"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_report_profit_and_loss"
+        }
+      },
+      {
+        "id": "company_info",
+        "params": {
+          "query": {
+            "kind": "static",
+            "value": "SELECT * FROM CompanyInfo"
+          }
+        },
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "qbo_query"
+        }
+      },
+      {
+        "id": "prefs",
+        "params": {},
+        "tool": {
+          "mcp": "quickbooks-accounting",
+          "name": "get_preferences"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "start_date",
+        "default": "2026-08-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-08-01"
+        "name": "start_date",
+        "type": "date"
       },
       {
-        "name": "end_date",
+        "default": "2026-08-31",
         "label": "To",
-        "type": "date",
-        "default": "2026-08-31"
+        "name": "end_date",
+        "type": "date"
       },
       {
-        "name": "persona",
+        "default": "Practitioner",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Practitioner"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_month\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\",\"x\":\"\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "by_class",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_profit_and_loss"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "start_date"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "summarize_column_by": {
-            "kind": "static",
-            "value": "Classes"
-          }
-        }
-      },
-      {
-        "id": "pnl",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_report_profit_and_loss"
-        },
-        "params": {
-          "start_date": {
-            "kind": "input",
-            "input": "start_date"
-          },
-          "end_date": {
-            "kind": "input",
-            "input": "end_date"
-          },
-          "summarize_column_by": {
-            "kind": "static",
-            "value": "Total"
-          }
-        }
-      },
-      {
-        "id": "company_info",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "qbo_query"
-        },
-        "params": {
-          "query": {
-            "kind": "static",
-            "value": "SELECT * FROM CompanyInfo"
-          }
-        }
-      },
-      {
-        "id": "prefs",
-        "tool": {
-          "mcp": "quickbooks-accounting",
-          "name": "get_preferences"
-        },
-        "params": {}
+        "name": "display",
+        "type": "string"
       }
     ]
-  }
+  },
+  "description": "Client Report Analytics CRA-03 for one QuickBooks client: sales split by one tracking category / class / job at a time, with each option's share of the total, tied to the platform's own sales figure. Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-quickbooks-sales-by-tracking.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-03",
+    "quickbooks",
+    "sales-by-tracking"
+  ],
+  "title": "QuickBooks Sales by Tracking Category"
 }

@@ -1,245 +1,245 @@
 {
-  "title": "MYOB Financial Overview",
-  "description": "Client Report Analytics CRA-01 for one MYOB client: revenue, gross and net profit with margins against last year, bank balances and receivables / payables ageing, cash or accrual. Live and validated on every open; mySMB branding by default.",
-  "tags": [
-    "client-report-analytics",
-    "CRA-01",
-    "myob",
-    "financial-overview"
-  ],
-  "fileName": "client-myob-financial-overview.html",
   "dataBindings": {
+    "bindings": [
+      {
+        "id": "pnl",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "pnl_ly",
+        "params": {
+          "from_date": {
+            "input": "ly_from",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "input": "basis",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "ly_to",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_profit_and_loss"
+        }
+      },
+      {
+        "id": "bs",
+        "params": {
+          "date": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "input": "basis",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_now",
+        "params": {
+          "date": {
+            "kind": "context",
+            "source": "now.date"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "aged_ar",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "report_date": {
+            "kind": "context",
+            "source": "now.date"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_aged_receivables"
+        }
+      },
+      {
+        "id": "aged_ap",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "report_date": {
+            "kind": "context",
+            "source": "now.date"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_aged_payables"
+        }
+      },
+      {
+        "id": "journals",
+        "params": {
+          "from_date": {
+            "input": "ly_from",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_journal_transactions"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
     "inputs": [
       {
-        "name": "from_date",
+        "default": "2026-07-01",
         "label": "From",
-        "type": "date",
-        "default": "2026-07-01"
+        "name": "from_date",
+        "type": "date"
       },
       {
-        "name": "to_date",
+        "default": "2026-09-30",
         "label": "To",
-        "type": "date",
-        "default": "2026-09-30"
+        "name": "to_date",
+        "type": "date"
       },
       {
-        "name": "basis",
+        "default": "Accrual",
         "label": "Accounting method",
-        "type": "enum",
+        "name": "basis",
         "options": [
           "Accrual",
           "Cash"
         ],
-        "default": "Accrual"
+        "type": "enum"
       },
       {
-        "name": "company_file",
+        "default": "",
         "label": "Client (MYOB company file)",
-        "type": "string",
         "maxLength": 64,
-        "default": ""
+        "name": "company_file",
+        "type": "string"
       },
       {
-        "name": "persona",
+        "default": "Bookkeeper",
         "label": "View as",
-        "type": "enum",
+        "name": "persona",
         "options": [
           "Client",
           "Bookkeeper",
           "Practitioner",
           "Executive"
         ],
-        "default": "Bookkeeper"
+        "type": "enum"
       },
       {
-        "name": "display",
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}",
         "label": "Display settings",
-        "type": "string",
         "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}"
+        "name": "display",
+        "type": "string"
       },
       {
-        "name": "ly_from",
+        "default": "2025-07-01",
         "label": "Last year from",
-        "type": "date",
-        "default": "2025-07-01"
+        "name": "ly_from",
+        "type": "date"
       },
       {
-        "name": "ly_to",
+        "default": "2025-09-30",
         "label": "Last year to",
-        "type": "date",
-        "default": "2025-09-30"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "pnl",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "from_date"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "input",
-            "input": "basis"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "pnl_ly",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_profit_and_loss"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "ly_from"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "ly_to"
-          },
-          "reporting_basis": {
-            "kind": "input",
-            "input": "basis"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "reporting_basis": {
-            "kind": "input",
-            "input": "basis"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "bs_now",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "context",
-            "source": "now.date"
-          },
-          "reporting_basis": {
-            "kind": "static",
-            "value": "Accrual"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "aged_ar",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_aged_receivables"
-        },
-        "params": {
-          "report_date": {
-            "kind": "context",
-            "source": "now.date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "aged_ap",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "get_aged_payables"
-        },
-        "params": {
-          "report_date": {
-            "kind": "context",
-            "source": "now.date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "journals",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_journal_transactions"
-        },
-        "params": {
-          "from_date": {
-            "kind": "input",
-            "input": "ly_from"
-          },
-          "to_date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "myob_company_file_id": {
-            "kind": "input",
-            "input": "company_file"
-          }
-        }
-      },
-      {
-        "id": "company_files",
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        },
-        "params": {}
+        "name": "ly_to",
+        "type": "date"
       }
     ]
-  }
+  },
+  "description": "Client Report Analytics CRA-01 for one MYOB client: revenue, gross and net profit with margins against last year, bank balances and receivables / payables ageing, cash or accrual. Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-myob-financial-overview.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-01",
+    "myob",
+    "financial-overview"
+  ],
+  "title": "MYOB Financial Overview"
 }

@@ -1,273 +1,273 @@
 {
-  "title": "Xero Summary of Tax Amounts by Type",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "payments",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "date_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_payments"
+        }
+      },
+      {
+        "id": "paid_inv",
+        "params": {
+          "ids": {
+            "input": "inv_ids",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "invoices",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "statuses": {
+            "kind": "static",
+            "value": "AUTHORISED,PAID"
+          },
+          "where": {
+            "input": "date_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "credit_notes",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "date_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_credit_notes"
+        }
+      },
+      {
+        "id": "bank_tx",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "input": "date_where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_bank_transactions"
+        }
+      },
+      {
+        "id": "tax_rates",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_tax_rates"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "bs_end",
+        "params": {
+          "date": {
+            "input": "to_date",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "bs_start",
+        "params": {
+          "date": {
+            "input": "prev_end",
+            "kind": "input"
+          },
+          "paymentsOnly": {
+            "kind": "static",
+            "value": false
+          },
+          "standardLayout": {
+            "kind": "static",
+            "value": true
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_balance_sheet"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-04-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-06-30",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-03-31",
+        "label": "Day before the period",
+        "name": "prev_end",
+        "type": "date"
+      },
+      {
+        "default": "Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)",
+        "label": "Period filter",
+        "maxLength": 200,
+        "name": "date_where",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "label": "Paid invoice ids",
+        "maxLength": 500,
+        "name": "inv_ids",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": 1,
+        "label": "Page",
+        "max": 20,
+        "min": 1,
+        "name": "page",
+        "type": "number"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"gst\",\"o\":\"b=org\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
   "description": "Client Report Analytics CRA-05 for one Xero client: GST by tax type for each month of the period, with period totals reconciled to the GST figures (BAS preparation review). Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-xero-tax-by-type.html",
   "tags": [
     "client-report-analytics",
     "CRA-05",
     "xero",
     "tax-by-type"
   ],
-  "fileName": "client-xero-tax-by-type.html",
-  "dataBindings": {
-    "inputs": [
-      {
-        "name": "from_date",
-        "label": "From",
-        "type": "date",
-        "default": "2026-04-01"
-      },
-      {
-        "name": "to_date",
-        "label": "To",
-        "type": "date",
-        "default": "2026-06-30"
-      },
-      {
-        "name": "prev_end",
-        "label": "Day before the period",
-        "type": "date",
-        "default": "2026-03-31"
-      },
-      {
-        "name": "date_where",
-        "label": "Period filter",
-        "type": "string",
-        "maxLength": 200,
-        "default": "Date>=DateTime(2026,04,01) AND Date<=DateTime(2026,06,30)"
-      },
-      {
-        "name": "inv_ids",
-        "label": "Paid invoice ids",
-        "type": "string",
-        "maxLength": 500,
-        "default": ""
-      },
-      {
-        "name": "org",
-        "label": "Organisation",
-        "type": "string",
-        "maxLength": 64,
-        "default": ""
-      },
-      {
-        "name": "page",
-        "label": "Page",
-        "type": "number",
-        "min": 1,
-        "max": 20,
-        "default": 1
-      },
-      {
-        "name": "display",
-        "label": "Display settings",
-        "type": "string",
-        "maxLength": 300,
-        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"gst\",\"o\":\"b=org\"}"
-      }
-    ],
-    "bindings": [
-      {
-        "id": "payments",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_payments"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "date_where"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "paid_inv",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "ids": {
-            "kind": "input",
-            "input": "inv_ids"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "invoices",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_invoices"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "date_where"
-          },
-          "statuses": {
-            "kind": "static",
-            "value": "AUTHORISED,PAID"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "credit_notes",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_credit_notes"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "date_where"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bank_tx",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_bank_transactions"
-        },
-        "params": {
-          "where": {
-            "kind": "input",
-            "input": "date_where"
-          },
-          "page": {
-            "kind": "input",
-            "input": "page"
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "tax_rates",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_tax_rates"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "accounts",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_accounts"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_end",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "to_date"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "bs_start",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_balance_sheet"
-        },
-        "params": {
-          "date": {
-            "kind": "input",
-            "input": "prev_end"
-          },
-          "standardLayout": {
-            "kind": "static",
-            "value": true
-          },
-          "paymentsOnly": {
-            "kind": "static",
-            "value": false
-          },
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "org",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "get_organisation"
-        },
-        "params": {
-          "xero_tenant_id": {
-            "kind": "input",
-            "input": "org"
-          }
-        }
-      },
-      {
-        "id": "connections",
-        "tool": {
-          "mcp": "xero-accounting",
-          "name": "list_connections"
-        },
-        "params": {}
-      }
-    ]
-  }
+  "title": "Xero Summary of Tax Amounts by Type"
 }
