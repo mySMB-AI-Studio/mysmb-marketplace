@@ -55,7 +55,7 @@ const open = async (html) => { const dom = new JSDOM(html, { runScripts: 'danger
   t.doc.getElementById('mk-xlsx').click(); await t.settle();
   const xb = t.downloads.filter((d) => d.blob).pop(), xs = xb ? Buffer.from(await xb.blob.arrayBuffer()).toString('utf8') : '';
   ok('catalogue: Excel lists every report with its status and favourite', /Journal entries/.test(xs) && /Live template/.test(xs) && /★/.test(xs) && /Validation/.test(xs), xs.length);
-  ok('catalogue: notes say what each status means and how favourites are kept', /On request = the agent writes the report from its specification/.test(text(t.doc, '#mk-sources')) && /To keep favourites, ask the agent to save the catalogue with them/.test(text(t.doc, '#mk-sources')));
+  ok('catalogue: notes say what each status means and how favourites are kept', /On request = mySidekick writes the report from its specification/.test(text(t.doc, '#mk-sources')) && /To keep favourites, ask mySidekick to save the catalogue with them/.test(text(t.doc, '#mk-sources')));
   // a saved copy with favourites opens on them
   const disp = JSON.parse(cm.inputs.find((i) => i.name === 'display').default); disp.v = 'fav'; disp.x = 'M32,M40';
   t = await run('ct', onFile(man('ct'), { display: JSON.stringify(disp) }), FX, { bundleInputs: true }); await wait(60);
@@ -113,7 +113,7 @@ const open = async (html) => { const dom = new JSDOM(html, { runScripts: 'danger
   p = await open(page('workers-comp', { company: 'mySMB.com', estimations: [] }));
   ok('workers comp: no estimations → MYOB\'s empty state, not red', /No estimation reports created yet/.test(text(p.doc, '#mk-body')) && !p.doc.querySelector('#mk-banner').className.includes('fail') && p.errs.length === 0);
 
-  // ---------------- generated skills and the agent (skipped on the roundtrip's extracted copy, which has no plugin)
+  // ---------------- generated skills, and no agent (skipped on the roundtrip's extracted copy, which has no plugin)
   if (!process.env.KIT_DIR) {
     const sk = (s) => fs.readFileSync(path.join(PLUGIN, 'skills', s + '.md'), 'utf8').replace(/\r\n/g, '\n');
     for (const s of ['myob-journal-security-audit', 'myob-workers-compensation']) {
@@ -122,14 +122,7 @@ const open = async (html) => { const dom = new JSDOM(html, { runScripts: 'danger
     }
     ok('myob-custom-reports: the guide maps MYOB settings to inputs and says what is N/A', /\| Compare with \(previous period, last year, year to date\) \| `display\.c` \|/.test(sk('myob-custom-reports')) && /Columns shown, hidden or reordered/.test(sk('myob-custom-reports')));
     ok('foundation: names the guide and the export pages', /`myob-custom-reports` \(M62\), `myob-journal-security-audit` \(M13\), `myob-workers-compensation` \(M31\)/.test(sk('myob-report-foundation')));
-    const bpDir = path.join(PLUGIN, 'content', 'agents'), bp = JSON.parse(fs.readFileSync(path.join(bpDir, fs.readdirSync(bpDir).find((x) => x.endsWith('.json'))), 'utf8'));
-    const want = ['myob-reports-catalogue', 'myob-custom-reports', 'myob-journal-security-audit', 'myob-workers-compensation'].map((s) => 'myob-reporting-studio:' + s);
-    ok('agent: has the four new skills', want.every((s) => bp.skills.includes(s)), want.filter((s) => !bp.skills.includes(s)));
-    const sortDeep = (v) => (Array.isArray(v) ? v.map(sortDeep) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortDeep(v[k])])) : v);
-    const payload = Object.assign({}, bp); delete payload.contentHash;
-    ok('agent: blueprint contentHash matches its content', bp.contentHash === crypto.createHash('sha256').update(JSON.stringify(sortDeep(payload))).digest('hex'));
-    const amd = fs.readFileSync(path.join(PLUGIN, 'agents', 'myob-reporting-specialist.md'), 'utf8');
-    ok('agent file: skills line includes them', want.every((s) => amd.includes(s)));
+    ok('plain extension: no agent file or blueprint (mySidekick loads the skills)', !fs.existsSync(path.join(PLUGIN, 'agents')) && !fs.existsSync(path.join(PLUGIN, 'content', 'agents')));
   }
   console.log(fails ? `\n${fails}/${total} checks FAILED` : `\nALL ${total} checks passed`);
   process.exit(fails ? 1 : 0);

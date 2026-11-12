@@ -120,8 +120,8 @@ MK.app({
       { name: 'Reports per MYOB tab match MYOB (Business 14 · Banking 5 · Payroll 12 · Sales 8 · Purchases 7 · Inventory 6 · Jobs 6)', pass: tabsOk, detail: K.groups.map(function (g) { return g[1] + ' ' + (byGroup[g[0]] || 0); }).join(' · ') },
       { name: 'Coverage', pass: null, info: true, detail: count('live') + ' live templates · ' + count('request') + ' on request · ' + count('export') + ' from an export · ' + count('guide') + ' guide' + (count('none') ? ' · ' + count('none') + ' not yet' : '') }],
       title: 'Reports Catalogue', period: K.total + ' reports · MYOB Reports Prompt Library v1.2',
-      notes: ['Live template = a tested report the agent creates from its template; ask for it by the name shown. On request = the agent writes the report from its specification each time. From your MYOB export = MYOB\'s API does not expose it: attach the MYOB export and ask for it. Prompt IDs refer to the MYOB Reports Prompt Library v1.2.',
-        'Stars last while this catalogue is open and go into its downloads. To keep favourites, ask the agent to save the catalogue with them.'] };
+      notes: ['Live template = a tested report you open from Reports → From your plugins, or ask mySidekick for by the name shown. On request = mySidekick writes the report from its specification each time. From your MYOB export = MYOB\'s API does not expose it: attach the MYOB export and ask for it. Prompt IDs refer to the MYOB Reports Prompt Library v1.2.',
+        'Stars last while this catalogue is open and go into its downloads. To keep favourites, ask mySidekick to save the catalogue with them.'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];

@@ -1,6 +1,6 @@
 // MYOB library reports that are not kit reports: a guide (M62 custom reports) and two pages built from the MYOB export the user
 // attaches (M13 journal security audit, M31 workers compensation — not in MYOB's API). gen-myob.js writes their skills (new
-// names, so myob-…) and adds them to the agent; the export pages are reports/<page>.template.html with the stylesheet filled in.
+// names, so myob-…) and lists them in the foundation; the export pages are reports/<page>.template.html with the stylesheet filled in.
 const SLUG = 'myob-reporting-studio';
 module.exports = [
   {
@@ -8,7 +8,7 @@ module.exports = [
     menu: 'Reporting → Custom reports (Customise on any report)',
     trigger: 'the user asks to customise a report and save it, "Save as", their custom reports, a report with their own default period, view, columns or display settings, or to recreate a MYOB custom report they already use',
     description: 'Save any MYOB report with the reader\'s own settings (company file, period preset, basis, compare, view, display, branding) as a named live report in the Reports library — the equivalent of MYOB Custom reports (M62)',
-    body: `MYOB **custom reports** (Customise → Save as) are **not in the MYOB API**, so the agent cannot read the custom reports a file already has. Instead, any kit report can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
+    body: `MYOB **custom reports** (Customise → Save as) are **not in the MYOB API**, so mySidekick cannot read the custom reports a file already has. Instead, any kit report can be saved with the user's own settings, and it stays live: it refetches and re-validates on every open, and a relative period ("Last month", "This financial year to date") rolls forward.
 
 ## Save a customised report ("Save as")
 

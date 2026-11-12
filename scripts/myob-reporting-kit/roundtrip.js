@@ -19,7 +19,8 @@ for (const f of tpl) {
     JSON.stringify(meta.dataBindings) === JSON.stringify(JSON.parse(rdx(path.join(OUT, 'reports', f.report + '.manifest.json'))));
   if (!same) { console.log('  TEMPLATE DIFFERS FROM SKILL', f.skill, '(run npm run gen)'); process.exit(1); }
 }
-const extra = fs.readdirSync(path.join(PLUGIN, 'reports')).filter((d) => !tpl.some((f) => f.skill === d));
+const KEEP_TEMPLATES = require('./keep-templates.json').templates; // hand-built, checked by the platform validators above
+const extra = fs.readdirSync(path.join(PLUGIN, 'reports')).filter((d) => !tpl.some((f) => f.skill === d) && !KEEP_TEMPLATES.includes(d));
 if (extra.length) { console.log('  TEMPLATES WITHOUT A KIT REPORT', extra.join(', ')); process.exit(1); }
 console.log('  all', tpl.length, 'templates match their skills');
 console.log('6. limits: markdown ≤ 128 × 1024 characters, description ≤ 500, no line over 1,500 characters, report document + dataBindings ≤ 35,000 tokens');
