@@ -88,7 +88,7 @@ if (agent.description.length > 500) throw new Error('agent description over 500 
 const setup = withHash({
   kind: 'setup',
   originKey: deterministicUuid(`setup:${SLUG}:connections`),
-  name: 'Client Report Analytics setup',
+  name: 'Client Reporting Agent setup',
   description:
     'Connections only: connect Xero (required; a shared service connection for a team agent) and, optionally, ABR Lookup for the ABN register checks. ' +
     'The manager is named when the agent is activated. Reports load their data as the person who opens them, so reviewers need their own Xero access to the client.',
@@ -225,10 +225,11 @@ const mp = JSON.parse(mpText);
 const entry = mp.plugins.find((p) => p.name === SLUG);
 if (!entry) throw new Error(`marketplace.json has no ${SLUG} entry (create the shell in AI Studio first)`);
 entry.content = content;
+entry.displayName = 'Client Reporting Agent';
 entry.listing = { ...(entry.listing ?? {}), agent: listingAgent };
 writeFileSync(mpPath, JSON.stringify(mp, null, 2) + (mpText.endsWith('\n') ? '\n' : ''));
 
-const readme = `# Client Report Analytics
+const readme = `# Client Reporting Agent
 
 An Agents 2.0 agent that turns client report requests into live, self-checking reports. Assign it a WorkQ item ("Health check for <client>, last quarter") or ask it in chat: it creates the report from the **Client Report Analytics** extension's tested templates, posts the link on the item and closes it. Xero clients for now (MYOB and QuickBooks later).
 
