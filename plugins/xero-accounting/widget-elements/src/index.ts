@@ -2703,14 +2703,15 @@ const bbNum = (v: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+// Whole dollars: the tile is read at a glance, so cents are rounded away. The
+// figures behind it (difference, reconciliation check) still run on full cents.
 const bbAud = (n: number) =>
-  'A$' +
-  Math.abs(bbRound2(n)).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  'A$' + Math.round(Math.abs(bbRound2(n))).toLocaleString('en-AU', { maximumFractionDigits: 0 });
 
-/** Signed balance, no plus: "-A$12,023.26" */
+/** Signed balance, no plus: "-A$12,023" */
 const bbBalance = (n: number) => (bbRound2(n) < 0 ? '-' : '') + bbAud(n);
 
-/** Signed change, with plus: "+A$1,234.50" */
+/** Signed change, with plus: "+A$1,235" */
 const bbSigned = (n: number) => {
   const r = bbRound2(n);
   return r > 0 ? `+${bbAud(r)}` : r < 0 ? `-${bbAud(r)}` : bbAud(0);
@@ -2830,7 +2831,7 @@ const bank_balance_view: ComputedFunction = (args) => {
       return {
         accountId: id,
         name: String(a.name ?? ''),
-        balanceText: String(a.balanceText ?? ''),
+        balanceText: bbBalance(bbNum(a.balance)),
         selected: chosen.size === 0 || chosen.has(id),
         nextSelected: bbToggle(ids, chosen, id),
         pinned: pinned.has(id),
@@ -2880,7 +2881,7 @@ const bank_balance_view: ComputedFunction = (args) => {
       return {
         accountId: id,
         name: String(a.name ?? ''),
-        balanceText: String(a.balanceText ?? bbBalance(bbNum(a.balance))),
+        balanceText: bbBalance(bbNum(a.balance)),
         changeText: moved
           ? `${bbArrow(diff)} ${bbSigned(diff)}${rowPct ? ` · ${rowPct}` : ''}`.trim()
           : 'No change',
@@ -3024,7 +3025,8 @@ const bank_balance_view: ComputedFunction = (args) => {
     accountRowsToggleLabel: showAll ? 'Show top 5' : `Show all ${accountRows.length}`,
 
     // Transactions
-    txnRows: page,
+    // The connector's own amountDisplay carries cents; restate it in whole dollars.
+    txnRows: page.map((t) => ({ ...t, amountDisplay: bbBalance(bbNum(t.amount)) })),
     txnCount: txns.length,
     txnCountText:
       hidden > 0
