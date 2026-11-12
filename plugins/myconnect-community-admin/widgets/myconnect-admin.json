@@ -1,7 +1,7 @@
 {
   "category": "productivity",
   "connectorsUsed": ["myconnect-community-admin"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for day-by-day numbers. The other tabs (Members, Access Groups, Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. The other tabs (Members, Access Groups, Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -19,7 +19,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
@@ -336,19 +336,18 @@
       "trendHeadingRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["trendHeading", "showTrendBtn"] },
       "trendPrompt": {
         "type": "Empty",
-        "props": { "message": "Press \"Show trend\" for a month-by-month breakdown — click a month for its day-by-day numbers." },
+        "props": { "message": "Press \"Show trend\" for a month-by-month breakdown — click a month to see who joined." },
         "visible": {
           "$and": [
             { "$state": "/myconnect-community-admin/get_signups_in_range/fromDate" },
             { "$state": "/myconnect-community-admin/get_signups_in_range/monthly", "not": true },
-            { "$state": "/myconnect-community-admin/get_signups_in_range/daily", "not": true },
             { "$state": "/_loading/myconnect-community-admin.get_signups_in_range", "not": true }
           ]
         }
       },
       "trendMonthlyHint": {
         "type": "Caption",
-        "props": { "text": "Click a month for its day-by-day breakdown.", "tone": "muted" },
+        "props": { "text": "Click a month to see who joined that month.", "tone": "muted" },
         "visible": { "$state": "/myconnect-community-admin/get_signups_in_range/monthly/0" }
       },
       "trendMonthlyRowLabel": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "month" } } },
@@ -373,16 +372,19 @@
         "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
         "children": ["trendMonthlyRowLabel", "trendMonthlyRowMeta"],
         "on": {
-          "click": {
-            "action": "myconnect-community-admin.get_signups_in_range",
-            "params": {
-              "community": { "$state": "/ui/selectedCommunity" },
-              "fromDate": { "$bindItem": "fromDate" },
-              "toDate": { "$bindItem": "toDate" },
-              "includeDaily": true,
-              "includeComparison": true
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showMemberPopup", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/memberPopupMonth", "value": { "$bindItem": "month" } } },
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": {
+                "community": { "$state": "/ui/selectedCommunity" },
+                "fromDate": { "$bindItem": "fromDate" },
+                "toDate": { "$bindItem": "toDate" },
+                "limit": 100
+              }
             }
-          }
+          ]
         }
       },
       "trendMonthlyList": {
@@ -392,47 +394,10 @@
         "repeat": { "key": "month", "statePath": "/myconnect-community-admin/get_signups_in_range/monthly" },
         "visible": { "$state": "/myconnect-community-admin/get_signups_in_range/monthly/0" }
       },
-      "trendDailyHint": {
-        "type": "Caption",
-        "props": {
-          "text": { "$template": "Showing ${/myconnect-community-admin/get_signups_in_range/fromDate} to ${/myconnect-community-admin/get_signups_in_range/toDate} only — press \"Show sign-ups\" above to return to the full range." },
-          "tone": "muted"
-        },
-        "visible": { "$state": "/myconnect-community-admin/get_signups_in_range/daily/0" }
-      },
-      "trendDailySelect": {
-        "type": "Select",
-        "props": {
-          "value": { "$bindState": "/ui/selectedTrendDate" },
-          "options": {
-            "$computed": "to_options",
-            "args": {
-              "value": { "$state": "/myconnect-community-admin/get_signups_in_range/daily" },
-              "valueField": "date",
-              "labelPattern": "{date} — {total} sign-up(s)"
-            }
-          },
-          "placeholder": "Days with sign-ups…",
-          "size": "sm"
-        },
-        "visible": { "$state": "/myconnect-community-admin/get_signups_in_range/daily/0" }
-      },
-      "trendDailyEmpty": {
-        "type": "Empty",
-        "props": { "message": "No sign-ups on any day in this month." },
-        "visible": {
-          "$and": [
-            { "$state": "/myconnect-community-admin/get_signups_in_range/daily" },
-            { "$state": "/myconnect-community-admin/get_signups_in_range/daily/0", "not": true },
-            { "$state": "/_loading/myconnect-community-admin.get_signups_in_range", "not": true },
-            { "$state": "/_errors/myconnect-community-admin.get_signups_in_range", "not": true }
-          ]
-        }
-      },
       "trendSection": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["trendHeadingRow", "trendPrompt", "trendMonthlyHint", "trendMonthlyList", "trendDailyHint", "trendDailySelect", "trendDailyEmpty"],
+        "children": ["trendHeadingRow", "trendPrompt", "trendMonthlyHint", "trendMonthlyList"],
         "visible": { "$state": "/myconnect-community-admin/get_signups_in_range/fromDate" }
       },
 
@@ -440,7 +405,7 @@
       "analyticsComingSoonText": {
         "type": "Text",
         "props": {
-          "text": "A visual trend chart (line/bar) isn't buildable yet — the tile framework has no chart component today; the table above shows the same day-by-day numbers instead.",
+          "text": "A visual trend chart (line/bar) isn't buildable yet — the tile framework has no chart component today; the month-by-month list above, and the member popup when you click a month, show the same detail instead.",
           "size": "sm"
         }
       },
@@ -554,12 +519,132 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "Pick a From and To date and press \"Show sign-ups\" to see the total who joined your community in that range (inclusive, based on when their membership was created), plus how many of them are now active (Completed joining), still invited (Pending), or deactivated (Declined / inactive) — each with its percent change against the immediately preceding period of the same length. Press \"Show trend\" for a month-by-month table of the same range — click any month row for a dropdown of just that month's days with sign-ups (clicking also updates the stats above to that month; press \"Show sign-ups\" again to return to the full range).",
+          "text": "Pick a From and To date and press \"Show sign-ups\" to see the total who joined your community in that range (inclusive, based on when their membership was created), plus how many of them are now active (Completed joining), still invited (Pending), or deactivated (Declined / inactive) — each with its percent change against the immediately preceding period of the same length. Press \"Show trend\" for a month-by-month table of the same range — click any month row to open a popup listing the members who joined that month (name, joined date, tags and status).",
           "size": "sm"
         }
       },
       "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
-      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] }
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "memberPopupOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "32rem" },
+        "children": ["memberPopupCard"],
+        "visible": { "$state": "/ui/showMemberPopup" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showMemberPopup", "value": false } } }
+      },
+      "memberPopupCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showMemberPopup", "value": false } } }
+      },
+      "memberPopupTitleIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "memberPopupTitleText": {
+        "type": "Heading",
+        "props": { "level": "h2", "text": { "$template": "Members joined in ${/ui/memberPopupMonth}" } }
+      },
+      "memberPopupTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberPopupTitleIcon", "memberPopupTitleText"] },
+      "memberPopupDivider": { "type": "Divider", "props": {} },
+
+      "memberPopupLoading": {
+        "type": "Skeleton",
+        "props": { "height": "4rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
+      },
+      "memberPopupErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load members: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+      },
+      "memberPopupEmpty": {
+        "type": "Empty",
+        "props": { "message": "No members joined in this month." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/myconnect-community-admin/list_members/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_members", "not": true }
+          ]
+        }
+      },
+      "memberPopupCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} member(s)",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/myconnect-community-admin/list_members/items" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+
+      "memberPopupRowStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "status", "eq": "active" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "invited" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "memberPopupRowName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "displayName" } } },
+      "memberPopupRowEmail": { "type": "Caption", "props": { "text": { "$item": "email" }, "tone": "muted" } },
+      "memberPopupRowNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberPopupRowName", "memberPopupRowEmail"] },
+      "memberPopupRowIdentity": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["memberPopupRowStatusDot", "memberPopupRowNameStack"] },
+      "memberPopupRowJoined": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$item": "createdAt" }, "format": "dd-mmm-yy" } },
+          "tone": "muted",
+          "align": "right"
+        }
+      },
+      "memberPopupRowTags": {
+        "type": "Caption",
+        "props": {
+          "text": { "$cond": { "$item": "tagsText", "eq": null }, "$then": "No tags", "$else": { "$item": "tagsText" } },
+          "tone": "muted",
+          "align": "right"
+        }
+      },
+      "memberPopupRowMeta": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberPopupRowJoined", "memberPopupRowTags"] },
+      "memberPopupRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["memberPopupRowIdentity", "memberPopupRowMeta"]
+      },
+      "memberPopupList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberPopupRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_members/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+      "memberPopupMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 100 — narrow the month's date range for more detail.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/nextCursor" }
+      },
+      "memberPopupBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberPopupErrorBanner", "memberPopupLoading", "memberPopupCount", "memberPopupList", "memberPopupEmpty", "memberPopupMoreCaption"]
+      },
+      "memberPopupCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["memberPopupCloseBtn", "memberPopupTitleRow", "memberPopupDivider", "memberPopupBody"]
+      }
     }
   },
   "tags": ["myconnect", "community", "admin", "analytics"],
