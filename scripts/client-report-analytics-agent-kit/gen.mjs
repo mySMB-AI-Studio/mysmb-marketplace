@@ -177,7 +177,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.2.0';
+const PROCESS_VERSION = '0.2.1';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -380,6 +380,9 @@ const processDefinition = {
   transitions: [],
   exceptions: [],
   rework: [],
+  // A personal agent's thread otherwise gets 15 tool turns per wake-up (turn-cap.ts BUS_TURN_MAX_TURNS); Checking alone
+  // needs more (paged Xero reads, the summary file, the comment, the move), so the 0.2.0 run stopped mid-Checking.
+  limits: { maxAgentTurnsPerStep: 80, maxActiveHours: 4, maxWaitingDays: 30 },
   outcomes: [
     { key: 'readyToLodge', terminal: true, evidence: ['automation_run'] },
     { key: 'clientQueried', terminal: true, evidence: ['automation_run'] },
