@@ -1,5 +1,5 @@
 {
-  "contentHash": "df52fd01a5ae8a4555c55460c29b8f13ff880291a4b712fc10449bb0508b8e4b",
+  "contentHash": "d558d8711e458a81b95a065a18bfac3614623f2338cb8007d61557fc4b5d379d",
   "definition": {
     "capabilities": [
       "xero.connections.read",
@@ -12,6 +12,7 @@
       "xero.bank_transactions.read",
       "xero.profit_and_loss.read",
       "xero.trial_balance.read",
+      "xero.bas_checks.read",
       "abr.abns.check"
     ],
     "description": "Reviews one client's Xero file for one BAS quarter against this practice's checklist (the CRA-10 GST Check rules plus general readiness checks), writes a BAS readiness summary to the agent's files, and asks the reviewer to approve the outcome: ready to lodge, ready once the client answers, or not ready. \"Ready to lodge\" is refused while any Stop finding remains. Read-only: nothing is changed in Xero, nothing is lodged, and the agent never contacts the client.",
@@ -183,13 +184,13 @@
             }
           ]
         },
-        "instructions": "Run every check the checklist lists, with the rules in the skill, for the period only. Read the trial balance first. Keep each Xero call small (one document type and one month at a time, paged): a reply that says the result was too large or saved to a file is NOT empty data, so halve the date range and call again until it returns in full. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file's path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file's path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.",
+        "instructions": "Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file's path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file's path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.",
         "key": "checking",
         "kind": "working",
         "label": "Checking"
       },
       {
-        "instructions": "Decide the outcome you recommend: readyToLodge only when there are no findings at all; readyOnceClientAnswers when every finding is one the client can resolve; notReady otherwise. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, move to Recording straight away and run the tool there (see Recording); do not run it in this status, or the run will not count for Recording and the reviewer is asked twice. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking. After you rework anything a reviewer asked for, always end by calling the record tool again with your updated values so they can approve: never leave this status without either a pending approval or a status move.",
+        "instructions": "Decide the outcome you recommend with the rule in the skill: notReady whenever any Stop finding needs the practice to do work in Xero (reconcile, recode, clear a suspense balance, remove a duplicate, fix GST coding), even if the client must answer a question first; readyOnceClientAnswers only when every open item is just something the client sends (a receipt, a tax invoice, an ABN, an explanation) and no Stop finding needs a change in Xero; readyToLodge only when there are no findings at all. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, move to Recording straight away and run the tool there (see Recording); do not run it in this status, or the run will not count for Recording and the reviewer is asked twice. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking. After you rework anything a reviewer asked for, always end by calling the record tool again with your updated values so they can approve: never leave this status without either a pending approval or a status move.",
         "key": "review",
         "kind": "waiting",
         "label": "Waiting for review"
@@ -280,6 +281,9 @@
         "capability": "xero.trial_balance.read"
       },
       {
+        "capability": "xero.bas_checks.read"
+      },
+      {
         "capability": "abr.abns.check"
       },
       {
@@ -293,7 +297,7 @@
     ],
     "transitions": [],
     "variationPoints": [],
-    "version": "0.2.2",
+    "version": "0.3.0",
     "vocabulary": {
       "subject": "Client and quarter"
     }

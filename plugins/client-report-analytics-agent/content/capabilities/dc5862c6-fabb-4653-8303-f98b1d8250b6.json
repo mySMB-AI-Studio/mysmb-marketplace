@@ -1,0 +1,89 @@
+{
+  "contentHash": "947c002be6d0b2e9d9fa9dcbe73a78248f12ed5e67b3b476b99bdcc9e1c6e8e0",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "gstRegistered": "gstRegistered",
+          "periodEnd": "periodEnd",
+          "periodStart": "periodStart",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions.read",
+          "accounting.contacts.read",
+          "accounting.settings.read",
+          "accounting.reports.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_xero_bas_readiness_checks"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "gstRegistered": {
+          "description": "Whether the client is registered for GST; leave out to infer it from the GST basis.",
+          "type": "boolean"
+        },
+        "periodEnd": {
+          "description": "Last day of the BAS period, YYYY-MM-DD.",
+          "type": "string"
+        },
+        "periodStart": {
+          "description": "First day of the BAS period, YYYY-MM-DD.",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "periodStart",
+        "periodEnd"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bas_checks.read",
+    "kind": "capability",
+    "originKey": "dc5862c6-fabb-4653-8303-f98b1d8250b6",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "alsoSeen": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "notRun": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Run the BAS readiness checks for one period"
+  },
+  "kind": "capability",
+  "name": "Run the BAS readiness checks for one period",
+  "originKey": "dc5862c6-fabb-4653-8303-f98b1d8250b6"
+}
