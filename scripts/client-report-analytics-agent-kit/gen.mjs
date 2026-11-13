@@ -177,7 +177,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.2.0';
+const PROCESS_VERSION = '0.2.1';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -339,21 +339,21 @@ const processDefinition = {
   instructions: PROCESS_INSTRUCTIONS,
   statuses: [
     status('finding', 'Finding the client', 'initial',
-      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Record the outputs and move to Checking.',
+      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Rename the job with job_rename to "BAS readiness review: <client> <period label>" so people can find it. Record the outputs and move to Checking.',
       { outputs: [
         { key: 'clientName', type: 'string' }, { key: 'xeroTenantId', type: 'string' },
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
       ] }),
     status('checking', 'Checking', 'working',
-      'Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review.',
+      'Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
       { outputs: [
         { key: 'findings', type: 'array' }, { key: 'stopFindings', type: 'array' },
         { key: 'clientQuestions', type: 'array' }, { key: 'summaryFile', type: 'string' },
       ] }),
     status('review', 'Waiting for review', 'waiting',
-      'Decide the outcome you recommend: readyToLodge only when there are no findings at all; readyOnceClientAnswers when every finding is one the client can resolve; notReady otherwise. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, call it again with exactly the same inputs and move to Recording. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking.'),
+      'Decide the outcome you recommend: readyToLodge only when there are no findings at all; readyOnceClientAnswers when every finding is one the client can resolve; notReady otherwise. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, move to Recording straight away and run the tool there (see Recording); do not run it in this status, or the run will not count for Recording and the reviewer is asked twice. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking. After you rework anything a reviewer asked for, always end by calling the record tool again with your updated values so they can approve: never leave this status without either a pending approval or a status move.'),
     status('recording', 'Recording', 'working',
-      'The record tool has run with the approved outcome. Post a one-line job comment with the outcome and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.',
+      'The reviewer has approved. Call the record tool now, with exactly the inputs they approved: the approval is used by this run, and the platform counts it only because it runs while the job is in Recording. Then make the outcome visible where people look, because the jobs list only shows "Done": (1) add an "Outcome" section at the TOP of the summary file (files_read, then files_write the whole file): the outcome in words (Ready to lodge, Ready once the client answers, or Not ready), that the reviewer approved it and the date, the reviewer\'s note if they gave one, and in one or two lines what must happen before the BAS can be lodged; (2) rename the job with job_rename to "BAS readiness review: <client> <period label> - <outcome in words>"; (3) post a one-line job comment with the outcome in words and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.',
       { outputs: [{ key: 'outcome', type: 'string' }], ran: [{ automation: recordOriginKey }] }),
     status('waitingClient', 'Waiting for the client', 'waiting',
       'Post the drafted client questions as ONE job comment, numbered, ready for a person to copy and send, and say that a person sends them (you never contact the client). Wait for a person to reply on the job. When they say the questions were sent, move to Client queried. When they give you the client\'s answers and want the review run again, move back to Checking.'),
@@ -380,6 +380,10 @@ const processDefinition = {
   transitions: [],
   exceptions: [],
   rework: [],
+  // A personal agent's thread otherwise gets 15 tool turns per wake-up (turn-cap.ts BUS_TURN_MAX_TURNS); Checking makes
+  // many paged Xero reads plus the summary file, so give it room. (Headroom: not the proven cause of the 0.2.0 run's stall,
+  // which was the agent asking for approval while still in Checking.)
+  limits: { maxAgentTurnsPerStep: 80, maxActiveHours: 4, maxWaitingDays: 30 },
   outcomes: [
     { key: 'readyToLodge', terminal: true, evidence: ['automation_run'] },
     { key: 'clientQueried', terminal: true, evidence: ['automation_run'] },
