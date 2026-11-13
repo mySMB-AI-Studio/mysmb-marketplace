@@ -1,5 +1,5 @@
 {
-  "contentHash": "1eed345ee2bc61276c781efd800ca182f7d03eb4fdb02e2d517be4ff15ea6750",
+  "contentHash": "761051a33b9b6cc92d7e8f4bf5a78a89fb95d720bfea78024fe66d8570a64ad5",
   "declaredScopes": [
     "files:read",
     "records:od_products:read",
@@ -12,49 +12,71 @@
     "records:od_customer_catalogue:write"
   ],
   "dependencies": [],
-  "description": "Loads products, customers, delivery addresses and the customer catalogue from four spreadsheets saved as CSV files in the Knowledge folder Order Desk/Import (products.csv, customers.csv, delivery_addresses.csv, customer_catalogue.csv). Existing rows are updated, new ones are added, nothing is deleted. Run it again whenever the files change. A missing file is skipped.",
+  "description": "Loads one list that a person uploaded to the Lists folder of Order Desk's files: products, customers, delivery addresses or the customer catalogue. It tells which list it is from the column names. Existing rows are updated, new ones are added, nothing is deleted. Upload the file again whenever the list changes. Uses no AI.",
   "flowIr": {
-    "description": "Loads products, customers, delivery addresses and the customer catalogue from four spreadsheets saved as CSV files in the Knowledge folder Order Desk/Import (products.csv, customers.csv, delivery_addresses.csv, customer_catalogue.csv). Existing rows are updated, new ones are added, nothing is deleted. Run it again whenever the files change. A missing file is skipped.",
+    "description": "Loads one list that a person uploaded to the Lists folder of Order Desk's files: products, customers, delivery addresses or the customer catalogue. It tells which list it is from the column names. Existing rows are updated, new ones are added, nothing is deleted. Upload the file again whenever the list changes. Uses no AI.",
     "irVersion": 1,
-    "name": "Order Desk: import catalogue and customers",
+    "name": "Order Desk: import a list",
     "nodes": [
       {
-        "code": "import re\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\nimport csv\nimport io\n\nFOLDER = \"Order Desk/Import/\"\n\n\ndef read_rows(name: str) -> list[dict[str, str]]:\n    try:\n        text = api.files.read(file=FOLDER + name)\n    except Exception:\n        return []\n    return [{(k or \"\").strip().lower(): (v or \"\").strip() for k, v in row.items()} for row in csv.DictReader(io.StringIO(text.lstrip(\"﻿\")))]\n\n\ndef truthy(value: str) -> bool:\n    return value.strip().lower() in (\"true\", \"yes\", \"y\", \"1\")\n\n\ndef number(value: str, fallback: float) -> float:\n    try:\n        return float(value)\n    except ValueError:\n        return fallback\n\n\ndef save(type_slug: str, known: dict[str, dict[str, Any]], key: str, title: str, data: dict[str, Any], links: dict[str, Any]) -> dict[str, Any]:\n    record: dict[str, Any] = {\"title\": title[:200], \"data\": data}\n    if links:\n        record[\"links\"] = links\n    if key in known:\n        return api.records.update(type_slug=type_slug, record_id=known[key][\"id\"], record=record)\n    row = api.records.create(type_slug=type_slug, record=record)\n    known[key] = row\n    return row\n\n\nproducts: dict[str, dict[str, Any]] = {od_text(od_data(r).get(\"item_code\")).upper(): r for r in od_rows(\"od_products\")}\nproduct_count = 0\nfor row in read_rows(\"products.csv\"):\n    code = row.get(\"item_code\", \"\")\n    if not code or not row.get(\"name\"):\n        continue\n    data: dict[str, Any] = {\"item_code\": code, \"sell_unit\": row.get(\"sell_unit\", \"each\") or \"each\", \"category\": row.get(\"category\", \"\"), \"active\": truthy(row.get(\"active\", \"true\") or \"true\")}\n    if row.get(\"base_unit\"):\n        data[\"base_unit\"] = row[\"base_unit\"]\n    if row.get(\"units_per_pack\"):\n        data[\"units_per_pack\"] = number(row[\"units_per_pack\"], 1)\n    save(\"od_products\", products, code.upper(), row[\"name\"], data, {})\n    product_count += 1\nprofiles: dict[str, dict[str, Any]] = {od_text(od_data(r).get(\"account_code\")).upper(): r for r in od_rows(\"od_customer_profiles\")}\ncustomer_count = 0\nfor row in read_rows(\"customers.csv\"):\n    code = row.get(\"account_code\", \"\")\n    if not code or not row.get(\"name\"):\n        continue\n    save(\"od_customer_profiles\", profiles, code.upper(), row[\"name\"], {\"account_code\": code, \"email_domain\": row.get(\"email_domain\", \"\"), \"other_names\": row.get(\"other_names\", \"\"), \"order_notes\": row.get(\"order_notes\", \"\"), \"order_rules\": row.get(\"order_rules\", \"\"), \"cutoff_time\": row.get(\"cutoff_time\", \"\")[:5], \"po_required\": truthy(row.get(\"po_required\", \"\")), \"auto_confirm\": \"never\" if row.get(\"auto_confirm\", \"\").lower() == \"never\" else \"follow_default\"}, {})\n    customer_count += 1\naddresses: dict[str, dict[str, Any]] = {(od_text(od_data(r).get(\"account_code\")) + \"|\" + od_text(r.get(\"title\"))).upper(): r for r in od_rows(\"od_delivery_addresses\")}\naddress_count = 0\nfor row in read_rows(\"delivery_addresses.csv\"):\n    if not row.get(\"label\") or not row.get(\"address\"):\n        continue\n    save(\"od_delivery_addresses\", addresses, (row.get(\"account_code\", \"\") + \"|\" + row[\"label\"]).upper(), row[\"label\"], {\"account_code\": row.get(\"account_code\", \"\"), \"address\": row[\"address\"], \"site_code\": row.get(\"site_code\", \"\"), \"is_default\": truthy(row.get(\"is_default\", \"\"))}, {})\n    address_count += 1\n\n\ndef mapping_key(d: dict[str, Any]) -> str:\n    return \"|\".join([od_text(d.get(\"account_code\")), od_text(d.get(\"customer_code\")), od_text(d.get(\"customer_unit\")), od_text(d.get(\"item_code\")), od_text(d.get(\"customer_description\")) if not od_text(d.get(\"customer_code\")) else \"\"]).upper()\n\n\ncatalogue: dict[str, dict[str, Any]] = {mapping_key(od_data(r)): r for r in od_rows(\"od_customer_catalogue\")}\ncatalogue_count = 0\nskipped = 0\nfor row in read_rows(\"customer_catalogue.csv\"):\n    account = row.get(\"account_code\", \"\")\n    item = row.get(\"item_code\", \"\")\n    if not account or not item:\n        continue\n    if item.upper() not in products:\n        skipped += 1\n        continue\n    rounding = row.get(\"rounding\", \"none\").lower()\n    data = {\"account_code\": account, \"customer_code\": row.get(\"customer_code\", \"\"), \"customer_description\": row.get(\"customer_description\", \"\"), \"customer_unit\": row.get(\"customer_unit\", \"\"), \"item_code\": item, \"conversion_factor\": number(row.get(\"conversion_factor\", \"1\") or \"1\", 1), \"rounding\": rounding if rounding in (\"none\", \"up\", \"down\", \"nearest\") else \"none\", \"source\": \"imported\"}\n    save(\"od_customer_catalogue\", catalogue, mapping_key(data), account + \" / \" + (data[\"customer_code\"] or data[\"customer_description\"]) + \" \" + data[\"customer_unit\"], data, {\"product\": [products[item.upper()][\"id\"]]})\n    catalogue_count += 1\nresult = \"Loaded \" + str(product_count) + \" products, \" + str(customer_count) + \" customers, \" + str(address_count) + \" addresses and \" + str(catalogue_count) + \" catalogue rows.\" + (\" Skipped \" + str(skipped) + \" catalogue rows whose item code is not a product.\" if skipped else \"\")\n",
+        "code": "import re\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_link_ids(row: Any, field: str) -> list[str]:\n    out: list[str] = []\n    for ref in ((row or {}).get(\"links\") or {}).get(field) or []:\n        if isinstance(ref, dict) and ref.get(\"id\"):\n            out.append(str(ref[\"id\"]))\n        elif isinstance(ref, str):\n            out.append(ref)\n    return out\n\n\nimport csv\nimport io\n\nKINDS = {\"products\": \"products\", \"customers\": \"customers\", \"addresses\": \"delivery addresses\", \"catalogue\": \"customer catalogue rows\"}\n\n\ndef clean(row: dict[Any, Any]) -> dict[str, str]:\n    return {od_text(k).lower().replace(\" \", \"_\"): od_text(v) for k, v in row.items() if k is not None}\n\n\ndef read_table(path: str) -> list[dict[str, str]]:\n    if path.lower().endswith((\".xlsx\", \".xlsm\")):\n        import openpyxl\n\n        sheet = openpyxl.load_workbook(api.files.get(file=path, scope=\"agent\"), data_only=True, read_only=True).worksheets[0]\n        table = [[\"\" if v is None else v for v in r] for r in sheet.iter_rows(values_only=True)]\n        table = [r for r in table if any(od_text(v) for v in r)]\n        if not table:\n            return []\n        return [clean(dict(zip(table[0], r))) for r in table[1:]]\n    text = api.files.read(file=path, scope=\"agent\")\n    return [clean(r) for r in csv.DictReader(io.StringIO(text.lstrip(\"﻿\")))]\n\n\ndef truthy(value: str) -> bool:\n    return value.strip().lower() in (\"true\", \"yes\", \"y\", \"1\")\n\n\ndef number(value: str, fallback: float) -> float:\n    try:\n        return float(value)\n    except ValueError:\n        return fallback\n\n\ndef save(type_slug: str, known: dict[str, dict[str, Any]], key: str, title: str, data: dict[str, Any], links: dict[str, Any]) -> None:\n    record: dict[str, Any] = {\"title\": title[:200], \"data\": data}\n    if links:\n        record[\"links\"] = links\n    if key in known:\n        api.records.update(type_slug=type_slug, record_id=known[key][\"id\"], record=record)\n    else:\n        known[key] = api.records.create(type_slug=type_slug, record=record)\n\n\ndef mapping_key(d: dict[str, Any]) -> str:\n    return \"|\".join([od_text(d.get(\"account_code\")), od_text(d.get(\"customer_code\")), od_text(d.get(\"customer_unit\")), od_text(d.get(\"item_code\")), od_text(d.get(\"customer_description\")) if not od_text(d.get(\"customer_code\")) else \"\"]).upper()\n\n\nfile_path = od_text(params.get(\"file_path\"))\nif not file_path:\n    raise ValueError(\"file_path is required: the path of the list in the agent's files, for example Lists/products.csv\")\nrows = read_table(file_path)\ncolumns: set[str] = set()\nfor row in rows[:1]:\n    columns = set(row.keys())\nlist_kind = \"\"\nif {\"item_code\", \"account_code\"} <= columns:\n    list_kind = \"catalogue\"\nelif {\"item_code\", \"name\"} <= columns:\n    list_kind = \"products\"\nelif {\"label\", \"address\"} <= columns:\n    list_kind = \"addresses\"\nelif {\"account_code\", \"name\"} <= columns:\n    list_kind = \"customers\"\nloaded = 0\nskipped = 0\nwaiting = 0\nlinked = 0\nif list_kind == \"products\":\n    products: dict[str, dict[str, Any]] = {od_text(od_data(r).get(\"item_code\")).upper(): r for r in od_rows(\"od_products\")}\n    for row in rows:\n        code = row.get(\"item_code\", \"\")\n        if not code or not row.get(\"name\"):\n            skipped += 1\n            continue\n        data: dict[str, Any] = {\"item_code\": code, \"sell_unit\": row.get(\"sell_unit\", \"each\") or \"each\", \"category\": row.get(\"category\", \"\"), \"active\": truthy(row.get(\"active\", \"true\") or \"true\")}\n        if row.get(\"base_unit\"):\n            data[\"base_unit\"] = row[\"base_unit\"]\n        if row.get(\"units_per_pack\"):\n            data[\"units_per_pack\"] = number(row[\"units_per_pack\"], 1)\n        save(\"od_products\", products, code.upper(), row[\"name\"], data, {})\n        loaded += 1\n    for entry in od_rows(\"od_customer_catalogue\"):\n        item = od_text(od_data(entry).get(\"item_code\")).upper()\n        if item in products and not od_link_ids(entry, \"product\"):\n            api.records.update(type_slug=\"od_customer_catalogue\", record_id=entry[\"id\"], record={\"links\": {\"product\": [products[item][\"id\"]]}})\n            linked += 1\nelif list_kind == \"customers\":\n    profiles: dict[str, dict[str, Any]] = {od_text(od_data(r).get(\"account_code\")).upper(): r for r in od_rows(\"od_customer_profiles\")}\n    for row in rows:\n        code = row.get(\"account_code\", \"\")\n        if not code or not row.get(\"name\"):\n            skipped += 1\n            continue\n        save(\"od_customer_profiles\", profiles, code.upper(), row[\"name\"], {\"account_code\": code, \"email_domain\": row.get(\"email_domain\", \"\"), \"other_names\": row.get(\"other_names\", \"\"), \"order_notes\": row.get(\"order_notes\", \"\"), \"order_rules\": row.get(\"order_rules\", \"\"), \"cutoff_time\": row.get(\"cutoff_time\", \"\")[:5], \"po_required\": truthy(row.get(\"po_required\", \"\")), \"auto_confirm\": \"never\" if row.get(\"auto_confirm\", \"\").lower() == \"never\" else \"follow_default\"}, {})\n        loaded += 1\nelif list_kind == \"addresses\":\n    addresses: dict[str, dict[str, Any]] = {(od_text(od_data(r).get(\"account_code\")) + \"|\" + od_text(r.get(\"title\"))).upper(): r for r in od_rows(\"od_delivery_addresses\")}\n    for row in rows:\n        if not row.get(\"label\") or not row.get(\"address\"):\n            skipped += 1\n            continue\n        save(\"od_delivery_addresses\", addresses, (row.get(\"account_code\", \"\") + \"|\" + row[\"label\"]).upper(), row[\"label\"], {\"account_code\": row.get(\"account_code\", \"\"), \"address\": row[\"address\"], \"site_code\": row.get(\"site_code\", \"\"), \"is_default\": truthy(row.get(\"is_default\", \"\"))}, {})\n        loaded += 1\nelif list_kind == \"catalogue\":\n    known_products: dict[str, dict[str, Any]] = {od_text(od_data(r).get(\"item_code\")).upper(): r for r in od_rows(\"od_products\")}\n    catalogue: dict[str, dict[str, Any]] = {mapping_key(od_data(r)): r for r in od_rows(\"od_customer_catalogue\")}\n    for row in rows:\n        account = row.get(\"account_code\", \"\")\n        item = row.get(\"item_code\", \"\")\n        if not account or not item:\n            skipped += 1\n            continue\n        rounding = row.get(\"rounding\", \"none\").lower()\n        entry_data: dict[str, Any] = {\"account_code\": account, \"customer_code\": row.get(\"customer_code\", \"\"), \"customer_description\": row.get(\"customer_description\", \"\"), \"customer_unit\": row.get(\"customer_unit\", \"\"), \"item_code\": item, \"conversion_factor\": number(row.get(\"conversion_factor\", \"1\") or \"1\", 1), \"rounding\": rounding if rounding in (\"none\", \"up\", \"down\", \"nearest\") else \"none\", \"source\": \"imported\"}\n        links: dict[str, Any] = {}\n        if item.upper() in known_products:\n            links = {\"product\": [known_products[item.upper()][\"id\"]]}\n        else:\n            waiting += 1\n        save(\"od_customer_catalogue\", catalogue, mapping_key(entry_data), account + \" / \" + (entry_data[\"customer_code\"] or entry_data[\"customer_description\"]) + \" \" + entry_data[\"customer_unit\"], entry_data, links)\n        loaded += 1\nrecognised = bool(list_kind)\nif not recognised:\n    result = \"This file is not one of the four lists. The first row must hold the column names. Products need item_code and name. Customers need account_code and name. Delivery addresses need label and address. The customer catalogue needs account_code and item_code. This file has: \" + (\", \".join(sorted(columns)) or \"no columns\") + \".\"\nelse:\n    result = \"Loaded \" + str(loaded) + \" \" + KINDS[list_kind] + \".\"\n    if skipped:\n        result += \" Skipped \" + str(skipped) + \" rows with a required column left empty.\"\n    if waiting:\n        result += \" \" + str(waiting) + \" of them name an item code that is not in the product list yet. They start working as soon as that product is loaded.\"\n    if linked:\n        result += \" Connected \" + str(linked) + \" catalogue rows that were waiting for these products.\"\n",
         "id": "load",
         "kind": "python",
         "outputs": [
           {
-            "description": "What was loaded",
-            "name": "result",
+            "description": "True when the file is one of the four lists",
+            "name": "recognised",
+            "type": "bool"
+          },
+          {
+            "description": "products, customers, addresses or catalogue",
+            "name": "list_kind",
             "type": "str"
           },
           {
-            "description": "Products",
-            "name": "product_count",
+            "description": "Rows added or updated",
+            "name": "loaded",
             "type": "int"
           },
           {
-            "description": "Customers",
-            "name": "customer_count",
+            "description": "Rows left out",
+            "name": "skipped",
             "type": "int"
           },
           {
-            "description": "Addresses",
-            "name": "address_count",
+            "description": "Catalogue rows whose product is not loaded yet",
+            "name": "waiting",
             "type": "int"
           },
           {
-            "description": "Catalogue rows",
-            "name": "catalogue_count",
-            "type": "int"
+            "description": "What happened, in plain words",
+            "name": "result",
+            "type": "str"
           }
         ],
-        "params": [],
-        "summary": "Reads the four files from the Order Desk/Import folder and adds or updates products, customers, addresses and catalogue rows.",
-        "title": "Load the spreadsheets"
+        "params": [
+          {
+            "binding": "{{ params.file_path }}",
+            "control": "hidden",
+            "name": "file_path",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "summary": "Reads one list file from the agent's Lists folder and adds or updates the rows.",
+        "title": "Load the list"
       }
     ],
-    "params": [],
+    "params": [
+      {
+        "control": "text",
+        "description": "Path of the file in the agent's files, for example Lists/products.csv",
+        "label": "List file",
+        "name": "file_path",
+        "required": true,
+        "type": "str"
+      }
+    ],
     "rootOrder": [
       "load"
     ],
@@ -66,7 +88,7 @@
   },
   "kind": "automation",
   "level": "org",
-  "name": "Order Desk: import catalogue and customers",
+  "name": "Order Desk: import a list",
   "originKey": "75102b53-7def-4a81-9403-3a68245c3fc2",
   "tags": []
 }
