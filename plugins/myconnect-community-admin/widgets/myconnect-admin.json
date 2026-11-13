@@ -903,7 +903,7 @@
           ]
         }
       },
-      "feedItem": {
+      "feedItemContent": {
         "type": "ActivityItem",
         "props": {
           "title": { "$cond": { "$item": "title" }, "$then": { "$item": "title" }, "$else": { "$item": "excerpt" } },
@@ -931,7 +931,12 @@
               "$else": { "$cond": { "$item": "hasPoll" }, "$then": "accent", "$else": null }
             }
           }
-        },
+        }
+      },
+      "feedItem": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["feedItemContent"],
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": true } },
