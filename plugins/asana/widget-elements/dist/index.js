@@ -1014,63 +1014,212 @@ const flatten_project_board = (args) => {
     };
 };
 /**
- * Flattens a list_milestones response into display rows for the Upcoming
- * Milestones tile. `list_milestones` is server-side pre-filtered to
- * incomplete milestones due today or later, sorted by due date ascending --
- * so unlike `flatten_my_tasks`/`flatten_my_tasks_tabs` above, there is no
- * overdue/destructive case to handle here, only "due today" vs "due later".
+ * Flattens a `list_milestones` response into the whole Upcoming Milestones
+ * view: a "next milestone" hero, a proportional runway of date markers, and
+ * a grouped, range-filtered list.
  *
- * Row 0 carries footer_label: "N upcoming milestones".
- * Each row has: id, name, due_label (dd-Mmm-yy or "Due Today"),
- * due_tone ("warning" if due today, "brand" [mint] otherwise), project_label, url.
+ * What `list_milestones` can and cannot tell us, read off the server source
+ * (`myhub-mcp-servers` asana.ts) and confirmed against the live workspace on
+ * 2026-11-13:
  *
- * `url` is built client-side from `project_gid` + `gid` as
- * `https://app.asana.com/0/{project_gid}/{gid}` -- Asana's long-standing
- * "legacy" task deep-link format (project id then task id). `list_milestones`
- * doesn't request the real `permalink_url` field the way this plugin's
- * `flatten_projects` does (that would need a `myhub-mcp-servers` change,
- * a different repo), so this is a manually-constructed link based on
- * Asana's known URL convention, NOT sandbox-confirmed by actually clicking
- * it -- unlike `flatten_projects`' `permalink_url`, which IS a real API
- * value. Flag for live click-through verification.
- *
- * Args: { value: array } -- `list_milestones`'s `data` array.
+ *  - ONLY THE FIRST 20 ACTIVE PROJECTS ARE SCANNED. The server asks
+ *    `/projects` for `limit: 20` and does not paginate, so a milestone in the
+ *    21st project is invisible to this tile. The footnote says so.
+ *  - THE PER-PROJECT TASK FETCH IS NOT PAGINATED EITHER, so a milestone past
+ *    the first page of a very busy project's task list can be missed.
+ *  - A MILESTONE IS A TASK WITH `resource_subtype === "milestone"` AND A DUE
+ *    DATE. A task a team treats as a milestone but never flagged as one, or
+ *    one with no due date, never appears.
+ *  - NO PROJECT COLOUR. `/projects` is fetched with `opt_fields: "gid,name"`,
+ *    so the per-project colour dots in the reference design have no data
+ *    behind them. Projects are told apart by name here rather than by a
+ *    colour this connector would have to invent.
+ *  - NO OWNER AND NO PERMALINK. `opt_fields` asks for neither, so there is no
+ *    assignee to show, and row links are built from `project_gid` + `gid` in
+ *    Asana's long-standing `/0/{project}/{task}` form rather than from a real
+ *    `permalink_url`.
  */
-const flatten_milestones = (args) => {
+const RANGE_KEYS = ['14', '30', 'all'];
+const RANGE_DAYS = {
+    '14': 14,
+    '30': 30,
+    all: Number.POSITIVE_INFINITY,
+};
+/** Within this many days the milestone reads as urgent rather than planned. */
+const MILESTONE_SOON_DAYS = 3;
+/**
+ * Minimum separation between two runway markers, as a fraction of the axis --
+ * roughly one dot's width on a tile-sized card. Applied as a nudge to the
+ * SECOND of two markers that would otherwise overlap, rather than as a floor
+ * under every track: a floor shifts every later marker right by its own width
+ * as well, which quietly turns a proportional runway into an evenly-spaced one
+ * once there are more than a handful of milestones.
+ */
+const RUNWAY_MIN_SEPARATION = 0.03;
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Weekday for a YYYY-MM-DD calendar date, read in UTC so it cannot slip a day. */
+function weekdayOf(ymd) {
+    const [y, m, d] = ymd.split('-').map(Number);
+    if (![y, m, d].every((n) => Number.isFinite(n)))
+        return '';
+    return WEEKDAY_ABBR[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] ?? '';
+}
+/** YYYY-MM-DD `days` after `ymd`, in UTC. */
+function isoPlusDays(ymd, days) {
+    const [y, m, d] = ymd.split('-').map(Number);
+    if (![y, m, d].every((n) => Number.isFinite(n)))
+        return ymd;
+    const t = new Date(Date.UTC(y, m - 1, d + days));
+    return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`;
+}
+/**
+ * Builds the whole Upcoming Milestones view.
+ *
+ * Args: { value: array, range: "14" | "30" | "all" }
+ *
+ * Returns an object written to `/ui/board`:
+ *   header_label, has_any, has_rows, empty_message
+ *   has_next, next_name, next_meta, next_count, next_count_caption,
+ *   next_tone, next_url, next_has_url
+ *   range_14_variant / range_14_tone (and _30_, _all_)
+ *   show_runway, runway_template, markers[], axis_start_label, axis_end_label
+ *   rows[], footnote, footer_label
+ */
+const flatten_milestone_runway = (args) => {
     const raw = Array.isArray(args.value) ? args.value : [];
-    if (raw.length === 0)
-        return [];
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const rows = raw.map((m) => {
-        const id = String(m.gid ?? '');
-        const name = String(m.name ?? '');
-        const projectLabel = String(m.project_name ?? '');
+    const range = RANGE_KEYS.includes(String(args.range))
+        ? String(args.range)
+        : 'all';
+    const today = todayIsoDate();
+    const all = raw
+        .map((entry, index) => {
+        const m = entry;
+        const id = String(m.gid ?? `milestone-${index}`);
         const projectGid = String(m.project_gid ?? '');
-        const url = id && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '';
-        const dueOn = m.due_on ? String(m.due_on) : null;
-        // 'brand' (mint) is the calm default per the mockup Neil supplied 2026-09-14
-        // -- only "due today" escalates to 'warning'. Deliberately not 'muted':
-        // a date isn't a "nothing to report" field the way an untouched status is.
-        let dueLabel = '';
-        let dueTone = 'brand';
-        if (dueOn) {
-            if (dueOn === todayStr) {
-                dueLabel = 'Due Today';
-                dueTone = 'warning';
-            }
-            else {
-                const ms = Date.parse(dueOn);
-                if (!Number.isNaN(ms)) {
-                    const d = new Date(ms);
-                    dueLabel = `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
-                }
-            }
-        }
-        return { id, name, due_label: dueLabel, due_tone: dueTone, project_label: projectLabel, url, footer_label: '' };
+        const dueOn = String(m.due_on ?? '');
+        return {
+            id,
+            name: String(m.name ?? '').trim() || 'Untitled milestone',
+            project: String(m.project_name ?? ''),
+            due_on: dueOn,
+            days: dueOn ? daysBetween(dueOn, today) : 0,
+            url: m.gid && projectGid ? `https://app.asana.com/0/${projectGid}/${id}` : '',
+        };
+    })
+        .filter((m) => m.due_on !== '')
+        // The server sorts, but a tile should not lean on an upstream sort it does
+        // not control -- and `days` is measured against the VIEWER's today, which
+        // can differ from the server's by a day in either direction.
+        .sort((a, b) => a.days - b.days || a.name.localeCompare(b.name));
+    const within = all.filter((m) => m.days <= RANGE_DAYS[range]);
+    const projectCount = new Set(within.map((m) => m.project).filter(Boolean)).size;
+    // The hero is the soonest milestone overall, not the soonest one inside the
+    // chosen range: "what is next" should not change because the viewer narrowed
+    // the runway to a fortnight.
+    const next = all[0];
+    const nextTone = next && next.days <= MILESTONE_SOON_DAYS ? 'warning' : 'brand';
+    // The axis always starts at today. For a fixed range it ends at the range;
+    // for "All" it ends a week past the last milestone, so the final marker sits
+    // inside the rail rather than flush against its end.
+    const lastDays = within.length > 0 ? within[within.length - 1].days : 0;
+    const axisDays = range === 'all' ? Math.max(lastDays + 7, 28) : RANGE_DAYS[range];
+    let lastGroup = '';
+    const rows = within.map((m) => {
+        const soon = m.days <= MILESTONE_SOON_DAYS;
+        const group = `${MONTH_FULL[Number(m.due_on.split('-')[1]) - 1] ?? ''} ${m.due_on.slice(0, 4)}`.trim();
+        const showGroup = group !== lastGroup;
+        lastGroup = group;
+        return {
+            id: m.id,
+            name: m.name,
+            // The date tile carries the weekday and the day of the month for
+            // scanning; the meta line carries the full dd-Mmm-yy, which is the form
+            // the display standard requires a tile to actually show.
+            weekday_label: weekdayOf(m.due_on).toUpperCase(),
+            day_label: String(Number(m.due_on.split('-')[2] ?? 0)),
+            tone: soon ? 'warning' : 'brand',
+            meta_label: m.project ? `${m.project} · ${formatIsoDate(m.due_on)}` : formatIsoDate(m.due_on),
+            in_label: m.days <= 0 ? 'Today' : m.days === 1 ? 'Tomorrow' : `in ${m.days}d`,
+            url: m.url,
+            has_url: m.url !== '',
+            show_group: showGroup,
+            group_label: group,
+        };
     });
-    const total = raw.length;
-    rows[0].footer_label = `${total} upcoming milestone${total === 1 ? '' : 's'}`;
-    return rows;
+    // The runway is one grid row whose tracks are the GAPS between consecutive
+    // milestones, scaled to the axis. Each marker sits at the end of its own
+    // track, so the dots land at their true proportional dates, and a trailing
+    // filler track with no child holds the rest of the axis open. This is the
+    // only way to place something at an arbitrary x here: no element in the
+    // system takes a position or a width.
+    let cursor = 0;
+    let placed = 0;
+    const tracks = [];
+    const markers = within.map((m) => {
+        const raw = Math.min(1, Math.max(0, m.days / axisDays));
+        // Two milestones on the same day draw one dot on top of the other, so the
+        // later one is nudged along just far enough to stay its own dot.
+        const pos = placed === 0 ? raw : Math.min(1, Math.max(raw, cursor + RUNWAY_MIN_SEPARATION));
+        placed += 1;
+        // Thousandths, so the fr units stay whole numbers.
+        const span = Math.max(0, Math.round((pos - cursor) * 1000));
+        cursor = pos;
+        // Each marker hangs off the END of its track, so a milestone due today
+        // sits in a zero-width first track and its dot would hang off the left of
+        // the rail entirely. One dot's worth of floor on the first track only
+        // keeps it on the rail; later tracks take no floor, so the rest of the
+        // runway stays proportional.
+        tracks.push(`minmax(${placed === 1 ? '0.5rem' : '0'}, ${span}fr)`);
+        return { id: m.id, tone: m.days <= MILESTONE_SOON_DAYS ? 'warning' : 'brand' };
+    });
+    tracks.push(`minmax(0, ${Math.max(0, Math.round((1 - cursor) * 1000))}fr)`);
+    const soonCount = within.filter((m) => m.days <= MILESTONE_SOON_DAYS).length;
+    return {
+        header_label: all.length > 0 ? `Asana · ${all.length} upcoming` : 'Asana',
+        has_any: all.length > 0,
+        has_rows: rows.length > 0,
+        empty_message: all.length === 0 || range === 'all'
+            ? 'No incomplete milestones are due across your active projects.'
+            : range === '14'
+                ? 'Nothing due in the next two weeks — widen the runway to see what is further out.'
+                : 'Nothing due in the next month — widen the runway to see what is further out.',
+        has_next: Boolean(next),
+        next_name: next ? next.name : '',
+        next_meta: next
+            ? next.project
+                ? `${next.project} · ${formatIsoDate(next.due_on)}`
+                : formatIsoDate(next.due_on)
+            : '',
+        next_count: next ? (next.days <= 0 ? 'Today' : String(next.days)) : '',
+        next_count_caption: next
+            ? next.days <= 0
+                ? 'due now'
+                : next.days === 1
+                    ? 'day to go'
+                    : 'days to go'
+            : '',
+        next_tone: nextTone,
+        next_url: next ? next.url : '',
+        next_has_url: Boolean(next && next.url),
+        range_14_variant: range === '14' ? 'soft' : 'outline',
+        range_14_tone: range === '14' ? 'brand' : 'muted',
+        range_30_variant: range === '30' ? 'soft' : 'outline',
+        range_30_tone: range === '30' ? 'brand' : 'muted',
+        range_all_variant: range === 'all' ? 'soft' : 'outline',
+        range_all_tone: range === 'all' ? 'brand' : 'muted',
+        show_runway: markers.length > 0,
+        runway_template: tracks.join(' '),
+        markers,
+        axis_start_label: 'Today',
+        axis_end_label: formatIsoDate(isoPlusDays(today, axisDays)),
+        rows,
+        footnote: 'Milestones are Asana tasks flagged as milestones with a due date, found by scanning the first 20 active projects in the workspace — anything in a project past those 20 is not searched. Rows open Asana from project and task ids, not from an API permalink.',
+        footer_label: all.length === 0
+            ? 'Synced from Asana'
+            : rows.length === all.length
+                ? `${all.length} milestone${all.length === 1 ? '' : 's'} · ${projectCount} project${projectCount === 1 ? '' : 's'}`
+                : `${rows.length} of ${all.length} shown${soonCount > 0 ? ` · ${soonCount} within 3 days` : ''}`,
+    };
 };
 /**
  * Turns a compact Asana user's `name` into "F. Lastname" display + "FL"
@@ -1360,7 +1509,7 @@ const elements = {
         flatten_workload_board,
         step_capacity,
         flatten_my_tasks_board,
-        flatten_milestones,
+        flatten_milestone_runway,
         flatten_activity_board,
     },
 };
