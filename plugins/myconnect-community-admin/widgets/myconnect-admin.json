@@ -1,7 +1,7 @@
 {
   "category": "productivity",
   "connectorsUsed": ["myconnect-community-admin"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). The other tabs (Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). The other tabs (Event RSVPs, Community Feed, Notifications) are coming in later iterations.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -112,17 +112,6 @@
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "eventRsvps" } } }
       },
-      "memberDirectoryTabBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Member Directory",
-          "leadingIcon": "BookOpen",
-          "size": "sm",
-          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "memberDirectory" }, "$then": "primary", "$else": "secondary" },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "memberDirectory" }, "$then": "info", "$else": "default" }
-        },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "memberDirectory" } } }
-      },
       "communityFeedTabBtn": {
         "type": "Button",
         "props": {
@@ -148,7 +137,7 @@
       "tabBar": {
         "type": "Row",
         "props": { "gap": "xs", "wrap": true },
-        "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "memberDirectoryTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
+        "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
       },
       "tabDivider": { "type": "Divider", "props": {} },
 
@@ -812,11 +801,6 @@
         "props": { "message": "Event RSVP's tab is coming in a later iteration." },
         "visible": { "$state": "/ui/activeTab", "eq": "eventRsvps" }
       },
-      "memberDirectoryPanel": {
-        "type": "Empty",
-        "props": { "message": "Member Directory tab is coming in a later iteration." },
-        "visible": { "$state": "/ui/activeTab", "eq": "memberDirectory" }
-      },
       "communityFeedPanel": {
         "type": "Empty",
         "props": { "message": "Community Feed tab is coming in a later iteration." },
@@ -831,7 +815,7 @@
       "body": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["analyticsPanel", "membersPanel", "accessGroupsPanel", "eventRsvpsPanel", "memberDirectoryPanel", "communityFeedPanel", "notificationsPanel"],
+        "children": ["analyticsPanel", "membersPanel", "accessGroupsPanel", "eventRsvpsPanel", "communityFeedPanel", "notificationsPanel"],
         "watch": {
           "/myconnect-community-admin/list_communities": [
             {
