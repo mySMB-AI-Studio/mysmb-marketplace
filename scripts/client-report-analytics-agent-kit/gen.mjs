@@ -177,7 +177,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.2.1';
+const PROCESS_VERSION = '0.2.2';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -345,7 +345,7 @@ const processDefinition = {
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
       ] }),
     status('checking', 'Checking', 'working',
-      'Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
+      'Run every check the checklist lists, with the rules in the skill, for the period only. Read the trial balance first. Keep each Xero call small (one document type and one month at a time, paged): a reply that says the result was too large or saved to a file is NOT empty data, so halve the date range and call again until it returns in full. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
       { outputs: [
         { key: 'findings', type: 'array' }, { key: 'stopFindings', type: 'array' },
         { key: 'clientQuestions', type: 'array' }, { key: 'summaryFile', type: 'string' },

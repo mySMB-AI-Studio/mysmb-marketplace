@@ -53,6 +53,12 @@ Read only what you need, for the period only (Xero `where` filters such as `Date
 
 **Always pass `page`** to `list_invoices`, `list_bank_transactions`, `list_credit_notes` and `list_contacts`: start at `page: 1` and keep going (2, 3 …) while a page comes back with 100 rows. Xero returns each document's **line items** (account, tax type, line amount, tax amount) and full contact details (ABN) **only on paged requests**; without `page` the lines are missing and the GST, ABN and coding checks can't run. Never set `summaryOnly`.
 
+**Keep every call small.** A result too large to return is not shown to you: you only get a note that it was saved to a file, which you cannot read. That is NOT "no line items" and NOT "no data".
+- Read `list_invoices` one type and one **month** at a time (bills `Type=="ACCPAY"` for July, then August, then September; then sales invoices the same way), and `list_bank_transactions` one month at a time.
+- If a reply says the result was too large or saved to a file, **halve the date range** (half a month, then a week) and call again until each reply comes back in full. Never record a check as not run because of a too-large reply; split it instead.
+- Read contacts only for the contacts on this quarter's documents: `list_contacts` with `ids` (comma-separated ContactIDs, about 25 at a time) and `page: 1`.
+- Read the trial balance (`get_trial_balance` at `periodEnd`) on every job: the suspense check depends on it. Do it first, before the large reads.
+
 | Call | For |
 |---|---|
 | `list_tax_rates`, `list_accounts` | tax types and rates; account names, types and default tax types |
@@ -86,7 +92,7 @@ Each row is a check group. Run the groups this practice's checklist lists. The r
 | `gstAccountWithoutGst` | CHK-129 (heuristic) | an account that defaults to a GST tax type, whose lines in the period mostly have no GST |
 | `missingReceipts` | CHK-021, 086 | spend money and bills over $82.50 in the period with nothing attached |
 | `draftSalesInvoices` | CHK-033 | sales invoices dated in the period still in draft or awaiting approval |
-| `lockDate` | CHK-134, 135 | no lock date, or a lock date more than 6 months before `periodEnd` |
+| `lockDate` | CHK-134, 135 | no lock date, or a lock date more than 6 months before `periodEnd`. Xero leaves `PeriodLockDate` out of `get_organisation` when no lock date is set: a missing field IS the finding "no lock date set" (this check always runs) |
 
 
 ## 5. Client questions
