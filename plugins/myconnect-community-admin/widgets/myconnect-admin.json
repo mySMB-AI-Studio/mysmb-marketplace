@@ -19,7 +19,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay", "accessGroupMemberPopupOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay", "accessGroupMemberPopupOverlay", "feedPreviewOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
@@ -921,7 +921,25 @@
             "args": {
               "value": { "$cond": { "$item": "author" }, "$then": { "$item": "author/name" }, "$else": "myConnect" }
             }
+          },
+          "tone": {
+            "$cond": { "$item": "isPinned" },
+            "$then": "warning",
+            "$else": {
+              "$cond": { "$item": "hasEvent" },
+              "$then": "info",
+              "$else": { "$cond": { "$item": "hasPoll" }, "$then": "accent", "$else": null }
+            }
           }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": true } },
+            {
+              "action": "myconnect-member.get_post",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "postId": { "$bindItem": "id" } }
+            }
+          ]
         }
       },
       "feedList": {
@@ -1368,6 +1386,126 @@
         "type": "Card",
         "props": {},
         "children": ["accessGroupMemberPopupCloseBtn", "accessGroupMemberPopupTitleRow", "accessGroupMemberPopupDivider", "accessGroupMemberPopupBody"]
+      },
+
+      "feedPreviewOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["feedPreviewCard"],
+        "visible": { "$state": "/ui/showFeedPreview" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": false } } }
+      },
+      "feedPreviewCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": false } } }
+      },
+      "feedPreviewLoading": {
+        "type": "Skeleton",
+        "props": { "height": "6rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-member.get_post" }
+      },
+      "feedPreviewErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load post: ${/_errors/myconnect-member.get_post}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-member.get_post" }
+      },
+      "feedPreviewPinnedBadge": {
+        "type": "Badge",
+        "props": { "text": "Pinned", "tone": "warning", "variant": "soft" },
+        "visible": { "$state": "/myconnect-member/get_post/isPinned" }
+      },
+      "feedPreviewTitleText": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": { "$cond": { "$state": "/myconnect-member/get_post/title" }, "$then": { "$state": "/myconnect-member/get_post/title" }, "$else": "Post" }
+        }
+      },
+      "feedPreviewTitleRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["feedPreviewTitleText", "feedPreviewPinnedBadge"] },
+      "feedPreviewAuthorAvatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "tone": "accent",
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$cond": { "$state": "/myconnect-member/get_post/author" },
+                "$then": { "$state": "/myconnect-member/get_post/author/name" },
+                "$else": "myConnect"
+              }
+            }
+          }
+        }
+      },
+      "feedPreviewAuthorName": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "text": {
+            "$cond": { "$state": "/myconnect-member/get_post/author" },
+            "$then": { "$state": "/myconnect-member/get_post/author/name" },
+            "$else": "myConnect"
+          }
+        }
+      },
+      "feedPreviewMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{s} · {t}",
+              "s": { "$state": "/myconnect-member/get_post/space/name" },
+              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/myconnect-member/get_post/publishedAt" } } }
+            }
+          }
+        }
+      },
+      "feedPreviewAuthorStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["feedPreviewAuthorName", "feedPreviewMeta"] },
+      "feedPreviewAuthorRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["feedPreviewAuthorAvatar", "feedPreviewAuthorStack"] },
+      "feedPreviewDivider": { "type": "Divider", "props": {} },
+      "feedPreviewBody": {
+        "type": "Text",
+        "props": { "size": "sm", "preserveLines": true, "text": { "$state": "/myconnect-member/get_post/plainText" } }
+      },
+      "feedPreviewLikeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} like(s)", "n": { "$state": "/myconnect-member/get_post/likeCount" } } },
+          "tone": "accent",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/myconnect-member/get_post/likeCount", "neq": null }
+      },
+      "feedPreviewCommentBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} comment(s)", "n": { "$state": "/myconnect-member/get_post/commentCount" } } },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "feedPreviewStatsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["feedPreviewLikeBadge", "feedPreviewCommentBadge"] },
+      "feedPreviewContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedPreviewTitleRow", "feedPreviewAuthorRow", "feedPreviewDivider", "feedPreviewBody", "feedPreviewStatsRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-member.get_post", "not": true },
+            { "$state": "/_errors/myconnect-member.get_post", "not": true }
+          ]
+        }
+      },
+      "feedPreviewCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["feedPreviewCloseBtn", "feedPreviewLoading", "feedPreviewErrorBanner", "feedPreviewContent"]
       },
 
       "memberPopupOverlay": {
