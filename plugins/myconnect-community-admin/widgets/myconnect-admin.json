@@ -1,7 +1,7 @@
 {
   "category": "productivity",
   "connectorsUsed": ["myconnect-community-admin"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. The other tabs (Access Groups, Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Event RSVP's (live): a featured card for the next upcoming event, an upcoming/past event list — click an event for a popup of its RSVPs (member, email, status, sessions, attended, business name, industry) with a print report. The other tabs (Access Groups, Member Directory, Community Feed, Notifications) are coming in later iterations.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -19,7 +19,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay", "eventRsvpPopupOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
@@ -47,7 +47,25 @@
         },
         "visible": { "$state": "/myconnect-community-admin/list_communities/1" }
       },
-      "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["communitySelect", "infoBtn"] },
+      "pillsRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["communitySelect", "infoBtn"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_events",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "when": "upcoming", "limit": 20 }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-community-admin.list_events",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "when": "upcoming", "limit": 20 }
+            }
+          ]
+        }
+      },
       "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
 
       "analyticsTabBtn": {
@@ -132,7 +150,24 @@
         "props": { "gap": "xs", "wrap": true },
         "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "memberDirectoryTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
       },
-      "tabDivider": { "type": "Divider", "props": {} },
+      "tabDivider": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.get_next_event",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-community-admin.get_next_event",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ]
+        }
+      },
 
       "analyticsHeading": { "type": "Heading", "props": { "level": "h3", "text": "Analytics" } },
       "analyticsSubtitle": { "type": "Caption", "props": { "text": "Community growth at a glance", "tone": "muted" } },
@@ -721,9 +756,201 @@
         "props": { "message": "Access Groups tab is coming in a later iteration." },
         "visible": { "$state": "/ui/activeTab", "eq": "accessGroups" }
       },
-      "eventRsvpsPanel": {
+      "nextEventEyebrow": { "type": "Caption", "props": { "text": "UPCOMING EVENTS", "tone": "muted", "weight": "semibold" } },
+      "nextEventLoading": {
+        "type": "Skeleton",
+        "props": { "height": "3rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-community-admin.get_next_event" }
+      },
+      "nextEventErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load the next event: ${/_errors/myconnect-community-admin.get_next_event}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.get_next_event" }
+      },
+      "nextEventEmpty": {
         "type": "Empty",
-        "props": { "message": "Event RSVP's tab is coming in a later iteration." },
+        "props": { "message": "No upcoming events." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.get_next_event", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.get_next_event", "not": true },
+            { "$state": "/myconnect-community-admin/get_next_event/event", "eq": null }
+          ]
+        }
+      },
+      "nextEventDay": {
+        "type": "Text",
+        "props": {
+          "size": "lg",
+          "weight": "bold",
+          "tone": "accent",
+          "text": {
+            "$computed": "myconnect-community-admin_event_card_day",
+            "args": {
+              "value": { "$state": "/myconnect-community-admin/get_next_event/event/startsAt" },
+              "timezone": { "$state": "/myconnect-community-admin/get_next_event/event/timezone" }
+            }
+          }
+        }
+      },
+      "nextEventMonth": {
+        "type": "Caption",
+        "props": {
+          "tone": "accent",
+          "weight": "semibold",
+          "text": {
+            "$computed": "myconnect-community-admin_event_card_month",
+            "args": {
+              "value": { "$state": "/myconnect-community-admin/get_next_event/event/startsAt" },
+              "timezone": { "$state": "/myconnect-community-admin/get_next_event/event/timezone" }
+            }
+          }
+        }
+      },
+      "nextEventDateStack": { "type": "Stack", "props": { "gap": "none", "align": "center" }, "children": ["nextEventDay", "nextEventMonth"] },
+      "nextEventTitle": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$state": "/myconnect-community-admin/get_next_event/event/title" } } },
+      "nextEventWhen": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "myconnect-community-admin_event_card_weekday_time",
+            "args": {
+              "value": { "$state": "/myconnect-community-admin/get_next_event/event/startsAt" },
+              "timezone": { "$state": "/myconnect-community-admin/get_next_event/event/timezone" }
+            }
+          }
+        }
+      },
+      "nextEventInfoStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["nextEventTitle", "nextEventWhen"] },
+      "nextEventRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["nextEventDateStack", "nextEventInfoStack"],
+        "visible": { "$state": "/myconnect-community-admin/get_next_event/event/id" }
+      },
+      "nextEventCard": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["nextEventEyebrow", "nextEventErrorBanner", "nextEventLoading", "nextEventRow", "nextEventEmpty"]
+      },
+
+      "eventsUpcomingBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Upcoming",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/eventsWhen", "eq": "past" }, "$then": "secondary", "$else": "primary" },
+          "tone": { "$cond": { "$state": "/ui/eventsWhen", "eq": "past" }, "$then": "default", "$else": "info" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/eventsWhen", "value": "upcoming" } },
+            {
+              "action": "myconnect-community-admin.list_events",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "when": "upcoming", "limit": 20 }
+            }
+          ]
+        }
+      },
+      "eventsPastBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Past",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/eventsWhen", "eq": "past" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/eventsWhen", "eq": "past" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/eventsWhen", "value": "past" } },
+            {
+              "action": "myconnect-community-admin.list_events",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "when": "past", "limit": 20 }
+            }
+          ]
+        }
+      },
+      "eventsWhenToggle": { "type": "Row", "props": { "gap": "xs" }, "children": ["eventsUpcomingBtn", "eventsPastBtn"] },
+
+      "eventsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load events: ${/_errors/myconnect-community-admin.list_events}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_events" }
+      },
+      "eventsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "eventsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "eventsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventsLoading1", "eventsLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_events" }
+      },
+      "eventsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No events found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_events", "not": true },
+            { "$state": "/myconnect-community-admin/list_events/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_events", "not": true }
+          ]
+        }
+      },
+      "eventTitle": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "title" } } },
+      "eventWhen": { "type": "Caption", "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "startsAt" } } }, "tone": "muted" } },
+      "eventTitleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["eventTitle", "eventWhen"] },
+      "eventGoingBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "rsvps/yes" }, "pattern": "{n} going" } },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "eventWaitlistBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "n": { "$item": "rsvps/waitlist" }, "pattern": "{n} waitlisted" } },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "visible": { "$item": "rsvps/waitlist" }
+      },
+      "eventBadgeRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["eventGoingBadge", "eventWaitlistBadge"] },
+      "eventRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["eventTitleStack", "eventBadgeRow"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showEventRsvpPopup", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/eventRsvpPopupTitle", "value": { "$bindItem": "title" } } },
+            {
+              "action": "myconnect-community-admin.list_event_rsvps",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "eventId": { "$bindItem": "id" }, "limit": 50 }
+            }
+          ]
+        }
+      },
+      "eventsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_events/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_events/items/0" }
+      },
+      "eventsMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — there are more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_events/nextCursor" }
+      },
+
+      "eventRsvpsDivider": { "type": "Divider", "props": {} },
+      "eventRsvpsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["nextEventCard", "eventRsvpsDivider", "eventsWhenToggle", "eventsErrorBanner", "eventsLoading", "eventsEmpty", "eventsList", "eventsMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "eventRsvps" }
       },
       "memberDirectoryPanel": {
@@ -1041,6 +1268,181 @@
         "type": "Card",
         "props": {},
         "children": ["memberDetailCloseBtn", "memberDetailIdentityRow", "memberDetailBadgeRow", "memberDetailDivider", "memberDetailTagsSection", "memberDetailAccessGroupsSection", "memberDetailJoined"]
+      },
+
+      "eventRsvpPopupOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "34rem" },
+        "children": ["eventRsvpPopupCard"],
+        "visible": { "$state": "/ui/showEventRsvpPopup" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showEventRsvpPopup", "value": false } } }
+      },
+      "eventRsvpPopupCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showEventRsvpPopup", "value": false } } }
+      },
+      "eventRsvpPopupTitleIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "sm", "tone": "accent" } },
+      "eventRsvpPopupTitleText": {
+        "type": "Heading",
+        "props": { "level": "h2", "text": { "$template": "RSVPs — ${/ui/eventRsvpPopupTitle}" } }
+      },
+      "eventRsvpPopupTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["eventRsvpPopupTitleIcon", "eventRsvpPopupTitleText"] },
+      "eventRsvpPopupPrintBtn": {
+        "type": "Button",
+        "props": { "label": "Print report", "leadingIcon": "Printer", "size": "sm", "variant": "secondary" },
+        "on": {
+          "click": {
+            "action": "myconnect-community-admin_print_rsvp_report",
+            "params": {
+              "eventTitle": { "$state": "/ui/eventRsvpPopupTitle" },
+              "rsvps": { "$state": "/myconnect-community-admin/list_event_rsvps/items" }
+            }
+          }
+        },
+        "visible": { "$state": "/myconnect-community-admin/list_event_rsvps/items/0" }
+      },
+      "eventRsvpPopupHeaderRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["eventRsvpPopupTitleRow", "eventRsvpPopupPrintBtn"] },
+      "eventRsvpPopupDivider": { "type": "Divider", "props": {} },
+
+      "eventRsvpPopupLoading": {
+        "type": "Skeleton",
+        "props": { "height": "4rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_event_rsvps" }
+      },
+      "eventRsvpPopupErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load RSVPs: ${/_errors/myconnect-community-admin.list_event_rsvps}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_event_rsvps" }
+      },
+      "eventRsvpPopupEmpty": {
+        "type": "Empty",
+        "props": { "message": "No RSVPs yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_event_rsvps", "not": true },
+            { "$state": "/myconnect-community-admin/list_event_rsvps/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_event_rsvps", "not": true }
+          ]
+        }
+      },
+      "eventRsvpPopupCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} RSVP(s)",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/myconnect-community-admin/list_event_rsvps/items" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/myconnect-community-admin/list_event_rsvps/items/0" }
+      },
+
+      "eventRsvpPopupRowStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "status", "eq": "yes" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "waitlist" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "eventRsvpPopupRowName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "displayName" } } },
+      "eventRsvpPopupRowEmail": { "type": "Caption", "props": { "text": { "$item": "email" }, "tone": "muted" } },
+      "eventRsvpPopupRowNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["eventRsvpPopupRowName", "eventRsvpPopupRowEmail"] },
+      "eventRsvpPopupRowIdentity": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["eventRsvpPopupRowStatusDot", "eventRsvpPopupRowNameStack"] },
+      "eventRsvpPopupRowStatusText": {
+        "type": "Caption",
+        "props": {
+          "weight": "semibold",
+          "align": "right",
+          "text": {
+            "$cond": { "$item": "status", "eq": "yes" },
+            "$then": "Going",
+            "$else": { "$cond": { "$item": "status", "eq": "waitlist" }, "$then": "Waitlisted", "$else": "Not going" }
+          },
+          "tone": {
+            "$cond": { "$item": "status", "eq": "yes" },
+            "$then": "success",
+            "$else": { "$cond": { "$item": "status", "eq": "waitlist" }, "$then": "warning", "$else": "muted" }
+          }
+        }
+      },
+      "eventRsvpPopupRowAttended": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "align": "right",
+          "text": {
+            "$cond": { "$item": "attendedAt", "eq": null },
+            "$then": "Not attended yet",
+            "$else": { "$computed": "fmt", "args": { "pattern": "Attended {d}", "d": { "$computed": "format_date", "args": { "value": { "$item": "attendedAt" }, "format": "dd-mmm-yy" } } } }
+          }
+        }
+      },
+      "eventRsvpPopupRowSessions": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "align": "right",
+          "text": { "$cond": { "$item": "sessionsText" }, "$then": { "$item": "sessionsText" }, "$else": "—" }
+        }
+      },
+      "eventRsvpPopupRowBusiness": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "align": "right",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{b} · {i}",
+              "b": { "$cond": { "$item": "businessName" }, "$then": { "$item": "businessName" }, "$else": "—" },
+              "i": { "$cond": { "$item": "industry" }, "$then": { "$item": "industry" }, "$else": "—" }
+            }
+          }
+        }
+      },
+      "eventRsvpPopupRowMeta": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["eventRsvpPopupRowStatusText", "eventRsvpPopupRowAttended", "eventRsvpPopupRowSessions", "eventRsvpPopupRowBusiness"]
+      },
+      "eventRsvpPopupRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["eventRsvpPopupRowIdentity", "eventRsvpPopupRowMeta"]
+      },
+      "eventRsvpPopupList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventRsvpPopupRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_event_rsvps/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_event_rsvps/items/0" }
+      },
+      "eventRsvpPopupMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 50 — there are more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_event_rsvps/nextCursor" }
+      },
+      "eventRsvpPopupBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["eventRsvpPopupErrorBanner", "eventRsvpPopupLoading", "eventRsvpPopupCount", "eventRsvpPopupList", "eventRsvpPopupEmpty", "eventRsvpPopupMoreCaption"]
+      },
+      "eventRsvpPopupCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["eventRsvpPopupCloseBtn", "eventRsvpPopupHeaderRow", "eventRsvpPopupDivider", "eventRsvpPopupBody"]
       },
 
       "memberPopupOverlay": {
