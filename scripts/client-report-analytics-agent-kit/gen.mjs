@@ -243,7 +243,13 @@ const param = (name, label, type, required) => ({ name, label, type, required, c
 const AUTOMATION_PARAMS = [
   param('client_name', 'Client', 'str', true),
   param('period_label', 'BAS period', 'str', true),
-  param('outcome', 'Outcome: readyToLodge, readyOnceClientAnswers or notReady', 'str', true),
+  // A choice, not free text: the approval card shows a clean value, and the publish practice run samples the FIRST
+  // option (otherwise it sends 'sample', which the node rightly refuses). notReady first: always allowed.
+  { ...param('outcome', 'Outcome', 'str', true), control: 'select', options: [
+    { value: 'notReady', label: 'Not ready: rework' },
+    { value: 'readyOnceClientAnswers', label: 'Ready once the client answers' },
+    { value: 'readyToLodge', label: 'Ready to lodge' },
+  ] },
   param('stop_findings', 'Stop findings (one per line; empty when none)', 'str', false),
   param('summary_file', 'Summary file in the agent\'s Files', 'str', false),
   param('note', 'Reason, in two or three sentences', 'str', false),
