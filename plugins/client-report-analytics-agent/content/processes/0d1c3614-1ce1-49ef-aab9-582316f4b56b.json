@@ -1,0 +1,483 @@
+{
+  "contentHash": "ff0e44d842d6d635cc328b8b84d40bac584c9d7c1a2174d65fa684aaea821272",
+  "definition": {
+    "capabilities": [
+      "xero.connections.read",
+      "xero.organisation.read",
+      "xero.accounts.read",
+      "xero.tax_rates.read",
+      "xero.contacts.read",
+      "xero.invoices.read",
+      "xero.credit_notes.read",
+      "xero.bank_transactions.read",
+      "xero.profit_and_loss.read",
+      "xero.trial_balance.read",
+      "abr.abns.check",
+      "knowledge.read",
+      "artifacts.write"
+    ],
+    "description": "Reviews one client's Xero file for one BAS quarter: runs the readiness checks (the CRA-10 GST Check rules plus general readiness checks), writes a BAS readiness summary and asks the reviewer to decide: ready to lodge, ready once the client answers, or not ready. Checks the practice marks as Stop in its Rules remove \"Ready to lodge\". Read-only: nothing is changed in Xero, nothing is lodged and the client is never contacted by the agent.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "clientName",
+        "label": "Client (as named in Xero)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "periodStart",
+        "label": "BAS period start",
+        "required": true,
+        "type": "date"
+      },
+      {
+        "key": "periodEnd",
+        "label": "BAS period end",
+        "required": true,
+        "type": "date"
+      }
+    ],
+    "key": "bas-readiness-review",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 4,
+      "maxAgentTurnsPerStep": 40,
+      "maxAiUnits": 200,
+      "maxSteps": 20,
+      "maxWaitingDays": 30
+    },
+    "modelPolicy": {
+      "brief": "sonnet",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "0d1c3614-1ce1-49ef-aab9-582316f4b56b",
+    "outcomes": [
+      {
+        "evidence": [
+          "basReadiness",
+          "decision_record"
+        ],
+        "key": "readyToLodge",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "basReadiness",
+          "decision_record",
+          "workq_item"
+        ],
+        "key": "clientQueried",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "basReadiness",
+          "decision_record"
+        ],
+        "key": "notReady",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "The review reads Xero; it never changes it. Findings are fixed by a person in Xero.",
+        "key": "readOnlyInXero"
+      },
+      {
+        "description": "Nothing is lodged with the ATO. \"Ready to lodge\" is a recorded decision; the registered BAS agent lodges as usual.",
+        "key": "neverLodges"
+      },
+      {
+        "description": "The agent drafts client questions; a person sends them. The agent never contacts the client.",
+        "key": "noClientContact"
+      },
+      {
+        "description": "Every figure comes from the client's Xero file; anything the source doesn't hold is reported as not checked, never estimated.",
+        "key": "noInventedFigures"
+      }
+    ],
+    "rework": [],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.review.found != null",
+        "steps.review.summaryMarkdown != null"
+      ],
+      "sampleInputs": {
+        "clientName": "Demo Company (AU)",
+        "periodEnd": "2026-09-30",
+        "periodStart": "2026-07-01"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "review",
+        "kind": "agent",
+        "outputs": [
+          "clientResolved",
+          "clientName",
+          "xeroTenantId",
+          "periodLabel",
+          "found",
+          "findings",
+          "clientQuestions",
+          "summaryMarkdown"
+        ],
+        "skill": "client-report-analytics-agent-bas-review",
+        "title": "Run the BAS readiness checks"
+      },
+      {
+        "artifactKind": "basReadiness",
+        "key": "summary",
+        "kind": "output",
+        "template": "bas-readiness-summary",
+        "title": "BAS readiness summary"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "decideReady",
+        "kind": "decision",
+        "materiality": [
+          "steps.review.found",
+          "steps.review.findings"
+        ],
+        "options": [
+          {
+            "effect": "Records that this BAS is ready to lodge. Nothing is lodged and nothing changes in Xero: the registered BAS agent lodges it as usual.",
+            "key": "readyToLodge",
+            "label": "Ready to lodge",
+            "transition": "readyToLodge"
+          },
+          {
+            "effect": "Hands the drafted client questions to you to send. Nothing is sent by the agent.",
+            "key": "readyOnceClientAnswers",
+            "label": "Ready once the client answers",
+            "transition": "askClient"
+          },
+          {
+            "effect": "Records that the file needs work before this BAS. Nothing changes in Xero.",
+            "key": "notReady",
+            "label": "Not ready: rework",
+            "transition": "notReady"
+          },
+          {
+            "effect": "Sends the review back to the agent with your note.",
+            "key": "revise",
+            "label": "Ask for changes",
+            "transition": "review"
+          }
+        ],
+        "sla": {
+          "expireAfterBusinessDays": 15,
+          "remindAfterBusinessDays": 2
+        },
+        "title": "Is this BAS ready to lodge?",
+        "type": "bas_readiness"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "decideBlocked",
+        "kind": "decision",
+        "materiality": [
+          "steps.review.found",
+          "steps.review.findings"
+        ],
+        "options": [
+          {
+            "effect": "Hands the drafted client questions to you to send. Nothing is sent by the agent.",
+            "key": "readyOnceClientAnswers",
+            "label": "Ready once the client answers",
+            "transition": "askClient"
+          },
+          {
+            "effect": "Records that the file needs work before this BAS. Nothing changes in Xero.",
+            "key": "notReady",
+            "label": "Not ready: rework",
+            "transition": "notReady"
+          },
+          {
+            "effect": "Sends the review back to the agent with your note.",
+            "key": "revise",
+            "label": "Ask for changes",
+            "transition": "review"
+          }
+        ],
+        "sla": {
+          "expireAfterBusinessDays": 15,
+          "remindAfterBusinessDays": 2
+        },
+        "title": "A Stop check was found: how should this BAS proceed?",
+        "type": "bas_readiness"
+      },
+      {
+        "assign": "reviewer",
+        "completion": "statusDone",
+        "key": "askClient",
+        "kind": "human",
+        "title": "Send the client questions"
+      },
+      {
+        "evidence": [
+          "steps.summary.artifactId",
+          "steps.review.summaryMarkdown",
+          "steps.review.findings"
+        ],
+        "key": "readyToLodge",
+        "kind": "gate",
+        "outcome": "readyToLodge",
+        "requires": [
+          "steps.review.clientResolved == true",
+          "steps.review.summaryMarkdown != null"
+        ],
+        "title": "Ready to lodge"
+      },
+      {
+        "evidence": [
+          "steps.summary.artifactId",
+          "steps.review.summaryMarkdown",
+          "steps.review.clientQuestions"
+        ],
+        "key": "clientQueried",
+        "kind": "gate",
+        "outcome": "clientQueried",
+        "requires": [
+          "steps.askClient.completed == true"
+        ],
+        "title": "Client questions sent"
+      },
+      {
+        "evidence": [
+          "steps.summary.artifactId",
+          "steps.review.summaryMarkdown",
+          "steps.review.findings"
+        ],
+        "key": "notReady",
+        "kind": "gate",
+        "outcome": "notReady",
+        "requires": [
+          "steps.review.summaryMarkdown != null"
+        ],
+        "title": "Not ready: rework"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "clientName",
+        "periodStart",
+        "periodEnd"
+      ],
+      "kind": "none"
+    },
+    "title": "BAS readiness review",
+    "transitions": [
+      {
+        "from": "review",
+        "to": "summary"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "!steps.review.clientResolved"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstChargedWhileUnregistered && policy.stopOnGstChargedWhileUnregistered"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstOnNonClaimableItems && policy.stopOnGstOnNonClaimableItems"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstAmountMismatch && policy.stopOnGstAmountMismatch"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstWithoutAbn && policy.stopOnGstWithoutAbn"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstFromUnregisteredSuppliers && policy.stopOnGstFromUnregisteredSuppliers"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstRegistrationRequired && policy.stopOnGstRegistrationRequired"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.unreconciledBank && policy.stopOnUnreconciledBank"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.suspenseBalance && policy.stopOnSuspenseBalance"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.cancelledAbn && policy.stopOnCancelledAbn"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.duplicateBills && policy.stopOnDuplicateBills"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstStatusMismatch && policy.stopOnGstStatusMismatch"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.gstAccountWithoutGst && policy.stopOnGstAccountWithoutGst"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.missingReceipts && policy.stopOnMissingReceipts"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.draftSalesInvoices && policy.stopOnDraftSalesInvoices"
+      },
+      {
+        "from": "summary",
+        "to": "decideBlocked",
+        "when": "steps.review.found.lockDate && policy.stopOnLockDate"
+      },
+      {
+        "from": "summary",
+        "to": "decideReady"
+      },
+      {
+        "from": "askClient",
+        "to": "clientQueried"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnGstChargedWhileUnregistered",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnGstOnNonClaimableItems",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnGstAmountMismatch",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnGstWithoutAbn",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnGstFromUnregisteredSuppliers",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnGstRegistrationRequired",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnUnreconciledBank",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnSuspenseBalance",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnCancelledAbn",
+        "type": "boolean"
+      },
+      {
+        "default": true,
+        "editableBy": "manager",
+        "key": "stopOnDuplicateBills",
+        "type": "boolean"
+      },
+      {
+        "default": false,
+        "editableBy": "manager",
+        "key": "stopOnGstStatusMismatch",
+        "type": "boolean"
+      },
+      {
+        "default": false,
+        "editableBy": "manager",
+        "key": "stopOnGstAccountWithoutGst",
+        "type": "boolean"
+      },
+      {
+        "default": false,
+        "editableBy": "manager",
+        "key": "stopOnMissingReceipts",
+        "type": "boolean"
+      },
+      {
+        "default": false,
+        "editableBy": "manager",
+        "key": "stopOnDraftSalesInvoices",
+        "type": "boolean"
+      },
+      {
+        "default": false,
+        "editableBy": "manager",
+        "key": "stopOnLockDate",
+        "type": "boolean"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Client and quarter"
+    }
+  },
+  "kind": "process",
+  "name": "BAS readiness review",
+  "originKey": "0d1c3614-1ce1-49ef-aab9-582316f4b56b"
+}

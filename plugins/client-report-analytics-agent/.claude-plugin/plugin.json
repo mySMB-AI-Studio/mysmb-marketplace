@@ -24,10 +24,17 @@
       "content/capabilities/e94f8c84-995e-46e1-862f-d000e9fcb7b2.json",
       "content/capabilities/c9b6f10d-2d8f-4dec-82fb-71422f7468fe.json",
       "content/capabilities/23012439-d315-451e-9123-d1e904f81091.json",
-      "content/capabilities/e3f84946-29b3-445e-aeb5-c43f9ed9e381.json"
+      "content/capabilities/e3f84946-29b3-445e-aeb5-c43f9ed9e381.json",
+      "content/capabilities/f0980a20-9651-48f9-a7db-68cf2970f8f8.json"
+    ],
+    "evaluations": [
+      "content/evaluations/2b09d23b-5f48-4036-b0a1-7e6e772ce863.json"
     ],
     "formTemplates": [],
     "forms": [],
+    "processes": [
+      "content/processes/0d1c3614-1ce1-49ef-aab9-582316f4b56b.json"
+    ],
     "setups": [
       "content/setups/9ebf24b7-8aa0-4bfb-b722-259d5551da5d.json"
     ],
@@ -39,14 +46,28 @@
       "outcomes": [
         "Every client report request ends with a live, self-checking report linked on its WorkQ item, or one clear question back",
         "Every report comes from a tested Client Report Analytics template; the agent never types a figure",
+        "Every BAS readiness review ends with a decision recorded by a person, against Stop and Note checks the practice sets",
         "Nothing is changed in Xero and nothing is sent to a client"
       ],
-      "processes": [],
-      "requiredCapabilities": [],
+      "processes": [
+        "bas-readiness-review"
+      ],
+      "requiredCapabilities": [
+        "xero.connections.read",
+        "xero.organisation.read",
+        "xero.accounts.read",
+        "xero.tax_rates.read",
+        "xero.contacts.read",
+        "xero.invoices.read",
+        "xero.credit_notes.read",
+        "xero.bank_transactions.read",
+        "xero.profit_and_loss.read",
+        "xero.trial_balance.read"
+      ],
       "role": "Client reporting and review for a bookkeeping practice (Xero)",
       "setupEffort": "minutes"
     }
   },
   "name": "client-report-analytics-agent",
-  "version": "0.0.3"
+  "version": "0.0.4"
 }
