@@ -34,6 +34,43 @@ const is_after: ComputedFunction = (args) => {
   return a > b;
 };
 
+function eventDatePart(value: unknown, timezone: unknown, part: Intl.DateTimeFormatOptions): string {
+  if (value == null) return '';
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return '';
+  const tz = typeof timezone === 'string' && timezone ? timezone : undefined;
+  return new Intl.DateTimeFormat('en-US', { timeZone: tz, ...part }).format(d);
+}
+
+// ── event_card_day ──────────────────────────────────────────────────
+// Day-of-month only (e.g. "25"), in the event's own timezone -- not the
+// viewer's browser zone, since an event's displayed time must match what
+// it was scheduled for regardless of who's looking.
+// Args: { value: string (ISO), timezone?: string (IANA) }
+const event_card_day: ComputedFunction = (args) =>
+  eventDatePart(args.value, args.timezone, { day: 'numeric' });
+
+// ── event_card_month ────────────────────────────────────────────────
+// 3-letter month, upper case (e.g. "NOV"), in the event's own timezone.
+// Args: { value: string (ISO), timezone?: string (IANA) }
+const event_card_month: ComputedFunction = (args) =>
+  eventDatePart(args.value, args.timezone, { month: 'short' }).toUpperCase();
+
+// ── event_card_weekday_time ─────────────────────────────────────────
+// "Wed 8:00 pm" -- weekday + 12-hour time, lower-case am/pm, in the
+// event's own timezone.
+// Args: { value: string (ISO), timezone?: string (IANA) }
+const event_card_weekday_time: ComputedFunction = (args) => {
+  const weekday = eventDatePart(args.value, args.timezone, { weekday: 'short' });
+  const time = eventDatePart(args.value, args.timezone, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).toLowerCase().replace(/([ap])\.m\./, '$1m');
+  if (!weekday || !time) return '';
+  return `${weekday} ${time}`;
+};
+
 function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"']/g,
@@ -233,9 +270,144 @@ const print_report: PluginWidgetAction = {
   },
 };
 
+interface ReportRsvp {
+  displayName?: string;
+  email?: string;
+  status?: string;
+  attendedAt?: string | null;
+  sessionsText?: string | null;
+  businessName?: string | null;
+  industry?: string | null;
+}
+
+const RSVP_STATUS_LABELS: Record<string, string> = {
+  yes: 'Going',
+  waitlist: 'Waitlisted',
+  no: 'Not going',
+};
+const RSVP_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
+  yes: { bg: '#dcfce7', fg: '#15803d' },
+  waitlist: { bg: '#fef3c7', fg: '#b45309' },
+  no: { bg: '#e5e7eb', fg: '#374151' },
+};
+
+function rsvpStatusPill(status: unknown): string {
+  const s = typeof status === 'string' ? status : '';
+  const colors = RSVP_STATUS_COLORS[s] ?? RSVP_STATUS_COLORS.no!;
+  const label = RSVP_STATUS_LABELS[s] ?? 'Unknown';
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:${colors.bg};color:${colors.fg};">${escapeHtml(label)}</span>`;
+}
+
+// ── print_rsvp_report ───────────────────────────────────────────────
+// Opens a new browser tab with a styled, printable RSVP roster for one
+// event (member, email, RSVP status, sessions, attended, business name,
+// industry), then triggers the browser's print dialog. Unlike
+// print_report, this needs no fetch-then-gate dance: by the time the
+// Print report button is visible, the event's RSVPs are already loaded
+// into state (the popup that contains the button only shows after
+// list_event_rsvps has resolved), so the click just reads what's
+// already there -- no tool call in this action's own click, so no
+// shared-path staleness risk either.
+//
+// Args: { eventTitle?, rsvps: ReportRsvp[] }
+const print_rsvp_report: PluginWidgetAction = {
+  description:
+    'Open a printable RSVP roster (member, email, status, sessions, attended, business name, industry) for one event, and trigger the browser print dialog.',
+  schema: {
+    type: 'object',
+    properties: {
+      eventTitle: { type: 'string' },
+      rsvps: { type: 'array' },
+    },
+    required: ['rsvps'],
+  },
+  handler: (params) => {
+    const eventTitle =
+      typeof params.eventTitle === 'string' && params.eventTitle ? params.eventTitle : 'Event';
+    const rsvps: ReportRsvp[] = Array.isArray(params.rsvps) ? (params.rsvps as ReportRsvp[]) : [];
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    const going = rsvps.filter((r) => r.status === 'yes').length;
+    const waitlisted = rsvps.filter((r) => r.status === 'waitlist').length;
+    const attended = rsvps.filter((r) => r.attendedAt).length;
+
+    const statCard = (label: string, n: number, accent: string) => `
+      <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e5e7eb;border-top:4px solid ${accent};border-radius:10px;padding:14px 16px;">
+        <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.03em;">${escapeHtml(label)}</div>
+        <div style="font-size:24px;font-weight:700;color:#111827;margin-top:4px;">${n}</div>
+      </div>`;
+
+    const rows = rsvps
+      .map(
+        (r) => `<tr>
+          <td>${escapeHtml(r.displayName ?? '—')}</td>
+          <td>${escapeHtml(r.email ?? '—')}</td>
+          <td>${rsvpStatusPill(r.status)}</td>
+          <td>${escapeHtml(r.sessionsText || '—')}</td>
+          <td>${r.attendedAt ? escapeHtml(formatDate(r.attendedAt)) : 'Not yet'}</td>
+          <td>${escapeHtml(r.businessName || '—')}</td>
+          <td>${escapeHtml(r.industry || '—')}</td>
+        </tr>`,
+      )
+      .join('');
+
+    win.document.write(`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RSVPs — ${escapeHtml(eventTitle)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: #111827; margin: 0; background: #f3f4f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .banner { background: linear-gradient(135deg, #1d4ed8, #0ea5e9); color: #fff; padding: 28px 32px; }
+  .banner h1 { margin: 0; font-size: 20px; }
+  .banner p { margin: 4px 0 0; font-size: 13px; opacity: .9; }
+  .content { padding: 24px 32px 40px; }
+  .cards { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  table { border-collapse: collapse; width: 100%; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  th, td { text-align: left; padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+  thead th { background: #eff6ff; color: #1d4ed8; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: .03em; }
+  tbody tr:nth-child(even) { background: #fafafa; }
+  tbody tr:last-child td { border-bottom: none; }
+  h2 { font-size: 14px; color: #374151; margin: 0 0 10px; }
+  .meta { color: #6b7280; font-size: 12px; margin-top: 2px; }
+  @media print { body { background: #fff; } }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <h1>${escapeHtml(eventTitle)} — RSVP report</h1>
+    <p>${rsvps.length} RSVP(s)</p>
+  </div>
+  <div class="content">
+    <div class="cards">
+      ${statCard('Going', going, '#16a34a')}
+      ${statCard('Waitlisted', waitlisted, '#d97706')}
+      ${statCard('Attended', attended, '#1d4ed8')}
+    </div>
+    <h2>RSVPs</h2>
+    ${
+      rsvps.length
+        ? `<table>
+            <thead><tr><th>Member</th><th>Email</th><th>RSVP</th><th>Sessions</th><th>Attended</th><th>Business name</th><th>Industry</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>`
+        : `<p class="meta">No RSVPs for this event.</p>`
+    }
+  </div>
+</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 250);
+  },
+};
+
 const elements: PluginElementsModule = {
   slug: 'myconnect-community-admin',
-  functions: { today, is_after },
-  actions: { print_report },
+  functions: { today, is_after, event_card_day, event_card_month, event_card_weekday_time },
+  actions: { print_report, print_rsvp_report },
 };
 export default elements;
