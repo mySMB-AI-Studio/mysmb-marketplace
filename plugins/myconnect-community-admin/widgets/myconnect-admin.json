@@ -1,7 +1,7 @@
 {
   "category": "productivity",
   "connectorsUsed": ["myconnect-community-admin"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. The other tabs (Access Groups, Event RSVPs, Member Directory, Community Feed, Notifications) are coming in later iterations.",
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). The other tabs (Event RSVPs, Community Feed, Notifications) are coming in later iterations.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -19,7 +19,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay", "accessGroupMemberPopupOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
@@ -48,7 +48,25 @@
         "visible": { "$state": "/myconnect-community-admin/list_communities/1" }
       },
       "pillsRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["communitySelect", "infoBtn"] },
-      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "pillsRow"] },
+      "header": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["titleGroup", "pillsRow"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_access_groups",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-community-admin.list_access_groups",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ]
+        }
+      },
 
       "analyticsTabBtn": {
         "type": "Button",
@@ -94,17 +112,6 @@
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "eventRsvps" } } }
       },
-      "memberDirectoryTabBtn": {
-        "type": "Button",
-        "props": {
-          "label": "Member Directory",
-          "leadingIcon": "BookOpen",
-          "size": "sm",
-          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "memberDirectory" }, "$then": "primary", "$else": "secondary" },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "memberDirectory" }, "$then": "info", "$else": "default" }
-        },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "memberDirectory" } } }
-      },
       "communityFeedTabBtn": {
         "type": "Button",
         "props": {
@@ -130,7 +137,7 @@
       "tabBar": {
         "type": "Row",
         "props": { "gap": "xs", "wrap": true },
-        "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "memberDirectoryTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
+        "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
       },
       "tabDivider": { "type": "Divider", "props": {} },
 
@@ -716,20 +723,83 @@
         "children": ["membersErrorBanner", "membersLoading", "membersEmpty", "membersColumnHeader", "membersList", "membersMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "members" }
       },
-      "accessGroupsPanel": {
+      "accessGroupsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load access groups: ${/_errors/myconnect-community-admin.list_access_groups}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_access_groups" }
+      },
+      "accessGroupsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "accessGroupsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "accessGroupsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupsLoading1", "accessGroupsLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_access_groups" }
+      },
+      "accessGroupsEmpty": {
         "type": "Empty",
-        "props": { "message": "Access Groups tab is coming in a later iteration." },
+        "props": { "message": "No access groups found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_access_groups", "not": true },
+            { "$state": "/myconnect-community-admin/list_access_groups/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_access_groups", "not": true }
+          ]
+        }
+      },
+      "accessGroupIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "size": "sm", "tone": "accent" } },
+      "accessGroupName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "name" } } },
+      "accessGroupNameRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["accessGroupIcon", "accessGroupName"] },
+      "accessGroupMemberCountBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} member(s)",
+              "n": { "$computed": "count", "args": { "value": { "$item": "members" } } }
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "accessGroupRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["accessGroupNameRow", "accessGroupMemberCountBadge"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showAccessGroupMemberPopup", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/accessGroupPopupName", "value": { "$bindItem": "name" } } },
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": {
+                "community": { "$state": "/ui/selectedCommunity" },
+                "accessGroupId": { "$bindItem": "id" },
+                "limit": 20
+              }
+            }
+          ]
+        }
+      },
+      "accessGroupsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_access_groups" },
+        "visible": { "$state": "/myconnect-community-admin/list_access_groups/0" }
+      },
+      "accessGroupsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupsErrorBanner", "accessGroupsLoading", "accessGroupsEmpty", "accessGroupsList"],
         "visible": { "$state": "/ui/activeTab", "eq": "accessGroups" }
       },
       "eventRsvpsPanel": {
         "type": "Empty",
         "props": { "message": "Event RSVP's tab is coming in a later iteration." },
         "visible": { "$state": "/ui/activeTab", "eq": "eventRsvps" }
-      },
-      "memberDirectoryPanel": {
-        "type": "Empty",
-        "props": { "message": "Member Directory tab is coming in a later iteration." },
-        "visible": { "$state": "/ui/activeTab", "eq": "memberDirectory" }
       },
       "communityFeedPanel": {
         "type": "Empty",
@@ -745,7 +815,7 @@
       "body": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["analyticsPanel", "membersPanel", "accessGroupsPanel", "eventRsvpsPanel", "memberDirectoryPanel", "communityFeedPanel", "notificationsPanel"],
+        "children": ["analyticsPanel", "membersPanel", "accessGroupsPanel", "eventRsvpsPanel", "communityFeedPanel", "notificationsPanel"],
         "watch": {
           "/myconnect-community-admin/list_communities": [
             {
@@ -1041,6 +1111,127 @@
         "type": "Card",
         "props": {},
         "children": ["memberDetailCloseBtn", "memberDetailIdentityRow", "memberDetailBadgeRow", "memberDetailDivider", "memberDetailTagsSection", "memberDetailAccessGroupsSection", "memberDetailJoined"]
+      },
+
+      "accessGroupMemberPopupOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "32rem" },
+        "children": ["accessGroupMemberPopupCard"],
+        "visible": { "$state": "/ui/showAccessGroupMemberPopup" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showAccessGroupMemberPopup", "value": false } } }
+      },
+      "accessGroupMemberPopupCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showAccessGroupMemberPopup", "value": false } } }
+      },
+      "accessGroupMemberPopupTitleIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "size": "sm", "tone": "accent" } },
+      "accessGroupMemberPopupTitleText": {
+        "type": "Heading",
+        "props": { "level": "h2", "text": { "$template": "Members in ${/ui/accessGroupPopupName}" } }
+      },
+      "accessGroupMemberPopupTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["accessGroupMemberPopupTitleIcon", "accessGroupMemberPopupTitleText"] },
+      "accessGroupMemberPopupDivider": { "type": "Divider", "props": {} },
+
+      "accessGroupMemberPopupLoading": {
+        "type": "Skeleton",
+        "props": { "height": "4rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
+      },
+      "accessGroupMemberPopupErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load members: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+      },
+      "accessGroupMemberPopupEmpty": {
+        "type": "Empty",
+        "props": { "message": "No members in this access group." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/myconnect-community-admin/list_members/items/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_members", "not": true }
+          ]
+        }
+      },
+      "accessGroupMemberPopupCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} member(s)",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/myconnect-community-admin/list_members/items" } } }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+
+      "accessGroupMemberPopupRowStatusDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$cond": { "$item": "status", "eq": "active" },
+            "$then": "success",
+            "$else": {
+              "$cond": { "$item": "status", "eq": "invited" },
+              "$then": "warning",
+              "$else": "muted"
+            }
+          }
+        }
+      },
+      "accessGroupMemberPopupRowName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "displayName" } } },
+      "accessGroupMemberPopupRowEmail": { "type": "Caption", "props": { "text": { "$item": "email" }, "tone": "muted" } },
+      "accessGroupMemberPopupRowNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["accessGroupMemberPopupRowName", "accessGroupMemberPopupRowEmail"] },
+      "accessGroupMemberPopupRowIdentity": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["accessGroupMemberPopupRowStatusDot", "accessGroupMemberPopupRowNameStack"] },
+      "accessGroupMemberPopupRowRole": { "type": "Caption", "props": { "text": { "$item": "role" }, "tone": "muted", "align": "right" } },
+      "accessGroupMemberPopupRowJoined": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$item": "createdAt" }, "format": "dd-mmm-yy" } },
+          "tone": "muted",
+          "align": "right"
+        }
+      },
+      "accessGroupMemberPopupRowTags": {
+        "type": "Caption",
+        "props": {
+          "text": { "$cond": { "$item": "tagsText", "eq": null }, "$then": "No tags", "$else": { "$item": "tagsText" } },
+          "tone": "muted",
+          "align": "right"
+        }
+      },
+      "accessGroupMemberPopupRowMeta": { "type": "Stack", "props": { "gap": "none" }, "children": ["accessGroupMemberPopupRowRole", "accessGroupMemberPopupRowJoined", "accessGroupMemberPopupRowTags"] },
+      "accessGroupMemberPopupRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["accessGroupMemberPopupRowIdentity", "accessGroupMemberPopupRowMeta"]
+      },
+      "accessGroupMemberPopupList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupMemberPopupRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_members/items" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/items/0" }
+      },
+      "accessGroupMemberPopupMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — this access group has more members than that.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/nextCursor" }
+      },
+      "accessGroupMemberPopupBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupMemberPopupErrorBanner", "accessGroupMemberPopupLoading", "accessGroupMemberPopupCount", "accessGroupMemberPopupList", "accessGroupMemberPopupEmpty", "accessGroupMemberPopupMoreCaption"]
+      },
+      "accessGroupMemberPopupCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["accessGroupMemberPopupCloseBtn", "accessGroupMemberPopupTitleRow", "accessGroupMemberPopupDivider", "accessGroupMemberPopupBody"]
       },
 
       "memberPopupOverlay": {
