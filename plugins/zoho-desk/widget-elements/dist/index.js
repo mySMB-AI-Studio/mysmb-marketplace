@@ -29,81 +29,192 @@ const ticket_status_dashboard = (args) => {
         loaded,
         hasData: total > 0,
         total,
-        totalLabel: `${total.toLocaleString('en-US')} ${total === 1 ? 'ticket' : 'tickets'} total`,
     };
     for (const s of STATUSES) {
         const n = counts[s.value] ?? 0;
         out[`${s.key}Display`] = n.toLocaleString('en-US');
-        // Share of all tickets, for the bar on each card.
-        out[`${s.key}Pct`] = total > 0 ? Math.round((n / total) * 100) : 0;
     }
     return out;
 };
 /** Rows shown in the ticket list (TILE-DISPLAY-STANDARDS §11). */
 const MAX_TICKET_ROWS = 20;
+/** Status tones per TILE-DISPLAY-STANDARDS §7: open is in progress, closed is done. */
 const STATUS_TONE = {
-    open: 'brand',
+    open: 'info',
     'on hold': 'warning',
     escalated: 'destructive',
+    closed: 'success',
 };
-/** `ChevronUp` while the ticket list is open, else `ChevronDown`. */
-const ticket_list_chevron = (args) => (args.expanded === true ? 'ChevronUp' : 'ChevronDown');
-/**
- * Shows or hides the ticket list under the total. The first open fetches the
- * newest tickets with `list_tickets`; later toggles reuse them. Writes
- * `/ui/tickets/{expanded,loading,error,list,note}`.
- *
- * Spec: `{ "action": "zoho-desk_toggle_ticket_list", "params": {} }`
- */
-async function toggleTicketList(_params, ctx) {
-    const store = ctx.store;
-    if (!store)
-        return;
-    const expanded = store.get('/ui/tickets/expanded') !== true;
-    store.set('/ui/tickets/expanded', expanded);
-    if (!expanded || Array.isArray(store.get('/ui/tickets/list')) || store.get('/ui/tickets/loading') === true)
-        return;
-    store.set('/ui/tickets/loading', true);
-    store.set('/ui/tickets/error', '');
-    try {
-        const res = await fetch('/api/widgets-system/call-tool', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                mcp: 'zoho-desk',
-                tool: 'list_tickets',
-                params: { limit: MAX_TICKET_ROWS, sortBy: '-createdTime' },
-            }),
-        });
-        if (!res.ok)
-            throw new Error(`HTTP ${res.status}`);
-        const body = (await res.json());
-        const tickets = Array.isArray(body.data?.data) ? body.data.data : [];
-        const list = tickets.map((t) => {
-            const status = String(t.status ?? '').trim() || 'Unknown';
-            return {
-                id: String(t.id ?? t.ticketNumber),
-                number: `#${String(t.ticketNumber ?? '')}`,
-                subject: String(t.subject ?? '').trim() || '(No subject)',
-                status,
-                tone: STATUS_TONE[status.toLowerCase()] ?? 'muted',
-            };
-        });
-        const total = Number(store.get('/ui/ticketStatus/total')) || 0;
-        store.set('/ui/tickets/note', total > list.length ? `Showing ${list.length} of ${total.toLocaleString('en-US')} tickets, newest first.` : '');
-        store.set('/ui/tickets/list', list);
-    }
-    catch {
-        store.set('/ui/tickets/error', "Couldn't load the tickets. Please try again.");
-    }
-    finally {
-        store.set('/ui/tickets/loading', false);
-    }
+/** Periods in the "Tickets over time" dropdown, in order. "This week" is the default, so its value is empty. */
+const PERIODS = [
+    { value: 'today', label: 'Today' },
+    { value: '', label: 'This week' },
+    { value: 'month', label: 'This month' },
+    { value: 'custom', label: 'Custom range' },
+];
+/** Status filter on the "Tickets over time" ticket list. Values match Zoho's statuses, lowercased. */
+const STATUS_FILTERS = [
+    { value: '', label: 'All statuses' },
+    { value: 'open', label: 'Open' },
+    { value: 'on hold', label: 'On Hold' },
+    { value: 'escalated', label: 'Escalated' },
+    { value: 'closed', label: 'Closed' },
+];
+/** A status as a Title Case badge label, e.g. "on hold" → "On Hold". */
+function statusLabel(status) {
+    const known = STATUS_FILTERS.find((s) => s.value && s.value === status.toLowerCase());
+    return known ? known.label : status.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
-const toggle_ticket_list = {
-    description: 'Show or hide the newest Zoho Desk tickets (up to 20) under the ticket total, fetching them on first open.',
-    schema: { type: 'object', properties: {} },
-    handler: toggleTicketList,
+/** Local midnight at the start of today, this week (Monday) and this month. */
+function periodStarts(now) {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const week = new Date(today);
+    week.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    return { today, week, month: new Date(now.getFullYear(), now.getMonth(), 1) };
+}
+/** A `DateInput` value (`YYYY-MM-DD`) as local midnight, or null. */
+function localDay(value) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? ''));
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+}
+/**
+ * `createdTimeRange` for the "Tickets over time" `search_tickets` call: from
+ * the start of this week or this month, whichever is earlier, to now, so one
+ * call covers today, this week and this month.
+ *
+ * Spec: `{ "$computed": "zoho-desk_ticket_created_range", "args": {} }`
+ */
+const ticket_created_range = () => {
+    const now = new Date();
+    const { week, month } = periodStarts(now);
+    const from = week < month ? week : month;
+    return `${from.toISOString()},${now.toISOString()}`;
+};
+/**
+ * Display-ready state for the Ticket Status Overview tile's "Tickets over
+ * time" section. Counts tickets created this month and in the selected period
+ * and lists that period's tickets.
+ *
+ * - Today, this week and this month come from `search_tickets` over
+ *   `ticket_created_range` (newest first; `{ data: [...], count }`).
+ * - A custom range is read separately, through `passthrough_get` on
+ *   `/tickets/search`, so "Total this month" keeps its own data. `customRange`
+ *   is the range that call should use: set once both dates are valid and
+ *   otherwise kept at its last value (`prevRange`), so the call never runs
+ *   with an incomplete range.
+ *
+ * Args:
+ *   search        — the `search_tickets` result
+ *   custom        — the `passthrough_get` result for the custom range
+ *   period        — `/ui/ticketPeriod`: 'today', '' (this week), 'month' or 'custom'
+ *   from, to      — `/ui/ticketDates/from`, `/ui/ticketDates/to`: `YYYY-MM-DD`, both inclusive
+ *   prevRange     — this function's previous `customRange`
+ *   status        — `/ui/ticketStatusFilter`: '' (all) or a lowercase status, filters the ticket list
+ *   listOpen      — true when the ticket list is open (`/ui/showTicketList`, opened by the filters and "Show list", closed by "Hide list")
+ *
+ * Spec: `{ "$computed": "zoho-desk_ticket_activity_dashboard", "args": { "search": { "$state": "/zoho-desk/search_tickets" }, "custom": { "$state": "/zoho-desk/passthrough_get" }, "period": { "$state": "/ui/ticketPeriod" }, "from": { "$state": "/ui/ticketDates/from" }, "to": { "$state": "/ui/ticketDates/to" }, "prevRange": { "$state": "/ui/ticketTime/customRange" }, "status": { "$state": "/ui/ticketStatusFilter" }, "listOpen": { "$state": "/ui/showTicketList" } } }`
+ */
+const ticket_activity_dashboard = (args) => {
+    const search = (args.search && typeof args.search === 'object' ? args.search : {});
+    const custom = (args.custom && typeof args.custom === 'object' ? args.custom : {});
+    const loaded = Array.isArray(search.data);
+    const searchRows = loaded ? search.data : [];
+    const now = new Date();
+    const starts = periodStarts(now);
+    const period = PERIODS.find((p) => p.value === args.period) ?? PERIODS[1];
+    const isCustom = period.value === 'custom';
+    // The custom range: the start of `from` to the end of `to`, both local days.
+    const fromDay = localDay(args.from);
+    const toDay = localDay(args.to);
+    const toEnd = toDay ? new Date(toDay.getFullYear(), toDay.getMonth(), toDay.getDate() + 1) : null;
+    const rangeValid = Boolean(fromDay && toEnd && fromDay < toEnd);
+    const customRange = fromDay && toEnd && rangeValid
+        ? `${fromDay.toISOString()},${new Date(toEnd.getTime() - 1).toISOString()}`
+        : typeof args.prevRange === 'string'
+            ? args.prevRange
+            : undefined;
+    const customHint = !fromDay || !toDay ? 'Choose a start and end date.' : !rangeValid ? 'The end date must be on or after the start date.' : '';
+    const createdIn = (rows, from, to) => rows.filter((t) => {
+        const ms = Date.parse(String(t.createdTime ?? ''));
+        return Number.isFinite(ms) && ms >= from.getTime() && (!to || ms < to.getTime());
+    });
+    // Zoho's `count` covers the whole range it was asked for, including tickets
+    // beyond the 100 read. It equals this month's total when the range starts on the 1st.
+    const count = Number(search.count);
+    const rangeIsMonth = starts.month <= starts.week;
+    const monthRows = createdIn(searchRows, starts.month);
+    const monthCount = rangeIsMonth && Number.isFinite(count) ? count : monthRows.length;
+    const monthTruncated = !rangeIsMonth && monthRows.length === searchRows.length && Number(count) > searchRows.length;
+    // This week's total ignores the period and status filters.
+    const weekRows = createdIn(searchRows, starts.week);
+    const weekCount = !rangeIsMonth && Number.isFinite(count) ? count : weekRows.length;
+    const weekTruncated = rangeIsMonth && weekRows.length === searchRows.length && Number(count) > searchRows.length;
+    let inPeriod;
+    let truncated;
+    if (isCustom) {
+        const rows = Array.isArray(custom.data) ? custom.data : [];
+        // Filtered to the dates on screen, so a result for the previous dates never shows.
+        inPeriod = fromDay && rangeValid ? createdIn(rows, fromDay, toEnd) : [];
+        truncated = rangeValid && Number(custom.count) > rows.length;
+    }
+    else {
+        const since = period.value === 'today' ? starts.today : period.value === 'month' ? starts.month : starts.week;
+        inPeriod = createdIn(searchRows, since);
+        // Rows come newest first, so the period is only cut short when every row read falls inside it.
+        truncated = inPeriod.length === searchRows.length && Number.isFinite(count) && count > searchRows.length;
+    }
+    const listOpen = args.listOpen === true && (!isCustom || rangeValid);
+    const statusFilter = STATUS_FILTERS.find((s) => s.value === args.status) ?? STATUS_FILTERS[0];
+    const shown = statusFilter.value
+        ? inPeriod.filter((t) => String(t.status ?? '').trim().toLowerCase() === statusFilter.value)
+        : inPeriod;
+    const list = shown.slice(0, MAX_TICKET_ROWS).map((t) => {
+        const status = String(t.status ?? '').trim() || 'Unknown';
+        return {
+            id: String(t.id ?? t.ticketNumber),
+            number: `#${String(t.ticketNumber ?? '')}`,
+            subject: String(t.subject ?? '').trim() || '(No subject)',
+            status,
+            label: statusLabel(status),
+            tone: STATUS_TONE[status.toLowerCase()] ?? 'muted',
+        };
+    });
+    const rangeLabel = fromDay && toDay && rangeValid
+        ? args.from === args.to
+            ? ddMmmYy(fromDay)
+            : `${ddMmmYy(fromDay)} – ${ddMmmYy(toDay)}`
+        : '';
+    const statusWord = statusFilter.value ? `${statusFilter.label.toLowerCase()} ` : '';
+    const periodName = isCustom
+        ? args.from === args.to
+            ? `on ${rangeLabel}`
+            : `from ${rangeLabel.replace(' – ', ' to ')}`
+        : period.label.toLowerCase();
+    return {
+        loaded,
+        periodOptions: PERIODS.map((p) => ({ value: p.value, label: p.label })),
+        monthDisplay: `${monthCount.toLocaleString('en-US')}${monthTruncated ? '+' : ''}`,
+        isCustom,
+        customRange,
+        customHint: isCustom ? customHint : '',
+        // Shows "Clear dates" once either date is set.
+        hasDates: isCustom && Boolean(args.from || args.to),
+        // The ticket list shows once the period has numbers to show.
+        hasPeriod: !isCustom || rangeValid,
+        weekDisplay: `${weekCount.toLocaleString('en-US')}${weekTruncated ? '+' : ''}`,
+        list,
+        statusOptions: STATUS_FILTERS.map((s) => ({ value: s.value, label: s.label })),
+        listExpanded: listOpen,
+        // "Show list" reopens the list after "Hide list" (preset periods; a custom range always offers "Hide list").
+        listHidden: !listOpen && !isCustom,
+        listEmpty: listOpen && list.length === 0,
+        // Shown beside "Hide list": tickets matching the period and status.
+        shownCount: `${shown.length.toLocaleString('en-US')}${truncated ? '+' : ''} ${shown.length === 1 && !truncated ? 'ticket' : 'tickets'}`,
+        emptyText: `No ${statusWord}tickets created ${periodName}.`,
+        note: listOpen && (shown.length > list.length || truncated)
+            ? `Showing ${list.length} of ${shown.length.toLocaleString('en-US')}${truncated ? '+' : ''} ${statusWord}tickets created ${periodName}, newest first.`
+            : '',
+    };
 };
 /** Most tickets the Priority Breakdown tile reads (`list_tickets` max). */
 const PRIORITY_TICKET_CAP = 100;
@@ -444,13 +555,11 @@ const elements = {
     slug: 'zoho-desk',
     functions: {
         ticket_status_dashboard,
-        ticket_list_chevron,
+        ticket_created_range,
+        ticket_activity_dashboard,
         priority_breakdown_dashboard,
         sla_due_dashboard,
         agent_workload_dashboard,
-    },
-    actions: {
-        toggle_ticket_list,
     },
 };
 export default elements;

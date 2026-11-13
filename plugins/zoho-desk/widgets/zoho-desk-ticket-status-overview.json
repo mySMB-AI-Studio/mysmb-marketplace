@@ -1,7 +1,7 @@
 {
   "id": "zoho-desk-ticket-status-overview",
   "title": "Ticket Status Overview",
-  "description": "All Zoho Desk tickets split by status (Open, On Hold, Escalated, Closed), each with a bar showing its share of all tickets, and the total ticket count; click the total to list the newest tickets and their status.",
+  "description": "Zoho Desk tickets by status (Open, On Hold, Escalated, Closed), with this week's and this month's new-ticket totals. Filter by status and period (today, this week, this month or a custom date range) to list the matching tickets, newest first; hide or show the list, and open Zoho Desk.",
   "category": "support",
   "tags": [
     "zoho",
@@ -16,7 +16,10 @@
     "on hold",
     "escalated",
     "closed tickets",
-    "zoho desk"
+    "zoho desk",
+    "tickets over time",
+    "new tickets",
+    "date range"
   ],
   "connectorsUsed": [
     "zoho-desk"
@@ -67,6 +70,275 @@
                 "args": {
                   "report": {
                     "$state": "/zoho-desk/tickets_count_by_field"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/ticketStatus/loaded": {
+            "action": "zoho-desk.search_tickets",
+            "params": {
+              "createdTimeRange": {
+                "$computed": "zoho-desk_ticket_created_range",
+                "args": {}
+              },
+              "sortBy": "-createdTime",
+              "limit": 100
+            }
+          },
+          "/zoho-desk/search_tickets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
+                  }
+                }
+              }
+            }
+          },
+          "/zoho-desk/passthrough_get": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/ticketPeriod": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/ticketDates/from": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/ticketDates/to": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/ticketTime/customRange": {
+            "action": "zoho-desk.passthrough_get",
+            "params": {
+              "path": "/tickets/search",
+              "params": {
+                "createdTimeRange": {
+                  "$state": "/ui/ticketTime/customRange"
+                },
+                "sortBy": "-createdTime",
+                "limit": 100
+              }
+            }
+          },
+          "/ui/ticketStatusFilter": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/showTicketList": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketTime",
+              "value": {
+                "$computed": "zoho-desk_ticket_activity_dashboard",
+                "args": {
+                  "search": {
+                    "$state": "/zoho-desk/search_tickets"
+                  },
+                  "custom": {
+                    "$state": "/zoho-desk/passthrough_get"
+                  },
+                  "period": {
+                    "$state": "/ui/ticketPeriod"
+                  },
+                  "from": {
+                    "$state": "/ui/ticketDates/from"
+                  },
+                  "to": {
+                    "$state": "/ui/ticketDates/to"
+                  },
+                  "prevRange": {
+                    "$state": "/ui/ticketTime/customRange"
+                  },
+                  "status": {
+                    "$state": "/ui/ticketStatusFilter"
+                  },
+                  "listOpen": {
+                    "$state": "/ui/showTicketList"
                   }
                 }
               }
@@ -139,8 +411,8 @@
           "gap": "sm"
         },
         "children": [
-          "skCards",
-          "skFooter"
+          "skRows",
+          "skTime"
         ],
         "visible": {
           "$and": [
@@ -155,17 +427,17 @@
           ]
         }
       },
-      "skCards": {
+      "skRows": {
         "type": "Skeleton",
         "props": {
-          "height": "10rem",
+          "height": "9rem",
           "rounded": "md"
         }
       },
-      "skFooter": {
+      "skTime": {
         "type": "Skeleton",
         "props": {
-          "height": "3rem",
+          "height": "7rem",
           "rounded": "md"
         }
       },
@@ -201,9 +473,10 @@
           "gap": "md"
         },
         "children": [
-          "scopeLabel",
-          "statusGrid",
-          "footerBox"
+          "scopeRow",
+          "statusList",
+          "timeDivider",
+          "timeSection"
         ],
         "visible": {
           "$and": [
@@ -216,6 +489,18 @@
           ]
         }
       },
+      "scopeRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "scopeLabel",
+          "periodRow"
+        ]
+      },
       "scopeLabel": {
         "type": "Text",
         "props": {
@@ -224,365 +509,480 @@
           "weight": "medium"
         }
       },
-      "statusGrid": {
+      "periodRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "periodStack"
+        ],
+        "visible": {
+          "$state": "/ui/ticketTime/loaded"
+        }
+      },
+      "periodStack": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "periodValue",
+          "periodLabel"
+        ]
+      },
+      "periodValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketTime/weekDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "periodLabel": {
+        "type": "Text",
+        "props": {
+          "text": "This week",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "statusList": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "rowOpen",
+          "divOpen",
+          "rowOnHold",
+          "divOnHold",
+          "rowEscalated",
+          "divEscalated",
+          "rowClosed"
+        ]
+      },
+      "rowOpen": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "dotOpen",
+          "labelOpen",
+          "countOpen"
+        ]
+      },
+      "dotOpen": {
+        "type": "Dot",
+        "props": {
+          "tone": "info",
+          "size": "sm"
+        }
+      },
+      "labelOpen": {
+        "type": "Text",
+        "props": {
+          "text": "Open",
+          "size": "sm"
+        }
+      },
+      "countOpen": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketStatus/openDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "divOpen": {
+        "type": "Divider",
+        "props": {}
+      },
+      "rowOnHold": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "dotOnHold",
+          "labelOnHold",
+          "countOnHold"
+        ]
+      },
+      "dotOnHold": {
+        "type": "Dot",
+        "props": {
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "labelOnHold": {
+        "type": "Text",
+        "props": {
+          "text": "On Hold",
+          "size": "sm"
+        }
+      },
+      "countOnHold": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketStatus/onHoldDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "divOnHold": {
+        "type": "Divider",
+        "props": {}
+      },
+      "rowEscalated": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "dotEscalated",
+          "labelEscalated",
+          "countEscalated"
+        ]
+      },
+      "dotEscalated": {
+        "type": "Dot",
+        "props": {
+          "tone": "destructive",
+          "size": "sm"
+        }
+      },
+      "labelEscalated": {
+        "type": "Text",
+        "props": {
+          "text": "Escalated",
+          "size": "sm"
+        }
+      },
+      "countEscalated": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketStatus/escalatedDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "divEscalated": {
+        "type": "Divider",
+        "props": {}
+      },
+      "rowClosed": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr) auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "dotClosed",
+          "labelClosed",
+          "countClosed"
+        ]
+      },
+      "dotClosed": {
+        "type": "Dot",
+        "props": {
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "labelClosed": {
+        "type": "Text",
+        "props": {
+          "text": "Closed",
+          "size": "sm"
+        }
+      },
+      "countClosed": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketStatus/closedDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold",
+          "align": "right"
+        }
+      },
+      "timeDivider": {
+        "type": "Divider",
+        "props": {}
+      },
+      "timeSection": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "timeHeader",
+          "timeError",
+          "timeLoading",
+          "timeBody"
+        ]
+      },
+      "timeHeader": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr) auto auto",
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "monthWrap",
+          "statusFilter",
+          "periodSelect"
+        ]
+      },
+      "monthWrap": {
+        "type": "Row",
+        "props": {
+          "justify": "start",
+          "align": "center"
+        },
+        "children": [
+          "monthChip"
+        ]
+      },
+      "monthChip": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "monthRow"
+        ],
+        "visible": {
+          "$state": "/ui/ticketTime/loaded"
+        }
+      },
+      "monthRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "monthCount",
+          "monthLabel"
+        ]
+      },
+      "monthCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketTime/monthDisplay"
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "monthLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Total this month",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "statusFilter": {
+        "type": "Select",
+        "props": {
+          "value": {
+            "$bindState": "/ui/ticketStatusFilter"
+          },
+          "options": {
+            "$state": "/ui/ticketTime/statusOptions"
+          },
+          "ariaLabel": "Status",
+          "size": "sm"
+        },
+        "visible": {
+          "$state": "/ui/ticketTime/loaded"
+        },
+        "on": {
+          "change": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showTicketList",
+              "value": true
+            }
+          }
+        }
+      },
+      "periodSelect": {
+        "type": "Select",
+        "props": {
+          "value": {
+            "$bindState": "/ui/ticketPeriod"
+          },
+          "options": {
+            "$state": "/ui/ticketTime/periodOptions"
+          },
+          "ariaLabel": "Period",
+          "size": "sm"
+        },
+        "visible": {
+          "$state": "/ui/ticketTime/loaded"
+        },
+        "on": {
+          "change": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showTicketList",
+              "value": true
+            }
+          }
+        }
+      },
+      "timeError": {
+        "type": "Caption",
+        "props": {
+          "text": "Couldn't load ticket dates from Zoho Desk. Please try again in a few minutes."
+        },
+        "visible": {
+          "$state": "/_errors/zoho-desk.search_tickets"
+        }
+      },
+      "timeLoading": {
+        "type": "Skeleton",
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/ticketTime/loaded",
+              "not": true
+            },
+            {
+              "$state": "/_errors/zoho-desk.search_tickets",
+              "not": true
+            }
+          ]
+        }
+      },
+      "timeBody": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "hideWrap",
+          "customRow",
+          "clearWrap",
+          "customHint",
+          "customError",
+          "customLoading",
+          "showWrap",
+          "breakdownEmpty",
+          "breakdownList",
+          "breakdownNote",
+          "viewWrap"
+        ],
+        "visible": {
+          "$state": "/ui/ticketTime/loaded"
+        }
+      },
+      "customRow": {
         "type": "Grid",
         "props": {
           "cols": 2,
           "gap": "sm"
         },
         "children": [
-          "cardOpen",
-          "cardOnHold",
-          "cardEscalated",
-          "cardClosed"
-        ]
-      },
-      "cardOpen": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "openInner"
-        ]
-      },
-      "openInner": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "openStack",
-          "openBarRow"
-        ]
-      },
-      "openStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "center"
-        },
-        "children": [
-          "openValue",
-          "openLabel"
-        ]
-      },
-      "openValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/openDisplay"
-          },
-          "tone": "brand"
-        }
-      },
-      "openLabel": {
-        "type": "Text",
-        "props": {
-          "text": "Open",
-          "tone": "brand",
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
-      "openBarRow": {
-        "type": "Row",
-        "props": {
-          "template": "minmax(0, 1fr)",
-          "align": "center"
-        },
-        "children": [
-          "openBar"
-        ]
-      },
-      "openBar": {
-        "type": "ProgressBar",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/openPct"
-          },
-          "tone": "brand"
-        }
-      },
-      "cardOnHold": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "onHoldInner"
-        ]
-      },
-      "onHoldInner": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "onHoldStack",
-          "onHoldBarRow"
-        ]
-      },
-      "onHoldStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "center"
-        },
-        "children": [
-          "onHoldValue",
-          "onHoldLabel"
-        ]
-      },
-      "onHoldValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/onHoldDisplay"
-          },
-          "tone": "warning"
-        }
-      },
-      "onHoldLabel": {
-        "type": "Text",
-        "props": {
-          "text": "On Hold",
-          "tone": "warning",
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
-      "onHoldBarRow": {
-        "type": "Row",
-        "props": {
-          "template": "minmax(0, 1fr)",
-          "align": "center"
-        },
-        "children": [
-          "onHoldBar"
-        ]
-      },
-      "onHoldBar": {
-        "type": "ProgressBar",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/onHoldPct"
-          },
-          "tone": "chart-3"
-        }
-      },
-      "cardEscalated": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "escalatedInner"
-        ]
-      },
-      "escalatedInner": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "escalatedStack",
-          "escalatedBarRow"
-        ]
-      },
-      "escalatedStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "center"
-        },
-        "children": [
-          "escalatedValue",
-          "escalatedLabel"
-        ]
-      },
-      "escalatedValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/escalatedDisplay"
-          },
-          "tone": "destructive"
-        }
-      },
-      "escalatedLabel": {
-        "type": "Text",
-        "props": {
-          "text": "Escalated",
-          "tone": "destructive",
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
-      "escalatedBarRow": {
-        "type": "Row",
-        "props": {
-          "template": "minmax(0, 1fr)",
-          "align": "center"
-        },
-        "children": [
-          "escalatedBar"
-        ]
-      },
-      "escalatedBar": {
-        "type": "ProgressBar",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/escalatedPct"
-          },
-          "tone": "destructive"
-        }
-      },
-      "cardClosed": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "closedInner"
-        ]
-      },
-      "closedInner": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "closedStack",
-          "closedBarRow"
-        ]
-      },
-      "closedStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "center"
-        },
-        "children": [
-          "closedValue",
-          "closedLabel"
-        ]
-      },
-      "closedValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/closedDisplay"
-          },
-          "tone": "muted"
-        }
-      },
-      "closedLabel": {
-        "type": "Text",
-        "props": {
-          "text": "Closed",
-          "size": "sm",
-          "weight": "medium"
-        }
-      },
-      "closedBarRow": {
-        "type": "Row",
-        "props": {
-          "template": "minmax(0, 1fr)",
-          "align": "center"
-        },
-        "children": [
-          "closedBar"
-        ]
-      },
-      "closedBar": {
-        "type": "ProgressBar",
-        "props": {
-          "value": {
-            "$state": "/ui/ticketStatus/closedPct"
-          },
-          "tone": "default"
-        }
-      },
-      "footerBox": {
-        "type": "Section",
-        "props": {
-          "variant": "muted"
-        },
-        "children": [
-          "footerStack"
-        ]
-      },
-      "footerStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
-        },
-        "children": [
-          "footerRow",
-          "ticketsLoading",
-          "ticketsError",
-          "ticketList",
-          "ticketsNote"
-        ]
-      },
-      "footerRow": {
-        "type": "Row",
-        "props": {
-          "template": "minmax(0, 1fr) auto",
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "totalToggleRow",
-          "viewRow"
-        ]
-      },
-      "totalToggleRow": {
-        "type": "Row",
-        "props": {
-          "template": "auto auto minmax(0, 1fr)",
-          "gap": "xs",
-          "align": "center",
-          "hover": true,
-          "clickable": true
-        },
-        "children": [
-          "totalLabel",
-          "totalChevron"
+          "fromField",
+          "toField"
         ],
+        "visible": {
+          "$state": "/ui/ticketTime/isCustom"
+        }
+      },
+      "fromField": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "fromLabel",
+          "fromInput"
+        ]
+      },
+      "fromLabel": {
+        "type": "Text",
+        "props": {
+          "text": "From",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "fromInput": {
+        "type": "DateInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/ticketDates/from"
+          },
+          "ariaLabel": "Start date",
+          "size": "sm"
+        },
         "on": {
-          "click": {
-            "action": "zoho-desk_toggle_ticket_list",
-            "params": {}
+          "change": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showTicketList",
+              "value": true
+            }
           }
         }
       },
-      "totalLabel": {
+      "toField": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "toLabel",
+          "toInput"
+        ]
+      },
+      "toLabel": {
         "type": "Text",
         "props": {
-          "text": {
-            "$state": "/ui/ticketStatus/totalLabel"
-          },
-          "size": "sm"
-        }
-      },
-      "totalChevron": {
-        "type": "Icon",
-        "props": {
-          "name": {
-            "$computed": "zoho-desk_ticket_list_chevron",
-            "args": {
-              "expanded": {
-                "$state": "/ui/tickets/expanded"
-              }
-            }
-          },
+          "text": "To",
           "tone": "muted",
-          "size": "sm"
+          "size": "xs"
         }
       },
-      "viewRow": {
+      "hideCustomRow": {
         "type": "Row",
         "props": {
           "template": "auto auto",
@@ -592,72 +992,356 @@
           "clickable": true
         },
         "children": [
-          "viewLabel",
-          "viewArrow"
+          "hideCustomLabel",
+          "hideCustomIcon"
         ],
         "on": {
-          "click": {
-            "action": "open_url",
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/showTicketList",
+                "value": false
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/ticketPeriod",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "visible": {
+          "$state": "/ui/ticketTime/isCustom"
+        }
+      },
+      "hideCustomLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Hide list",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "hideCustomIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronUp",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "toInput": {
+        "type": "DateInput",
+        "props": {
+          "value": {
+            "$bindState": "/ui/ticketDates/to"
+          },
+          "ariaLabel": "End date",
+          "size": "sm"
+        },
+        "on": {
+          "change": {
+            "action": "setState",
             "params": {
-              "url": "https://desk.zoho.com/agent/mysmbcom",
-              "target": "_blank"
+              "statePath": "/ui/showTicketList",
+              "value": true
             }
           }
         }
       },
-      "viewLabel": {
-        "type": "Text",
+      "clearWrap": {
+        "type": "Row",
         "props": {
-          "text": "View in Zoho Desk",
-          "tone": "brand",
-          "size": "sm",
-          "weight": "semibold"
+          "justify": "end",
+          "align": "center"
+        },
+        "children": [
+          "clearRow"
+        ],
+        "visible": {
+          "$state": "/ui/ticketTime/hasDates"
         }
       },
-      "viewArrow": {
+      "clearRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "clearIcon",
+          "clearLabel"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/ticketDates",
+              "value": {}
+            }
+          }
+        }
+      },
+      "clearIcon": {
         "type": "Icon",
         "props": {
-          "name": "ArrowRight",
-          "tone": "brand",
-          "size": "md"
+          "name": "X",
+          "tone": "muted",
+          "size": "xs"
         }
       },
-      "ticketsLoading": {
+      "clearLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Clear dates",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "customHint": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketTime/customHint"
+          }
+        },
+        "visible": {
+          "$state": "/ui/ticketTime/customHint"
+        }
+      },
+      "customError": {
+        "type": "Caption",
+        "props": {
+          "text": "Couldn't load tickets for these dates. Please try again."
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/ticketTime/isCustom"
+            },
+            {
+              "$state": "/ui/ticketTime/hasPeriod"
+            },
+            {
+              "$state": "/_errors/zoho-desk.passthrough_get"
+            }
+          ]
+        }
+      },
+      "customLoading": {
         "type": "Skeleton",
         "props": {
-          "height": "4rem",
+          "height": "5rem",
           "rounded": "md"
         },
         "visible": {
           "$and": [
             {
-              "$state": "/ui/tickets/expanded"
+              "$state": "/ui/ticketTime/isCustom"
             },
             {
-              "$state": "/ui/tickets/loading"
+              "$state": "/_loading/zoho-desk.passthrough_get"
             }
           ]
         }
       },
-      "ticketsError": {
+      "hideWrap": {
+        "type": "Row",
+        "props": {
+          "justify": "end",
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "shownCount",
+          "hideRow",
+          "hideCustomRow"
+        ],
+        "visible": {
+          "$or": [
+            {
+              "$state": "/ui/ticketTime/listExpanded"
+            },
+            {
+              "$state": "/ui/ticketTime/isCustom"
+            }
+          ]
+        }
+      },
+      "shownCount": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/ticketTime/shownCount"
+          },
+          "tone": "muted",
+          "size": "xs"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/ui/ticketTime/listExpanded"
+            },
+            {
+              "$or": [
+                {
+                  "$state": "/ui/ticketTime/isCustom",
+                  "not": true
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/_loading/zoho-desk.passthrough_get",
+                      "not": true
+                    },
+                    {
+                      "$state": "/_errors/zoho-desk.passthrough_get",
+                      "not": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "hideRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "hideLabel",
+          "hideIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showTicketList",
+              "value": false
+            }
+          }
+        },
+        "visible": {
+          "$state": "/ui/ticketTime/isCustom",
+          "not": true
+        }
+      },
+      "hideLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Hide list",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "hideIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronUp",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "showWrap": {
+        "type": "Row",
+        "props": {
+          "justify": "end",
+          "align": "center"
+        },
+        "children": [
+          "showRow"
+        ],
+        "visible": {
+          "$state": "/ui/ticketTime/listHidden"
+        }
+      },
+      "showRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "showLabel",
+          "showIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/showTicketList",
+              "value": true
+            }
+          }
+        }
+      },
+      "showLabel": {
+        "type": "Text",
+        "props": {
+          "text": "Show list",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "showIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ChevronDown",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "breakdownEmpty": {
         "type": "Caption",
         "props": {
           "text": {
-            "$state": "/ui/tickets/error"
+            "$state": "/ui/ticketTime/emptyText"
           }
         },
         "visible": {
           "$and": [
             {
-              "$state": "/ui/tickets/expanded"
+              "$state": "/ui/ticketTime/listEmpty"
             },
             {
-              "$state": "/ui/tickets/error"
+              "$or": [
+                {
+                  "$state": "/ui/ticketTime/isCustom",
+                  "not": true
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/_loading/zoho-desk.passthrough_get",
+                      "not": true
+                    },
+                    {
+                      "$state": "/_errors/zoho-desk.passthrough_get",
+                      "not": true
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }
       },
-      "ticketList": {
+      "breakdownList": {
         "type": "Stack",
         "props": {
           "gap": "sm"
@@ -666,11 +1350,38 @@
           "ticketItem"
         ],
         "repeat": {
-          "statePath": "/ui/tickets/list",
+          "statePath": "/ui/ticketTime/list",
           "key": "id"
         },
         "visible": {
-          "$state": "/ui/tickets/expanded"
+          "$and": [
+            {
+              "$state": "/ui/ticketTime/listExpanded"
+            },
+            {
+              "$state": "/ui/ticketTime/hasPeriod"
+            },
+            {
+              "$or": [
+                {
+                  "$state": "/ui/ticketTime/isCustom",
+                  "not": true
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/_loading/zoho-desk.passthrough_get",
+                      "not": true
+                    },
+                    {
+                      "$state": "/_errors/zoho-desk.passthrough_get",
+                      "not": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       },
       "ticketItem": {
@@ -692,7 +1403,8 @@
           "text": {
             "$item": "number"
           },
-          "tone": "muted"
+          "tone": "muted",
+          "size": "sm"
         }
       },
       "ticketSubject": {
@@ -709,7 +1421,7 @@
         "type": "Badge",
         "props": {
           "text": {
-            "$item": "status"
+            "$item": "label"
           },
           "tone": {
             "$item": "tone"
@@ -717,22 +1429,87 @@
           "variant": "soft"
         }
       },
-      "ticketsNote": {
+      "breakdownNote": {
         "type": "Caption",
         "props": {
           "text": {
-            "$state": "/ui/tickets/note"
+            "$state": "/ui/ticketTime/note"
           }
         },
         "visible": {
           "$and": [
             {
-              "$state": "/ui/tickets/expanded"
+              "$and": [
+                {
+                  "$state": "/ui/ticketTime/note"
+                },
+                {
+                  "$state": "/ui/ticketTime/listExpanded"
+                }
+              ]
             },
             {
-              "$state": "/ui/tickets/note"
+              "$or": [
+                {
+                  "$state": "/ui/ticketTime/isCustom",
+                  "not": true
+                },
+                {
+                  "$and": [
+                    {
+                      "$state": "/_loading/zoho-desk.passthrough_get",
+                      "not": true
+                    },
+                    {
+                      "$state": "/_errors/zoho-desk.passthrough_get",
+                      "not": true
+                    }
+                  ]
+                }
+              ]
             }
           ]
+        }
+      },
+      "viewWrap": {
+        "type": "Row",
+        "props": {
+          "justify": "end",
+          "align": "center"
+        },
+        "children": [
+          "viewRow"
+        ]
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": {
+          "template": "auto",
+          "gap": "xs",
+          "align": "center",
+          "hover": true,
+          "clickable": true
+        },
+        "children": [
+          "viewLabel"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://desk.zoho.com/agent/mysmbcom",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "viewLabel": {
+        "type": "Text",
+        "props": {
+          "text": "View in Zoho Desk",
+          "tone": "brand",
+          "size": "xs",
+          "weight": "medium"
         }
       }
     }
