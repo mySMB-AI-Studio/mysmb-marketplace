@@ -1,5 +1,5 @@
 {
-  "contentHash": "f51d76190e1266f4ef175c6a96523c2bf406d05b3592ff1388044b8c3b0ca20d",
+  "contentHash": "58f436b50e91382a3006437d25a6ad40c5ef111e1e24898c0605cc4eec73d68d",
   "definition": {
     "capabilities": [
       "xero.connections.read",
@@ -157,7 +157,7 @@
             }
           ]
         },
-        "instructions": "Read the practice's checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Record the outputs and move to Checking.",
+        "instructions": "Read the practice's checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Rename the job with job_rename to \"BAS readiness review: <client> <period label>\" so people can find it. Record the outputs and move to Checking.",
         "key": "finding",
         "kind": "initial",
         "label": "Finding the client"
@@ -208,7 +208,7 @@
             }
           ]
         },
-        "instructions": "The reviewer has approved. Call the record tool now, with exactly the inputs they approved: the approval is used by this run, and the platform counts it only because it runs while the job is in Recording. Then post a one-line job comment with the outcome and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.",
+        "instructions": "The reviewer has approved. Call the record tool now, with exactly the inputs they approved: the approval is used by this run, and the platform counts it only because it runs while the job is in Recording. Then make the outcome visible where people look, because the jobs list only shows \"Done\": (1) add an \"Outcome\" section at the TOP of the summary file (files_read, then files_write the whole file): the outcome in words (Ready to lodge, Ready once the client answers, or Not ready), that the reviewer approved it and the date, the reviewer's note if they gave one, and in one or two lines what must happen before the BAS can be lodged; (2) rename the job with job_rename to \"BAS readiness review: <client> <period label> - <outcome in words>\"; (3) post a one-line job comment with the outcome in words and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.",
         "key": "recording",
         "kind": "working",
         "label": "Recording"
