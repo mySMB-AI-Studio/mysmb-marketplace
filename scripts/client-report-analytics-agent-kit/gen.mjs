@@ -345,7 +345,7 @@ const processDefinition = {
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
       ] }),
     status('checking', 'Checking', 'working',
-      'Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review.',
+      'Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
       { outputs: [
         { key: 'findings', type: 'array' }, { key: 'stopFindings', type: 'array' },
         { key: 'clientQuestions', type: 'array' }, { key: 'summaryFile', type: 'string' },
@@ -380,8 +380,9 @@ const processDefinition = {
   transitions: [],
   exceptions: [],
   rework: [],
-  // A personal agent's thread otherwise gets 15 tool turns per wake-up (turn-cap.ts BUS_TURN_MAX_TURNS); Checking alone
-  // needs more (paged Xero reads, the summary file, the comment, the move), so the 0.2.0 run stopped mid-Checking.
+  // A personal agent's thread otherwise gets 15 tool turns per wake-up (turn-cap.ts BUS_TURN_MAX_TURNS); Checking makes
+  // many paged Xero reads plus the summary file, so give it room. (Headroom: not the proven cause of the 0.2.0 run's stall,
+  // which was the agent asking for approval while still in Checking.)
   limits: { maxAgentTurnsPerStep: 80, maxActiveHours: 4, maxWaitingDays: 30 },
   outcomes: [
     { key: 'readyToLodge', terminal: true, evidence: ['automation_run'] },
