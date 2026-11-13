@@ -492,13 +492,24 @@
       "scopeRow": {
         "type": "Row",
         "props": {
-          "template": "minmax(0, 1fr) auto",
+          "template": "minmax(0, 1fr)",
           "gap": "sm",
           "align": "center"
         },
         "children": [
+          "scopeStack"
+        ]
+      },
+      "scopeStack": {
+        "type": "Row",
+        "props": {
+          "template": "auto minmax(0, 1fr)",
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
           "scopeLabel",
-          "periodRow"
+          "scopeMeta"
         ]
       },
       "scopeLabel": {
@@ -509,48 +520,17 @@
           "weight": "medium"
         }
       },
-      "periodRow": {
-        "type": "Row",
-        "props": {
-          "template": "minmax(0, 1fr)",
-          "gap": "sm",
-          "align": "center"
-        },
-        "children": [
-          "periodStack"
-        ],
-        "visible": {
-          "$state": "/ui/ticketTime/loaded"
-        }
-      },
-      "periodStack": {
-        "type": "Row",
-        "props": {
-          "template": "auto auto",
-          "gap": "xs",
-          "align": "center"
-        },
-        "children": [
-          "periodValue",
-          "periodLabel"
-        ]
-      },
-      "periodValue": {
+      "scopeMeta": {
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/ui/ticketTime/weekDisplay"
+            "$state": "/ui/ticketStatus/asOfLabel"
           },
-          "size": "sm",
-          "weight": "semibold"
-        }
-      },
-      "periodLabel": {
-        "type": "Text",
-        "props": {
-          "text": "This week",
-          "tone": "muted",
-          "size": "xs"
+          "size": "xs",
+          "truncate": true
+        },
+        "visible": {
+          "$state": "/ui/ticketStatus/loaded"
         }
       },
       "statusList": {
