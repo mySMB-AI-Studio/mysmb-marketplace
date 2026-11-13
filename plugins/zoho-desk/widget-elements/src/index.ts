@@ -35,6 +35,8 @@ const ticket_status_dashboard: ComputedFunction = (args) => {
     loaded,
     hasData: total > 0,
     total,
+    // Beside "All Tickets": when the counts were read, and how many tickets there are in all.
+    asOfLabel: `as of ${ddMmmYy(new Date())} · ${total.toLocaleString('en-US')} total`,
   };
   for (const s of STATUSES) {
     const n = counts[s.value] ?? 0;
@@ -165,10 +167,6 @@ const ticket_activity_dashboard: ComputedFunction = (args) => {
   const monthRows = createdIn(searchRows, starts.month);
   const monthCount = rangeIsMonth && Number.isFinite(count) ? count : monthRows.length;
   const monthTruncated = !rangeIsMonth && monthRows.length === searchRows.length && Number(count) > searchRows.length;
-  // This week's total ignores the period and status filters.
-  const weekRows = createdIn(searchRows, starts.week);
-  const weekCount = !rangeIsMonth && Number.isFinite(count) ? count : weekRows.length;
-  const weekTruncated = rangeIsMonth && weekRows.length === searchRows.length && Number(count) > searchRows.length;
 
   let inPeriod: AnyRecord[];
   let truncated: boolean;
@@ -223,7 +221,6 @@ const ticket_activity_dashboard: ComputedFunction = (args) => {
     hasDates: isCustom && Boolean(args.from || args.to),
     // The ticket list shows once the period has numbers to show.
     hasPeriod: !isCustom || rangeValid,
-    weekDisplay: `${weekCount.toLocaleString('en-US')}${weekTruncated ? '+' : ''}`,
     list,
     statusOptions: STATUS_FILTERS.map((s) => ({ value: s.value, label: s.label })),
     listExpanded: listOpen,
