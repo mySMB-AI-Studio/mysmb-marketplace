@@ -1,7 +1,7 @@
 {
   "category": "productivity",
   "connectorsUsed": ["myconnect-community-admin", "myconnect-member"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). Community Feed (live): the home feed across every channel, filterable by For you / Latest / Popular, same ranking as the myConnect web app — click a post to preview it. Notifications (live): your notifications for the selected community, unread count and status at a glance. The Event RSVPs tab is coming in a later iteration.",
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). Community Feed (live): the home feed across every channel, filterable by For you / Latest / Popular, same ranking as the myConnect web app — click a post to preview it. Notifications (live): your notifications for the selected community, unread count and status at a glance — click one to open what it's about. The Event RSVPs tab is coming in a later iteration.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -1016,7 +1016,7 @@
           ]
         }
       },
-      "notificationItem": {
+      "notificationItemContent": {
         "type": "ActivityItem",
         "props": {
           "title": { "$item": "title" },
@@ -1029,6 +1029,17 @@
             }
           },
           "status": { "$cond": { "$item": "readAt", "eq": null }, "$then": "unread", "$else": "read" }
+        }
+      },
+      "notificationItem": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["notificationItemContent"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$bindItem": "url" }, "target": "_blank" }
+          }
         }
       },
       "notificationsList": {
