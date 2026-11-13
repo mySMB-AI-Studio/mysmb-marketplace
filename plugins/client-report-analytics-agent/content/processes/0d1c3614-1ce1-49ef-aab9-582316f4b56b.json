@@ -1,5 +1,5 @@
 {
-  "contentHash": "58f436b50e91382a3006437d25a6ad40c5ef111e1e24898c0605cc4eec73d68d",
+  "contentHash": "df52fd01a5ae8a4555c55460c29b8f13ff880291a4b712fc10449bb0508b8e4b",
   "definition": {
     "capabilities": [
       "xero.connections.read",
@@ -183,7 +183,7 @@
             }
           ]
         },
-        "instructions": "Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file's path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file's path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.",
+        "instructions": "Run every check the checklist lists, with the rules in the skill, for the period only. Read the trial balance first. Keep each Xero call small (one document type and one month at a time, paged): a reply that says the result was too large or saved to a file is NOT empty data, so halve the date range and call again until it returns in full. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file's path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file's path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.",
         "key": "checking",
         "kind": "working",
         "label": "Checking"
@@ -293,7 +293,7 @@
     ],
     "transitions": [],
     "variationPoints": [],
-    "version": "0.2.1",
+    "version": "0.2.2",
     "vocabulary": {
       "subject": "Client and quarter"
     }
