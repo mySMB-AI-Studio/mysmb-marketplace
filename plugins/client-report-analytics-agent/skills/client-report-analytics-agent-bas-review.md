@@ -49,7 +49,9 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 
 ## 3. Read the quarter (status: Checking)
 
-Read only what you need, for the period only (Xero `where` filters such as `Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,30)`; page while a page comes back full):
+Read only what you need, for the period only (Xero `where` filters such as `Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,30)`).
+
+**Always pass `page`** to `list_invoices`, `list_bank_transactions`, `list_credit_notes` and `list_contacts`: start at `page: 1` and keep going (2, 3 …) while a page comes back with 100 rows. Xero returns each document's **line items** (account, tax type, line amount, tax amount) and full contact details (ABN) **only on paged requests**; without `page` the lines are missing and the GST, ABN and coding checks can't run. Never set `summaryOnly`.
 
 | Call | For |
 |---|---|
@@ -96,6 +98,7 @@ For findings only the client can resolve (a missing receipt or tax invoice, a mi
 Write it to `BAS reviews/<client name> <period label>.md` with `files_write`:
 
 - a heading with the client and the period (with the dates);
+- an "Outcome" line right under the heading: "Awaiting reviewer approval" while you write it in Checking. In Recording, after the approved run, replace it with an "Outcome" section: the outcome in words (Ready to lodge, Ready once the client answers, Not ready), approved by the reviewer on the date, their note if any, and in one or two lines what must happen before the BAS can be lodged (for Not ready: the Stop findings to clear);
 - the GST registration and basis, and "Read from Xero only: nothing was changed in Xero and nothing was lodged.";
 - a table of findings: group, check, what was found, count, amount, and Stop or Note (from the checklist); "No findings" when there are none;
 - "Not checked", with the reason for each group you couldn't run (for example ABR not connected);
