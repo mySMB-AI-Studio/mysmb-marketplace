@@ -47,52 +47,43 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 - Call `list_connections` and match `clientName` to a `tenantName`. Use its `tenantId` as `xero_tenant_id` on every other call. If nothing matches, or two do, ask for help and name the organisations you can see. Never guess.
 - Call `get_organisation`: record whether the business is registered for GST (`gstRegistered`), its GST basis (`gstBasis`: cash or accrual) and a period label such as "Jul–Sep 2026" (`periodLabel`). Say in a job comment if the period doesn't look like one of its BAS periods.
 
-## 3. Read the quarter (status: Checking)
+## 3. Run the checks (status: Checking)
 
-Read only what you need, for the period only (Xero `where` filters such as `Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,30)`).
+**Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). It reads the whole period on the Xero side (every invoice, bill, credit note and bank transaction with its lines, the period's contacts and ABNs, the trial balance at `periodEnd` and the 12 months' profit and loss) and returns only:
 
-**Always pass `page`** to `list_invoices`, `list_bank_transactions`, `list_credit_notes` and `list_contacts`: start at `page: 1` and keep going (2, 3 …) while a page comes back with 100 rows. Xero returns each document's **line items** (account, tax type, line amount, tax amount) and full contact details (ABN) **only on paged requests**; without `page` the lines are missing and the GST, ABN and coding checks can't run. Never set `summaryOnly`.
+- `organisation`: GST registration (and whether it was inferred), GST basis and period, lock date;
+- `read`: how many documents it read, and `truncated` (anything it couldn't read in full);
+- `findings`: one per group with `checks`, `title`, `count`, `amount` and up to 10 example `items` (date, contact, reference, amount, detail, Xero link; `more` = how many weren't listed);
+- `clear`: groups that ran and found nothing;
+- `notRun`: groups it couldn't run, with the reason (the ABR register groups are always here);
+- `alsoSeen`: bills still in draft or awaiting approval (not in the BAS figures yet);
+- `limitations`: what the checks can't see. Copy these into "Not checked" in the summary.
 
-**Keep every call small.** A result too large to return is not shown to you: you only get a note that it was saved to a file, which you cannot read. That is NOT "no line items" and NOT "no data".
-- Read `list_invoices` one type and one **month** at a time (bills `Type=="ACCPAY"` for July, then August, then September; then sales invoices the same way), and `list_bank_transactions` one month at a time.
-- If a reply says the result was too large or saved to a file, **halve the date range** (half a month, then a week) and call again until each reply comes back in full. Never record a check as not run because of a too-large reply; split it instead.
-- Read contacts only for the contacts on this quarter's documents: `list_contacts` with `ids` (comma-separated ContactIDs, about 25 at a time) and `page: 1`.
-- Read the trial balance (`get_trial_balance` at `periodEnd`) on every job: the suspense check depends on it. Do it first, before the large reads.
+Do **not** redo its checks by reading invoices, bills or bank transactions yourself: a quarter of documents with their lines is too large for you to read (the reply only says it was saved to a file). Use the list tools only to look closer at one finding, small and filtered: one supplier (`contactIDs`), one invoice number (`invoiceNumbers`) or one document (`ids`), always with `page: 1`.
 
-| Call | For |
-|---|---|
-| `list_tax_rates`, `list_accounts` | tax types and rates; account names, types and default tax types |
-| `list_invoices` | sales invoices (`Type=="ACCREC"`) and bills (`Type=="ACCPAY"`) with their lines, status, totals, attachments flag |
-| `list_credit_notes` | credit notes in the period |
-| `list_bank_transactions` | spend and receive money, reconciled flag, attachments flag |
-| `list_contacts` | ABNs (`TaxNumber`), default tax types |
-| `get_trial_balance` at `periodEnd` | suspense and clearing balances |
-| `get_profit_and_loss` for the 12 months to `periodEnd` | income for the GST registration threshold |
-| `abr_lookup_abns` (if available) | each supplier's and customer's ABN: status and GST registration |
-
-If ABR tools aren't available, the register checks (`gstFromUnregisteredSuppliers`, `cancelledAbn`, `gstStatusMismatch`) are **not run**: set their `found` flag to false and list them under "Not checked" in the summary with the reason. Never call a check you didn't run "clear".
+If `abr_lookup_abns` is available, check the ABNs of the contacts in the findings with it, and run the register groups (`gstFromUnregisteredSuppliers`, `cancelledAbn`, `gstStatusMismatch`). Otherwise they stay "not checked" with the reason. Never call a check you didn't run "clear".
 
 ## 4. The checks
 
-Each row is a check group. Run the groups this practice's checklist lists. The rules match the CRA-10 GST Check report (`$82.50` = the tax-invoice threshold incl. GST; `$75,000` = the GST registration threshold).
+Each row is a check group; the checks tool runs them all, and you keep the groups this practice's checklist lists, marked Stop or Note from the checklist. The rules match the CRA-10 GST Check report (`$82.50` = the tax-invoice threshold incl. GST; `$75,000` = the GST registration threshold).
 
 | Group | Checks | Rule |
 |---|---|---|
 | `gstChargedWhileUnregistered` | CHK-031 | GST on any sales invoice or credit note while the business isn't registered for GST |
 | `gstOnNonClaimableItems` | CHK-058 | GST claimed on a line coded to an account that normally carries none: wages, salaries, superannuation, PAYG, bank fees or charges, interest, depreciation, amortisation, ASIC, stamp duty, fines, penalties, donations, land tax, income tax, FBT, drawings, dividends |
 | `gstAmountMismatch` | CHK-059 | a line's GST isn't the tax rate's share of the line (more than 1 cent out), or one supplier's same account coded both with and without GST in the period |
-| `gstWithoutAbn` | CHK-008 | GST claimed on a purchase (bill or spend money) over $82.50 from a contact with no 11-digit ABN |
+| `gstWithoutAbn` | CHK-008 | GST claimed on a purchase (bill or spend money) over $82.50 from a contact with no valid ABN |
 | `gstFromUnregisteredSuppliers` | CHK-068, 069, 076, 077, 085 | GST claimed on bills or bank payments to a supplier the ABR shows as not registered for GST |
 | `gstRegistrationRequired` | CHK-136 | income for the 12 months to `periodEnd` is $75,000 or more and the business isn't registered for GST |
-| `unreconciledBank` | CHK-022 | bank transactions dated in the period (up to the end of last month) that aren't reconciled |
+| `unreconciledBank` | CHK-022 | bank transactions and invoice or bill payments dated in the period that aren't reconciled |
 | `suspenseBalance` | CHK-125 | an account whose name says suspense, clearing, uncoded, unallocated, holding, uncategorised or "ask my accountant" has a non-zero balance at `periodEnd` |
 | `cancelledAbn` | CHK-002, 071, 072, 088 | a bill, payment, invoice or expense in the period with a business whose ABN the ABR shows as cancelled |
-| `duplicateBills` | CHK-055, 079, 080 | two bills from one supplier with the same number, or the same amount within 7 days |
+| `duplicateBills` | CHK-055, 079, 080 | two bills from one supplier with the same number, or the same amount within 7 days (drafts included) |
 | `gstStatusMismatch` | CHK-003 | a contact's GST treatment in Xero differs from the ABR's GST registration |
 | `gstAccountWithoutGst` | CHK-129 (heuristic) | an account that defaults to a GST tax type, whose lines in the period mostly have no GST |
 | `missingReceipts` | CHK-021, 086 | spend money and bills over $82.50 in the period with nothing attached |
 | `draftSalesInvoices` | CHK-033 | sales invoices dated in the period still in draft or awaiting approval |
-| `lockDate` | CHK-134, 135 | no lock date, or a lock date more than 6 months before `periodEnd`. Xero leaves `PeriodLockDate` out of `get_organisation` when no lock date is set: a missing field IS the finding "no lock date set" (this check always runs) |
+| `lockDate` | CHK-134 | no lock date, or a lock date more than 6 months before `periodEnd` |
 
 
 ## 5. Client questions
@@ -123,6 +114,10 @@ The platform won't let the job leave a status until its outputs are supplied wit
 
 ## 8. The outcome (status: Waiting for review)
 
+Ask: once the client has answered, is the BAS ready, or does the practice still have to change something in Xero?
+
+- `notReady` whenever any Stop finding needs the **practice** to do work in Xero: reconcile bank transactions, recode or clear a suspense balance, remove a duplicate, fix GST coding or amounts. This holds even when the client must answer a question first (for example, what a suspense item was for).
+- `readyOnceClientAnswers` only when every open item is just something the **client** sends and no Stop finding needs a change in Xero: a receipt or tax invoice, a missing ABN, an explanation.
 - `readyToLodge` only when there are no findings at all, and never while `stopFindings` is not empty (the record tool refuses it).
-- `readyOnceClientAnswers` when every finding is one the client can resolve (a receipt, an ABN, an explanation).
-- `notReady` otherwise.
+
+In the record tool's note, say in one line which findings decided it.
