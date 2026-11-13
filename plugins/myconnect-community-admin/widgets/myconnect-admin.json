@@ -1,7 +1,7 @@
 {
   "category": "productivity",
-  "connectorsUsed": ["myconnect-community-admin"],
-  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). The other tabs (Event RSVPs, Community Feed, Notifications) are coming in later iterations.",
+  "connectorsUsed": ["myconnect-community-admin", "myconnect-member"],
+  "description": "A multi-tab admin dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Analytics (live): pick a date range to see total sign-ups, a completed/pending/declined breakdown with percent change vs. the previous period, and a month-by-month trend table you can click into for a popup of that month's members. Members (live): every member of the community, name/email/last seen at a glance — click a name for status, tags, role, join date and access groups. Access Groups (live): every access group and its member count — click a group for a popup of its members (name, email, status, role, tags, joined date). Community Feed (live): the home feed across every channel, filterable by For you / Latest / Popular, same ranking as the myConnect web app. The other tabs (Event RSVPs, Notifications) are coming in later iterations.",
   "id": "myconnect-admin",
   "keywords": ["myconnect", "community", "admin", "analytics", "signups"],
   "popularity": 0,
@@ -19,7 +19,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay", "accessGroupMemberPopupOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberPopupOverlay", "missingDatesOverlay", "memberDetailOverlay", "accessGroupMemberPopupOverlay", "feedPreviewOverlay"] },
       "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
@@ -137,7 +137,21 @@
       "tabBar": {
         "type": "Row",
         "props": { "gap": "xs", "wrap": true },
-        "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
+        "children": ["analyticsTabBtn", "membersTabBtn", "accessGroupsTabBtn", "eventRsvpsTabBtn", "communityFeedTabBtn", "notificationsTabBtn"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-member.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": { "$state": "/ui/feedMode" }, "limit": 20 }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-member.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": { "$state": "/ui/feedMode" }, "limit": 20 }
+            }
+          ]
+        }
       },
       "tabDivider": { "type": "Divider", "props": {} },
 
@@ -801,9 +815,154 @@
         "props": { "message": "Event RSVP's tab is coming in a later iteration." },
         "visible": { "$state": "/ui/activeTab", "eq": "eventRsvps" }
       },
-      "communityFeedPanel": {
+      "feedForYouBtn": {
+        "type": "Button",
+        "props": {
+          "label": "For you",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/feedMode", "eq": "for_you" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/feedMode", "eq": "for_you" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/feedMode", "value": "for_you" } },
+            {
+              "action": "myconnect-member.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": "for_you", "limit": 20 }
+            }
+          ]
+        }
+      },
+      "feedLatestBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Latest",
+          "size": "sm",
+          "variant": {
+            "$cond": { "$state": "/ui/feedMode", "eq": "for_you" },
+            "$then": "secondary",
+            "$else": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "secondary", "$else": "primary" }
+          },
+          "tone": {
+            "$cond": { "$state": "/ui/feedMode", "eq": "for_you" },
+            "$then": "default",
+            "$else": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "default", "$else": "info" }
+          }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/feedMode", "value": "latest" } },
+            {
+              "action": "myconnect-member.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": "latest", "limit": 20 }
+            }
+          ]
+        }
+      },
+      "feedPopularBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Popular",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/feedMode", "value": "popular" } },
+            {
+              "action": "myconnect-member.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": "popular", "limit": 20 }
+            }
+          ]
+        }
+      },
+      "feedModeToggle": { "type": "Row", "props": { "gap": "xs" }, "children": ["feedForYouBtn", "feedLatestBtn", "feedPopularBtn"] },
+
+      "feedErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load the feed: ${/_errors/myconnect-member.get_feed}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-member.get_feed" }
+      },
+      "feedLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "feedLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "feedLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedLoading1", "feedLoading2"],
+        "visible": { "$state": "/_loading/myconnect-member.get_feed" }
+      },
+      "feedEmpty": {
         "type": "Empty",
-        "props": { "message": "Community Feed tab is coming in a later iteration." },
+        "props": { "message": "No posts found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-member.get_feed", "not": true },
+            { "$state": "/myconnect-member/get_feed/items/0", "not": true },
+            { "$state": "/_errors/myconnect-member.get_feed", "not": true }
+          ]
+        }
+      },
+      "feedItemContent": {
+        "type": "ActivityItem",
+        "props": {
+          "title": { "$cond": { "$item": "title" }, "$then": { "$item": "title" }, "$else": { "$item": "excerpt" } },
+          "subtitle": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{a} · {s}",
+              "a": { "$cond": { "$item": "author" }, "$then": { "$item": "author/name" }, "$else": "myConnect" },
+              "s": { "$item": "space/name" }
+            }
+          },
+          "timestamp": { "$computed": "relative_time", "args": { "value": { "$item": "publishedAt" } } },
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": { "$cond": { "$item": "author" }, "$then": { "$item": "author/name" }, "$else": "myConnect" }
+            }
+          },
+          "tone": {
+            "$cond": { "$item": "isPinned" },
+            "$then": "warning",
+            "$else": {
+              "$cond": { "$item": "hasEvent" },
+              "$then": "info",
+              "$else": { "$cond": { "$item": "hasPoll" }, "$then": "accent", "$else": null }
+            }
+          }
+        }
+      },
+      "feedItem": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["feedItemContent"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": true } },
+            {
+              "action": "myconnect-member.get_post",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "postId": { "$bindItem": "id" } }
+            }
+          ]
+        }
+      },
+      "feedList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["feedItem"],
+        "repeat": { "key": "id", "statePath": "/myconnect-member/get_feed/items" },
+        "visible": { "$state": "/myconnect-member/get_feed/items/0" }
+      },
+      "feedMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — there are more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-member/get_feed/nextCursor" }
+      },
+      "communityFeedPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedModeToggle", "feedErrorBanner", "feedLoading", "feedEmpty", "feedList", "feedMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "communityFeed" }
       },
       "notificationsPanel": {
@@ -1232,6 +1391,126 @@
         "type": "Card",
         "props": {},
         "children": ["accessGroupMemberPopupCloseBtn", "accessGroupMemberPopupTitleRow", "accessGroupMemberPopupDivider", "accessGroupMemberPopupBody"]
+      },
+
+      "feedPreviewOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["feedPreviewCard"],
+        "visible": { "$state": "/ui/showFeedPreview" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": false } } }
+      },
+      "feedPreviewCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": false } } }
+      },
+      "feedPreviewLoading": {
+        "type": "Skeleton",
+        "props": { "height": "6rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect-member.get_post" }
+      },
+      "feedPreviewErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load post: ${/_errors/myconnect-member.get_post}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-member.get_post" }
+      },
+      "feedPreviewPinnedBadge": {
+        "type": "Badge",
+        "props": { "text": "Pinned", "tone": "warning", "variant": "soft" },
+        "visible": { "$state": "/myconnect-member/get_post/isPinned" }
+      },
+      "feedPreviewTitleText": {
+        "type": "Heading",
+        "props": {
+          "level": "h2",
+          "text": { "$cond": { "$state": "/myconnect-member/get_post/title" }, "$then": { "$state": "/myconnect-member/get_post/title" }, "$else": "Post" }
+        }
+      },
+      "feedPreviewTitleRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["feedPreviewTitleText", "feedPreviewPinnedBadge"] },
+      "feedPreviewAuthorAvatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "tone": "accent",
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$cond": { "$state": "/myconnect-member/get_post/author" },
+                "$then": { "$state": "/myconnect-member/get_post/author/name" },
+                "$else": "myConnect"
+              }
+            }
+          }
+        }
+      },
+      "feedPreviewAuthorName": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "semibold",
+          "text": {
+            "$cond": { "$state": "/myconnect-member/get_post/author" },
+            "$then": { "$state": "/myconnect-member/get_post/author/name" },
+            "$else": "myConnect"
+          }
+        }
+      },
+      "feedPreviewMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{s} · {t}",
+              "s": { "$state": "/myconnect-member/get_post/space/name" },
+              "t": { "$computed": "relative_time", "args": { "value": { "$state": "/myconnect-member/get_post/publishedAt" } } }
+            }
+          }
+        }
+      },
+      "feedPreviewAuthorStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["feedPreviewAuthorName", "feedPreviewMeta"] },
+      "feedPreviewAuthorRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["feedPreviewAuthorAvatar", "feedPreviewAuthorStack"] },
+      "feedPreviewDivider": { "type": "Divider", "props": {} },
+      "feedPreviewBody": {
+        "type": "Text",
+        "props": { "size": "sm", "preserveLines": true, "text": { "$state": "/myconnect-member/get_post/plainText" } }
+      },
+      "feedPreviewLikeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} like(s)", "n": { "$state": "/myconnect-member/get_post/likeCount" } } },
+          "tone": "accent",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/myconnect-member/get_post/likeCount", "neq": null }
+      },
+      "feedPreviewCommentBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} comment(s)", "n": { "$state": "/myconnect-member/get_post/commentCount" } } },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "feedPreviewStatsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["feedPreviewLikeBadge", "feedPreviewCommentBadge"] },
+      "feedPreviewContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedPreviewTitleRow", "feedPreviewAuthorRow", "feedPreviewDivider", "feedPreviewBody", "feedPreviewStatsRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-member.get_post", "not": true },
+            { "$state": "/_errors/myconnect-member.get_post", "not": true }
+          ]
+        }
+      },
+      "feedPreviewCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["feedPreviewCloseBtn", "feedPreviewLoading", "feedPreviewErrorBanner", "feedPreviewContent"]
       },
 
       "memberPopupOverlay": {
