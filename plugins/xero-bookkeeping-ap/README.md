@@ -13,6 +13,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Processes:** Enter a supplier bill
 - **Capabilities:** Correct and approve a bill in Xero, Create bill in Xero, Find Xero bills, Find Xero contacts, Read one Xero bill, Read Xero chart of accounts, Read Xero tax rates, Read Xero tracking categories
 - **Evaluations:** Enter a supplier bill: bills already in Xero, Enter a supplier bill: controls
+- **Agent views:** Setup
 - **MCP servers:** xero-accounting, m365-mail-read, hotmail-mail, google-workspace-gmail
 - **Skills:** 3
 - **Agents:** 1

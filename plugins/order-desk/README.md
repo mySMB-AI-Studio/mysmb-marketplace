@@ -12,6 +12,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 - **Pages:** Order review (installed as Draft — publish in the installing workspace)
 - **Processes:** List import, Order intake
 - **Agent views:** Overview, Setup pages
+- **Menu section:** Order Desk (its pages and tables are added to the sidebar under it on install)
 - **Skills:** 2
 - **Agents:** 1
 

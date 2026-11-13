@@ -163,6 +163,13 @@ const capabilities = [
   capability('abr.abn.read', 'Read one ABN record from the Australian Business Register', 'abr', 'abr_get_abn_details', [],
     { abn: str('The ABN (11 digits; spaces allowed).'), include_history: bool('Include past statuses, GST periods and names.') },
     ['abn'], []),
+  // The BAS checks run on the Xero server for one period and come back as a short list of findings: a quarter of
+  // invoices with line items is too large for a job thread's tool result (myhub-mcp-servers #951).
+  capability('xero.bas_checks.read', 'Run the BAS readiness checks for one period', 'xero-accounting', 'get_xero_bas_readiness_checks',
+    ['accounting.transactions.read', 'accounting.contacts.read', 'accounting.settings.read', 'accounting.reports.read'],
+    { xero_tenant_id: TENANT, periodStart: str('First day of the BAS period, YYYY-MM-DD.'), periodEnd: str('Last day of the BAS period, YYYY-MM-DD.'),
+      gstRegistered: bool('Whether the client is registered for GST; leave out to infer it from the GST basis.') },
+    ['xero_tenant_id', 'periodStart', 'periodEnd'], ['findings', 'notRun', 'alsoSeen']),
   // Finds a client's Xero organisation by name (no tenant id needed): the BAS review step starts from a client name.
   capability('xero.connections.read', 'List the Xero organisations this connection can see', 'xero-accounting', 'list_connections',
     ['accounting.settings.read'], {}, [], ['tenants']),
@@ -177,11 +184,11 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.2.0';
+const PROCESS_VERSION = '0.3.0';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
-  'xero.trial_balance.read', 'abr.abns.check',
+  'xero.trial_balance.read', 'xero.bas_checks.read', 'abr.abns.check',
 ];
 for (const k of PROCESS_CAPABILITIES) if (!capabilityKey[k]) throw new Error(`process capability ${k} is not bundled`);
 
@@ -243,7 +250,13 @@ const param = (name, label, type, required) => ({ name, label, type, required, c
 const AUTOMATION_PARAMS = [
   param('client_name', 'Client', 'str', true),
   param('period_label', 'BAS period', 'str', true),
-  param('outcome', 'Outcome: readyToLodge, readyOnceClientAnswers or notReady', 'str', true),
+  // A choice, not free text: the approval card shows a clean value, and the publish practice run samples the FIRST
+  // option (otherwise it sends 'sample', which the node rightly refuses). notReady first: always allowed.
+  { ...param('outcome', 'Outcome', 'str', true), control: 'select', options: [
+    { value: 'notReady', label: 'Not ready: rework' },
+    { value: 'readyOnceClientAnswers', label: 'Ready once the client answers' },
+    { value: 'readyToLodge', label: 'Ready to lodge' },
+  ] },
   param('stop_findings', 'Stop findings (one per line; empty when none)', 'str', false),
   param('summary_file', 'Summary file in the agent\'s Files', 'str', false),
   param('note', 'Reason, in two or three sentences', 'str', false),
@@ -333,21 +346,21 @@ const processDefinition = {
   instructions: PROCESS_INSTRUCTIONS,
   statuses: [
     status('finding', 'Finding the client', 'initial',
-      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Record the outputs and move to Checking.',
+      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Rename the job with job_rename to "BAS readiness review: <client> <period label>" so people can find it. Record the outputs and move to Checking.',
       { outputs: [
         { key: 'clientName', type: 'string' }, { key: 'xeroTenantId', type: 'string' },
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
       ] }),
     status('checking', 'Checking', 'working',
-      'Run every check the checklist lists, with the rules in the skill, for the period only. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review.',
+      'Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
       { outputs: [
         { key: 'findings', type: 'array' }, { key: 'stopFindings', type: 'array' },
         { key: 'clientQuestions', type: 'array' }, { key: 'summaryFile', type: 'string' },
       ] }),
     status('review', 'Waiting for review', 'waiting',
-      'Decide the outcome you recommend: readyToLodge only when there are no findings at all; readyOnceClientAnswers when every finding is one the client can resolve; notReady otherwise. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, call it again with exactly the same inputs and move to Recording. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking.'),
+      'Decide the outcome you recommend with the rule in the skill: notReady whenever any Stop finding needs the practice to do work in Xero (reconcile, recode, clear a suspense balance, remove a duplicate, fix GST coding), even if the client must answer a question first; readyOnceClientAnswers only when every open item is just something the client sends (a receipt, a tax invoice, an ABN, an explanation) and no Stop finding needs a change in Xero; readyToLodge only when there are no findings at all. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, move to Recording straight away and run the tool there (see Recording); do not run it in this status, or the run will not count for Recording and the reviewer is asked twice. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking. After you rework anything a reviewer asked for, always end by calling the record tool again with your updated values so they can approve: never leave this status without either a pending approval or a status move.'),
     status('recording', 'Recording', 'working',
-      'The record tool has run with the approved outcome. Post a one-line job comment with the outcome and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.',
+      'The reviewer has approved. Call the record tool now, with exactly the inputs they approved: the approval is used by this run, and the platform counts it only because it runs while the job is in Recording. Then make the outcome visible where people look, because the jobs list only shows "Done": (1) add an "Outcome" section at the TOP of the summary file (files_read, then files_write the whole file): the outcome in words (Ready to lodge, Ready once the client answers, or Not ready), that the reviewer approved it and the date, the reviewer\'s note if they gave one, and in one or two lines what must happen before the BAS can be lodged; (2) rename the job with job_rename to "BAS readiness review: <client> <period label> - <outcome in words>"; (3) post a one-line job comment with the outcome in words and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.',
       { outputs: [{ key: 'outcome', type: 'string' }], ran: [{ automation: recordOriginKey }] }),
     status('waitingClient', 'Waiting for the client', 'waiting',
       'Post the drafted client questions as ONE job comment, numbered, ready for a person to copy and send, and say that a person sends them (you never contact the client). Wait for a person to reply on the job. When they say the questions were sent, move to Client queried. When they give you the client\'s answers and want the review run again, move back to Checking.'),
@@ -374,6 +387,10 @@ const processDefinition = {
   transitions: [],
   exceptions: [],
   rework: [],
+  // A personal agent's thread otherwise gets 15 tool turns per wake-up (turn-cap.ts BUS_TURN_MAX_TURNS); Checking makes
+  // many paged Xero reads plus the summary file, so give it room. (Headroom: not the proven cause of the 0.2.0 run's stall,
+  // which was the agent asking for approval while still in Checking.)
+  limits: { maxAgentTurnsPerStep: 80, maxActiveHours: 4, maxWaitingDays: 30 },
   outcomes: [
     { key: 'readyToLodge', terminal: true, evidence: ['automation_run'] },
     { key: 'clientQueried', terminal: true, evidence: ['automation_run'] },

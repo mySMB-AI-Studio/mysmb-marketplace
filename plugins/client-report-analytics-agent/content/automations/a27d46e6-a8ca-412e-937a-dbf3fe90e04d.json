@@ -1,5 +1,5 @@
 {
-  "contentHash": "1de4933cbcb5719f83d009a6535b3baaf7218b539bf98c68b564a090ed7fd27b",
+  "contentHash": "082594bcb72ee66de5aebd18976448b534b0c7011279b16bae42320f3a6772c1",
   "declaredScopes": [],
   "dependencies": [],
   "description": "Records the reviewer-approved outcome of a BAS readiness review (ready to lodge, ready once the client answers, or not ready) with the client, period, Stop findings and summary file. Changes nothing in Xero and lodges nothing. Refuses \"ready to lodge\" while any Stop finding is listed.",
@@ -49,8 +49,22 @@
           {
             "binding": "{{ params.outcome }}",
             "control": "hidden",
-            "label": "Outcome: readyToLodge, readyOnceClientAnswers or notReady",
+            "label": "Outcome",
             "name": "outcome",
+            "options": [
+              {
+                "label": "Not ready: rework",
+                "value": "notReady"
+              },
+              {
+                "label": "Ready once the client answers",
+                "value": "readyOnceClientAnswers"
+              },
+              {
+                "label": "Ready to lodge",
+                "value": "readyToLodge"
+              }
+            ],
             "required": true,
             "type": "str"
           },
@@ -99,9 +113,23 @@
         "type": "str"
       },
       {
-        "control": "text",
-        "label": "Outcome: readyToLodge, readyOnceClientAnswers or notReady",
+        "control": "select",
+        "label": "Outcome",
         "name": "outcome",
+        "options": [
+          {
+            "label": "Not ready: rework",
+            "value": "notReady"
+          },
+          {
+            "label": "Ready once the client answers",
+            "value": "readyOnceClientAnswers"
+          },
+          {
+            "label": "Ready to lodge",
+            "value": "readyToLodge"
+          }
+        ],
         "required": true,
         "type": "str"
       },

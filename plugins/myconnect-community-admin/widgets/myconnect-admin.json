@@ -24,7 +24,25 @@
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Admin" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Manage. Engage. Grow. Together." } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["titleIcon", "titleStack"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-member.list_notifications",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect-member.list_notifications",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
+            }
+          ]
+        }
+      },
       "infoBtn": {
         "type": "IconButton",
         "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
@@ -740,9 +758,77 @@
         "children": ["membersErrorBanner", "membersLoading", "membersEmpty", "membersColumnHeader", "membersList", "membersMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "members" }
       },
-      "accessGroupsPanel": {
+      "accessGroupsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load access groups: ${/_errors/myconnect-community-admin.list_access_groups}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_access_groups" }
+      },
+      "accessGroupsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "accessGroupsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "accessGroupsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupsLoading1", "accessGroupsLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_access_groups" }
+      },
+      "accessGroupsEmpty": {
         "type": "Empty",
-        "props": { "message": "Access Groups tab is coming in a later iteration." },
+        "props": { "message": "No access groups found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_access_groups", "not": true },
+            { "$state": "/myconnect-community-admin/list_access_groups/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_access_groups", "not": true }
+          ]
+        }
+      },
+      "accessGroupIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "size": "sm", "tone": "accent" } },
+      "accessGroupName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "name" } } },
+      "accessGroupNameRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["accessGroupIcon", "accessGroupName"] },
+      "accessGroupMemberCountBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} member(s)",
+              "n": { "$computed": "count", "args": { "value": { "$item": "members" } } }
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+      "accessGroupRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["accessGroupNameRow", "accessGroupMemberCountBadge"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showAccessGroupMemberPopup", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/accessGroupPopupName", "value": { "$bindItem": "name" } } },
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": {
+                "community": { "$state": "/ui/selectedCommunity" },
+                "accessGroupId": { "$bindItem": "id" },
+                "limit": 20
+              }
+            }
+          ]
+        }
+      },
+      "accessGroupsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect-community-admin/list_access_groups" },
+        "visible": { "$state": "/myconnect-community-admin/list_access_groups/0" }
+      },
+      "accessGroupsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["accessGroupsErrorBanner", "accessGroupsLoading", "accessGroupsEmpty", "accessGroupsList"],
         "visible": { "$state": "/ui/activeTab", "eq": "accessGroups" }
       },
       "nextEventEyebrow": { "type": "Caption", "props": { "text": "UPCOMING EVENTS", "tone": "muted", "weight": "semibold" } },
@@ -943,13 +1029,86 @@
         "visible": { "$state": "/ui/activeTab", "eq": "eventRsvps" }
       },
       "communityFeedPanel": {
-        "type": "Empty",
-        "props": { "message": "Community Feed tab is coming in a later iteration." },
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedModeToggle", "feedErrorBanner", "feedLoading", "feedEmpty", "feedList", "feedMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "communityFeed" }
       },
-      "notificationsPanel": {
+      "notificationsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load notifications: ${/_errors/myconnect-member.list_notifications}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-member.list_notifications" }
+      },
+      "notificationsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "notificationsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "notificationsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["notificationsLoading1", "notificationsLoading2"],
+        "visible": { "$state": "/_loading/myconnect-member.list_notifications" }
+      },
+      "notificationsUnreadBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{n} unread", "n": { "$state": "/myconnect-member/list_notifications/unread" } } },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "visible": { "$state": "/myconnect-member/list_notifications/unread" }
+      },
+      "notificationsEmpty": {
         "type": "Empty",
-        "props": { "message": "Notifications tab is coming in a later iteration." },
+        "props": { "message": "No notifications." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-member.list_notifications", "not": true },
+            { "$state": "/myconnect-member/list_notifications/items/0", "not": true },
+            { "$state": "/_errors/myconnect-member.list_notifications", "not": true }
+          ]
+        }
+      },
+      "notificationItemContent": {
+        "type": "ActivityItem",
+        "props": {
+          "title": { "$item": "title" },
+          "subtitle": { "$item": "body" },
+          "timestamp": { "$computed": "relative_time", "args": { "value": { "$item": "createdAt" } } },
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": { "$cond": { "$item": "actor" }, "$then": { "$item": "actor/name" }, "$else": "myConnect" }
+            }
+          },
+          "status": { "$cond": { "$item": "readAt", "eq": null }, "$then": "unread", "$else": "read" }
+        }
+      },
+      "notificationItem": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["notificationItemContent"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$bindItem": "url" }, "target": "_blank" }
+          }
+        }
+      },
+      "notificationsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["notificationItem"],
+        "repeat": { "key": "id", "statePath": "/myconnect-member/list_notifications/items" },
+        "visible": { "$state": "/myconnect-member/list_notifications/items/0" }
+      },
+      "notificationsMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — there are more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-member/list_notifications/nextCursor" }
+      },
+      "notificationsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["notificationsErrorBanner", "notificationsLoading", "notificationsUnreadBadge", "notificationsEmpty", "notificationsList", "notificationsMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "notifications" }
       },
 
