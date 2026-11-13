@@ -49,7 +49,9 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 
 ## 3. Read the quarter (status: Checking)
 
-Read only what you need, for the period only (Xero `where` filters such as `Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,30)`; page while a page comes back full):
+Read only what you need, for the period only (Xero `where` filters such as `Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,30)`).
+
+**Always pass `page`** to `list_invoices`, `list_bank_transactions`, `list_credit_notes` and `list_contacts`: start at `page: 1` and keep going (2, 3 …) while a page comes back with 100 rows. Xero returns each document's **line items** (account, tax type, line amount, tax amount) and full contact details (ABN) **only on paged requests**; without `page` the lines are missing and the GST, ABN and coding checks can't run. Never set `summaryOnly`.
 
 | Call | For |
 |---|---|
