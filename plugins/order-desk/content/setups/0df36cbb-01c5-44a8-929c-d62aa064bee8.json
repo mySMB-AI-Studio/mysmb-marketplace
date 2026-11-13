@@ -1,5 +1,5 @@
 {
-  "contentHash": "9e8590f6b6410c83ed10f4a6f65f223c6f02e3fe74993d74e6f70fa35e41ce69",
+  "contentHash": "40ac36b42f3b435759cf3eb0430b6f30a67977ffd01853b0e44c311943f49d3f",
   "definition": {
     "connections": [],
     "knowledge": [],
@@ -17,13 +17,107 @@
       "properties": {
         "confirmation_mode": {
           "default": "shadow",
-          "description": "Shadow: a person approves every order. Auto simple: clean orders with no flags are released without a person.",
+          "description": "shadow: a person approves every order. auto_simple: clean orders with nothing flagged go through on their own; everything else still waits for a person.",
           "enum": [
             "shadow",
             "auto_simple"
           ],
           "title": "How orders are confirmed",
           "type": "string"
+        },
+        "cutoff_time": {
+          "default": "",
+          "description": "Orders that arrive after this time for delivery the next day are flagged. Write it as 24-hour time, for example 14:00. Leave it empty to use only each customer's own cut-off. A customer's own cut-off always wins.",
+          "maxLength": 5,
+          "pattern": "^$|^[0-2][0-9]:[0-5][0-9]$",
+          "title": "Order cut-off time",
+          "type": "string"
+        },
+        "delivery_days": {
+          "default": "every_day",
+          "description": "An order asking for delivery on any other day is flagged for a person.",
+          "enum": [
+            "every_day",
+            "mon_sat",
+            "mon_fri"
+          ],
+          "title": "Days you deliver",
+          "type": "string"
+        },
+        "duplicate_window_days": {
+          "default": 30,
+          "description": "Flag an order when the same customer sent the same PO number within this many days. 0 turns the check off.",
+          "maximum": 365,
+          "minimum": 0,
+          "title": "Duplicate order check (days)",
+          "type": "number"
+        },
+        "guessed_products": {
+          "default": "always_ask",
+          "description": "always_ask: a person checks every line Order Desk had to guess. accept_single: accept the guess when only one product fits the name.",
+          "enum": [
+            "always_ask",
+            "accept_single"
+          ],
+          "title": "When a product is a best guess",
+          "type": "string"
+        },
+        "missing_po": {
+          "default": "customer_rule",
+          "description": "customer_rule: only hold the order for customers marked as needing a PO. always_ask: hold every order without a PO and ask.",
+          "enum": [
+            "customer_rule",
+            "always_ask"
+          ],
+          "title": "When an order has no PO number",
+          "type": "string"
+        },
+        "missing_unit": {
+          "default": "ask",
+          "description": "ask: a person checks the line. selling_unit: assume the product's selling unit.",
+          "enum": [
+            "ask",
+            "selling_unit"
+          ],
+          "title": "When a line has no unit",
+          "type": "string"
+        },
+        "substitutions": {
+          "default": "never",
+          "description": "never: never swap one product for another. customer_rules: only when that customer's notes or rules allow it.",
+          "enum": [
+            "never",
+            "customer_rules"
+          ],
+          "title": "Substitutions",
+          "type": "string"
+        },
+        "time_zone": {
+          "default": "Australia/Sydney",
+          "description": "Used to work out whether an order arrived before the cut-off.",
+          "enum": [
+            "Australia/Sydney",
+            "Australia/Melbourne",
+            "Australia/Brisbane",
+            "Australia/Adelaide",
+            "Australia/Darwin",
+            "Australia/Perth",
+            "Australia/Hobart",
+            "Pacific/Auckland",
+            "Asia/Manila",
+            "Asia/Singapore",
+            "UTC"
+          ],
+          "title": "Your time zone",
+          "type": "string"
+        },
+        "unusual_quantity_factor": {
+          "default": 5,
+          "description": "Flag a line when the quantity is more than this many times what the customer usually orders of that product. 0 turns the check off.",
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Unusual quantity check",
+          "type": "number"
         }
       },
       "required": [
@@ -35,7 +129,7 @@
     "tenantSettings": [],
     "version": 2
   },
-  "description": "What Order Desk needs before it can take orders: how orders are confirmed, and who manages and reviews them.",
+  "description": "What Order Desk needs before it can take orders: how orders are confirmed and checked, and who manages and reviews them.",
   "kind": "setup",
   "name": "Order Desk setup",
   "originKey": "0df36cbb-01c5-44a8-929c-d62aa064bee8"
