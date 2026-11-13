@@ -1,0 +1,144 @@
+{
+  "contentHash": "1de4933cbcb5719f83d009a6535b3baaf7218b539bf98c68b564a090ed7fd27b",
+  "declaredScopes": [],
+  "dependencies": [],
+  "description": "Records the reviewer-approved outcome of a BAS readiness review (ready to lodge, ready once the client answers, or not ready) with the client, period, Stop findings and summary file. Changes nothing in Xero and lodges nothing. Refuses \"ready to lodge\" while any Stop finding is listed.",
+  "flowIr": {
+    "description": "Records the reviewer-approved outcome of a BAS readiness review (ready to lodge, ready once the client answers, or not ready) with the client, period, Stop findings and summary file. Changes nothing in Xero and lodges nothing. Refuses \"ready to lodge\" while any Stop finding is listed.",
+    "irVersion": 1,
+    "name": "Client Reporting Agent: record BAS readiness outcome",
+    "nodes": [
+      {
+        "code": "import json\nfrom typing import Any\n\nALLOWED = [\"readyToLodge\",\"readyOnceClientAnswers\",\"notReady\"]\n\n\ndef as_list(value: Any) -> list[str]:\n    if value is None or value == \"\":\n        return []\n    if isinstance(value, list):\n        return [str(v) for v in value if str(v).strip()]\n    text = str(value).strip()\n    if text.startswith(\"[\"):\n        try:\n            parsed = json.loads(text)\n            if isinstance(parsed, list):\n                return [str(v) for v in parsed if str(v).strip()]\n        except ValueError:\n            pass\n    return [part.strip() for part in text.splitlines() if part.strip()]\n\n\n# Node inputs come in the params dict: subscript for required ones, .get for optional ones.\noutcome = params[\"outcome\"]\nclient_name = params[\"client_name\"]\nperiod_label = params[\"period_label\"]\nstop_findings = params.get(\"stop_findings\")\nsummary_file = params.get(\"summary_file\")\nnote = params.get(\"note\")\n\nchoice = str(outcome or \"\").strip()\nif choice not in ALLOWED:\n    raise ValueError(\"outcome must be one of \" + \", \".join(ALLOWED) + \", not \" + repr(choice))\nstops = as_list(stop_findings)\nif choice == \"readyToLodge\" and stops:\n    raise ValueError(\"Ready to lodge can't be recorded while Stop findings remain: \" + \"; \".join(stops))\nclient = str(client_name or \"\").strip()\nif not client:\n    raise ValueError(\"client_name is required\")\nrecorded = True\nresult = choice\nrecord = {\n    \"client\": client,\n    \"period\": str(period_label or \"\").strip(),\n    \"outcome\": choice,\n    \"stopFindings\": stops,\n    \"summaryFile\": str(summary_file or \"\").strip(),\n    \"note\": str(note or \"\").strip(),\n}\n",
+        "id": "record",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when the outcome was recorded",
+            "name": "recorded",
+            "type": "bool"
+          },
+          {
+            "description": "The outcome recorded",
+            "name": "result",
+            "type": "str"
+          },
+          {
+            "description": "Client, period, outcome, Stop findings, summary file and note",
+            "name": "record",
+            "type": "dict"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.client_name }}",
+            "control": "hidden",
+            "label": "Client",
+            "name": "client_name",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.period_label }}",
+            "control": "hidden",
+            "label": "BAS period",
+            "name": "period_label",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.outcome }}",
+            "control": "hidden",
+            "label": "Outcome: readyToLodge, readyOnceClientAnswers or notReady",
+            "name": "outcome",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.stop_findings }}",
+            "control": "hidden",
+            "label": "Stop findings (one per line; empty when none)",
+            "name": "stop_findings",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.summary_file }}",
+            "control": "hidden",
+            "label": "Summary file in the agent's Files",
+            "name": "summary_file",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.note }}",
+            "control": "hidden",
+            "label": "Reason, in two or three sentences",
+            "name": "note",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Checks the outcome is allowed (never ready to lodge with Stop findings) and returns what was recorded.",
+        "title": "Record the outcome"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Client",
+        "name": "client_name",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "BAS period",
+        "name": "period_label",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Outcome: readyToLodge, readyOnceClientAnswers or notReady",
+        "name": "outcome",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Stop findings (one per line; empty when none)",
+        "name": "stop_findings",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Summary file in the agent's Files",
+        "name": "summary_file",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "label": "Reason, in two or three sentences",
+        "name": "note",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "record"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Client Reporting Agent: record BAS readiness outcome",
+  "originKey": "a27d46e6-a8ca-412e-937a-dbf3fe90e04d",
+  "tags": []
+}

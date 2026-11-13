@@ -1,19 +1,53 @@
 ---
 name: client-report-analytics-agent-bas-review
-description: The review step of the BAS readiness review process - read one client's Xero file for one BAS quarter, run the readiness checks (the CRA-10 GST Check rules plus general readiness checks) and return the findings as JSON for the reviewer's decision. Read-only.
+description: How the Client Reporting Agent runs a BAS readiness review job - the practice's checklist file (and its default), finding the client, the readiness checks (the CRA-10 GST Check rules plus general readiness checks), the summary file and the client questions. Read-only.
 ---
 
-# BAS readiness review: the review step
+# BAS readiness review
 
-Use when you run the **review** step of the "BAS readiness review" process. You read; you never change anything in Xero, never lodge and never contact the client. The reviewer decides; you give them the facts.
+Use when you work a "BAS readiness review" job. You only read: you never change anything in Xero, never lodge, and never contact the client. The reviewer approves the outcome; you give them the facts. The job's statuses tell you what to do when; this skill is the detail.
 
-## 1. Find the client and the period
+## 1. The practice's checklist
+
+Each practice decides which check groups **stop** lodgement and which are only a **note**. That choice lives in your files at `BAS readiness/Checklist.md`, and people can edit it.
+
+- Read it with `files_read` at the start of every job.
+- If it doesn't exist, write the default below there with `files_write`, then say in a job comment that you created the default checklist and that the practice should review the Stop/Note column.
+- If someone has edited it, follow their version: run the groups it lists, and treat a group as Stop only when its row says Stop.
+
+The default (provisional until a bookkeeper confirms it):
+
+```markdown
+# BAS readiness checklist
+
+Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on). Remove a row to skip that check.
+
+| Group | Checks | Stop or Note |
+|---|---|---|
+| gstChargedWhileUnregistered | CHK-031 GST on sales or credit notes while not registered | Stop |
+| gstOnNonClaimableItems | CHK-058 GST claimed on items that normally carry none | Stop |
+| gstAmountMismatch | CHK-059 GST that isn't the rate's share of the line | Stop |
+| gstWithoutAbn | CHK-008 GST claimed over $82.50 from a supplier with no ABN | Stop |
+| gstFromUnregisteredSuppliers | CHK-068/069/076/077/085 GST claimed from suppliers not registered (ABR) | Stop |
+| gstRegistrationRequired | CHK-136 income over $75,000 without GST registration | Stop |
+| unreconciledBank | CHK-022 bank transactions not reconciled | Stop |
+| suspenseBalance | CHK-125 suspense or uncoded account with a balance | Stop |
+| cancelledAbn | CHK-002/071/072/088 dealings with a cancelled ABN (ABR) | Stop |
+| duplicateBills | CHK-055/079/080 the same bill raised or paid twice | Stop |
+| gstStatusMismatch | CHK-003 a contact's GST status differs from the ABR | Note |
+| gstAccountWithoutGst | CHK-129 a GST account mostly without GST (heuristic) | Note |
+| missingReceipts | CHK-021/086 spend money and bills over $82.50 with nothing attached | Note |
+| draftSalesInvoices | CHK-033 sales invoices still in draft or awaiting approval | Note |
+| lockDate | CHK-134/135 no lock date, or one older than 6 months | Note |
+```
+
+## 2. Find the client and the period (status: Finding the client)
 
 - The job's inputs give `clientName`, `periodStart` and `periodEnd` (YYYY-MM-DD).
-- Call `list_connections` once and match `clientName` to a `tenantName`. Use its `tenantId` as `xero_tenant_id` on every other call. If nothing matches, or two do, return `found` all false, `findings: []`, `clientResolved: false` and a `summaryMarkdown` that says which names you can see. Never guess.
-- Call `get_organisation`: note whether the business is registered for GST (`PaysTax`), its GST basis (cash or accrual) and its BAS period. Say in the summary if the period you were given doesn't look like one of its BAS periods.
+- Call `list_connections` and match `clientName` to a `tenantName`. Use its `tenantId` as `xero_tenant_id` on every other call. If nothing matches, or two do, ask for help and name the organisations you can see. Never guess.
+- Call `get_organisation`: record whether the business is registered for GST (`gstRegistered`), its GST basis (`gstBasis`: cash or accrual) and a period label such as "Jul–Sep 2026" (`periodLabel`). Say in a job comment if the period doesn't look like one of its BAS periods.
 
-## 2. Read the quarter
+## 3. Read the quarter (status: Checking)
 
 Read only what you need, for the period only (Xero `where` filters such as `Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,30)`; page while a page comes back full):
 
@@ -30,11 +64,11 @@ Read only what you need, for the period only (Xero `where` filters such as `Date
 
 If ABR tools aren't available, the register checks (`gstFromUnregisteredSuppliers`, `cancelledAbn`, `gstStatusMismatch`) are **not run**: set their `found` flag to false and list them under "Not checked" in the summary with the reason. Never call a check you didn't run "clear".
 
-## 3. The checks
+## 4. The checks
 
-Each group has a `found` flag. Set it **true** if the group has at least one finding. The rules match the CRA-10 GST Check report (`$82.50` = the tax-invoice threshold incl. GST; `$75,000` = the GST registration threshold).
+Each row is a check group. Run the groups this practice's checklist lists. The rules match the CRA-10 GST Check report (`$82.50` = the tax-invoice threshold incl. GST; `$75,000` = the GST registration threshold).
 
-| `found` flag | Checks | Rule |
+| Group | Checks | Rule |
 |---|---|---|
 | `gstChargedWhileUnregistered` | CHK-031 | GST on any sales invoice or credit note while the business isn't registered for GST |
 | `gstOnNonClaimableItems` | CHK-058 | GST claimed on a line coded to an account that normally carries none: wages, salaries, superannuation, PAYG, bank fees or charges, interest, depreciation, amortisation, ASIC, stamp duty, fines, penalties, donations, land tax, income tax, FBT, drawings, dividends |
@@ -52,36 +86,34 @@ Each group has a `found` flag. Set it **true** if the group has at least one fin
 | `draftSalesInvoices` | CHK-033 | sales invoices dated in the period still in draft or awaiting approval |
 | `lockDate` | CHK-134, 135 | no lock date, or a lock date more than 6 months before `periodEnd` |
 
-The practice decides which groups stop lodgement (its Rules). You don't know its choices, so report every group honestly and let the process apply them.
 
-## 4. Client questions
+## 5. Client questions
 
 For findings only the client can resolve (a missing receipt or tax invoice, a missing ABN, an unexplained or uncoded transaction), draft one short, polite question each in `clientQuestions`: what's needed, the date, the contact and the amount. At most 15; group small ones. No figures you didn't read from Xero.
 
-## 5. Return ONLY this JSON
+## 6. The summary file (status: Checking)
 
-```json
-{
-  "clientResolved": true,
-  "clientName": "Irvine Jackson Pty Ltd",
-  "xeroTenantId": "…",
-  "periodLabel": "Jul–Sep 2026",
-  "found": {
-    "gstChargedWhileUnregistered": false, "gstOnNonClaimableItems": false, "gstAmountMismatch": false,
-    "gstWithoutAbn": false, "gstFromUnregisteredSuppliers": false, "gstRegistrationRequired": false,
-    "unreconciledBank": true, "suspenseBalance": false, "cancelledAbn": false, "duplicateBills": false,
-    "gstStatusMismatch": false, "gstAccountWithoutGst": false, "missingReceipts": true,
-    "draftSalesInvoices": false, "lockDate": true
-  },
-  "findings": [
-    { "group": "unreconciledBank", "check": "CHK-022", "title": "4 bank transactions in Aug–Sep not reconciled", "amount": 1830.5, "count": 4 }
-  ],
-  "clientQuestions": ["Could you send the receipt for the $245.00 payment to Officeworks on 12 Aug 2026?"],
-  "summaryMarkdown": "…",
-  "brief": { "question": "Is Irvine Jackson Pty Ltd ready to lodge its Jul–Sep 2026 BAS?", "facts": ["…"], "recommendation": "…", "recommendedOption": "readyOnceClientAnswers", "consequence": "…", "uncertainty": "…" }
-}
-```
+Write it to `BAS reviews/<client name> <period label>.md` with `files_write`:
 
-- `found` must have **all 15 keys**, each `true` or `false`.
-- `summaryMarkdown`: a heading line with the client and period; the GST registration and basis; a table of findings by group (check, what, count, amount); a "Not checked" list with reasons; and the line *"For the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter."* Figures only from what you read.
-- `brief.recommendedOption` is one of `readyToLodge`, `readyOnceClientAnswers`, `notReady`. Recommend `readyToLodge` **only** when `findings` is empty. Recommend `readyOnceClientAnswers` when every finding is one the client can resolve, otherwise `notReady`.
+- a heading with the client and the period (with the dates);
+- the GST registration and basis, and "Read from Xero only: nothing was changed in Xero and nothing was lodged.";
+- a table of findings: group, check, what was found, count, amount, and Stop or Note (from the checklist); "No findings" when there are none;
+- "Not checked", with the reason for each group you couldn't run (for example ABR not connected);
+- the drafted client questions, if any;
+- "For the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter."
+
+Figures only from what you read in Xero.
+
+## 7. What to record when you move on
+
+The platform won't let the job leave a status until its outputs are supplied with the move:
+
+- **Finding the client:** `clientName`, `xeroTenantId`, `periodLabel`, `gstRegistered`, `gstBasis`.
+- **Checking:** `findings` (each `{group, check, title, count, amount}`), `stopFindings` (one line each for groups the checklist marks Stop: "CHK-058: GST claimed on 2 bank fee lines, $3.20"), `clientQuestions`, `summaryFile`.
+- **Recording:** `outcome` (the outcome the reviewer approved).
+
+## 8. The outcome (status: Waiting for review)
+
+- `readyToLodge` only when there are no findings at all, and never while `stopFindings` is not empty (the record tool refuses it).
+- `readyOnceClientAnswers` when every finding is one the client can resolve (a receipt, an ABN, an explanation).
+- `notReady` otherwise.
