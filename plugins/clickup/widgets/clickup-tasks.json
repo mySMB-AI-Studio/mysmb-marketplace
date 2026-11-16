@@ -1,0 +1,267 @@
+{
+  "id": "clickup-tasks",
+  "title": "ClickUp Tasks",
+  "description": "Browse ClickUp tasks for a Workspace, Space and List you pick, with priority, due-date status and assignees at a glance. Click a task to open it in ClickUp.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "tasks", "to-do", "due dates", "overdue", "workspace", "list"],
+  "tags": ["clickup", "tasks", "project-management"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "preferred": { "colSpan": 6, "rowSpan": 9 },
+    "max": { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "taskList", "countCaption", "infoOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "ListChecks", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "ClickUp Tasks" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace, space and list" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About ClickUp Tasks", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Browse the tasks in one ClickUp List at a glance — pick a Workspace, Space and List, and see every open task with its due-date urgency, priority, assignees and status. Sorted most-urgent-first (overdue, then due today, then not yet due, then tasks with no due date).",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Tick \"Include closed\" to also see done/closed tasks. Click any task row to open its real page on app.clickup.com in a new tab — this tile is read-only and never changes anything in ClickUp. For a focused view of one task's full detail and comments, use the companion Task Detail & Comments tile instead.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        }
+      },
+      "spaceSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedSpace" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_spaces/spaces" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose space…",
+          "size": "sm",
+          "disabled": { "$state": "/ui/selectedTeam", "eq": null }
+        },
+        "visible": { "$state": "/ui/selectedTeam" }
+      },
+      "listSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedList" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_folderless_lists/lists" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose list…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/ui/selectedSpace" }
+      },
+      "includeClosedChk": {
+        "type": "Checkbox",
+        "props": {
+          "checked": { "$state": "/ui/includeClosed" },
+          "ariaLabel": "Include closed tasks"
+        },
+        "on": {
+          "toggle": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/includeClosed",
+              "value": { "$cond": { "$state": "/ui/includeClosed" }, "$then": false, "$else": true }
+            }
+          }
+        }
+      },
+      "includeClosedLabel": { "type": "Caption", "props": { "text": "Include closed", "tone": "muted" } },
+      "includeClosedRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["includeClosedChk", "includeClosedLabel"],
+        "visible": { "$state": "/ui/selectedList" }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["teamSelect", "spaceSelect", "listSelect", "includeClosedRow"],
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedSpace", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedList", "value": null } },
+            { "action": "clickup.list_spaces", "params": { "team_id": { "$state": "/ui/selectedTeam" } } }
+          ],
+          "/ui/selectedSpace": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedList", "value": null } },
+            { "action": "clickup.list_folderless_lists", "params": { "space_id": { "$state": "/ui/selectedSpace" } } }
+          ],
+          "/ui/selectedList": [
+            {
+              "action": "clickup.list_tasks",
+              "params": {
+                "list_id": { "$state": "/ui/selectedList" },
+                "include_closed": { "$state": "/ui/includeClosed" },
+                "order_by": "due_date",
+                "reverse": true
+              }
+            }
+          ],
+          "/ui/includeClosed": [
+            {
+              "action": "clickup.list_tasks",
+              "params": {
+                "list_id": { "$state": "/ui/selectedList" },
+                "include_closed": { "$state": "/ui/includeClosed" },
+                "order_by": "due_date",
+                "reverse": true
+              }
+            }
+          ]
+        }
+      },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load tasks: ${/_errors/clickup.list_tasks}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_tasks" }
+      },
+      "statusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedList" },
+            "$then": {
+              "$cond": { "$state": "/_loading/clickup.list_tasks" },
+              "$then": "Loading…",
+              "$else": {
+                "$cond": { "$state": "/clickup/list_tasks/tasks/0" },
+                "$then": "",
+                "$else": "No tasks in this list."
+              }
+            },
+            "$else": "Pick a workspace, space and list above to see its tasks."
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$cond": { "$state": "/ui/selectedList" },
+          "$then": {
+            "$cond": { "$state": "/_loading/clickup.list_tasks" },
+            "$then": true,
+            "$else": { "$state": "/clickup/list_tasks/tasks/0", "not": true }
+          },
+          "$else": true
+        }
+      },
+
+      "taskName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "name" } } },
+      "dueStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "clickup_due_status_text", "args": { "value": { "$item": "due_date" } } },
+          "tone": { "$computed": "clickup_due_status_tone", "args": { "value": { "$item": "due_date" } } }
+        }
+      },
+      "taskTopRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["taskName", "dueStatusBadge"] },
+      "taskMetaResolved": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{priority} · {assignees} · {status}",
+              "priority": { "$computed": "clickup_priority_label", "args": { "value": { "$item": "priority/priority" } } },
+              "assignees": { "$computed": "clickup_assignee_names", "args": { "value": { "$item": "assignees" } } },
+              "status": { "$item": "status/status" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "taskContent": { "type": "Stack", "props": { "gap": "none" }, "children": ["taskTopRow", "taskMetaResolved"] },
+      "taskRow": {
+        "type": "Row",
+        "props": { "clickable": true, "hover": true },
+        "children": ["taskContent"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "clickup_task_url", "args": { "task_id": { "$bindItem": "id" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "taskList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["taskRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_tasks/tasks" },
+        "visible": { "$state": "/clickup/list_tasks/tasks/0" }
+      },
+
+      "countCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} task{s}",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/clickup/list_tasks/tasks" } } },
+              "s": { "$cond": { "$computed": "count", "args": { "value": { "$state": "/clickup/list_tasks/tasks" } } }, "eq": 1, "$then": "", "$else": "s" }
+            }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/clickup/list_tasks/tasks/0" }
+      }
+    }
+  }
+}
