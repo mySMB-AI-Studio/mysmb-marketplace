@@ -7,7 +7,7 @@ Packaged from a MyHub workspace via the /developer Plugins page.
 ## What's in the box
 
 - **Automations:** Order Desk: find customer, Order Desk: match and convert, Order Desk: check order, Order Desk: release to warehouse, Order Desk: fix lines, Order Desk: import a list, Order Desk: register order, Order Desk: reject order, Order Desk: release clean order (installed as Draft — publish in the installing workspace)
-- **Custom tables:** Order Desk products, Customer order profiles, Delivery addresses, Customer catalogue, Orders, Order lines, Pronto sales orders (demo) (review and publish during extension setup)
+- **Custom tables:** Order Desk products, Customer order profiles, Delivery addresses, Customer catalogue, Orders, Order lines, Sales orders (demo) (review and publish during extension setup)
 - **Setup:** Order Desk setup (each person reviews their configuration and account bindings)
 - **Pages:** Orders (installed as Draft — publish in the installing workspace)
 - **Processes:** List import, Order intake
