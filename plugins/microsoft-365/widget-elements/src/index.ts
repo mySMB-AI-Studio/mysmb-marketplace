@@ -411,37 +411,45 @@ const transcript_display_text: ComputedFunction = (args) => {
 };
 
 /**
- * list_mail_folders returns the WHOLE folder tree in one call, each item
- * carrying its full slash-joined path (e.g. "Inbox/Bills/Acme Plumbing") --
- * not one level at a time like list_files/OneDrive. So "drilling in" is a
- * pure client-side filter by depth + path prefix, no extra MCP call needed:
- * a child of `path` sits exactly one path-segment deeper and (for a non-root
- * path) starts with `path + "/"`.
+ * The folder list tile shows top-level folders only (dataProvider calls
+ * list_mail_folders with maxDepth: 1, so every item is already top-level --
+ * no subfolder filtering needed). Inbox/Drafts/Sent Items pin to the top in
+ * that fixed order (matching Outlook's own left-rail convention); everything
+ * else sorts alphabetically by displayName.
  */
-const mail_folder_children: ComputedFunction = (args) => {
+const PINNED_FOLDER_ORDER = ['Inbox', 'Drafts', 'Sent Items'];
+
+const mail_folder_sorted: ComputedFunction = (args) => {
   const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
-  const path = String(args.path ?? '');
-  const parentDepth = path === '' ? 0 : path.split('/').length;
-  return items.filter((it) => {
-    const itPath = String(it.path ?? '');
-    if (!itPath) return false;
-    const itDepth = itPath.split('/').length;
-    if (itDepth !== parentDepth + 1) return false;
-    return path === '' ? true : itPath.startsWith(`${path}/`);
-  });
+  const pinned: (Record<string, unknown> | undefined)[] = [];
+  const rest: Record<string, unknown>[] = [];
+  for (const it of items) {
+    const idx = PINNED_FOLDER_ORDER.indexOf(String(it.displayName ?? ''));
+    if (idx === -1) rest.push(it);
+    else pinned[idx] = it;
+  }
+  rest.sort((a, b) => String(a.displayName ?? '').localeCompare(String(b.displayName ?? '')));
+  return [...pinned.filter((it): it is Record<string, unknown> => Boolean(it)), ...rest];
 };
 
-/** One level up from `path` ("" at the root, already handled by the Up button's `visible`). */
-const mail_folder_parent_path: ComputedFunction = (args) => {
-  const path = String(args.path ?? '');
-  if (!path.includes('/')) return '';
-  return path.slice(0, path.lastIndexOf('/'));
+const FOLDER_ICONS: Record<string, string> = {
+  Inbox: 'Inbox',
+  Drafts: 'FileEdit',
+  'Sent Items': 'Send',
+  Outbox: 'ArrowUpCircle',
+  Snoozed: 'Clock',
+  'Deleted Items': 'Trash2',
+  'Junk Email': 'ShieldAlert',
+  Archive: 'Archive',
+  'Conversation History': 'History',
+  'Sync Issues': 'RefreshCw',
+  Notes: 'StickyNote',
 };
 
-/** "Inbox / Bills / Acme Plumbing" instead of the raw slash-joined path. */
-const mail_folder_breadcrumb: ComputedFunction = (args) => {
-  const path = String(args.path ?? '');
-  return path.split('/').filter(Boolean).join(' / ');
+/** Lucide icon name for a folder, by its well-known Outlook display name; "Folder" for anything custom. */
+const mail_folder_icon: ComputedFunction = (args) => {
+  const name = String(args.value ?? '');
+  return FOLDER_ICONS[name] ?? 'Folder';
 };
 
 const elements: PluginElementsModule = {
@@ -469,9 +477,8 @@ const elements: PluginElementsModule = {
     day_end_iso,
     schedule_title,
     transcript_display_text,
-    mail_folder_children,
-    mail_folder_parent_path,
-    mail_folder_breadcrumb,
+    mail_folder_sorted,
+    mail_folder_icon,
   },
 };
 
