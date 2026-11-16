@@ -1,0 +1,136 @@
+{
+  "contentHash": "367be4cd4d5a0fdbd3716e1c84b9ddad3aed6db65edaff1c9e766349b5397c86",
+  "definition": {
+    "color": null,
+    "description": "Support tickets that carry an order request. A stand-in for your ticketing system until it is connected.",
+    "fields": [
+      {
+        "groupLabel": null,
+        "key": "subject",
+        "kind": "text",
+        "label": "Subject",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "ticket_number",
+        "kind": "text",
+        "label": "Ticket number",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "open",
+              "label": "Open"
+            },
+            {
+              "key": "pending",
+              "label": "Pending"
+            },
+            {
+              "key": "closed",
+              "label": "Closed"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "ticket_status",
+        "kind": "select",
+        "label": "Status",
+        "position": 2,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "client"
+        },
+        "groupLabel": null,
+        "key": "client",
+        "kind": "relation",
+        "label": "Customer",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "from_email",
+        "kind": "email",
+        "label": "From",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 20000
+        },
+        "groupLabel": null,
+        "key": "body",
+        "kind": "long_text",
+        "label": "Message",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "resolved_on",
+        "kind": "datetime",
+        "label": "Closed on",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 500
+        },
+        "groupLabel": null,
+        "key": "close_note",
+        "kind": "text",
+        "label": "Closing note",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Order Desk tickets",
+    "labelSingular": "Ticket",
+    "slug": "od_tickets",
+    "titleFieldKey": "subject"
+  },
+  "kind": "record_type",
+  "name": "Order Desk tickets",
+  "originKey": "e94f2f96-1184-4b2a-90d3-424b3c5ad1de"
+}
