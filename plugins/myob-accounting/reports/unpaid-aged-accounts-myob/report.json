@@ -1,0 +1,34 @@
+{
+  "title": "Unpaid & Aged Accounts",
+  "description": "Aged receivables and payables from MYOB, grouped by organisation and contact, with aging-bucket tiles, a chart and a review-only email draft per contact.",
+  "tags": ["myob", "accounts-receivable", "accounts-payable", "ageing", "unpaid"],
+  "fileName": "unpaid-aged-accounts-myob.html",
+  "dataBindings": {
+    "inputs": [
+      { "name": "company_file", "label": "Company file", "type": "string", "default": "" }
+    ],
+    "bindings": [
+      {
+        "id": "companies",
+        "tool": { "mcp": "myob-accounting", "name": "list_company_files" },
+        "params": {}
+      },
+      {
+        "id": "invoices",
+        "tool": { "mcp": "myob-accounting", "name": "list_invoices" },
+        "params": {
+          "myob_company_file_id": { "kind": "input", "input": "company_file" },
+          "status": { "kind": "static", "value": "Open" }
+        }
+      },
+      {
+        "id": "bills",
+        "tool": { "mcp": "myob-accounting", "name": "list_bills" },
+        "params": {
+          "myob_company_file_id": { "kind": "input", "input": "company_file" },
+          "status": { "kind": "static", "value": "Open" }
+        }
+      }
+    ]
+  }
+}
