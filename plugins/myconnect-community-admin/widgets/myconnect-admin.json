@@ -410,10 +410,10 @@
       },
       "printReportBtn": {
         "type": "Button",
-        "props": { "label": "Print report", "leadingIcon": "Printer", "size": "sm", "variant": "secondary" },
+        "props": { "label": "Download CSV", "leadingIcon": "Download", "size": "sm", "variant": "secondary" },
         "on": {
           "click": [
-            { "action": "setState", "params": { "statePath": "/ui/pendingPrintReport", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/pendingExportReport", "value": true } },
             {
               "action": "myconnect-community-admin.list_members",
               "params": {
@@ -1159,22 +1159,18 @@
           ],
           "/myconnect-community-admin/list_members": [
             {
-              "action": "myconnect-community-admin_print_report",
+              "action": "myconnect-community-admin_export_signups_csv",
               "params": {
-                "shouldPrint": { "$state": "/ui/pendingPrintReport" },
+                "shouldExport": { "$state": "/ui/pendingExportReport" },
                 "communityName": { "$state": "/ui/selectedCommunity" },
                 "fromDate": { "$state": "/myconnect-community-admin/get_signups_in_range/fromDate" },
                 "toDate": { "$state": "/myconnect-community-admin/get_signups_in_range/toDate" },
-                "total": { "$state": "/myconnect-community-admin/get_signups_in_range/total" },
-                "completed": { "$state": "/myconnect-community-admin/get_signups_in_range/byStatus/active" },
-                "pending": { "$state": "/myconnect-community-admin/get_signups_in_range/byStatus/invited" },
-                "declined": { "$state": "/myconnect-community-admin/get_signups_in_range/byStatus/deactivated" },
                 "members": { "$state": "/myconnect-community-admin/list_members/items" }
               }
             },
             {
               "action": "setState",
-              "params": { "statePath": "/ui/pendingPrintReport", "value": false }
+              "params": { "statePath": "/ui/pendingExportReport", "value": false }
             }
           ],
           "/ui/fromDate": [
