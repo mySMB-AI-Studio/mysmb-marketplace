@@ -1,0 +1,159 @@
+{
+  "id": "hotmail-contacts",
+  "title": "Hotmail Contacts",
+  "description": "Contacts from a personal Hotmail/Outlook.com/Live.com account, alphabetical by display name. Click a name to open Outlook.com's People page in a new tab - Microsoft Graph has no deep-link field for an individual contact (unlike email, which has webLink), so this opens the People list, not that specific contact.",
+  "category": "productivity",
+  "tags": [
+    "hotmail",
+    "outlook.com",
+    "live.com",
+    "personal",
+    "contacts",
+    "productivity"
+  ],
+  "keywords": [
+    "hotmail",
+    "outlook.com",
+    "live.com",
+    "personal contacts",
+    "contacts",
+    "people",
+    "address book"
+  ],
+  "connectorsUsed": [
+    "hotmail-people"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
+  },
+  "dataProvider": {
+    "mcp": "hotmail-people",
+    "tool": "list_contacts",
+    "params": {
+      "limit": 50
+    }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "divider", "body"] },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Contacts", "level": "h2" } },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} shown",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/hotmail-people/list_contacts" } } }
+            }
+          }
+        }
+      },
+      "divider": { "type": "Divider", "props": {} },
+      "body": { "type": "Body", "props": {}, "children": ["errorBanner", "loading", "empty", "list"] },
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load contacts: ${/_errors/hotmail-people.list_contacts}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/hotmail-people.list_contacts" }
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["s1", "s2", "s3", "s4"],
+        "visible": { "$state": "/_loading/hotmail-people.list_contacts" }
+      },
+      "s1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "s2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "s3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "s4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No contacts found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/hotmail-people.list_contacts", "not": true },
+            { "$state": "/hotmail-people/list_contacts/0", "not": true }
+          ]
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs", "maxHeight": 440 },
+        "children": ["row"],
+        "repeat": { "statePath": "/hotmail-people/list_contacts", "key": "id" },
+        "visible": { "$state": "/_loading/hotmail-people.list_contacts", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between" },
+        "children": ["avatar", "labels", "phoneCaption"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "initials": {
+            "$computed": "initials",
+            "args": { "value": { "$item": "displayName" } }
+          },
+          "tone": {
+            "$computed": "microsoft-365_sender_tone",
+            "args": { "value": { "$item": "displayName" } }
+          }
+        }
+      },
+      "labels": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["nameLink", "emailCaption"]
+      },
+      "nameLink": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "displayName" },
+          "size": "md",
+          "weight": "medium",
+          "tone": "accent"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://outlook.live.com/people/0/"
+            }
+          }
+        }
+      },
+      "emailCaption": {
+        "type": "Caption",
+        "props": { "text": { "$item": "emailAddresses/0/address" }, "tone": "muted" }
+      },
+      "phoneCaption": {
+        "type": "Caption",
+        "props": { "text": { "$item": "mobilePhone" }, "tone": "muted" }
+      }
+    }
+  }
+}

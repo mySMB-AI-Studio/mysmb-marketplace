@@ -1,0 +1,316 @@
+{
+  "id": "m365-teams-channel-messages",
+  "title": "Channel Messages",
+  "description": "Browse Teams channel message content — pick a team, then a channel, to read its message feed. Complements the chat-list tiles (Teams Activity, Recent Teams Messages), which show chats but not channel message content.",
+  "category": "productivity",
+  "tags": ["m365", "teams", "channels", "messages", "productivity"],
+  "keywords": ["teams", "channel", "channels", "messages", "feed", "conversation"],
+  "connectorsUsed": ["m365-teams"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "mcp": "m365-teams",
+    "tool": "list_teams",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "breadcrumbRow", "body"] },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Hash", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Channel Messages", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Teams · Microsoft 365" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "breadcrumbRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["backToTeamsBtn", "teamNameCaption", "channelSeparator", "backToChannelsBtn", "channelNameCaption"],
+        "visible": { "$state": "/ui/channelMsgTeamId" }
+      },
+      "backToTeamsBtn": {
+        "type": "Button",
+        "props": { "label": "Teams", "size": "sm", "variant": "ghost", "tone": "info", "leadingIcon": "ArrowLeft" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgTeamId", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgTeamName", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgChannelId", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgChannelName", "value": "" } }
+          ]
+        }
+      },
+      "teamNameCaption": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/channelMsgTeamName" }, "tone": "muted" },
+        "visible": { "$state": "/ui/channelMsgChannelId", "not": true }
+      },
+      "channelSeparator": {
+        "type": "Caption",
+        "props": { "text": "/", "tone": "muted" },
+        "visible": { "$state": "/ui/channelMsgChannelId" }
+      },
+      "backToChannelsBtn": {
+        "type": "Button",
+        "props": { "label": { "$state": "/ui/channelMsgTeamName" }, "size": "sm", "variant": "ghost", "tone": "info" },
+        "visible": { "$state": "/ui/channelMsgChannelId" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgChannelId", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgChannelName", "value": "" } }
+          ]
+        }
+      },
+      "channelNameCaption": {
+        "type": "Caption",
+        "props": { "text": { "$template": "# ${/ui/channelMsgChannelName}" }, "tone": "accent", "weight": "semibold" },
+        "visible": { "$state": "/ui/channelMsgChannelId" }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["teamsView", "channelsView", "messagesView"] },
+
+      "teamsView": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["teamsErrorBanner", "teamsLoading", "teamsEmpty", "teamsList"],
+        "visible": { "$state": "/ui/channelMsgTeamId", "not": true }
+      },
+      "teamsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load teams: ${/_errors/m365-teams.list_teams}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-teams.list_teams" }
+      },
+      "teamsLoading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["teamsSk1", "teamsSk2", "teamsSk3"],
+        "visible": { "$state": "/_loading/m365-teams.list_teams" }
+      },
+      "teamsSk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "teamsSk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "teamsSk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "teamsEmpty": {
+        "type": "Empty",
+        "props": { "message": "You're not a member of any Teams team." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams.list_teams", "not": true },
+            { "$state": "/m365-teams/list_teams/0", "not": true }
+          ]
+        }
+      },
+      "teamsList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["teamRow"],
+        "repeat": { "statePath": "/m365-teams/list_teams", "key": "id" },
+        "visible": { "$state": "/_loading/m365-teams.list_teams", "not": true }
+      },
+      "teamRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["teamRowLeft", "teamEnterIcon"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgTeamId", "value": { "$computed": "identity", "args": { "value": { "$item": "id" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgTeamName", "value": { "$computed": "identity", "args": { "value": { "$item": "displayName" } } } } },
+            { "action": "m365-teams.list_channels", "params": { "teamId": { "$computed": "identity", "args": { "value": { "$item": "id" } } } } }
+          ]
+        }
+      },
+      "teamRowLeft": { "type": "Row", "props": { "gap": "sm", "align": "center", "grow": true }, "children": ["teamIcon", "teamName"] },
+      "teamIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
+      "teamName": { "type": "Text", "props": { "text": { "$item": "displayName" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "teamEnterIcon": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
+
+      "channelsView": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["channelsErrorBanner", "channelsLoading", "channelsEmpty", "channelsList"],
+        "visible": {
+          "$and": [
+            { "$state": "/ui/channelMsgTeamId" },
+            { "$state": "/ui/channelMsgChannelId", "not": true }
+          ]
+        }
+      },
+      "channelsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load channels: ${/_errors/m365-teams.list_channels}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-teams.list_channels" }
+      },
+      "channelsLoading": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["channelsSk1", "channelsSk2", "channelsSk3"],
+        "visible": { "$state": "/_loading/m365-teams.list_channels" }
+      },
+      "channelsSk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "channelsSk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "channelsSk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "channelsEmpty": {
+        "type": "Empty",
+        "props": { "message": "This team has no channels." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams.list_channels", "not": true },
+            { "$state": "/m365-teams/list_channels/0", "not": true }
+          ]
+        }
+      },
+      "channelsList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["channelRow"],
+        "repeat": { "statePath": "/m365-teams/list_channels", "key": "id" },
+        "visible": { "$state": "/_loading/m365-teams.list_channels", "not": true }
+      },
+      "channelRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["channelRowLeft", "channelEnterIcon"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgChannelId", "value": { "$computed": "identity", "args": { "value": { "$item": "id" } } } } },
+            { "action": "setState", "params": { "statePath": "/ui/channelMsgChannelName", "value": { "$computed": "identity", "args": { "value": { "$item": "displayName" } } } } },
+            {
+              "action": "m365-teams.list_messages",
+              "params": {
+                "teamId": { "$state": "/ui/channelMsgTeamId" },
+                "channelId": { "$computed": "identity", "args": { "value": { "$item": "id" } } },
+                "limit": 30
+              }
+            }
+          ]
+        }
+      },
+      "channelRowLeft": { "type": "Row", "props": { "gap": "sm", "align": "center", "grow": true }, "children": ["channelIcon", "channelRowName"] },
+      "channelIcon": { "type": "Icon", "props": { "name": "Hash", "tone": "accent", "size": "sm" } },
+      "channelRowName": { "type": "Text", "props": { "text": { "$item": "displayName" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "channelEnterIcon": { "type": "Icon", "props": { "name": "ChevronRight", "tone": "muted", "size": "sm" } },
+
+      "messagesView": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["messagesErrorBanner", "messagesLoading", "messagesEmpty", "messagesList"],
+        "visible": { "$state": "/ui/channelMsgChannelId" }
+      },
+      "messagesErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load messages: ${/_errors/m365-teams.list_messages}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-teams.list_messages" }
+      },
+      "messagesLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["messagesSk1", "messagesSk2", "messagesSk3"],
+        "visible": { "$state": "/_loading/m365-teams.list_messages" }
+      },
+      "messagesSk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "messagesSk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "messagesSk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "messagesEmpty": {
+        "type": "Empty",
+        "props": { "icon": "MessageSquare", "title": "No messages yet", "message": "Nobody has posted in this channel." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-teams.list_messages", "not": true },
+            { "$state": "/m365-teams/list_messages/0", "not": true }
+          ]
+        }
+      },
+      "messagesList": {
+        "type": "Stack",
+        "props": { "gap": "sm", "maxHeight": 420 },
+        "children": ["messageRow"],
+        "repeat": { "statePath": "/m365-teams/list_messages", "key": "id" },
+        "visible": { "$state": "/_loading/m365-teams.list_messages", "not": true }
+      },
+      "messageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["msgAvatar", "msgBody"],
+        "visible": { "$item": "isSystemEvent", "eq": false }
+      },
+      "msgAvatar": {
+        "type": "Avatar",
+        "props": { "size": "sm", "initials": { "$computed": "initials", "args": { "value": { "$item": "senderName" } } } }
+      },
+      "msgBody": {
+        "type": "Stack",
+        "props": { "gap": "xs", "grow": true },
+        "children": ["msgHeader", "msgText", "msgMeta"]
+      },
+      "msgHeader": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline", "justify": "between" },
+        "children": ["msgSender", "msgTime"]
+      },
+      "msgSender": { "type": "Text", "props": { "text": { "$item": "senderName" }, "size": "sm", "weight": "semibold" } },
+      "msgTime": { "type": "Caption", "props": { "text": { "$item": "relativeTime" }, "tone": "muted" } },
+      "msgText": { "type": "Text", "props": { "text": { "$item": "text" }, "size": "sm", "preserveLines": true } },
+      "msgMeta": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["msgAttachmentCaption", "msgImageCaption", "msgReactionCaption", "msgOpenInTeams"],
+        "visible": {
+          "$or": [
+            { "$item": "attachments/0" },
+            { "$item": "inlineImageCount", "gt": 0 },
+            { "$item": "reactions/0/count" }
+          ]
+        }
+      },
+      "msgAttachmentCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "📎 {n}", "n": { "$computed": "count", "args": { "value": { "$item": "attachments" } } } }
+          },
+          "tone": "muted"
+        },
+        "visible": { "$item": "attachments/0" }
+      },
+      "msgImageCaption": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "🖼 {n}", "n": { "$item": "inlineImageCount" } } },
+          "tone": "muted"
+        },
+        "visible": { "$item": "inlineImageCount", "gt": 0 }
+      },
+      "msgReactionCaption": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "♥ {count}", "count": { "$item": "reactions/0/count" } } },
+          "tone": "muted"
+        },
+        "visible": { "$item": "reactions/0/count" }
+      },
+      "msgOpenInTeams": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "hover": true, "clickable": true },
+        "children": ["msgOpenInTeamsIcon", "msgOpenInTeamsLabel"],
+        "visible": { "$item": "webUrl" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$computed": "identity", "args": { "value": { "$item": "webUrl" } } }, "target": "_blank" }
+          }
+        }
+      },
+      "msgOpenInTeamsIcon": { "type": "Icon", "props": { "name": "ExternalLink", "tone": "info", "size": "sm" } },
+      "msgOpenInTeamsLabel": { "type": "Caption", "props": { "text": "Open in Teams", "tone": "info" } }
+    }
+  }
+}

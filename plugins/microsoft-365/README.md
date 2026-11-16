@@ -1,6 +1,6 @@
 # Microsoft 365
 
-Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts), and people through Microsoft Graph — plus mail and calendar for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar` servers below.
+Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting transcripts, presence), and people through Microsoft Graph — plus mail, calendar, and contacts for a **personal** Hotmail/Outlook.com/Live.com account via the `hotmail-mail`/`hotmail-calendar`/`hotmail-people` servers below.
 
 ## Servers
 
@@ -10,13 +10,15 @@ Access Microsoft 365 emails, calendar, files, Teams (chat, channels, meeting tra
 | m365-mail-send | Compose, reply, forward, delete emails | `Mail.Send`, `Mail.ReadWrite` | **Admin consent required** |
 | m365-calendar | View, create, and manage calendar events | `Calendars.ReadWrite` | User consent (may require admin) |
 | m365-files | Browse, search, upload, and share OneDrive files | `Files.ReadWrite` | User consent (may require admin) |
-| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite` | Admin consent required |
+| m365-teams | Read and send Teams channel and chat messages | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.ReadWrite`, `Files.ReadWrite` | Admin consent required |
 | m365-teams-transcripts | Read Teams meeting transcripts | `OnlineMeetingTranscript.Read.All` | **Admin consent required** |
 | m365-people | Search people, view profiles and org chart | `People.Read`, `User.Read` | User self-consent OK |
+| m365-presence | Read Teams/M365 presence (availability, activity) for yourself and frequent collaborators | `People.Read`, `Presence.Read.All` | **Admin consent required** (own app registration — see below) |
 | hotmail-mail | Read, search, and inspect emails in a **personal** Hotmail/Outlook.com/Live.com account | `Mail.Read` | **User self-consent OK** (no tenant/admin — personal accounts self-consent individually) |
 | hotmail-calendar | View, create, and manage events in a **personal** calendar | `Calendars.ReadWrite` | **User self-consent OK** |
+| hotmail-people | Read contacts in a **personal** account | `Contacts.Read` | **User self-consent OK** |
 
-`hotmail-mail`/`hotmail-calendar` use a **separate Entra app registration**
+`hotmail-mail`/`hotmail-calendar`/`hotmail-people` use a **separate Entra app registration**
 (`HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET` on the gateway) from the other
 seven servers — see the callout in
 **[OAuth redirect URIs](#oauth-redirect-uris--register-these-before-a-server-can-be-connected)**
@@ -39,6 +41,13 @@ user-self-consentable. Bundling them into one authorization request would
 force every existing `m365-teams` connection through admin approval just to
 keep working.
 
+`m365-teams` also requests `Channel.ReadBasic.All` — a fix, not a new
+feature. `Team.ReadBasic.All` only enumerates the teams a user belongs to
+(`/me/joinedTeams`); it does **not** cover `GET /teams/{id}/channels`
+(confirmed against Microsoft's own docs), so `list_channels` 403'd for
+every team, for every user, until this was added. Existing `m365-teams`
+connections need to reconnect once to pick up the wider scope.
+
 ## Configuration
 
 No environment variables required. Each server uses OAuth — click Connect in
@@ -47,8 +56,9 @@ own scopes.
 
 ## Admin consent for high-risk scopes
 
-`m365-mail-send` and `m365-teams-transcripts` (and some optional scopes on calendar, files, teams) require
-**tenant admin consent** before any user can connect. Do this once:
+`m365-mail-send` and `m365-teams-transcripts` (and some optional scopes on
+calendar, files, teams) require **tenant admin consent** before any user can
+connect — all on the main app (`ENTRA_CLIENT_ID`). Do this once:
 
 1. Sign in to https://entra.microsoft.com as a Global Admin.
 2. **Identity → Applications → Enterprise applications**.
@@ -63,6 +73,11 @@ https://login.microsoftonline.com/{TENANT_ID}/adminconsent?client_id={APP_CLIENT
 
 After admin consent, every user in the tenant can connect the send server
 without another prompt.
+
+`m365-presence` also requires tenant admin consent, but on its **own**, separate
+app registration — see
+**[m365-presence uses a different, separate app registration](#m365-presence-uses-a-different-separate-app-registration)**
+below. Granting consent on the main app above does nothing for `m365-presence`.
 
 ## Tools
 
@@ -140,6 +155,14 @@ without another prompt.
 - `get_manager` — Get user's manager
 - `get_direct_reports` — Get direct reports
 
+### Presence (2 tools, `m365-presence`)
+- `get_my_presence` — Get the caller's own availability and activity
+- `list_colleague_presence` — Get presence for the people most relevant to
+  the caller (Graph's own relevance ranking via `/me/people`, no keyword
+  needed), filtered to organization users and batched through
+  `getPresencesByUserId` — groups and external contacts are skipped since
+  only organization users have presence
+
 ### Hotmail — Mail (5 tools, `hotmail-mail`, personal accounts only)
 - `list_emails` — List recent emails from inbox or a folder
 - `get_email` — Get a single email with full body
@@ -163,6 +186,16 @@ exists yet for Hotmail.
 No `find_free_slots` — Graph's scheduling-assistant API
 (`/me/findMeetingTimes`) is a work-or-school (Exchange Online) feature and
 isn't available for personal Microsoft accounts.
+
+### Hotmail — Contacts (3 tools, `hotmail-people`, personal accounts only)
+- `list_contacts` — List contacts, alphabetical by display name
+- `get_contact` — Get a single contact by ID
+- `search_contacts_by_email` — Find contacts with a given exact email address
+
+Read-only. `search_contacts_by_email` is the only filter Microsoft Graph
+documents for the contacts resource (`emailAddresses/any(a:a/address eq
+...)`) — there's no general keyword search for contacts, unlike mail's
+`$search`. No write server exists yet for Hotmail contacts.
 
 ## Briefing email source
 
@@ -220,6 +253,32 @@ So each server needs **both** rows below registered against the Entra app regist
 > `m365-mail-send` is only reached when a user creates a draft, so an unregistered
 > URI there stays invisible until someone clicks "Open draft".
 
+### `m365-presence` uses a DIFFERENT, separate app registration
+
+(`M365_PRESENCE_CLIENT_ID`/`M365_PRESENCE_CLIENT_SECRET`) — deliberately, and
+for a different reason than Hotmail's split below. `m365-presence` is still a
+work-or-school app, same audience as the main app above. The split exists
+because `Presence.Read.All` requires tenant admin consent, and the main app
+may be administered by someone with no path to add a redirect URI or grant
+that consent for it (confirmed live: connecting `m365-presence` through an
+unregistered redirect URI throws `AADSTS50011: redirect_uri_mismatch`).
+Registering a new app is a lower-privilege action in most tenants than
+administering an existing one, so whoever can create their own app
+registration can register the redirect URI and grant admin consent for just
+this app, without needing access to the main one.
+
+Register this app as **"Accounts in this organizational directory only"**
+(or your tenant's equivalent) — **NOT** "Personal Microsoft accounts" (that's
+the Hotmail app below).
+
+| Server | Redirect URIs (register both, on the m365-presence app, not the main one) |
+|---|---|
+| `m365-presence` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/m365-presence/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/m365-presence/callback` |
+
+Also add the **`Presence.Read.All`** delegated permission (Microsoft Graph)
+on this app and grant admin consent for it specifically — consenting on the
+main app does nothing here, since this is a different app entirely.
+
 **`hotmail-mail`/`hotmail-calendar` use a DIFFERENT, separate app registration**
 (`HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET`) — deliberately, because the main
 app above is configured "work or school accounts only" (confirmed live:
@@ -233,6 +292,10 @@ happen to be set.
 |---|---|
 | `hotmail-mail` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-mail/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-mail/callback` |
 | `hotmail-calendar` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-calendar/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-calendar/callback` |
+| `hotmail-people` | `https://myhub-mcp-servers-staging.orangesky-e321d350.westus2.azurecontainerapps.io/hotmail-people/callback`<br>`https://myhub-mcp-servers.thankfulcliff-9090ceed.westus2.azurecontainerapps.io/hotmail-people/callback` |
+
+Also add the **`Contacts.Read`** delegated permission (Microsoft Graph) on
+the HOTMAIL app for `hotmail-people` to work.
 
 > As of this writing, `HOTMAIL_CLIENT_ID`/`HOTMAIL_CLIENT_SECRET` are only
 > wired into the staging deploy (`deploy-staging.yml`) — production's
