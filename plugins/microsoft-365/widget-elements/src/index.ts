@@ -410,6 +410,68 @@ const transcript_display_text: ComputedFunction = (args) => {
     .join('\n\n');
 };
 
+/**
+ * The folder list tile shows top-level folders only (dataProvider calls
+ * list_mail_folders with maxDepth: 1, so every item is already top-level --
+ * no subfolder filtering needed). Inbox/Drafts/Sent Items pin to the top in
+ * that fixed order (matching Outlook's own left-rail convention); everything
+ * else sorts alphabetically by displayName.
+ */
+const PINNED_FOLDER_ORDER = ['Inbox', 'Drafts', 'Sent Items'];
+
+const mail_folder_sorted: ComputedFunction = (args) => {
+  const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
+  const pinned: (Record<string, unknown> | undefined)[] = [];
+  const rest: Record<string, unknown>[] = [];
+  for (const it of items) {
+    const idx = PINNED_FOLDER_ORDER.indexOf(String(it.displayName ?? ''));
+    if (idx === -1) rest.push(it);
+    else pinned[idx] = it;
+  }
+  rest.sort((a, b) => String(a.displayName ?? '').localeCompare(String(b.displayName ?? '')));
+  return [...pinned.filter((it): it is Record<string, unknown> => Boolean(it)), ...rest];
+};
+
+const FOLDER_ICONS: Record<string, string> = {
+  Inbox: 'Inbox',
+  Drafts: 'FileEdit',
+  'Sent Items': 'Send',
+  Outbox: 'ArrowUpCircle',
+  Snoozed: 'Clock',
+  'Deleted Items': 'Trash2',
+  'Junk Email': 'ShieldAlert',
+  Archive: 'Archive',
+  'Conversation History': 'History',
+  'Sync Issues': 'RefreshCw',
+  Notes: 'StickyNote',
+};
+
+/** Lucide icon name for a folder, by its well-known Outlook display name; "Folder" for anything custom. */
+const mail_folder_icon: ComputedFunction = (args) => {
+  const name = String(args.value ?? '');
+  return FOLDER_ICONS[name] ?? 'Folder';
+};
+
+// Decorative categorical colors (chart-1..5), not status tones -- a folder
+// isn't "good" or "bad", it's just one of several, same reasoning as the
+// ClickUp channel-type coloring and @myhub/widget-tokens' own chart-N doc
+// comment. Hashed from the folder's own name (not list position) so each
+// folder keeps the same color every load regardless of how many folders
+// exist or what order they render in.
+const CHART_TONE_COUNT = 5;
+const mail_folder_tone: ComputedFunction = (args) => {
+  const name = String(args.value ?? '');
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  // A plain *31 hash clusters badly on short, similar strings like folder
+  // names (verified: 5 of 10 real Outlook folder names collided on one
+  // tone) -- this finalizer (Murmur3-style) spreads them evenly instead.
+  hash ^= hash >>> 15;
+  hash = Math.imul(hash, 2246822519) >>> 0;
+  hash = (hash ^ (hash >>> 13)) >>> 0;
+  return `chart-${(hash % CHART_TONE_COUNT) + 1}`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'microsoft-365',
   functions: {
@@ -435,6 +497,9 @@ const elements: PluginElementsModule = {
     day_end_iso,
     schedule_title,
     transcript_display_text,
+    mail_folder_sorted,
+    mail_folder_icon,
+    mail_folder_tone,
   },
 };
 

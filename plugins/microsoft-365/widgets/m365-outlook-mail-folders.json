@@ -1,0 +1,304 @@
+{
+  "id": "m365-outlook-mail-folders",
+  "title": "Mail and Folders",
+  "description": "Outlook-style two-pane mailbox browser: folders on the left (Inbox, Drafts and Sent Items pinned, then alphabetical), that folder's messages on the right, click a message for full details.",
+  "category": "productivity",
+  "tags": ["m365", "outlook", "mail", "email", "folders", "productivity"],
+  "keywords": ["outlook", "mail folders", "inbox", "email", "m365", "office", "reading pane"],
+  "connectorsUsed": ["m365-mail-read"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 10 },
+    "min": { "colSpan": 6, "rowSpan": 7 },
+    "max": { "colSpan": 12, "rowSpan": 16 }
+  },
+  "dataProvider": {
+    "mcp": "m365-mail-read",
+    "tool": "list_mail_folders",
+    "params": { "maxDepth": 1 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer", "detailOverlay"],
+        "watch": {
+          "/m365-mail-read/list_mail_folders": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sortedFolders",
+                "value": { "$computed": "microsoft-365_mail_folder_sorted", "args": { "items": { "$state": "/m365-mail-read/list_mail_folders" } } }
+              }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Mail", "tone": "info", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Mail and Folders", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Outlook · Microsoft 365" } },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["foldersError", "mainRow"] },
+
+      "foldersError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load mail folders: ${/_errors/m365-mail-read.list_mail_folders}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-mail-read.list_mail_folders" }
+      },
+
+      "mainRow": { "type": "Row", "props": { "gap": "md", "align": "start" }, "children": ["leftColumn", "rightColumn"] },
+
+      "leftColumn": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["foldersLoading", "folderList"],
+        "watch": {
+          "/m365-mail-read/list_mail_folders": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFolderPath",
+                "value": { "$cond": { "$state": "/ui/selectedFolderPath" }, "$then": { "$state": "/ui/selectedFolderPath" }, "$else": "Inbox" }
+              }
+            }
+          ]
+        }
+      },
+      "foldersLoading": {
+        "type": "Skeleton",
+        "props": { "height": "10rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/m365-mail-read.list_mail_folders" }
+      },
+      "folderList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["folderRow"],
+        "repeat": { "statePath": "/ui/sortedFolders", "key": "id" },
+        "visible": { "$state": "/_loading/m365-mail-read.list_mail_folders", "not": true }
+      },
+      "folderRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "justify": "between",
+          "hover": true,
+          "clickable": true,
+          "selected": { "$cond": { "$state": "/ui/selectedFolderPath" }, "eq": { "$item": "path" }, "$then": true, "$else": false }
+        },
+        "children": ["folderLeft", "folderUnreadBadge"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedFolderPath", "value": { "$bindItem": "path" } } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedFolderName", "value": { "$bindItem": "displayName" } } }
+          ]
+        }
+      },
+      "folderLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["folderIcon", "folderName"] },
+      "folderIcon": {
+        "type": "Icon",
+        "props": {
+          "name": { "$computed": "microsoft-365_mail_folder_icon", "args": { "value": { "$item": "displayName" } } },
+          "tone": { "$computed": "microsoft-365_mail_folder_tone", "args": { "value": { "$item": "displayName" } } },
+          "size": "sm"
+        }
+      },
+      "folderName": { "type": "Text", "props": { "text": { "$item": "displayName" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "folderUnreadBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "unreadItemCount" },
+          "tone": { "$computed": "microsoft-365_mail_folder_tone", "args": { "value": { "$item": "displayName" } } }
+        },
+        "visible": { "$item": "unreadItemCount" }
+      },
+
+      "rightColumn": {
+        "type": "Stack",
+        "props": { "gap": "sm", "grow": true },
+        "children": ["rightHeader", "messagesLoading", "messagesError", "messagesEmpty", "messageList"],
+        "watch": {
+          "/m365-mail-read/list_mail_folders": [
+            { "action": "m365-mail-read.list_emails", "params": { "folder": "Inbox", "limit": 20 } }
+          ],
+          "/ui/selectedFolderPath": [
+            {
+              "action": "m365-mail-read.list_emails",
+              "params": { "folder": { "$state": "/ui/selectedFolderPath" }, "limit": 20 }
+            }
+          ]
+        }
+      },
+      "rightHeader": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["rightHeaderTitle", "rightHeaderUnread"],
+        "watch": {
+          "/m365-mail-read/list_mail_folders": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedFolderName",
+                "value": { "$cond": { "$state": "/ui/selectedFolderName" }, "$then": { "$state": "/ui/selectedFolderName" }, "$else": "Inbox" }
+              }
+            }
+          ]
+        }
+      },
+      "rightHeaderTitle": { "type": "Heading", "props": { "text": { "$state": "/ui/selectedFolderName" }, "level": "h3" } },
+      "rightHeaderUnread": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} unread",
+              "n": { "$computed": "count_where", "args": { "value": { "$state": "/m365-mail-read/list_emails" }, "whereField": "isRead", "equals": false } }
+            }
+          }
+        }
+      },
+
+      "messagesLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["ms1", "ms2", "ms3"],
+        "visible": { "$state": "/_loading/m365-mail-read.list_emails" }
+      },
+      "ms1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "ms2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "ms3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "messagesError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load messages: ${/_errors/m365-mail-read.list_emails}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-mail-read.list_emails" }
+      },
+      "messagesEmpty": {
+        "type": "Caption",
+        "props": { "text": "No messages in this folder.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/m365-mail-read.list_emails", "not": true },
+            { "$state": "/m365-mail-read/list_emails/0", "not": true }
+          ]
+        }
+      },
+
+      "messageList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["messageRow"],
+        "repeat": { "statePath": "/m365-mail-read/list_emails", "key": "id" },
+        "visible": { "$state": "/_loading/m365-mail-read.list_emails", "not": true }
+      },
+      "messageRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start", "justify": "between", "hover": true, "clickable": true },
+        "children": ["messageLeft", "messageReceived"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/m365-mail-read/get_email", "value": {} } },
+            { "action": "setState", "params": { "statePath": "/_errors/m365-mail-read.get_email", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedEmailId", "value": { "$bindItem": "id" } } },
+            { "action": "m365-mail-read.get_email", "params": { "id": { "$bindItem": "id" } } }
+          ]
+        }
+      },
+      "messageUnreadDot": { "type": "Dot", "props": { "tone": { "$cond": { "$item": "isRead" }, "$then": "muted", "$else": "accent" }, "size": "sm" } },
+      "messageAvatar": { "type": "Avatar", "props": { "initials": { "$computed": "initials", "args": { "value": { "$item": "from/emailAddress/name" } } }, "size": "sm" } },
+      "messageLabels": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["messageSubject", "messagePreview"] },
+      "messageSubject": { "type": "Text", "props": { "text": { "$item": "subject" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "messagePreview": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{name} — {preview}", "name": { "$item": "from/emailAddress/name" }, "preview": { "$computed": "email_preview", "args": { "value": { "$item": "bodyPreview" }, "maxLength": 80 } } }
+          },
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "messageLeft": { "type": "Row", "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["messageUnreadDot", "messageAvatar", "messageLabels"] },
+      "messageReceived": { "type": "Caption", "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "receivedDateTime" } } }, "tone": "muted" } },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openOutlookBtn"] },
+      "openOutlookBtn": {
+        "type": "Button",
+        "props": { "label": "Open Outlook", "tone": "info", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": "https://outlook.office.com/mail/", "target": "_blank" } } }
+      },
+
+      "detailOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "48rem" },
+        "children": ["detailCard"],
+        "visible": { "$state": "/ui/selectedEmailId" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/selectedEmailId", "value": "" } } }
+      },
+      "detailCard": { "type": "Card", "props": {}, "children": ["detailHeader", "detailDivider", "detailSpinner", "detailError", "detailBody"] },
+      "detailHeader": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["detailTitle", "detailCloseBtn"] },
+      "detailTitle": { "type": "Heading", "props": { "text": { "$state": "/m365-mail-read/get_email/subject" }, "level": "h2" } },
+      "detailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedEmailId", "value": "" } } }
+      },
+      "detailDivider": { "type": "Divider", "props": {} },
+      "detailSpinner": {
+        "type": "Spinner",
+        "props": { "label": "Loading message…" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/m365-mail-read.get_email", "not": true },
+            { "$state": "/m365-mail-read/get_email/id", "neq": { "$state": "/ui/selectedEmailId" } }
+          ]
+        }
+      },
+      "detailError": {
+        "type": "Empty",
+        "props": { "message": "Couldn't load this message. Close and try again." },
+        "visible": { "$state": "/_errors/m365-mail-read.get_email" }
+      },
+      "detailBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["kvFrom", "kvReceived", "bodySection", "detailActions"],
+        "visible": { "$state": "/m365-mail-read/get_email/id", "eq": { "$state": "/ui/selectedEmailId" } }
+      },
+      "kvFrom": {
+        "type": "KeyValue",
+        "props": {
+          "label": "From",
+          "value": {
+            "$computed": "fmt",
+            "args": { "pattern": "{name} <{addr}>", "name": { "$state": "/m365-mail-read/get_email/from/emailAddress/name" }, "addr": { "$state": "/m365-mail-read/get_email/from/emailAddress/address" } }
+          }
+        }
+      },
+      "kvReceived": {
+        "type": "KeyValue",
+        "props": { "label": "Received", "value": { "$computed": "relative_time", "args": { "value": { "$state": "/m365-mail-read/get_email/receivedDateTime" } } } }
+      },
+      "bodySection": { "type": "Section", "props": { "variant": "muted" }, "children": ["bodyHtml"] },
+      "bodyHtml": { "type": "RichHtml", "props": { "html": { "$state": "/m365-mail-read/get_email/body/content" }, "minHeight": 120, "maxHeight": 520 } },
+      "detailActions": { "type": "Row", "props": { "justify": "end" }, "children": ["openInOutlookBtn"] },
+      "openInOutlookBtn": {
+        "type": "Button",
+        "props": { "label": "Open in Outlook", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/m365-mail-read/get_email/webLink" } } } }
+      }
+    }
+  },
+  "status": "published"
+}
