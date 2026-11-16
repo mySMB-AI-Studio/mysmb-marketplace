@@ -1,0 +1,274 @@
+{
+  "id": "clickup-task-detail-comments",
+  "title": "Task Detail & Comments",
+  "description": "Pick a ClickUp task to see its full detail (description, status, priority, due date, assignees) and comment thread, and post a new comment without leaving the dashboard.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "task detail", "comments", "description", "assignees"],
+  "tags": ["clickup", "tasks", "comments", "project-management"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "preferred": { "colSpan": 6, "rowSpan": 10 },
+    "max": { "colSpan": 10, "rowSpan": 16 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "taskPickerErrorBanner", "taskPickerList", "divider1", "detailPanel", "divider2", "commentsPanel"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "MessageSquare", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Task Detail & Comments" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a task below to see its detail and comments" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "header": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        }
+      },
+      "spaceSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedSpace" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_spaces/spaces" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose space…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/ui/selectedTeam" }
+      },
+      "listSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedList" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_folderless_lists/lists" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose list…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/ui/selectedSpace" }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["teamSelect", "spaceSelect", "listSelect"],
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedSpace", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedList", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedTaskId", "value": null } },
+            { "action": "clickup.list_spaces", "params": { "team_id": { "$state": "/ui/selectedTeam" } } }
+          ],
+          "/ui/selectedSpace": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedList", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedTaskId", "value": null } },
+            { "action": "clickup.list_folderless_lists", "params": { "space_id": { "$state": "/ui/selectedSpace" } } }
+          ],
+          "/ui/selectedList": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedTaskId", "value": null } },
+            { "action": "clickup.list_tasks", "params": { "list_id": { "$state": "/ui/selectedList" } } }
+          ]
+        }
+      },
+
+      "taskPickerErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load tasks: ${/_errors/clickup.list_tasks}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_tasks" }
+      },
+
+      "pickerTaskName": { "type": "Text", "props": { "size": "sm", "weight": { "$cond": { "$item": "id" }, "eq": { "$state": "/ui/selectedTaskId" }, "$then": "bold", "$else": "regular" }, "text": { "$item": "name" } } },
+      "pickerTaskBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "clickup_due_status_text", "args": { "value": { "$item": "due_date" } } },
+          "tone": { "$computed": "clickup_due_status_tone", "args": { "value": { "$item": "due_date" } } }
+        }
+      },
+      "pickerTaskRowContent": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["pickerTaskName", "pickerTaskBadge"] },
+      "pickerTaskRow": {
+        "type": "Row",
+        "props": { "clickable": true, "hover": true },
+        "children": ["pickerTaskRowContent"],
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedTaskId", "value": { "$bindItem": "id" } } } }
+      },
+      "taskPickerList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["pickerTaskRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_tasks/tasks" },
+        "visible": { "$state": "/clickup/list_tasks/tasks/0" }
+      },
+
+      "divider1": { "type": "Divider", "props": {}, "visible": { "$state": "/ui/selectedTaskId" } },
+
+      "detailErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load task: ${/_errors/clickup.get_task}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.get_task" }
+      },
+      "detailLoading": {
+        "type": "Caption",
+        "props": { "text": "Loading task…", "tone": "muted" },
+        "visible": { "$state": "/_loading/clickup.get_task" }
+      },
+      "detailName": { "type": "Heading", "props": { "level": "h3", "text": { "$state": "/clickup/get_task/name" } } },
+      "detailStatusBadge": { "type": "Badge", "props": { "text": { "$state": "/clickup/get_task/status/status" }, "tone": "muted" } },
+      "detailPriorityBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "clickup_priority_label", "args": { "value": { "$state": "/clickup/get_task/priority/priority" } } },
+          "tone": { "$computed": "clickup_priority_tone", "args": { "value": { "$state": "/clickup/get_task/priority/priority" } } }
+        }
+      },
+      "detailDueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "clickup_due_status_text", "args": { "value": { "$state": "/clickup/get_task/due_date" } } },
+          "tone": { "$computed": "clickup_due_status_tone", "args": { "value": { "$state": "/clickup/get_task/due_date" } } }
+        }
+      },
+      "detailBadgeRow": { "type": "Row", "props": { "gap": "xs", "wrap": true }, "children": ["detailStatusBadge", "detailPriorityBadge", "detailDueBadge"] },
+      "detailAssignees": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Assigned to {names}",
+              "names": { "$computed": "clickup_assignee_names", "args": { "value": { "$state": "/clickup/get_task/assignees" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "detailDescription": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "preserveLines": true,
+          "text": {
+            "$cond": { "$state": "/clickup/get_task/description" },
+            "$then": { "$state": "/clickup/get_task/description" },
+            "$else": "No description."
+          }
+        }
+      },
+      "detailStack": { "type": "Stack", "props": { "gap": "sm" }, "children": ["detailName", "detailBadgeRow", "detailAssignees", "detailDescription"] },
+      "detailPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["detailErrorBanner", "detailLoading", "detailStack"],
+        "visible": { "$state": "/ui/selectedTaskId" },
+        "watch": {
+          "/ui/selectedTaskId": [
+            { "action": "clickup.get_task", "params": { "task_id": { "$state": "/ui/selectedTaskId" } } }
+          ]
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {}, "visible": { "$state": "/ui/selectedTaskId" } },
+
+      "commentsHeading": { "type": "Heading", "props": { "level": "h3", "text": "Comments" } },
+      "commentsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load comments: ${/_errors/clickup.list_comments}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_comments" }
+      },
+      "commentsLoading": {
+        "type": "Caption",
+        "props": { "text": "Loading comments…", "tone": "muted" },
+        "visible": { "$state": "/_loading/clickup.list_comments" }
+      },
+      "commentsEmpty": {
+        "type": "Caption",
+        "props": { "text": "No comments yet.", "tone": "muted" },
+        "visible": {
+          "$cond": { "$state": "/_loading/clickup.list_comments" },
+          "$then": false,
+          "$else": { "$state": "/clickup/list_comments/comments/0", "not": true }
+        }
+      },
+      "commentAuthor": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "user/username" } } },
+      "commentDate": { "type": "Caption", "props": { "text": { "$computed": "clickup_date", "args": { "value": { "$item": "date" } } }, "tone": "muted" } },
+      "commentHeaderRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["commentAuthor", "commentDate"] },
+      "commentBody": { "type": "Text", "props": { "size": "sm", "preserveLines": true, "text": { "$item": "comment_text" } } },
+      "commentCard": { "type": "Stack", "props": { "gap": "xs" }, "children": ["commentHeaderRow", "commentBody"] },
+      "commentsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["commentCard"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_comments/comments" },
+        "visible": { "$state": "/clickup/list_comments/comments/0" }
+      },
+
+      "postErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't post comment: ${/_errors/clickup.create_comment}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.create_comment" }
+      },
+      "newCommentInput": {
+        "type": "TextInput",
+        "props": {
+          "value": { "$bindState": "/ui/newCommentText" },
+          "placeholder": "Write a comment…",
+          "multiline": true,
+          "rows": 3
+        }
+      },
+      "postCommentBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Post comment",
+          "size": "sm",
+          "variant": "primary",
+          "disabled": { "$state": "/ui/newCommentText", "not": true }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "clickup.create_comment",
+              "params": {
+                "task_id": { "$state": "/ui/selectedTaskId" },
+                "comment_text": { "$state": "/ui/newCommentText" },
+                "notify_all": false
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/newCommentText", "value": "" } }
+          ]
+        }
+      },
+      "addCommentNote": { "type": "Caption", "props": { "text": "This posts a real comment on the task in ClickUp.", "tone": "muted" } },
+      "addCommentStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["newCommentInput", "postCommentBtn", "addCommentNote"] },
+
+      "commentsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["commentsHeading", "commentsErrorBanner", "commentsLoading", "commentsEmpty", "commentsList", "postErrorBanner", "addCommentStack"],
+        "visible": { "$state": "/ui/selectedTaskId" },
+        "watch": {
+          "/ui/selectedTaskId": [
+            { "action": "clickup.list_comments", "params": { "task_id": { "$state": "/ui/selectedTaskId" } } }
+          ],
+          "/clickup/create_comment": [
+            { "action": "clickup.list_comments", "params": { "task_id": { "$state": "/ui/selectedTaskId" } } }
+          ]
+        }
+      }
+    }
+  }
+}
