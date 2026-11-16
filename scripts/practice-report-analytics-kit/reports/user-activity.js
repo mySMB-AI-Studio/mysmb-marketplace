@@ -41,7 +41,7 @@ module.exports = function build() {
       myob: { last_sync: 'lastSync' }
     },
     columns: [
-      { key: 'last_sync', label: 'Last synced (connection)' },
+      { key: 'last_sync', label: 'Last synced (connection)', date: true },
       { key: 'events', label: 'Events by user' },
       { key: 'edits_deletes', label: 'Edits / deletes' }
     ],

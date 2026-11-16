@@ -9,7 +9,7 @@ module.exports = function build() {
     tool: 'get_practice_purchases_summary', // named in the footer and the Excel Parameters sheet
     chips: ['Overdue only'],
     sources: { xero: 'xero', myob: 'myob' },
-    qbNote: 'one company per connection — see its Purchases by Tracking Category / Financial Overview in the Client agent.',
+    qbNote: 'one company per connection — open its Purchases by Tracking Category or Financial Overview from the Client Report Analytics reports (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     // get_practice_purchases_summary: both platforms agree on these names.
     fieldAliases: {
       xero: { outstanding: 'outstandingAmount', outstanding_count: 'outstandingCount', overdue: 'overdueAmount', overdue_count: 'overdueCount', payments: 'bankPayments', suppliers: 'supplierCount' },

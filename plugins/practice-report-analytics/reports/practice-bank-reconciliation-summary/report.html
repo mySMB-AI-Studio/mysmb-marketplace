@@ -40,11 +40,18 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
 <table id="table"><thead></thead><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
 <footer id="foot"></footer>
 <script>(function () {
-  var C = {"title":"Practice Bank Reconciliation Summary","slug":"practice-bank-reconciliation-summary","tool":"get_practice_bank_reconciliation_summary","chips":["Needs attention"],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection, and QuickBooks has no bank-feed/unreconciled data in its API — see the Client agent for what is available.","fieldAliases":{"xero":{"unreconciled_count":"totalUnreconciledCount","unreconciled_value":"totalUnreconciledAmount"},"myob":{"unreconciled_count":"unreconciledCount","unreconciled_value":"unreconciledAmount"}},"columns":[{"key":"unreconciled_count","label":"Unreconciled #","rag":"high"},{"key":"unreconciled_value","label":"Unreconciled $","money":true}],"totals":["unreconciled_count","unreconciled_value"]};
+  var C = {"title":"Practice Bank Reconciliation Summary","slug":"practice-bank-reconciliation-summary","tool":"get_practice_bank_reconciliation_summary","chips":["Needs attention"],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection, and QuickBooks has no bank-feed/unreconciled data in its API — the Client Report Analytics reports show what is available for it (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).","fieldAliases":{"xero":{"unreconciled_count":"totalUnreconciledCount","unreconciled_value":"totalUnreconciledAmount"},"myob":{"unreconciled_count":"unreconciledCount","unreconciled_value":"unreconciledAmount"}},"columns":[{"key":"unreconciled_count","label":"Unreconciled #","rag":"high"},{"key":"unreconciled_value","label":"Unreconciled $","money":true}],"totals":["unreconciled_count","unreconciled_value"]};
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
   var pct = function (v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '%'; };
+  // An ISO timestamp (Xero sends up to 7 fractional digits) as "22 Oct 2026, 3:24 pm" in the viewer's time zone.
+  var dateTime = function (v) {
+    if (v == null || v === '') return '—';
+    var s = String(v).replace(/([.][0-9]{3})[0-9]+/, '$1');
+    var d = new Date(/[zZ]$|[+-][0-9][0-9]:?[0-9][0-9]$/.test(s) ? s : s + 'Z');
+    return isNaN(d.getTime()) ? String(v) : d.toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
   var ragClass = function (v) { return v === 'red' ? 'rag-r' : v === 'amber' ? 'rag-a' : v === 'green' ? 'rag-g' : ''; };
   var computeRag = function (col, v) {
     if (v == null || !col.rag) return null;
@@ -148,10 +155,10 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
   }
   function cell(col, row, stats) {
     var v = row[col.key];
-    if (row[col.key + '_na']) return '<td class="num muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
+    if (row[col.key + '_na']) return '<td class="' + (col.money || col.pct ? 'num ' : '') + 'muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
     var rag = computeRag(col, v);
     var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '') + heatClass(col, row, stats || {});
-    var text = col.money ? money(v) : col.pct ? pct(v) : esc(v);
+    var text = col.money ? money(v) : col.pct ? pct(v) : col.date ? esc(dateTime(v)) : esc(v);
     return '<td class="' + cls + '">' + text + '</td>';
   }
   // Rank: when a report declares rankKey, every client is ranked 1..N by that column's value,
@@ -296,7 +303,7 @@ footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid va
   // Download Excel: the table as shown (filters and sort applied, numbers as numbers), its checks, and what it ran at.
   function excel() {
     var rows = sorted(state.rows.filter(match)), ck = checks(rows), tot = totalsRow(rows), cx = context();
-    var val = function (c, v) { return v == null ? '' : c.money ? { v: Number(v), s: 'money' } : c.pct ? { v: Number(v), s: 'pct' } : typeof v === 'number' ? v : String(v); };
+    var val = function (c, v) { return v == null ? '' : c.money ? { v: Number(v), s: 'money' } : c.pct ? { v: Number(v), s: 'pct' } : c.date ? dateTime(v) : typeof v === 'number' ? v : String(v); };
     var head = ['Platform', 'Client'].concat(C.columns.map(function (c) { return c.label; })).map(function (t) { return { v: t, s: 'bold' }; });
     var body = rows.map(function (r) { return [cap(r._platform), r.name].concat(C.columns.map(function (c) { return r[c.key + '_na'] ? 'N/A: ' + r[c.key + '_na'] : val(c, r[c.key]); })); });
     var foot = (C.totals || []).length ? [[{ v: 'Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')', s: 'bold' }, ''].concat(C.columns.map(function (c) { var v = (C.totals || []).indexOf(c.key) >= 0 ? tot[c.key] : null; return v == null ? '' : { v: v, s: c.money ? 'moneyBold' : 'bold' }; }))] : [];
