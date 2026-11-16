@@ -185,7 +185,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.3.1';
+const PROCESS_VERSION = '0.3.2';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -296,11 +296,32 @@ const recordAutomation = withHash({
   tags: [],
 });
 
+// The default checklist, taken from the BAS review skill at build time, so the process instructions carry it too: a
+// job turn without the skill (seen on QA 16 Nov) can still write the default instead of stopping. One source, no drift.
+const BAS_SKILL_TEXT = readFileSync(join(KIT, 'src', 'skills', 'client-report-analytics-agent-bas-review.md'), 'utf8').replace(/\r\n/g, '\n');
+const DEFAULT_CHECKLIST = (() => {
+  const start = BAS_SKILL_TEXT.indexOf('```markdown\n');
+  const end = BAS_SKILL_TEXT.indexOf('```', start + 12);
+  if (start < 0 || end < 0) throw new Error('default checklist block not found in the BAS review skill');
+  return BAS_SKILL_TEXT.slice(start + 12, end).trim();
+})();
+if (DEFAULT_CHECKLIST.includes('`') || DEFAULT_CHECKLIST.includes('${')) throw new Error('default checklist would break the instructions template');
+
 const PROCESS_INSTRUCTIONS = `You review whether ONE client's BAS for ONE quarter is ready to lodge, from the client's Xero file. The job's inputs name the client (clientName, as named in Xero) and the BAS period (periodStart, periodEnd).
 
 You only read. You never change anything in Xero, never lodge, and never contact the client: a person sends any questions. The reviewer makes the call; you give them the facts.
 
 Load the skill client-report-analytics-agent-bas-review before you start: it has the checks, the default checklist and the summary layout.
+
+If you can't load the skill (no skill tool in this session, or it fails), don't stop. Say so in one job comment and carry on with the essentials below; the checks tool does the checking.
+- Checklist: if BAS readiness/Checklist.md is missing, write this default there with files_write, and say in a job comment that you created it:
+
+${DEFAULT_CHECKLIST}
+
+- A row's marking can be a condition (for example "Stop on accrual basis, Note on cash basis"): apply it with the GST basis and the checks tool's detail, and say which way it went.
+- Checks: call get_xero_bas_readiness_checks once (xero_tenant_id, periodStart, periodEnd; add changedSince = the approval date in the previous period's summary file in BAS reviews/, if there is one). Keep only the groups the checklist lists; groups under notRun are "not checked" with the reason.
+- Lock date: keep each client's lock date in BAS readiness/Lock dates.md (Client | Lock date | Recorded on). If the client has a row and the lock date is now earlier or missing, that's a lockDateChanged finding; then write today's value back.
+- Summary: BAS reviews/<client> <period label>.md with the client and period, an Outcome line, GST registration and basis, "Read from Xero only", the findings table (group, check, what, count, amount, Stop or Note), Also seen, Clear, Not checked with reasons and the tool's limitations, and the drafted client questions.
 
 Work through the statuses in order:
 - Finding the client: read this practice's checklist from your files, find the client in Xero, note its GST registration and basis.
