@@ -14,8 +14,9 @@ Each practice decides which check groups **stop** lodgement and which are only a
 - Read it with `files_read` at the start of every job.
 - If it doesn't exist, write the default below there with `files_write`, then say in a job comment that you created the default checklist and that the practice should review the Stop/Note column.
 - If someone has edited it, follow their version: run the groups it lists, and treat a group as Stop only when its row says Stop.
+- If the file has no row for a group the default below has (a check added since the file was written), add that row with the default marking, keep every other row exactly as it is, and say in a job comment which rows you added.
 
-The default (provisional until a bookkeeper confirms it):
+The default (a bookkeeper's recommendation, November 2026; the GST rows are still provisional):
 
 ```markdown
 # BAS readiness checklist
@@ -36,9 +37,12 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 | duplicateBills | CHK-055/079/080 the same bill raised or paid twice | Stop |
 | gstStatusMismatch | CHK-003 a contact's GST status differs from the ABR | Note |
 | gstAccountWithoutGst | CHK-129 a GST account mostly without GST (heuristic) | Note |
-| missingReceipts | CHK-021/086 spend money and bills over $82.50 with nothing attached | Note |
+| missingReceipts | CHK-021/086 spend money and bills over $82.50 with nothing attached (tax invoices are needed before claiming GST) | Stop |
 | draftSalesInvoices | CHK-033 sales invoices still in draft or awaiting approval | Note |
-| lockDate | CHK-134/135 no lock date, or one older than 6 months | Note |
+| lockDate | CHK-134 no lock date, or one older than 6 months | Note |
+| lockDateChanged | CHK-135 the lock date was moved back or removed since the last review (someone may have edited a closed period) | Stop |
+| taxCodeMismatch | Lines coded GST-free or BAS Excluded where the account or supplier normally carries GST (heuristic) | Note |
+| priorPeriodAdjustments | Documents dated before the period that changed after the previous BAS (flag only) | Note |
 ```
 
 ## 2. Find the client and the period (status: Finding the client)
@@ -49,7 +53,7 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 
 ## 3. Run the checks (status: Checking)
 
-**Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). It reads the whole period on the Xero side (every invoice, bill, credit note and bank transaction with its lines, the period's contacts and ABNs, the trial balance at `periodEnd` and the 12 months' profit and loss) and returns only:
+**Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). Add `changedSince`: the date the previous BAS review for this client was approved, read from the Outcome section of its summary file in `BAS reviews/` (the period just before this one). If there's no earlier review file, leave `changedSince` out. It reads the whole period on the Xero side (every invoice, bill, credit note and bank transaction with its lines, the period's contacts and ABNs, the trial balance at `periodEnd` and the 12 months' profit and loss) and returns only:
 
 - `organisation`: GST registration (and whether it was inferred), GST basis and period, lock date;
 - `read`: how many documents it read, and `truncated` (anything it couldn't read in full);
@@ -58,6 +62,16 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 - `notRun`: groups it couldn't run, with the reason (the ABR register groups are always here);
 - `alsoSeen`: bills still in draft or awaiting approval (not in the BAS figures yet);
 - `limitations`: what the checks can't see. Copy these into "Not checked" in the summary.
+
+For a suspense balance, list each item the tool names with its amount, date and GST, and say which could affect GST or other BAS labels; any part of the balance from before the period is outside this BAS.
+
+### 3a. The lock date (you run this check)
+
+Keep each client's lock date in `BAS readiness/Lock dates.md`, a table with the columns Client, Lock date and Recorded on. Read it with `files_read` (create it if it doesn't exist).
+
+- If the client has a row and the tool's `organisation.lockDate` is earlier than the recorded one, or now missing, that's a `lockDateChanged` finding: "Lock date moved from <old> to <new or none> since <recorded on>".
+- If the client has no row yet, there's nothing to compare: say so in the summary ("first review: lock date recorded"), not as a finding.
+- After the check, write the client's current lock date (or "none") and today's date to the file, keeping every other row.
 
 Do **not** redo its checks by reading invoices, bills or bank transactions yourself: a quarter of documents with their lines is too large for you to read (the reply only says it was saved to a file). Use the list tools only to look closer at one finding, small and filtered: one supplier (`contactIDs`), one invoice number (`invoiceNumbers`) or one document (`ids`), always with `page: 1`.
 
@@ -84,6 +98,9 @@ Each row is a check group; the checks tool runs them all, and you keep the group
 | `missingReceipts` | CHK-021, 086 | spend money and bills over $82.50 in the period with nothing attached |
 | `draftSalesInvoices` | CHK-033 | sales invoices dated in the period still in draft or awaiting approval |
 | `lockDate` | CHK-134 | no lock date, or a lock date more than 6 months before `periodEnd` |
+| `lockDateChanged` | CHK-135 | the lock date is earlier than, or missing compared with, the one you recorded for this client last time (section 3a). You run this one, not the checks tool |
+| `taxCodeMismatch` | TAX-CODE (heuristic) | a line with no GST where its account normally carries GST, or the same supplier's other lines to that account carry GST. Say what the transaction looks like it is; the bookkeeper decides |
+| `priorPeriodAdjustments` | PRIOR-PERIOD | invoices, bills, credit notes and manual journals dated before the period that changed on or after `changedSince`. Flag only: never count them in this BAS; the bookkeeper or registered BAS agent decides whether each belongs here or in an amendment |
 
 
 ## 5. Client questions

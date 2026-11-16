@@ -1,5 +1,5 @@
 {
-  "contentHash": "d558d8711e458a81b95a065a18bfac3614623f2338cb8007d61557fc4b5d379d",
+  "contentHash": "50a08f19830f96e7b289707e55bf7002c28ca81d1b4f679555ec5e0ac501a326",
   "definition": {
     "capabilities": [
       "xero.connections.read",
@@ -184,7 +184,7 @@
             }
           ]
         },
-        "instructions": "Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file's path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file's path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.",
+        "instructions": "Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd, and changedSince from the previous review's summary file when there is one): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Then run the lock-date check yourself against BAS readiness/Lock dates.md and update that file (skill section 3a). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file's path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file's path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.",
         "key": "checking",
         "kind": "working",
         "label": "Checking"
@@ -297,7 +297,7 @@
     ],
     "transitions": [],
     "variationPoints": [],
-    "version": "0.3.0",
+    "version": "0.3.1",
     "vocabulary": {
       "subject": "Client and quarter"
     }

@@ -168,7 +168,8 @@ const capabilities = [
   capability('xero.bas_checks.read', 'Run the BAS readiness checks for one period', 'xero-accounting', 'get_xero_bas_readiness_checks',
     ['accounting.transactions.read', 'accounting.contacts.read', 'accounting.settings.read', 'accounting.reports.read'],
     { xero_tenant_id: TENANT, periodStart: str('First day of the BAS period, YYYY-MM-DD.'), periodEnd: str('Last day of the BAS period, YYYY-MM-DD.'),
-      gstRegistered: bool('Whether the client is registered for GST; leave out to infer it from the GST basis.') },
+      gstRegistered: bool('Whether the client is registered for GST; leave out to infer it from the GST basis.'),
+      changedSince: str('When the previous BAS for this client was prepared (YYYY-MM-DD), for the prior-period adjustments check; leave out to use periodStart.') },
     ['xero_tenant_id', 'periodStart', 'periodEnd'], ['findings', 'notRun', 'alsoSeen']),
   // Finds a client's Xero organisation by name (no tenant id needed): the BAS review step starts from a client name.
   capability('xero.connections.read', 'List the Xero organisations this connection can see', 'xero-accounting', 'list_connections',
@@ -184,7 +185,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.3.0';
+const PROCESS_VERSION = '0.3.1';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -352,7 +353,7 @@ const processDefinition = {
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
       ] }),
     status('checking', 'Checking', 'working',
-      'Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
+      'Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd, and changedSince from the previous review\'s summary file when there is one): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Then run the lock-date check yourself against BAS readiness/Lock dates.md and update that file (skill section 3a). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
       { outputs: [
         { key: 'findings', type: 'array' }, { key: 'stopFindings', type: 'array' },
         { key: 'clientQuestions', type: 'array' }, { key: 'summaryFile', type: 'string' },
