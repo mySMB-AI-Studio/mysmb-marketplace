@@ -1,0 +1,156 @@
+{
+  "contentHash": "22137dc33fa3a40bed98daea309fd6ed6b4326284b1c6c6ea1e86677dcd54291",
+  "definition": {
+    "color": null,
+    "description": "A stand-in for the Pronto sales order screen, for demos. Each order Order Desk releases lands here as one sales order, exactly as it would be sent to Pronto. Order Desk keeps this table; when the real Pronto is connected, the same details go there instead.",
+    "fields": [
+      {
+        "groupLabel": null,
+        "key": "sales_order_number",
+        "kind": "text",
+        "label": "Sales order number",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:od_orders"
+        },
+        "groupLabel": null,
+        "key": "order",
+        "kind": "relation",
+        "label": "Order",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 80
+        },
+        "groupLabel": null,
+        "key": "account_code",
+        "kind": "text",
+        "label": "Account code",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "customer_name",
+        "kind": "text",
+        "label": "Customer",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 120
+        },
+        "groupLabel": null,
+        "key": "po_number",
+        "kind": "text",
+        "label": "PO number",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "delivery_date",
+        "kind": "date",
+        "label": "Delivery date",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 1000
+        },
+        "groupLabel": null,
+        "key": "delivery_address",
+        "kind": "long_text",
+        "label": "Delivery address",
+        "position": 6,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "decimals": 0,
+          "min": 0
+        },
+        "groupLabel": null,
+        "key": "line_count",
+        "kind": "number",
+        "label": "Lines",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "One line each: item code, quantity, unit and any note.",
+          "maxLength": 20000
+        },
+        "groupLabel": null,
+        "key": "lines",
+        "kind": "long_text",
+        "label": "Order lines",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "sent_on",
+        "kind": "datetime",
+        "label": "Sent",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Pronto sales orders (demo)",
+    "labelSingular": "Pronto sales order (demo)",
+    "settings": {
+      "packageWritesOnly": true
+    },
+    "slug": "od_sales_orders",
+    "titleFieldKey": "sales_order_number"
+  },
+  "kind": "record_type",
+  "name": "Pronto sales orders (demo)",
+  "originKey": "fe72f4e2-a4ee-44d3-9663-9666a8a7e41d"
+}
