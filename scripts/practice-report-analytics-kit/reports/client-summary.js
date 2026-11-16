@@ -12,7 +12,7 @@ module.exports = function build() {
     tool: 'get_practice_client_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
-    qbNote: 'one company per connection — see its Client Summary in the Client Report Analytics agent.',
+    qbNote: 'one company per connection — open its Client Summary from the Client Report Analytics reports (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     // get_practice_client_summary agrees on names across both platforms — identity aliases, kept
     // explicit so a future rename on either side is caught by the report tests, not silently wrong.
     fieldAliases: {
