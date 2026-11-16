@@ -394,6 +394,40 @@ const transcript_display_text = (args) => {
     })
         .join('\n\n');
 };
+/**
+ * list_mail_folders returns the WHOLE folder tree in one call, each item
+ * carrying its full slash-joined path (e.g. "Inbox/Bills/Acme Plumbing") --
+ * not one level at a time like list_files/OneDrive. So "drilling in" is a
+ * pure client-side filter by depth + path prefix, no extra MCP call needed:
+ * a child of `path` sits exactly one path-segment deeper and (for a non-root
+ * path) starts with `path + "/"`.
+ */
+const mail_folder_children = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    const path = String(args.path ?? '');
+    const parentDepth = path === '' ? 0 : path.split('/').length;
+    return items.filter((it) => {
+        const itPath = String(it.path ?? '');
+        if (!itPath)
+            return false;
+        const itDepth = itPath.split('/').length;
+        if (itDepth !== parentDepth + 1)
+            return false;
+        return path === '' ? true : itPath.startsWith(`${path}/`);
+    });
+};
+/** One level up from `path` ("" at the root, already handled by the Up button's `visible`). */
+const mail_folder_parent_path = (args) => {
+    const path = String(args.path ?? '');
+    if (!path.includes('/'))
+        return '';
+    return path.slice(0, path.lastIndexOf('/'));
+};
+/** "Inbox / Bills / Acme Plumbing" instead of the raw slash-joined path. */
+const mail_folder_breadcrumb = (args) => {
+    const path = String(args.path ?? '');
+    return path.split('/').filter(Boolean).join(' / ');
+};
 const elements = {
     slug: 'microsoft-365',
     functions: {
@@ -419,6 +453,9 @@ const elements = {
         day_end_iso,
         schedule_title,
         transcript_display_text,
+        mail_folder_children,
+        mail_folder_parent_path,
+        mail_folder_breadcrumb,
     },
 };
 export default elements;
