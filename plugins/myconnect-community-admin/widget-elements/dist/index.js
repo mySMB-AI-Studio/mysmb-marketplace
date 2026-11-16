@@ -30,6 +30,40 @@ const is_after = (args) => {
         return false;
     return a > b;
 };
+function eventDatePart(value, timezone, part) {
+    if (value == null)
+        return '';
+    const d = new Date(String(value));
+    if (Number.isNaN(d.getTime()))
+        return '';
+    const tz = typeof timezone === 'string' && timezone ? timezone : undefined;
+    return new Intl.DateTimeFormat('en-US', { timeZone: tz, ...part }).format(d);
+}
+// ── event_card_day ──────────────────────────────────────────────────
+// Day-of-month only (e.g. "25"), in the event's own timezone -- not the
+// viewer's browser zone, since an event's displayed time must match what
+// it was scheduled for regardless of who's looking.
+// Args: { value: string (ISO), timezone?: string (IANA) }
+const event_card_day = (args) => eventDatePart(args.value, args.timezone, { day: 'numeric' });
+// ── event_card_month ────────────────────────────────────────────────
+// 3-letter month, upper case (e.g. "NOV"), in the event's own timezone.
+// Args: { value: string (ISO), timezone?: string (IANA) }
+const event_card_month = (args) => eventDatePart(args.value, args.timezone, { month: 'short' }).toUpperCase();
+// ── event_card_weekday_time ─────────────────────────────────────────
+// "Wed 8:00 pm" -- weekday + 12-hour time, lower-case am/pm, in the
+// event's own timezone.
+// Args: { value: string (ISO), timezone?: string (IANA) }
+const event_card_weekday_time = (args) => {
+    const weekday = eventDatePart(args.value, args.timezone, { weekday: 'short' });
+    const time = eventDatePart(args.value, args.timezone, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+    }).toLowerCase().replace(/([ap])\.m\./, '$1m');
+    if (!weekday || !time)
+        return '';
+    return `${weekday} ${time}`;
+};
 function escapeHtml(s) {
     return s.replace(/[&<>"']/g, (c) => ({
         '&': '&amp;',
@@ -38,11 +72,6 @@ function escapeHtml(s) {
         '"': '&quot;',
         "'": '&#39;',
     }[c] ?? c));
-}
-function sharePct(part, whole) {
-    if (!Number.isFinite(whole) || whole <= 0)
-        return '0%';
-    return `${Math.round((part / whole) * 1000) / 10}%`;
 }
 function titleCase(s) {
     return s
@@ -68,95 +97,157 @@ function formatDate(iso) {
     const year = String(d.getUTCFullYear()).slice(-2);
     return `${day}-${month}-${year}`;
 }
-const STATUS_COLORS = {
-    active: { bg: '#dcfce7', fg: '#15803d' },
-    invited: { bg: '#fef3c7', fg: '#b45309' },
-    deactivated: { bg: '#fee2e2', fg: '#b91c1c' },
-};
-function statusPill(status) {
-    const s = typeof status === 'string' ? status : '';
-    const colors = STATUS_COLORS[s] ?? { bg: '#e5e7eb', fg: '#374151' };
-    return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:${colors.bg};color:${colors.fg};">${escapeHtml(titleCase(s || 'Unknown'))}</span>`;
+// Quote a CSV cell only when it needs it (comma, quote or newline), per RFC 4180 --
+// doubling any internal quotes. Plain cells stay unquoted for a smaller, more
+// readable file.
+function csvCell(value) {
+    if (/[",\n]/.test(value))
+        return `"${value.replace(/"/g, '""')}"`;
+    return value;
 }
-// ── print_report ────────────────────────────────────────────────────
-// Opens a new browser tab with a visually-styled sign-ups report for
-// the selected date range -- summary cards (count + share of total per
-// status) plus a full member table (name, email, status, role, joined,
-// tags, access group) -- then triggers the browser's print dialog.
-// There's no system "print" action, so this is plain browser JS.
+function csvRow(cells) {
+    return cells.map(csvCell).join(',') + '\r\n';
+}
+function downloadCsv(filename, csv) {
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+// ── export_signups_csv ──────────────────────────────────────────────
+// Downloads a CSV of the selected date range's members -- name, email,
+// status, role, joined, last seen, tags, access group -- one row per
+// member. Replaced an earlier print-to-PDF version per request: the
+// requester wanted a CSV they can open in a spreadsheet, not a print
+// dialog.
 //
-// `shouldPrint` is a gate, not a real report field: the member table
+// `shouldExport` is a gate, not a real report field: the member table
 // comes from `list_members`, whose result lands on the SAME state path
 // the month-popup also fetches into, so this action is bound from a
 // `watch` on that shared path (fires on every list_members call) rather
 // than chained directly after it in one `on.click` array -- the fix for
 // exactly the "same-array staleness" trap this plugin's widget already
 // works around elsewhere (see myconnect-admin.json's default-community
-// watch chain). `shouldPrint` is true only when the click actually came
-// from the Print report button, so the month-popup's own list_members
-// calls no-op here instead of popping an unwanted print window.
+// watch chain). `shouldExport` is true only when the click actually came
+// from the Download CSV button, so the month-popup's own list_members
+// calls no-op here instead of triggering an unwanted download.
 //
-// Args: { shouldPrint, communityName?, fromDate, toDate, total,
-//         completed, pending, declined, members? }
-const print_report = {
-    description: 'When shouldPrint is true, open a visually-styled printable sign-ups report (summary + full member list) for the selected date range, and trigger the browser print dialog. No-ops when shouldPrint is false.',
+// Args: { shouldExport, communityName?, fromDate, toDate, members? }
+const export_signups_csv = {
+    description: 'When shouldExport is true, download a CSV of the selected date range\'s members (name, email, status, role, joined, last seen, tags, access group). No-ops when shouldExport is false.',
     schema: {
         type: 'object',
         properties: {
-            shouldPrint: { type: 'boolean' },
+            shouldExport: { type: 'boolean' },
             communityName: { type: 'string' },
             fromDate: { type: 'string' },
             toDate: { type: 'string' },
-            total: { type: 'number' },
-            completed: { type: 'number' },
-            pending: { type: 'number' },
-            declined: { type: 'number' },
             members: { type: 'array' },
         },
-        required: ['shouldPrint', 'fromDate', 'toDate', 'total', 'completed', 'pending', 'declined'],
+        required: ['shouldExport', 'fromDate', 'toDate'],
     },
     handler: (params) => {
-        if (params.shouldPrint !== true)
+        if (params.shouldExport !== true)
             return;
-        const total = Number(params.total) || 0;
-        const completed = Number(params.completed) || 0;
-        const pending = Number(params.pending) || 0;
-        const declined = Number(params.declined) || 0;
         const communityName = typeof params.communityName === 'string' && params.communityName
             ? params.communityName
-            : 'Community';
+            : 'community';
         const fromDate = String(params.fromDate ?? '');
         const toDate = String(params.toDate ?? '');
         const members = Array.isArray(params.members) ? params.members : [];
-        const win = window.open('', '_blank');
-        if (!win)
-            return;
-        const statCard = (label, n, accent) => `
-      <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e5e7eb;border-top:4px solid ${accent};border-radius:10px;padding:14px 16px;">
-        <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.03em;">${escapeHtml(label)}</div>
-        <div style="font-size:24px;font-weight:700;color:#111827;margin-top:4px;">${n}<span style="font-size:14px;font-weight:600;color:#6b7280;"> (${sharePct(n, total)})</span></div>
-      </div>`;
-        const memberRows = members
-            .map((m) => {
+        let csv = csvRow(['Name', 'Email', 'Status', 'Role', 'Joined', 'Last seen', 'Tags', 'Access group']);
+        for (const m of members) {
             const groups = Array.isArray(m.accessGroups)
                 ? m.accessGroups.map((g) => g?.name).filter(Boolean).join(', ')
                 : '';
-            return `<tr>
-          <td>${escapeHtml(m.displayName ?? '—')}</td>
-          <td>${escapeHtml(m.email ?? '—')}</td>
-          <td>${statusPill(m.status)}</td>
-          <td>${escapeHtml(titleCase(String(m.role ?? '')) || '—')}</td>
-          <td>${escapeHtml(formatDate(m.createdAt))}</td>
-          <td>${escapeHtml(m.tagsText || '—')}</td>
-          <td>${escapeHtml(groups || '—')}</td>
-        </tr>`;
-        })
+            csv += csvRow([
+                m.displayName ?? '',
+                m.email ?? '',
+                titleCase(String(m.status ?? '')),
+                titleCase(String(m.role ?? '')),
+                formatDate(m.createdAt),
+                m.lastSeenAt ? formatDate(m.lastSeenAt) : 'Never',
+                m.tagsText || '',
+                groups,
+            ]);
+        }
+        const slug = communityName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'community';
+        downloadCsv(`${slug}-signups-${fromDate}-to-${toDate}.csv`, csv);
+    },
+};
+const RSVP_STATUS_LABELS = {
+    yes: 'Going',
+    waitlist: 'Waitlisted',
+    no: 'Not going',
+};
+const RSVP_STATUS_COLORS = {
+    yes: { bg: '#dcfce7', fg: '#15803d' },
+    waitlist: { bg: '#fef3c7', fg: '#b45309' },
+    no: { bg: '#e5e7eb', fg: '#374151' },
+};
+function rsvpStatusPill(status) {
+    const s = typeof status === 'string' ? status : '';
+    const colors = RSVP_STATUS_COLORS[s] ?? RSVP_STATUS_COLORS.no;
+    const label = RSVP_STATUS_LABELS[s] ?? 'Unknown';
+    return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:${colors.bg};color:${colors.fg};">${escapeHtml(label)}</span>`;
+}
+// ── print_rsvp_report ───────────────────────────────────────────────
+// Opens a new browser tab with a styled, printable RSVP roster for one
+// event (member, email, RSVP status, sessions, attended, business name,
+// industry), then triggers the browser's print dialog. Unlike
+// print_report, this needs no fetch-then-gate dance: by the time the
+// Print report button is visible, the event's RSVPs are already loaded
+// into state (the popup that contains the button only shows after
+// list_event_rsvps has resolved), so the click just reads what's
+// already there -- no tool call in this action's own click, so no
+// shared-path staleness risk either.
+//
+// Args: { eventTitle?, rsvps: ReportRsvp[] }
+const print_rsvp_report = {
+    description: 'Open a printable RSVP roster (member, email, status, sessions, attended, business name, industry) for one event, and trigger the browser print dialog.',
+    schema: {
+        type: 'object',
+        properties: {
+            eventTitle: { type: 'string' },
+            rsvps: { type: 'array' },
+        },
+        required: ['rsvps'],
+    },
+    handler: (params) => {
+        const eventTitle = typeof params.eventTitle === 'string' && params.eventTitle ? params.eventTitle : 'Event';
+        const rsvps = Array.isArray(params.rsvps) ? params.rsvps : [];
+        const win = window.open('', '_blank');
+        if (!win)
+            return;
+        const going = rsvps.filter((r) => r.status === 'yes').length;
+        const waitlisted = rsvps.filter((r) => r.status === 'waitlist').length;
+        const attended = rsvps.filter((r) => r.attendedAt).length;
+        const statCard = (label, n, accent) => `
+      <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e5e7eb;border-top:4px solid ${accent};border-radius:10px;padding:14px 16px;">
+        <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.03em;">${escapeHtml(label)}</div>
+        <div style="font-size:24px;font-weight:700;color:#111827;margin-top:4px;">${n}</div>
+      </div>`;
+        const rows = rsvps
+            .map((r) => `<tr>
+          <td>${escapeHtml(r.displayName ?? '—')}</td>
+          <td>${escapeHtml(r.email ?? '—')}</td>
+          <td>${rsvpStatusPill(r.status)}</td>
+          <td>${escapeHtml(r.sessionsText || '—')}</td>
+          <td>${r.attendedAt ? escapeHtml(formatDate(r.attendedAt)) : 'Not yet'}</td>
+          <td>${escapeHtml(r.businessName || '—')}</td>
+          <td>${escapeHtml(r.industry || '—')}</td>
+        </tr>`)
             .join('');
         win.document.write(`<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Sign-ups report — ${escapeHtml(communityName)}</title>
+<title>RSVPs — ${escapeHtml(eventTitle)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: #111827; margin: 0; background: #f3f4f6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -177,23 +268,22 @@ const print_report = {
 </head>
 <body>
   <div class="banner">
-    <h1>${escapeHtml(communityName)} — sign-ups report</h1>
-    <p>${escapeHtml(fromDate)} to ${escapeHtml(toDate)}</p>
+    <h1>${escapeHtml(eventTitle)} — RSVP report</h1>
+    <p>${rsvps.length} RSVP(s)</p>
   </div>
   <div class="content">
     <div class="cards">
-      ${statCard('Total sign-ups', total, '#1d4ed8')}
-      ${statCard('Completed joining', completed, '#16a34a')}
-      ${statCard('Pending members', pending, '#d97706')}
-      ${statCard('Declined / inactive', declined, '#dc2626')}
+      ${statCard('Going', going, '#16a34a')}
+      ${statCard('Waitlisted', waitlisted, '#d97706')}
+      ${statCard('Attended', attended, '#1d4ed8')}
     </div>
-    <h2>Members</h2>
-    ${members.length
+    <h2>RSVPs</h2>
+    ${rsvps.length
             ? `<table>
-            <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Role</th><th>Joined</th><th>Tags</th><th>Access group</th></tr></thead>
-            <tbody>${memberRows}</tbody>
+            <thead><tr><th>Member</th><th>Email</th><th>RSVP</th><th>Sessions</th><th>Attended</th><th>Business name</th><th>Industry</th></tr></thead>
+            <tbody>${rows}</tbody>
           </table>`
-            : `<p class="meta">No members found in this range.</p>`}
+            : `<p class="meta">No RSVPs for this event.</p>`}
   </div>
 </body>
 </html>`);
@@ -204,7 +294,7 @@ const print_report = {
 };
 const elements = {
     slug: 'myconnect-community-admin',
-    functions: { today, is_after },
-    actions: { print_report },
+    functions: { today, is_after, event_card_day, event_card_month, event_card_weekday_time },
+    actions: { export_signups_csv, print_rsvp_report },
 };
 export default elements;
