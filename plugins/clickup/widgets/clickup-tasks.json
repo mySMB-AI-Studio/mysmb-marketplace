@@ -16,13 +16,54 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "taskList", "countCaption"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "taskList", "countCaption", "infoOverlay"] },
 
       "titleIcon": { "type": "Icon", "props": { "name": "ListChecks", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "ClickUp Tasks" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace, space and list" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "header": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About ClickUp Tasks", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Browse the tasks in one ClickUp List at a glance — pick a Workspace, Space and List, and see every open task with its due-date urgency, priority, assignees and status. Sorted most-urgent-first (overdue, then due today, then not yet due, then tasks with no due date).",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Tick \"Include closed\" to also see done/closed tasks. Click any task row to open its real page on app.clickup.com in a new tab — this tile is read-only and never changes anything in ClickUp. For a focused view of one task's full detail and comments, use the companion Task Detail & Comments tile instead.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
 
       "teamSelect": {
         "type": "Select",

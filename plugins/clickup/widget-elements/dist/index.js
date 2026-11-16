@@ -5,19 +5,26 @@
  * `clickup_` to every name, so e.g. the spec-side reference is
  * `clickup_date`.
  */
-// ClickUp's REST API returns due_date / date_created / date_updated / a
-// comment's date as a STRING of Unix milliseconds (e.g. "1699920000000"),
-// confirmed against ClickUp's own live docs (Get Tasks, Get Task Comments)
-// -- not a plain number and not ISO-8601, so the system's generic
-// format_date_au/due_date_au/is_overdue helpers (which expect YYYY-MM-DD,
-// /Date(...)/  or an ISO string) silently fail to parse it. This single
-// parser is the one place that knows ClickUp's date shape; every function
-// below goes through it.
+// ClickUp's v2 REST API (tasks, comments) returns due_date / date_created /
+// date_updated / a comment's date as a STRING of Unix milliseconds (e.g.
+// "1699920000000"), confirmed against ClickUp's own live docs (Get Tasks,
+// Get Task Comments) -- not a plain number and not ISO-8601, so the
+// system's generic format_date_au/due_date_au/is_overdue helpers (which
+// expect YYYY-MM-DD, /Date(...)/ or an ISO string) silently fail to parse
+// it. Chat's v3 API (channels) documents its created_at/updated_at/
+// latest_comment_at fields only as `"type": "string"` with no format
+// given -- not confirmed epoch-ms like v2, and not confirmed ISO either.
+// This parser tries epoch-ms first (the v2-confirmed shape), then falls
+// back to Date.parse (covers ISO-8601) so either API version's date shape
+// resolves correctly without guessing which one v3 actually uses.
 function parseClickUpMs(value) {
     if (value == null || value === '')
         return null;
     const n = Number(value);
-    return Number.isFinite(n) ? n : null;
+    if (Number.isFinite(n))
+        return n;
+    const parsed = Date.parse(String(value));
+    return Number.isFinite(parsed) ? parsed : null;
 }
 // ── date ─────────────────────────────────────────────────────────────
 // Any ClickUp epoch-ms date field (due_date, date_created, date_updated,
@@ -96,6 +103,27 @@ const priority_tone = (args) => {
     const v = args.value == null ? '' : String(args.value);
     return PRIORITY_TONES[v] ?? 'muted';
 };
+const CHANNEL_TYPE_LABELS = {
+    CHANNEL: 'Channel',
+    DM: 'Direct message',
+    GROUP_DM: 'Group DM',
+};
+// ── channel_type_label ───────────────────────────────────────────────
+// Args: { value: string | null } -- a channel's `type` field
+const channel_type_label = (args) => {
+    const v = args.value == null ? '' : String(args.value);
+    return CHANNEL_TYPE_LABELS[v] ?? (v || 'Channel');
+};
+const CHANNEL_VISIBILITY_LABELS = {
+    PUBLIC: 'Public',
+    PRIVATE: 'Private',
+};
+// ── channel_visibility_label ─────────────────────────────────────────
+// Args: { value: string | null } -- a channel's `visibility` field
+const channel_visibility_label = (args) => {
+    const v = args.value == null ? '' : String(args.value);
+    return CHANNEL_VISIBILITY_LABELS[v] ?? (v || '');
+};
 // ── assignee_names ───────────────────────────────────────────────────
 // ClickUp's assignees array carries full user objects; join their
 // usernames for a compact display line. "Unassigned" when empty.
@@ -124,6 +152,8 @@ const elements = {
         priority_tone,
         assignee_names,
         task_url,
+        channel_type_label,
+        channel_visibility_label,
     },
 };
 export default elements;
