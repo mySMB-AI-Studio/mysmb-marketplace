@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Practice Purchases Summary Metrics</title>
+<style>:root{--bg:#FAFAFA;--surface:#FFFFFF;--soft:#F2F1ED;--ink:#000000;--muted:#5B6168;--line:#DADCE0;--accent:#34DFBA;--deep:#22669C;--hl:#B2EDE3;--live:#0E7C66;--na:#8A5A00;--na-bg:#FFF4DB;--fail:#B42318;--fail-bg:#FDECEA;--pass-bg:#E7F8F2;--amber:#B45309;--amber-bg:#FFF4DB}
+:root[data-myhub-theme='dark']{--bg:#1E1E1E;--surface:#262626;--soft:#2E2E2E;--ink:#F2F2F2;--muted:#A6ADB4;--line:#3A3A3A;--accent:#34DFBA;--deep:#7DB8E8;--hl:#1F4A43;--live:#34DFBA;--na:#F5C66B;--na-bg:#3A2F14;--fail:#FF8A80;--fail-bg:#3B1E1C;--pass-bg:#173A31;--amber:#F5C66B;--amber-bg:#3A2F14}
+*{box-sizing:border-box}body{margin:0;padding:20px;font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+.hero{border-radius:12px;padding:16px 20px;color:#fff;background:linear-gradient(90deg,#34DFBA,#22669C)}
+.hero h1{margin:0;font-size:22px}.hero p{margin:4px 0 0;opacity:.95}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+select,input[type=search],button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button:disabled,select:disabled{opacity:.6;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border-radius:16px;padding:4px 12px}.chip[aria-pressed=true]{background:var(--hl);border-color:var(--accent)}
+.banner{border-radius:8px;padding:10px 12px;margin:10px 0;background:var(--pass-bg)}.banner.fail{background:var(--fail-bg);color:var(--fail)}
+.banner ul{margin:6px 0 0;padding-left:18px}
+.notice{background:var(--na-bg);color:var(--na);border-radius:8px;padding:8px 12px;margin:6px 0}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--soft);cursor:pointer;user-select:none;font-weight:700}
+th[aria-sort]::after{content:' \25B4\25BE'}th[aria-sort=ascending]::after{content:' \25B4'}th[aria-sort=descending]::after{content:' \25BE'}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tfoot td{font-weight:700;background:var(--soft);border-top:2px solid var(--line)}
+.badge{display:inline-block;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
+.badge.platform{border:1px solid var(--line);color:var(--muted)}
+.rag-g{color:var(--live)}.rag-a{color:var(--amber)}.rag-r{color:var(--fail)}
+.heat-0{background:transparent}.heat-1{background:rgba(52,223,186,.10)}.heat-2{background:rgba(52,223,186,.20)}.heat-3{background:rgba(52,223,186,.32)}.heat-4{background:rgba(52,223,186,.46)}
+tr.client-row{cursor:default}tr.client-row:hover{background:var(--soft)}
+.muted{color:var(--muted)}
+footer{margin-top:18px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+@media print{.bar,button{display:none}body{background:#fff;padding:0}}</style>
+</head>
+<body>
+<header class="hero"><h1>Practice Purchases Summary Metrics</h1><p>Practice Report Analytics · one row per client, across Xero, MYOB and QuickBooks</p></header>
+<div class="bar"><input id="q" type="search" placeholder="Search clients" aria-label="Search clients"><button id="pdf" type="button">Download PDF</button><button id="xls" type="button">Download Excel</button></div>
+<div id="chips" class="chips" role="toolbar" aria-label="Views"></div>
+<div id="notices"></div>
+<div id="banner" class="banner" role="region" aria-label="Validation">Loading practice data…</div>
+<table id="table"><thead></thead><tbody><tr><td class="muted">Loading…</td></tr></tbody></table>
+<footer id="foot"></footer>
+<script>(function () {
+  var C = {"title":"Practice Purchases Summary Metrics","slug":"practice-purchases-summary","tool":"get_practice_purchases_summary","chips":["Overdue only"],"sources":{"xero":"xero","myob":"myob"},"qbNote":"one company per connection — open its Purchases by Tracking Category or Financial Overview from the Client Report Analytics reports (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).","fieldAliases":{"xero":{"outstanding":"outstandingAmount","outstanding_count":"outstandingCount","overdue":"overdueAmount","overdue_count":"overdueCount","payments":"bankPayments","suppliers":"supplierCount"},"myob":{"outstanding":"outstandingAmount","outstanding_count":"outstandingCount","overdue":"overdueAmount","overdue_count":"overdueCount","payments":"bankPayments","suppliers":"supplierCount"}},"columns":[{"key":"outstanding","label":"Outstanding","money":true},{"key":"outstanding_count","label":"Outstanding #"},{"key":"overdue","label":"Overdue","money":true,"rag":"high"},{"key":"overdue_count","label":"Overdue #"},{"key":"dpo","label":"DPO (days)"},{"key":"payments","label":"Payments (bank)","money":true},{"key":"suppliers","label":"Suppliers"}],"totals":["outstanding","outstanding_count","overdue","overdue_count","payments"]};
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+  var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
+  var pct = function (v) { return v == null ? '—' : (Number(v) * 100).toFixed(1) + '%'; };
+  // An ISO timestamp (Xero sends up to 7 fractional digits) as "22 Oct 2026, 3:24 pm" in the viewer's time zone.
+  var dateTime = function (v) {
+    if (v == null || v === '') return '—';
+    var s = String(v).replace(/([.][0-9]{3})[0-9]+/, '$1');
+    var d = new Date(/[zZ]$|[+-][0-9][0-9]:?[0-9][0-9]$/.test(s) ? s : s + 'Z');
+    return isNaN(d.getTime()) ? String(v) : d.toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  };
+  var ragClass = function (v) { return v === 'red' ? 'rag-r' : v === 'amber' ? 'rag-a' : v === 'green' ? 'rag-g' : ''; };
+  var computeRag = function (col, v) {
+    if (v == null || !col.rag) return null;
+    var n = Number(v);
+    if (col.rag === 'high') return n > 0 ? 'red' : 'green';
+    if (col.rag === 'low') return n < 0 ? 'red' : 'green';
+    return null;
+  };
+  var state = { rows: [], chip: 'All', q: '', sortKey: null, sortDir: 1, fetchedAt: null, truncated: {}, notices: [], src: {}, requested: null };
+
+  function load(b) {
+    state.rows = []; state.notices = []; state.truncated = {}; state.src = {}; state.fetchedAt = b.fetchedAt || null;
+    // The client selection the bundle ran at (the platform sends the resolved inputs with every bundle): a comma-separated id
+    // list, or empty for every client the connection exposes. Used by the leakage check below.
+    state.requested = b.inputs && b.inputs.clients ? String(b.inputs.clients).split(',').map(function (s) { return s.trim(); }).filter(Boolean) : null;
+    state.inputs = b.inputs || null;
+    Object.keys(C.sources).forEach(function (platform) {
+      var id = C.sources[platform], err = b.errors && b.errors[id];
+      if (!id) return;
+      if (err) { state.notices.push(cap(platform) + (err.code === 'needs_connection' ? ': connect ' + platform + ' (Settings → Connections)' : ': ' + err.message)); return; }
+      var v = b.data && b.data[id]; if (!v) return;
+      // The connector's own totals (summed server-side over the same clients): the independent side of the totals check.
+      state.src[platform] = { rows: (v.clients || []).length, totals: v.totals || {} };
+      var alias = (C.fieldAliases && C.fieldAliases[platform]) || {};
+      (v.clients || []).forEach(function (c) {
+        var row = { _platform: platform, id: c.id, name: c.name };
+        Object.keys(c).forEach(function (k) { if (k !== 'id' && k !== 'name') row[k] = c[k]; }); // pass through unaliased fields as-is
+        Object.keys(alias).forEach(function (canonicalKey) {
+          var upstream = alias[canonicalKey];
+          row[canonicalKey] = c[upstream];
+          if (c[upstream + '_na'] != null) row[canonicalKey + '_na'] = c[upstream + '_na'];
+        });
+        // staticNA: columns this report never sources from any tool (e.g. no platform exposes a
+        // bulk/practice-wide version of the figure at all) — stamped on every row so the generic
+        // cell() N/A rendering kicks in, same as a tool-sourced "<key>_na", instead of leaving the
+        // cell blank with no explanation.
+        Object.keys(C.staticNA || {}).forEach(function (key) { row[key + '_na'] = C.staticNA[key]; });
+        state.rows.push(row);
+      });
+      (v.errors || []).forEach(function (e) { state.notices.push(cap(platform) + ' — ' + e.name + ': ' + e.message); });
+      if (v.truncated) { state.truncated[platform] = true; state.notices.push(cap(platform) + ': showing the first 60 clients — ' + (v.message || 'narrow the client selection to see more.')); }
+    });
+    if (C.qbNote) state.notices.push('QuickBooks: ' + C.qbNote);
+    // notice: one report-wide explanation shown regardless of platform (e.g. a genuine, named gap
+    // in every platform's API, not a per-connection error) — distinct from qbNote, which is specific
+    // to QuickBooks' single-company exclusion.
+    if (C.notice) state.notices.push(C.notice);
+    render();
+  }
+  var PLATFORM_NAME = { xero: 'Xero', myob: 'MYOB', quickbooks: 'QuickBooks' };
+  function cap(s) { return PLATFORM_NAME[s] || (s.charAt(0).toUpperCase() + s.slice(1)); }
+  function platformBadge(p) { return '<span class="badge platform">' + (p === 'xero' ? 'X' : p === 'myob' ? 'M' : 'Q') + '</span>'; }
+  // Chips are a small fixed vocabulary, not free-form predicates (nothing in cfg is a function —
+  // it's all JSON-embedded). "Overdue only" needs a column named overdue_count; "Needs attention"
+  // needs any rag-tagged column to compute red (see computeRag). A report that declares a chip the
+  // data has no matching column for just never filters anything out for it — fails open, not closed.
+  function chipMatch(row) {
+    if (state.chip === 'All') return true;
+    if (state.chip === 'Overdue only') return Number(row.overdue_count || 0) > 0;
+    if (state.chip === 'Needs attention') return C.columns.some(function (c) { return computeRag(c, row[c.key]) === 'red'; });
+    return true;
+  }
+  function match(row) { return chipMatch(row) && (!state.q || (row.name || '').toLowerCase().indexOf(state.q.toLowerCase()) >= 0); }
+  function sorted(rows) {
+    if (!state.sortKey) return rows;
+    var k = state.sortKey, dir = state.sortDir;
+    return rows.slice().sort(function (a, b) { var av = a[k], bv = b[k]; if (av == null) return 1; if (bv == null) return -1; return av < bv ? -dir : av > bv ? dir : 0; });
+  }
+  function totalsRow(rows) {
+    var t = {}; (C.totals || []).forEach(function (k) { t[k] = 0; var n = 0; rows.forEach(function (r) { if (r[k] != null) { t[k] += Number(r[k]); n++; } }); if (!n) t[k] = null; });
+    return t;
+  }
+  // Heat strip: per heat-flagged column, shade each cell by where its value falls between the
+  // min and max of that SAME column among the currently visible (filtered/sorted) rows — a
+  // relative heat map, recomputed every render, same "recomputes for the filtered set" philosophy
+  // as totalsRow. Not a separate chart element; the layout family's "heat strip" lives inside the
+  // practice table itself, consistent with how RAG badges are this kit's "chart" layer elsewhere.
+  function heatStats(rows) {
+    var stats = {};
+    C.columns.forEach(function (c) {
+      if (!c.heat) return;
+      var vals = [];
+      rows.forEach(function (r) {
+        if (r[c.key + '_na']) return;
+        var n = Number(r[c.key]);
+        if (r[c.key] != null && isFinite(n)) vals.push(n);
+      });
+      stats[c.key] = vals.length ? { min: Math.min.apply(null, vals), max: Math.max.apply(null, vals) } : null;
+    });
+    return stats;
+  }
+  function heatClass(col, row, stats) {
+    if (!col.heat) return '';
+    var s = stats[col.key];
+    if (!s || row[col.key + '_na']) return '';
+    var v = Number(row[col.key]);
+    if (!isFinite(v)) return '';
+    var range = s.max - s.min;
+    var t = range > 0 ? (v - s.min) / range : (s.max > 0 ? 1 : 0);
+    return ' heat-' + Math.max(0, Math.min(4, Math.floor(t * 5)));
+  }
+  function cell(col, row, stats) {
+    var v = row[col.key];
+    if (row[col.key + '_na']) return '<td class="' + (col.money || col.pct ? 'num ' : '') + 'muted" title="' + esc(row[col.key + '_na']) + '">N/A</td>';
+    var rag = computeRag(col, v);
+    var cls = (col.money || col.pct ? 'num' : '') + (rag ? ' ' + ragClass(rag) : '') + heatClass(col, row, stats || {});
+    var text = col.money ? money(v) : col.pct ? pct(v) : col.date ? esc(dateTime(v)) : esc(v);
+    return '<td class="' + cls + '">' + text + '</td>';
+  }
+  // Rank: when a report declares rankKey, every client is ranked 1..N by that column's value,
+  // descending, among the currently visible rows (same recompute-on-filter philosophy as totals).
+  function computeRanks(rows) {
+    if (!C.rankKey) return null;
+    var ranked = rows.slice().sort(function (a, b) {
+      var av = a[C.rankKey], bv = b[C.rankKey];
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      return bv - av;
+    });
+    var m = {};
+    ranked.forEach(function (r, i) { m[r.id] = i + 1; });
+    return m;
+  }
+  function render() {
+    var rows = sorted(state.rows.filter(match));
+    $('chips').innerHTML = ['All'].concat(C.chips || []).map(function (ch) { return '<button class="chip" type="button" aria-pressed="' + (ch === state.chip) + '" data-chip="' + esc(ch) + '">' + esc(ch) + '</button>'; }).join('');
+    $('notices').innerHTML = state.notices.map(function (n) { return '<div class="notice">' + esc(n) + '</div>'; }).join('');
+    var ranks = computeRanks(rows);
+    var rankTh = ranks ? '<th class="num">Rank</th>' : '';
+    var hstats = heatStats(rows);
+    var thead = '<tr><th data-k="_platform"></th><th data-k="name">Client</th>' + rankTh + C.columns.map(function (c) { return '<th class="' + (c.money || c.pct ? 'num' : '') + '" data-k="' + c.key + '"' + (state.sortKey === c.key ? ' aria-sort="' + (state.sortDir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' + esc(c.label) + '</th>'; }).join('') + '</tr>';
+    var tbody = rows.map(function (r) { return '<tr class="client-row" data-id="' + esc(r.id) + '"><td>' + platformBadge(r._platform) + '</td><td>' + esc(r.name) + '</td>' + (ranks ? '<td class="num">' + ranks[r.id] + '</td>' : '') + C.columns.map(function (c) { return cell(c, r, hstats); }).join('') + '</tr>'; }).join('') || '<tr><td colspan="' + (2 + (ranks ? 1 : 0) + C.columns.length) + '" class="muted">No clients matched.</td></tr>';
+    var tot = totalsRow(rows);
+    var tfoot = '<tr><td></td><td>Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')</td>' + (ranks ? '<td></td>' : '') + C.columns.map(function (c) { return '<td class="' + (c.money || c.pct ? 'num' : '') + '">' + ((C.totals || []).indexOf(c.key) >= 0 ? (c.money ? money(tot[c.key]) : c.pct ? pct(tot[c.key]) : (tot[c.key] == null ? '—' : tot[c.key])) : '') + '</td>'; }).join('') + '</tr>';
+    $('table').innerHTML = '<thead>' + thead + '</thead><tbody>' + tbody + '</tbody><tfoot>' + tfoot + '</tfoot>';
+    var ck = checks(rows);
+    var failed = ck.filter(function (k) { return k.pass === false; }).length;
+    $('banner').className = 'banner' + (failed ? ' fail' : '');
+    $('banner').innerHTML = '<b>' + (failed ? failed + ' check failed' : 'Checks passed') + '</b> — ' + ck.filter(function (k) { return k.pass === true; }).length + ' passed · ' + ck.filter(function (k) { return k.pass === null; }).length + ' for information<ul>' + ck.map(function (k) { return '<li>' + (k.pass === true ? '✓' : k.pass === false ? '✗' : 'ℹ') + ' ' + esc(k.name) + ' — ' + esc(k.detail) + '</li>'; }).join('') + '</ul>';
+    var cx = context();
+    $('foot').textContent = 'Practice Report Analytics · Data as of ' + cx.asOf + ' · ' + cx.period + (cx.basis ? ' · ' + cx.basis : '') + ' · Sources: ' + cx.sources;
+  }
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // What the bundle ran at (the platform sends the resolved inputs with every bundle): for the banner, the footer and the
+  // Parameters sheet of the Excel download.
+  function context() {
+    var i = state.inputs || {}, d = function (s) { var p = String(s || '').split('-'); return p.length === 3 ? (+p[2]) + ' ' + MON[+p[1] - 1] + ' ' + p[0] : String(s || ''); };
+    var period = i.as_at ? 'As at ' + d(i.as_at) : i.from_date || i.to_date ? d(i.from_date) + ' – ' + d(i.to_date) : 'Period not reported by the platform';
+    var plats = Object.keys(C.sources).filter(function (p) { return C.sources[p]; });
+    return { period: period, basis: i.basis ? i.basis + ' basis' : '', ranged: !!(i.from_date || i.to_date),
+      params: [].concat(i.as_at ? [['As at', i.as_at]] : [], i.from_date ? [['From', i.from_date]] : [], i.to_date ? [['To', i.to_date]] : [], i.basis ? [['Basis', i.basis]] : []),
+      asOf: state.fetchedAt ? new Date(state.fetchedAt).toLocaleString('en-AU') : '—',
+      selection: state.requested ? state.requested.length + ' selected: ' + state.requested.join(', ') : 'Every client the connections expose',
+      sources: plats.map(function (p) { return cap(p) + (C.tool ? ' ' + C.tool : ''); }).join(', ') };
+  }
+  // Practice total = Σ clients, against the connectors' own totals (not the rows this page just summed). Compared on the
+  // unfiltered view only, and only for columns every platform with rows reported a total for.
+  function totalsCheck(rows) {
+    var keys = C.totals || [];
+    if (!keys.length) return { pass: null, detail: 'This report has no summed column' };
+    if (state.q || state.chip !== 'All') return { pass: null, detail: 'Filtered view: the total covers the ' + rows.length + ' client row(s) shown (compare on All, with no search)' };
+    var tot = totalsRow(rows), withRows = Object.keys(state.src).filter(function (p) { return state.src[p].rows; }), compared = 0, bad = [];
+    keys.forEach(function (k) {
+      var exp = 0, all = withRows.length > 0;
+      withRows.forEach(function (p) { var up = ((C.fieldAliases || {})[p] || {})[k] || k, v = state.src[p].totals[up]; if (typeof v === 'number') exp += v; else all = false; });
+      if (!all) return;
+      compared++;
+      if (Math.abs((tot[k] || 0) - exp) > 0.011) bad.push(((C.columns.filter(function (c) { return c.key === k; })[0] || {}).label || k) + ': ' + (tot[k] || 0) + ' shown, ' + Math.round(exp * 100) / 100 + ' from the connectors');
+    });
+    if (!compared) return { pass: null, detail: 'The connectors returned no totals to compare with' };
+    return { pass: !bad.length, detail: bad.length ? bad.join('; ') : compared + ' column total(s) match the connectors\' own totals' };
+  }
+  // No cross-client data leakage: every row is one client, once, with the platform and id it came from, and (when the report
+  // ran for a client selection) one of the selected clients.
+  function leakageCheck() {
+    var seen = {}, dup = [], bare = [], outside = [];
+    state.rows.forEach(function (r) {
+      var nm = r.name || r.id || '?', key = r._platform + '|' + r.id;
+      if (!r._platform || r.id == null || r.id === '') { bare.push(nm); return; }
+      if (seen[key]) dup.push(nm); else seen[key] = 1;
+      if (state.requested && state.requested.indexOf(String(r.id)) < 0) outside.push(nm);
+    });
+    var bad = [].concat(dup.length ? ['listed twice: ' + dup.join(', ')] : [], bare.length ? ['no platform or client id: ' + bare.join(', ')] : [], outside.length ? ['not in the selected clients: ' + outside.join(', ')] : []);
+    return { pass: !bad.length, detail: bad.length ? bad.join('; ') : state.requested ? 'Every row is one of the ' + state.requested.length + ' selected client(s), once, with its platform and id' : 'Every row is a distinct client its connection returned, with its platform and id' };
+  }
+  function checks(rows) {
+    var t = totalsCheck(rows), out = [{ name: 'Practice total = Σ clients (the connectors\' own totals)', pass: t.pass, detail: t.detail }];
+    Object.keys(C.sources).forEach(function (p) {
+      if (!C.sources[p]) return;
+      var failed = state.notices.some(function (n) { return n.indexOf(cap(p)) === 0; });
+      out.push({ name: cap(p) + ' clients loaded', pass: failed ? false : rows.some(function (r) { return r._platform === p; }) ? true : null, detail: failed ? 'See the notice above' : rows.some(function (r) { return r._platform === p; }) ? rows.filter(function (r) { return r._platform === p; }).length + ' client(s)' : 'Not connected, or no clients on this platform' });
+    });
+    var lk = leakageCheck(), cx = context();
+    out.push({ name: 'No cross-client data leakage', pass: lk.pass, detail: lk.detail });
+    out.push({ name: 'Period, basis and currency', pass: null, detail: cx.period + (cx.basis ? ', ' + cx.basis : '') + ". Amounts are in each client's own currency, as its ledger reports them: the practice tools return no currency, so a total across clients in different currencies is not converted." + (cx.ranged ? " The same dates apply to every client, not each client's financial year." : '') });
+    return out;
+  }
+  // ---------- Excel (.xlsx) writer, no external library (the same format as the Xero kit's writer) ----------
+  var CRC = (function () { var t = [], c, n, k; for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zip(files) {
+    var enc = new TextEncoder(), parts = [], central = [], off = 0;
+    var u16 = function (v) { return [v & 255, (v >>> 8) & 255]; }, u32 = function (v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; };
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = enc.encode(f.data), crc = crc32(data);
+      var head = [0x50, 0x4b, 0x03, 0x04].concat(u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0));
+      parts.push(new Uint8Array(head), name, data);
+      central.push(new Uint8Array([0x50, 0x4b, 0x01, 0x02].concat(u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), name);
+      off += head.length + name.length + data.length;
+    });
+    var csize = central.reduce(function (s, p) { return s + p.length; }, 0);
+    var all = parts.concat(central, [new Uint8Array([0x50, 0x4b, 0x05, 0x06].concat(u16(0), u16(0), u16(files.length), u16(files.length), u32(csize), u32(off), u16(0)))]);
+    var out = new Uint8Array(all.reduce(function (s, p) { return s + p.length; }, 0)), pos = 0; all.forEach(function (p) { out.set(p, pos); pos += p.length; });
+    return out;
+  }
+  function colName(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+  // sheets: [{ name, widths, rows: [[cell]] }]; cell = string | number | null | { v, s: 'bold' | 'money' | 'pct' | 'title' | 'moneyBold' }
+  function xlsx(sheets) {
+    var STY = { none: 0, bold: 1, money: 2, pct: 3, title: 4, moneyBold: 5 }, P = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', NS = 'http://schemas.openxmlformats.org/', wb = '', rels = '', ct = '', files = [];
+    sheets.forEach(function (sh, si) {
+      var n = si + 1, rows = sh.rows.map(function (r, ri) {
+        return '<row r="' + (ri + 1) + '">' + r.map(function (c, ci) {
+          if (c == null || c === '') return '';
+          var o = typeof c === 'object' ? c : { v: c }, ref = colName(ci) + (ri + 1), s = STY[o.s || 'none'] || 0;
+          return typeof o.v === 'number' && isFinite(o.v) ? '<c r="' + ref + '" s="' + s + '"><v>' + o.v + '</v></c>' : '<c r="' + ref + '" s="' + s + '" t="inlineStr"><is><t xml:space="preserve">' + esc(o.v) + '</t></is></c>';
+        }).join('') + '</row>';
+      }).join('');
+      files.push({ name: 'xl/worksheets/sheet' + n + '.xml', data: P + '<worksheet xmlns="' + NS + 'spreadsheetml/2006/main"><cols>' + sh.widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('') + '</cols><sheetData>' + rows + '</sheetData></worksheet>' });
+      wb += '<sheet name="' + esc(sh.name) + '" sheetId="' + n + '" r:id="rId' + n + '"/>';
+      rels += '<Relationship Id="rId' + n + '" Type="' + NS + 'officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>';
+      ct += '<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+    });
+    rels += '<Relationship Id="rId' + (sheets.length + 1) + '" Type="' + NS + 'officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+    var styles = P + '<styleSheet xmlns="' + NS + 'spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00;(#,##0.00)"/></numFmts>' +
+      '<fonts count="3"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font><font><b/><sz val="12"/><name val="Arial"/></font></fonts>' +
+      '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+      '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+      '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+      '<xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>' +
+      '<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    files.unshift(
+      { name: '[Content_Types].xml', data: P + '<Types xmlns="' + NS + 'package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' + ct + '</Types>' },
+      { name: '_rels/.rels', data: P + '<Relationships xmlns="' + NS + 'package/2006/relationships"><Relationship Id="rId1" Type="' + NS + 'officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name: 'xl/workbook.xml', data: P + '<workbook xmlns="' + NS + 'spreadsheetml/2006/main" xmlns:r="' + NS + 'officeDocument/2006/relationships"><sheets>' + wb + '</sheets></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', data: P + '<Relationships xmlns="' + NS + 'package/2006/relationships">' + rels + '</Relationships>' },
+      { name: 'xl/styles.xml', data: styles });
+    return zip(files);
+  }
+  // Download Excel: the table as shown (filters and sort applied, numbers as numbers), its checks, and what it ran at.
+  function excel() {
+    var rows = sorted(state.rows.filter(match)), ck = checks(rows), tot = totalsRow(rows), cx = context();
+    var val = function (c, v) { return v == null ? '' : c.money ? { v: Number(v), s: 'money' } : c.pct ? { v: Number(v), s: 'pct' } : c.date ? dateTime(v) : typeof v === 'number' ? v : String(v); };
+    var head = ['Platform', 'Client'].concat(C.columns.map(function (c) { return c.label; })).map(function (t) { return { v: t, s: 'bold' }; });
+    var body = rows.map(function (r) { return [cap(r._platform), r.name].concat(C.columns.map(function (c) { return r[c.key + '_na'] ? 'N/A: ' + r[c.key + '_na'] : val(c, r[c.key]); })); });
+    var foot = (C.totals || []).length ? [[{ v: 'Total (' + rows.length + ' client' + (rows.length === 1 ? '' : 's') + ')', s: 'bold' }, ''].concat(C.columns.map(function (c) { var v = (C.totals || []).indexOf(c.key) >= 0 ? tot[c.key] : null; return v == null ? '' : { v: v, s: c.money ? 'moneyBold' : 'bold' }; }))] : [];
+    var practice = [[{ v: C.title, s: 'title' }], [cx.period + (cx.basis ? ' · ' + cx.basis : '')], [], head].concat(body, foot);
+    var validation = [[{ v: 'Check', s: 'bold' }, { v: 'Result', s: 'bold' }, { v: 'Detail', s: 'bold' }]].concat(ck.map(function (k) { return [k.name, k.pass === true ? 'Pass' : k.pass === false ? 'Fail' : 'Information', k.detail]; }));
+    var params = [[{ v: 'Parameter', s: 'bold' }, { v: 'Value', s: 'bold' }], ['Report', C.title], ['Data as of', cx.asOf]].concat(cx.params, [['Clients', cx.selection], ['Sources', cx.sources], ['View', state.chip + (state.q ? ' · search: ' + state.q : '')]], state.notices.map(function (n) { return ['Notice', n]; }));
+    var bytes = xlsx([{ name: 'Practice', widths: [12, 34].concat(C.columns.map(function () { return 16; })), rows: practice }, { name: 'Validation', widths: [48, 14, 90], rows: validation }, { name: 'Parameters', widths: [18, 90], rows: params }]);
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = C.slug + '.xlsx'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+  $('chips').addEventListener('click', function (e) { var b = e.target.closest('[data-chip]'); if (b) { state.chip = b.getAttribute('data-chip'); render(); } });
+  $('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); render(); });
+  $('table').addEventListener('click', function (e) { var th = e.target.closest('th[data-k]'); if (!th) return; var k = th.getAttribute('data-k'); if (state.sortKey === k) state.sortDir = -state.sortDir; else { state.sortKey = k; state.sortDir = 1; } render(); });
+  $('pdf').addEventListener('click', function () { window.print(); });
+  $('xls').addEventListener('click', excel);
+  MyHubReport.onData(load);
+})();</script>
+</body>
+</html>
