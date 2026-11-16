@@ -126,7 +126,7 @@ const SCRIPT = `
   function libBox(r, lib, c) {
     return '<article class="box" data-row="' + esc(r.slug) + '"><div class="top"><div><h3>' + esc(r.title) + '</h3><span class="id">' + esc(r.code || 'Library') + ' · Platform reports</span></div>' + badges(c.platform) + '</div>' +
       '<div><span class="pill live">Live · ' + esc(lib.studio) + '</span></div>' + (r.line ? '<div>' + esc(r.line) + '</div>' : '') +
-      '<div class="how">Ask the Client Report Analytics agent: <b>“Open the ' + esc(r.title) + ' for ' + esc(c.name) + '”</b>, or Reports → From your plugins → <b>' + esc(r.title) + '</b>. Needs the ' + esc(lib.studio) + ' extension installed.</div></article>';
+      '<div class="how">Ask mySidekick or the Client Reporting Agent: <b>“Open the ' + esc(r.title) + ' for ' + esc(c.name) + '”</b>, or Reports → From your plugins → <b>' + esc(r.title) + '</b>. Needs the ' + esc(lib.studio) + ' extension installed.</div></article>';
   }
   function checks(c, shownItems, shownLib) {
     var ids = shownItems.map(function (i) { return i.id; }).concat(shownLib.map(function (r) { return r.slug; }));

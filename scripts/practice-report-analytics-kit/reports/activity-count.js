@@ -28,7 +28,7 @@ module.exports = function build() {
     tool: 'get_practice_activity_count', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
-    qbNote: 'one company per connection — ask the Client Report Analytics agent for this client’s activity instead.',
+    qbNote: 'one company per connection — ask mySidekick or the Client Reporting Agent for this client’s activity instead.',
     rankKey: 'total',
     // get_practice_activity_count agrees on names across both platforms — identity aliases, kept
     // explicit so a future rename on either side is caught by the report tests, not silently wrong.
