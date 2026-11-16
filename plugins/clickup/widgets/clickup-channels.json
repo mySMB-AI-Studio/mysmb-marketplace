@@ -90,14 +90,21 @@
         }
       },
 
-      "channelIcon": { "type": "Icon", "props": { "name": "Hash", "size": "sm", "tone": "muted" } },
+      "channelIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Hash",
+          "size": "sm",
+          "tone": { "$computed": "clickup_channel_type_tone", "args": { "value": { "$item": "type" } } }
+        }
+      },
       "channelName": { "type": "Text", "props": { "size": "sm", "weight": "semibold", "text": { "$item": "name" } } },
       "channelNameRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["channelIcon", "channelName"] },
       "channelTypeBadge": {
         "type": "Badge",
         "props": {
           "text": { "$computed": "clickup_channel_type_label", "args": { "value": { "$item": "type" } } },
-          "tone": "muted"
+          "tone": { "$computed": "clickup_channel_type_tone", "args": { "value": { "$item": "type" } } }
         }
       },
       "channelTopRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["channelNameRow", "channelTypeBadge"] },

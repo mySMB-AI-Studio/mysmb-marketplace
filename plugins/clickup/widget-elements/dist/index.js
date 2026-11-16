@@ -107,12 +107,28 @@ const CHANNEL_TYPE_LABELS = {
     CHANNEL: 'Channel',
     DM: 'Direct message',
     GROUP_DM: 'Group DM',
+    ASK_AI: 'Ask AI',
 };
 // ── channel_type_label ───────────────────────────────────────────────
 // Args: { value: string | null } -- a channel's `type` field
 const channel_type_label = (args) => {
     const v = args.value == null ? '' : String(args.value);
     return CHANNEL_TYPE_LABELS[v] ?? (v || 'Channel');
+};
+// Decorative categorical colors (chart-1..5), not status tones -- a
+// channel's type isn't "good" or "bad", it's one of several kinds, same
+// reasoning as @myhub/widget-tokens' own chart-N doc comment.
+const CHANNEL_TYPE_TONES = {
+    CHANNEL: 'chart-1',
+    DM: 'chart-2',
+    GROUP_DM: 'chart-3',
+    ASK_AI: 'chart-4',
+};
+// ── channel_type_tone ────────────────────────────────────────────────
+// Args: { value: string | null } -- a channel's `type` field
+const channel_type_tone = (args) => {
+    const v = args.value == null ? '' : String(args.value);
+    return CHANNEL_TYPE_TONES[v] ?? 'chart-5';
 };
 const CHANNEL_VISIBILITY_LABELS = {
     PUBLIC: 'Public',
@@ -153,6 +169,7 @@ const elements = {
         assignee_names,
         task_url,
         channel_type_label,
+        channel_type_tone,
         channel_visibility_label,
     },
 };
