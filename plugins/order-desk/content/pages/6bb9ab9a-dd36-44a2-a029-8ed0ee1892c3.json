@@ -1,5 +1,5 @@
 {
-  "contentHash": "670e8a08e63c6107c24fe08841a0c2e1fd7196d7d0385908b5f2939e40efa9fc",
+  "contentHash": "6231dd3180ff8be59d75f8e9b70654b5d5b9e639ac3d3762c348c12f6ede6a4e",
   "dependencies": [],
   "document": {
     "actions": [],
@@ -10,6 +10,14 @@
           "status": "in_progress"
         },
         "id": "openWork",
+        "kind": "workq.list"
+      },
+      {
+        "config": {
+          "limit": 20,
+          "status": "done"
+        },
+        "id": "doneWork",
         "kind": "workq.list"
       },
       {
@@ -33,7 +41,7 @@
         "parentId": "root",
         "props": {
           "level": 1,
-          "text": "Order review"
+          "text": "Orders"
         },
         "type": "heading"
       },
@@ -41,7 +49,7 @@
         "id": "intro",
         "parentId": "root",
         "props": {
-          "text": "1. Click an order under \"Waiting for you\".\n2. Check the customer, the lines and the delivery date.\n3. Choose Release or Reject."
+          "text": "Everything Order Desk is working on, in one place.\n\n1. To add an order, drop the file into the Orders folder on Order Desk's Files tab.\n2. Click an order under \"In progress\". If it is waiting for you, you see what the customer wrote next to what will be sent.\n3. Choose Approve order, Fix a line or Reject order."
         },
         "type": "text"
       },
@@ -52,9 +60,26 @@
         "id": "todo",
         "parentId": "root",
         "props": {
-          "title": "Waiting for you"
+          "title": "In progress"
         },
         "type": "workq"
+      },
+      {
+        "bindingIds": [
+          "doneWork"
+        ],
+        "id": "doneWork",
+        "parentId": "root",
+        "props": {
+          "title": "Finished"
+        },
+        "type": "workq"
+      },
+      {
+        "id": "divider",
+        "parentId": "root",
+        "props": {},
+        "type": "divider"
       },
       {
         "bindingIds": [
@@ -63,7 +88,7 @@
         "id": "orders",
         "parentId": "root",
         "props": {
-          "title": "All orders (click one to open or correct it)"
+          "title": "Every order (click one to see its lines)"
         },
         "type": "records"
       }
@@ -75,5 +100,5 @@
   "kind": "page",
   "originKey": "6bb9ab9a-dd36-44a2-a029-8ed0ee1892c3",
   "slug": "order-desk-review",
-  "title": "Order review"
+  "title": "Orders"
 }

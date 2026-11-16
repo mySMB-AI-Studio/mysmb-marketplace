@@ -1,5 +1,5 @@
 {
-  "contentHash": "50b0240f0ff8beb691ae222112b11f8d57fe78038cae7ffe93e7b97a40ee7e7f",
+  "contentHash": "fbf10a5cae601fd0f36ce7df5605c29b2b8ee1f5b0b017c17807c8f829b45e3a",
   "definition": {
     "color": null,
     "description": "The products you sell, with your item code, selling unit and pack size. Order Desk matches every order line to one of these.",
@@ -18,7 +18,7 @@
       },
       {
         "config": {
-          "helpText": "Your own code for this product.",
+          "helpText": "Your own code for this product. No two products share one.",
           "maxLength": 80
         },
         "groupLabel": null,
@@ -27,6 +27,11 @@
         "label": "Item code",
         "position": 1,
         "required": true,
+        "rules": [
+          {
+            "kind": "unique_within_type"
+          }
+        ],
         "searchable": true,
         "showInDetail": true,
         "showInList": true

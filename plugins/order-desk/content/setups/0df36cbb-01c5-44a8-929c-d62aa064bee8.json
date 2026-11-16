@@ -1,8 +1,170 @@
 {
-  "contentHash": "40ac36b42f3b435759cf3eb0430b6f30a67977ffd01853b0e44c311943f49d3f",
+  "contentHash": "5b1f3b4bd335a1a62823ae6ce77aea048da72b449eabb7c87f55255433cff1e6",
   "definition": {
     "connections": [],
     "knowledge": [],
+    "lists": [
+      {
+        "columns": [
+          {
+            "column": "Item code",
+            "example": "TOM-RND-10",
+            "field": "item_code",
+            "required": true
+          },
+          {
+            "column": "Product name",
+            "example": "Tomatoes round 10 kg",
+            "field": "name",
+            "required": true
+          },
+          {
+            "column": "Selling unit",
+            "example": "Carton",
+            "field": "sell_unit",
+            "required": true
+          },
+          {
+            "column": "Base unit",
+            "example": "Kilogram",
+            "field": "base_unit",
+            "required": false
+          },
+          {
+            "column": "Base units per selling unit",
+            "example": "10",
+            "field": "units_per_pack",
+            "required": false
+          },
+          {
+            "column": "Category",
+            "example": "Vegetables",
+            "field": "category",
+            "required": false
+          }
+        ],
+        "key": "products",
+        "label": "Your products",
+        "matchOn": "Item code",
+        "minRows": 1,
+        "required": true,
+        "sample": [
+          {
+            "Base unit": "Kilogram",
+            "Base units per selling unit": "10",
+            "Category": "Vegetables",
+            "Item code": "TOM-RND-10",
+            "Product name": "Tomatoes round 10 kg",
+            "Selling unit": "Carton"
+          },
+          {
+            "Base unit": "Each",
+            "Base units per selling unit": "12",
+            "Category": "Vegetables",
+            "Item code": "LET-COS-12",
+            "Product name": "Cos lettuce box of 12",
+            "Selling unit": "Box"
+          },
+          {
+            "Base unit": "Kilogram",
+            "Base units per selling unit": "13",
+            "Category": "Fruit",
+            "Item code": "BAN-CAV-13",
+            "Product name": "Bananas Cavendish 13 kg",
+            "Selling unit": "Carton"
+          },
+          {
+            "Base unit": "Bunch",
+            "Base units per selling unit": "1",
+            "Category": "Herbs",
+            "Item code": "HRB-BAS-BN",
+            "Product name": "Basil bunch",
+            "Selling unit": "Bunch"
+          }
+        ],
+        "table": "od_products"
+      },
+      {
+        "columns": [
+          {
+            "column": "Account code",
+            "example": "HARB001",
+            "field": "account_code",
+            "required": true
+          },
+          {
+            "column": "Customer name",
+            "example": "Harbour View Hotel",
+            "field": "name",
+            "required": true
+          },
+          {
+            "column": "Email domain",
+            "example": "harbourview.com.au",
+            "field": "email_domain",
+            "required": false
+          },
+          {
+            "column": "Other names",
+            "example": "HV Hotel, Harbourview",
+            "field": "other_names",
+            "required": false
+          },
+          {
+            "column": "Order cut-off time",
+            "example": "14:00",
+            "field": "cutoff_time",
+            "required": false
+          },
+          {
+            "column": "PO number required",
+            "example": "Yes",
+            "field": "po_required",
+            "required": false
+          },
+          {
+            "column": "Order rules",
+            "example": "Full cartons only",
+            "field": "order_rules",
+            "required": false
+          },
+          {
+            "column": "Order handling notes",
+            "example": "Orders by email most evenings",
+            "field": "order_notes",
+            "required": false
+          }
+        ],
+        "key": "customers",
+        "label": "Your customers",
+        "matchOn": "Account code",
+        "minRows": 1,
+        "required": true,
+        "sample": [
+          {
+            "Account code": "HARB001",
+            "Customer name": "Harbour View Hotel",
+            "Email domain": "harbourview.com.au",
+            "Order cut-off time": "14:00",
+            "Order handling notes": "Orders by email most evenings",
+            "Order rules": "Full cartons only",
+            "Other names": "HV Hotel, Harbourview",
+            "PO number required": "Yes"
+          },
+          {
+            "Account code": "CORN002",
+            "Customer name": "Corner Cafe",
+            "Email domain": "cornercafe.example",
+            "Order cut-off time": "16:00",
+            "Order handling notes": "Usually orders by the each, not by the box",
+            "Order rules": "",
+            "Other names": "The Corner",
+            "PO number required": "No"
+          }
+        ],
+        "table": "od_customer_profiles"
+      }
+    ],
     "people": [
       {
         "required": true,
@@ -15,14 +177,15 @@
     ],
     "settings": {
       "properties": {
-        "confirmation_mode": {
-          "default": "shadow",
-          "description": "shadow: a person approves every order. auto_simple: clean orders with nothing flagged go through on their own; everything else still waits for a person.",
+        "care": {
+          "default": "everything",
+          "description": "everything: Check everything. A person approves every order. problems: Check only problems. A clean order with nothing flagged goes through on its own; anything flagged waits for a person. hands_off: Hands-off within limits. As for problems, and Order Desk also accepts a product when exactly one fits the name and assumes the selling unit when a line has none. In every choice the limits below still send an order to a person.",
           "enum": [
-            "shadow",
-            "auto_simple"
+            "everything",
+            "problems",
+            "hands_off"
           ],
-          "title": "How orders are confirmed",
+          "title": "How careful should Order Desk be?",
           "type": "string"
         },
         "cutoff_time": {
@@ -54,7 +217,7 @@
         },
         "guessed_products": {
           "default": "always_ask",
-          "description": "always_ask: a person checks every line Order Desk had to guess. accept_single: accept the guess when only one product fits the name.",
+          "description": "always_ask: a person checks every line Order Desk had to guess. accept_single: accept the guess when only one product fits the name. Hands-off within limits always accepts a single fit.",
           "enum": [
             "always_ask",
             "accept_single"
@@ -74,13 +237,37 @@
         },
         "missing_unit": {
           "default": "ask",
-          "description": "ask: a person checks the line. selling_unit: assume the product's selling unit.",
+          "description": "ask: a person checks the line. selling_unit: assume the product's selling unit. Hands-off within limits always assumes the selling unit.",
           "enum": [
             "ask",
             "selling_unit"
           ],
           "title": "When a line has no unit",
           "type": "string"
+        },
+        "new_customer_orders": {
+          "default": 3,
+          "description": "A person approves this many orders from a customer before any of that customer's orders may go through on their own. 0 turns this off.",
+          "maximum": 50,
+          "minimum": 0,
+          "title": "New customers: first orders a person approves",
+          "type": "number"
+        },
+        "order_size_limit": {
+          "default": 30,
+          "description": "An order with more lines than this always waits for a person.",
+          "maximum": 300,
+          "minimum": 1,
+          "title": "Order size limit (lines)",
+          "type": "number"
+        },
+        "spot_check_every": {
+          "default": 10,
+          "description": "About one clean order in this many is sent to a person anyway, so someone keeps an eye on the work. 0 turns spot checks off.",
+          "maximum": 1000,
+          "minimum": 0,
+          "title": "Spot check: one clean order in every",
+          "type": "number"
         },
         "substitutions": {
           "default": "never",
@@ -121,7 +308,7 @@
         }
       },
       "required": [
-        "confirmation_mode"
+        "care"
       ],
       "type": "object"
     },
@@ -129,7 +316,7 @@
     "tenantSettings": [],
     "version": 2
   },
-  "description": "What Order Desk needs before it can take orders: how orders are confirmed and checked, and who manages and reviews them.",
+  "description": "What Order Desk needs before it can take orders: your product list and customer list, how careful it should be, how orders are checked, and who manages and reviews them.",
   "kind": "setup",
   "name": "Order Desk setup",
   "originKey": "0df36cbb-01c5-44a8-929c-d62aa064bee8"
