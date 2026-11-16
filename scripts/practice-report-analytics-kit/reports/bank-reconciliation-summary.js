@@ -18,7 +18,7 @@ module.exports = function build() {
     tool: 'get_practice_bank_reconciliation_summary', // named in the footer and the Excel Parameters sheet
     chips: ['Needs attention'],
     sources: { xero: 'xero', myob: 'myob' },
-    qbNote: 'one company per connection, and QuickBooks has no bank-feed/unreconciled data in its API — see the Client agent for what is available.',
+    qbNote: 'one company per connection, and QuickBooks has no bank-feed/unreconciled data in its API — the Client Report Analytics reports show what is available for it (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     fieldAliases: {
       xero: { unreconciled_count: 'totalUnreconciledCount', unreconciled_value: 'totalUnreconciledAmount' },
       myob: { unreconciled_count: 'unreconciledCount', unreconciled_value: 'unreconciledAmount' }

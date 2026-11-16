@@ -8,7 +8,7 @@ const REF = 'reports/user-activity', man = manifest(REF);
 const xeroOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', contactsCount: 42, lastSync: '2026-10-07T09:12:00.000Z', connectionStatus: 'connected' },
+    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', contactsCount: 42, lastSync: '2026-10-07T09:12:46.7748050', connectionStatus: 'connected' },
     { id: 'xt-2', name: 'Southgate Services Ltd', contactsCount: 11, lastSync_na: "Xero's /connections endpoint did not return an updatedDateUtc for this tenant.", connectionStatus: 'connected' }
   ],
   errors: [], totals: {}, truncated: false
@@ -30,7 +30,10 @@ const myobOk = () => ({
 
   const rows = [...t.doc.querySelectorAll('tbody tr')];
   const irvine = rows.find((tr) => tr.textContent.indexOf('Irvine Jackson') >= 0);
-  ok('a client with a real lastSync shows the timestamp, not N/A', irvine.textContent.indexOf('2026-10-07') >= 0 && !/N\/A/.test(irvine.querySelector('td:nth-child(3)').textContent));
+  ok('a client with a real lastSync shows it as a readable date and time, not raw ISO and not N/A', (() => {
+    const text = irvine.querySelector('td:nth-child(3)').textContent;
+    return /Oct 2026/.test(text) && !/T09:12|2026-10-07/.test(text) && !/N\/A/.test(text);
+  })());
 
   const southgate = rows.find((tr) => tr.textContent.indexOf('Southgate') >= 0);
   ok('a Xero client with no updatedDateUtc shows N/A with Xero’s own reason, not a fabricated date', (() => {
