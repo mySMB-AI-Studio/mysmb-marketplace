@@ -14,9 +14,10 @@ Each practice decides which check groups **stop** lodgement and which are only a
 - Read it with `files_read` at the start of every job.
 - If it doesn't exist, write the default below there with `files_write`, then say in a job comment that you created the default checklist and that the practice should review the Stop/Note column.
 - If someone has edited it, follow their version: run the groups it lists, and treat a group as Stop only when its row says Stop.
+- A row's marking can be a condition, such as "Stop on accrual basis, Note on cash basis". Apply it with what you know: the GST basis from Finding the client, and the tool's detail (for suspense: how many documents dated in the period are coded to the account). In the summary, say which way it went and why.
 - If the file has no row for a group the default below has (a check added since the file was written), add that row with the default marking, keep every other row exactly as it is, and say in a job comment which rows you added.
 
-The default (a bookkeeper's recommendation, November 2026; the GST rows are still provisional):
+The default (a bookkeeper's recommendation, November 2026, with interim refinements until they answer the follow-up questions; the GST rows are still provisional):
 
 ```markdown
 # BAS readiness checklist
@@ -28,20 +29,20 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 | gstChargedWhileUnregistered | CHK-031 GST on sales or credit notes while not registered | Stop |
 | gstOnNonClaimableItems | CHK-058 GST claimed on items that normally carry none | Stop |
 | gstAmountMismatch | CHK-059 GST that isn't the rate's share of the line | Stop |
-| gstWithoutAbn | CHK-008 GST claimed over $82.50 from a supplier with no ABN | Stop |
+| gstWithoutAbn | CHK-008 GST claimed over $82.50 from a supplier with no ABN and no document attached (with a document attached it's listed under Also seen: check the invoice) | Stop |
 | gstFromUnregisteredSuppliers | CHK-068/069/076/077/085 GST claimed from suppliers not registered (ABR) | Stop |
 | gstRegistrationRequired | CHK-136 income over $75,000 without GST registration | Stop |
 | unreconciledBank | CHK-022 bank transactions not reconciled | Stop |
-| suspenseBalance | CHK-125 suspense or uncoded account with a balance | Stop |
+| suspenseBalance | CHK-125 suspense or uncoded account with a balance | Stop when documents dated in the period are coded to it; Note when the whole balance is from earlier periods |
 | cancelledAbn | CHK-002/071/072/088 dealings with a cancelled ABN (ABR) | Stop |
 | duplicateBills | CHK-055/079/080 the same bill raised or paid twice | Stop |
 | gstStatusMismatch | CHK-003 a contact's GST status differs from the ABR | Note |
 | gstAccountWithoutGst | CHK-129 a GST account mostly without GST (heuristic) | Note |
-| missingReceipts | CHK-021/086 spend money and bills over $82.50 with nothing attached (tax invoices are needed before claiming GST) | Stop |
-| draftSalesInvoices | CHK-033 sales invoices still in draft or awaiting approval | Note |
+| missingReceipts | CHK-021/086 spend money and bills over $82.50 with GST claimed and nothing attached (tax invoices are needed before claiming GST; items with no GST are listed under Also seen) | Stop |
+| draftSalesInvoices | CHK-033 sales invoices dated in the period still in draft or awaiting approval | Stop on accrual basis, Note on cash basis |
 | lockDate | CHK-134 no lock date, or one older than 6 months | Note |
 | lockDateChanged | CHK-135 the lock date was moved back or removed since the last review (someone may have edited a closed period) | Stop |
-| taxCodeMismatch | Lines coded GST-free or BAS Excluded where the account or supplier normally carries GST (heuristic) | Note |
+| taxCodeMismatch | Lines coded GST-free or BAS Excluded where the account or supplier normally carries GST (heuristic; exports and input-taxed lines are left out) | Note |
 | priorPeriodAdjustments | Documents dated before the period that changed after the previous BAS (flag only) | Note |
 ```
 
