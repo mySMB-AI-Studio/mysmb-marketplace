@@ -1,5 +1,5 @@
 {
-  "contentHash": "d6e6e85940ad144a6b719fbb313c6db62a5f2bd27a6ea6b1b8c787406f8e41f4",
+  "contentHash": "d0711dee7bc7fcc82dbb3e24731411d9d2479765b5c13018d5c24de2314b893f",
   "definition": {
     "color": null,
     "description": "How Order Desk should handle each customer's orders: their account code, helpful notes, the rules that must be followed and their order cut-off time.",
@@ -35,7 +35,7 @@
       },
       {
         "config": {
-          "helpText": "The customer's account number in your accounting or ERP system.",
+          "helpText": "The customer's account number in your accounting or ERP system. No two customers share one.",
           "maxLength": 80
         },
         "groupLabel": null,
@@ -44,6 +44,11 @@
         "label": "Account code",
         "position": 2,
         "required": true,
+        "rules": [
+          {
+            "kind": "unique_within_type"
+          }
+        ],
         "searchable": true,
         "showInDetail": true,
         "showInList": true
@@ -136,22 +141,22 @@
       },
       {
         "config": {
-          "helpText": "Whether simple orders from this customer may be confirmed without a person.",
+          "helpText": "Whether clean orders from this customer may go through without a person, when How careful allows it.",
           "options": [
             {
               "key": "follow_default",
-              "label": "Follow the default"
+              "label": "Follow How careful"
             },
             {
               "key": "never",
-              "label": "Never"
+              "label": "Never: a person approves every order"
             }
           ]
         },
         "groupLabel": null,
         "key": "auto_confirm",
         "kind": "select",
-        "label": "Automatic confirmation",
+        "label": "Clean orders without a person",
         "position": 9,
         "required": false,
         "searchable": true,
