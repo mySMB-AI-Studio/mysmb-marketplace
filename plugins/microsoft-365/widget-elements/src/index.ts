@@ -452,6 +452,26 @@ const mail_folder_icon: ComputedFunction = (args) => {
   return FOLDER_ICONS[name] ?? 'Folder';
 };
 
+// Decorative categorical colors (chart-1..5), not status tones -- a folder
+// isn't "good" or "bad", it's just one of several, same reasoning as the
+// ClickUp channel-type coloring and @myhub/widget-tokens' own chart-N doc
+// comment. Hashed from the folder's own name (not list position) so each
+// folder keeps the same color every load regardless of how many folders
+// exist or what order they render in.
+const CHART_TONE_COUNT = 5;
+const mail_folder_tone: ComputedFunction = (args) => {
+  const name = String(args.value ?? '');
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  // A plain *31 hash clusters badly on short, similar strings like folder
+  // names (verified: 5 of 10 real Outlook folder names collided on one
+  // tone) -- this finalizer (Murmur3-style) spreads them evenly instead.
+  hash ^= hash >>> 15;
+  hash = Math.imul(hash, 2246822519) >>> 0;
+  hash = (hash ^ (hash >>> 13)) >>> 0;
+  return `chart-${(hash % CHART_TONE_COUNT) + 1}`;
+};
+
 const elements: PluginElementsModule = {
   slug: 'microsoft-365',
   functions: {
@@ -479,6 +499,7 @@ const elements: PluginElementsModule = {
     transcript_display_text,
     mail_folder_sorted,
     mail_folder_icon,
+    mail_folder_tone,
   },
 };
 
