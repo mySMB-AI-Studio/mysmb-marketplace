@@ -16,7 +16,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "taskPickerErrorBanner", "taskPickerList", "divider1", "detailPanel", "divider2", "commentsPanel", "infoOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "taskPickerErrorBanner", "taskPickerList", "divider1", "detailPanel", "checklistsSection", "dependenciesSection", "divider2", "commentsPanel", "infoOverlay"] },
 
       "titleIcon": { "type": "Icon", "props": { "name": "MessageSquare", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "Task Detail & Comments" } },
@@ -50,7 +50,7 @@
       "infoWhatText": {
         "type": "Text",
         "props": {
-          "text": "Pick a Workspace, Space, List and task to see that one task's full detail — description, status, priority, due date and assignees — plus its comment thread, without leaving the dashboard.",
+          "text": "Pick a Workspace, Space, List and task to see that one task's full detail — description, status, priority, due date, assignees, checklists, and dependencies/linked tasks — plus its comment thread, without leaving the dashboard.",
           "size": "sm"
         }
       },
@@ -58,7 +58,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "Click a task in the list to load its detail and comments below. Type a comment and press \"Post comment\" to post it — this is the one action in this tile that writes to ClickUp; it creates a real comment on the task. Everything else here is read-only. For a quick overview of a whole list instead, use the companion ClickUp Tasks tile.",
+          "text": "Click a task in the list to load its detail, checklists, dependencies/links, and comments below. Click a dependency or linked task to open it in ClickUp. Type a comment and press \"Post comment\" to post it — this is the one action in this tile that writes to ClickUp; it creates a real comment on the task. Everything else here is read-only. For a quick overview of a whole list instead, use the companion ClickUp Tasks tile.",
           "size": "sm"
         }
       },
@@ -218,6 +218,112 @@
         "watch": {
           "/ui/selectedTaskId": [
             { "action": "clickup.get_task", "params": { "task_id": { "$state": "/ui/selectedTaskId" } } }
+          ]
+        }
+      },
+
+      "checklistItemIcon": {
+        "type": "Icon",
+        "props": {
+          "name": { "$cond": { "$item": "resolved" }, "$then": "CheckSquare", "$else": "Square" },
+          "size": "xs",
+          "tone": { "$cond": { "$item": "resolved" }, "$then": "success", "$else": "muted" }
+        },
+        "visible": { "$item": "kind", "eq": "item" }
+      },
+      "checklistItemName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "tone": { "$cond": { "$item": "resolved" }, "$then": "muted", "$else": "default" } },
+        "visible": { "$item": "kind", "eq": "item" }
+      },
+      "checklistItemRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["checklistItemIcon", "checklistItemName"],
+        "visible": { "$item": "kind", "eq": "item" }
+      },
+      "checklistHeaderName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "semibold" } },
+      "checklistHeaderBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "fmt", "args": { "pattern": "{resolved}/{total}", "resolved": { "$item": "resolved" }, "total": { "$item": "total" } } },
+          "tone": { "$computed": "clickup_checklist_badge_tone", "args": { "resolved": { "$item": "resolved" }, "total": { "$item": "total" } } }
+        }
+      },
+      "checklistHeaderRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["checklistHeaderName", "checklistHeaderBadge"],
+        "visible": { "$item": "kind", "eq": "header" }
+      },
+      "checklistRowStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["checklistHeaderRow", "checklistItemRow"] },
+      "checklistRowsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["checklistRowStack"],
+        "repeat": { "key": "id", "statePath": "/ui/checklistRows" },
+        "visible": { "$state": "/ui/checklistRows/0" }
+      },
+      "checklistsHeading": { "type": "Heading", "props": { "level": "h3", "text": "Checklists" } },
+      "checklistsEmpty": { "type": "Caption", "props": { "text": "No checklists on this task.", "tone": "muted" }, "visible": { "$state": "/ui/checklistRows/0", "not": true } },
+      "checklistsSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["checklistsHeading", "checklistRowsList", "checklistsEmpty"],
+        "visible": { "$state": "/ui/selectedTaskId" },
+        "watch": {
+          "/clickup/get_task/checklists": [
+            { "action": "setState", "params": { "statePath": "/ui/checklistRows", "value": { "$computed": "clickup_checklist_rows", "args": { "checklists": { "$state": "/clickup/get_task/checklists" } } } } }
+          ]
+        }
+      },
+
+      "dependencyLabel": {
+        "type": "Badge",
+        "props": { "text": { "$item": "label" }, "tone": { "$computed": "clickup_dependency_tone", "args": { "label": { "$item": "label" } } } }
+      },
+      "dependencyLink": { "type": "Text", "props": { "text": { "$item": "otherTaskId" }, "size": "sm", "weight": "medium" } },
+      "dependencyRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "clickable": true, "hover": true },
+        "children": ["dependencyLabel", "dependencyLink"],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$computed": "clickup_task_url", "args": { "task_id": { "$bindItem": "otherTaskId" } } }, "target": "_blank" }
+          }
+        }
+      },
+      "dependencyRowsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["dependencyRow"],
+        "repeat": { "key": "id", "statePath": "/ui/dependencyRows" },
+        "visible": { "$state": "/ui/dependencyRows/0" }
+      },
+      "dependenciesHeading": { "type": "Heading", "props": { "level": "h3", "text": "Dependencies & links" } },
+      "dependenciesEmpty": { "type": "Caption", "props": { "text": "No dependencies or linked tasks.", "tone": "muted" }, "visible": { "$state": "/ui/dependencyRows/0", "not": true } },
+      "dependenciesSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["dependenciesHeading", "dependencyRowsList", "dependenciesEmpty"],
+        "visible": { "$state": "/ui/selectedTaskId" },
+        "watch": {
+          "/clickup/get_task/dependencies": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/dependencyRows",
+                "value": {
+                  "$computed": "clickup_dependency_rows",
+                  "args": {
+                    "dependencies": { "$state": "/clickup/get_task/dependencies" },
+                    "linked_tasks": { "$state": "/clickup/get_task/linked_tasks" },
+                    "task_id": { "$state": "/ui/selectedTaskId" }
+                  }
+                }
+              }
+            }
           ]
         }
       },

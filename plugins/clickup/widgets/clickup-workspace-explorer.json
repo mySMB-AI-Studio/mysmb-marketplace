@@ -16,7 +16,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "breadcrumbRow", "errorBanner", "statusCaption", "spaceList", "spaceItemList", "folderItemList", "infoOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "breadcrumbRow", "errorBanner", "statusCaption", "spaceList", "spaceItemList", "folderItemList", "spaceViewsSection", "infoOverlay"] },
 
       "titleIcon": { "type": "Icon", "props": { "name": "FolderTree", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "Workspace Explorer" } },
@@ -50,7 +50,7 @@
       "infoWhatText": {
         "type": "Text",
         "props": {
-          "text": "A map of a ClickUp Workspace's structure — every Space, its Folders and Lists — so you can find where something lives without hunting through ClickUp itself.",
+          "text": "A map of a ClickUp Workspace's structure — every Space, its Folders and Lists, and the Views set up on that Space — so you can find where something lives without hunting through ClickUp itself.",
           "size": "sm"
         }
       },
@@ -58,7 +58,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "Pick a workspace, then click a Space to see its Folders and Lists. Click a Folder to see the Lists inside it. Click a List to open it on app.clickup.com. This tile is read-only and never changes anything — for a List's actual tasks, use the companion ClickUp Tasks tile.",
+          "text": "Pick a workspace, then click a Space to see its Folders, Lists, and Views. Click a Folder to see the Lists inside it. Click a List to open it on app.clickup.com. This tile is read-only and never changes anything — for a List's actual tasks, use the companion ClickUp Tasks tile.",
           "size": "sm"
         }
       },
@@ -201,7 +201,8 @@
             { "action": "setState", "params": { "statePath": "/ui/currentSpace", "value": { "$bindItem": "id" } } },
             { "action": "setState", "params": { "statePath": "/ui/currentSpaceName", "value": { "$bindItem": "name" } } },
             { "action": "clickup.list_folders", "params": { "space_id": { "$bindItem": "id" } } },
-            { "action": "clickup.list_folderless_lists", "params": { "space_id": { "$bindItem": "id" } } }
+            { "action": "clickup.list_folderless_lists", "params": { "space_id": { "$bindItem": "id" } } },
+            { "action": "clickup.list_views", "params": { "space_id": { "$bindItem": "id" } } }
           ]
         }
       },
@@ -319,6 +320,38 @@
             }
           ]
         }
+      },
+
+      "viewsHeading": { "type": "Caption", "props": { "text": "Views in this Space", "tone": "muted", "weight": "semibold" } },
+      "viewsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load views: ${/_errors/clickup.list_views}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_views" }
+      },
+      "viewIcon": { "type": "Icon", "props": { "name": "Eye", "size": "sm", "tone": "muted" } },
+      "viewName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "viewLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["viewIcon", "viewName"] },
+      "viewTypeBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "type" }, "tone": { "$computed": "clickup_view_type_tone", "args": { "value": { "$item": "type" } } } }
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["viewLeft", "viewTypeBadge"]
+      },
+      "viewsList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["viewRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_views/views" },
+        "visible": { "$state": "/clickup/list_views/views/0" }
+      },
+      "spaceViewsSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["viewsHeading", "viewsErrorBanner", "viewsList"],
+        "visible": { "$and": [{ "$state": "/ui/currentSpace" }, { "$state": "/ui/currentFolder", "not": true }, { "$state": "/clickup/list_views/views/0" }] }
       }
     }
   }

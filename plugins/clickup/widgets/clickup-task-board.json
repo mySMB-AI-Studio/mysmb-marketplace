@@ -33,6 +33,7 @@
             { "action": "setState", "params": { "statePath": "/ui/quickAddName", "value": "" } },
             { "action": "setState", "params": { "statePath": "/ui/quickAddDue", "value": "" } },
             { "action": "setState", "params": { "statePath": "/ui/quickAddPriority", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/quickAddAssignee", "value": "" } },
             { "action": "setState", "params": { "statePath": "/ui/quickAddSaved", "value": false } }
           ]
         }
@@ -73,7 +74,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "Switch views with the tabs above the list. Click a task to open it on app.clickup.com. \"+ Task\" creates a new task in the selected List right away — it's the one action here that writes to ClickUp.",
+          "text": "Switch views with the tabs above the list. Click a task to open it on app.clickup.com. \"+ Task\" creates a new task in the selected List right away, with an optional assignee from that List's members — it's the one action here that writes to ClickUp.",
           "size": "sm"
         }
       },
@@ -188,6 +189,11 @@
             "$else": "Pick a workspace, space and list above to see its tasks."
           },
           "tone": "muted"
+        },
+        "watch": {
+          "/ui/selectedList": [
+            { "action": "clickup.list_members", "params": { "list_id": { "$state": "/ui/selectedList" } } }
+          ]
         }
       },
 
@@ -290,6 +296,15 @@
           "size": "sm"
         }
       },
+      "quickAddAssigneeSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/quickAddAssignee" },
+          "options": { "$computed": "clickup_member_options", "args": { "value": { "$state": "/clickup/list_members/members" } } },
+          "placeholder": "Unassigned",
+          "size": "sm"
+        }
+      },
       "quickAddSaveRow": { "type": "Row", "props": { "justify": "end" }, "children": ["quickAddSaveBtn"] },
       "quickAddSaveBtn": {
         "type": "Button",
@@ -308,7 +323,8 @@
                 "list_id": { "$state": "/ui/selectedList" },
                 "name": { "$state": "/ui/quickAddName" },
                 "due_date": { "$computed": "clickup_date_to_epoch_ms", "args": { "value": { "$state": "/ui/quickAddDue" } } },
-                "priority": { "$computed": "clickup_priority_value_to_int", "args": { "value": { "$state": "/ui/quickAddPriority" } } }
+                "priority": { "$computed": "clickup_priority_value_to_int", "args": { "value": { "$state": "/ui/quickAddPriority" } } },
+                "assignees": { "$computed": "clickup_assignee_param", "args": { "value": { "$state": "/ui/quickAddAssignee" } } }
               }
             },
             { "action": "setState", "params": { "statePath": "/ui/showQuickAdd", "value": false } },
@@ -318,7 +334,7 @@
         }
       },
       "quickAddSavedCaption": { "type": "Caption", "props": { "text": "Task added.", "tone": "success" }, "visible": { "$state": "/ui/quickAddSaved" } },
-      "quickAddBody": { "type": "Stack", "props": { "gap": "sm" }, "children": ["quickAddNameInput", "quickAddDueInput", "quickAddPrioritySelect", "quickAddSaveRow", "createError", "quickAddSavedCaption"] },
+      "quickAddBody": { "type": "Stack", "props": { "gap": "sm" }, "children": ["quickAddNameInput", "quickAddDueInput", "quickAddPrioritySelect", "quickAddAssigneeSelect", "quickAddSaveRow", "createError", "quickAddSavedCaption"] },
       "quickAddCard": { "type": "Card", "props": {}, "children": ["quickAddHeader", "quickAddDivider", "quickAddBody"] }
     }
   }

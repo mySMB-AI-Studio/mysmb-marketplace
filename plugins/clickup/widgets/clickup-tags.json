@@ -1,0 +1,134 @@
+{
+  "id": "clickup-tags",
+  "title": "ClickUp Tags",
+  "description": "The Tags set up in a ClickUp Space, available to apply to tasks there.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "tags", "labels"],
+  "tags": ["clickup", "project-management", "tags"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "preferred": { "colSpan": 4, "rowSpan": 6 },
+    "max": { "colSpan": 6, "rowSpan": 10 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "tagList", "infoOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "Tag", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Tags" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Tags", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": { "text": "Every Tag that's been set up in a ClickUp Space, shown with its colour.", "size": "sm" }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": { "text": "Pick a workspace, then a space. This tile is read-only — it doesn't create Tags or apply them to tasks.", "size": "sm" }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        }
+      },
+      "spaceSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedSpace" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_spaces/spaces" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose space…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/ui/selectedTeam" }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["teamSelect", "spaceSelect"],
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedSpace", "value": null } },
+            { "action": "clickup.list_spaces", "params": { "team_id": { "$state": "/ui/selectedTeam" } } }
+          ],
+          "/ui/selectedSpace": [
+            { "action": "clickup.list_tags", "params": { "space_id": { "$state": "/ui/selectedSpace" } } }
+          ]
+        }
+      },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load tags: ${/_errors/clickup.list_tags}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_tags" }
+      },
+      "statusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedSpace" },
+            "$then": {
+              "$cond": { "$state": "/_loading/clickup.list_tags" },
+              "$then": "Loading…",
+              "$else": { "$cond": { "$state": "/clickup/list_tags/tags/0" }, "$then": "", "$else": "No Tags set up in this Space." }
+            },
+            "$else": "Pick a workspace and space above to see its Tags."
+          },
+          "tone": "muted"
+        }
+      },
+
+      "tagBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "name" },
+          "tone": { "$computed": "clickup_tag_tone", "args": { "tags": { "$state": "/clickup/list_tags/tags" }, "name": { "$item": "name" } } }
+        }
+      },
+      "tagRow": { "type": "Row", "props": { "align": "center", "gap": "sm", "wrap": true }, "children": ["tagBadge"] },
+      "tagList": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["tagRow"],
+        "repeat": { "key": "name", "statePath": "/clickup/list_tags/tags" },
+        "visible": { "$state": "/_loading/clickup.list_tags", "not": true }
+      }
+    }
+  }
+}
