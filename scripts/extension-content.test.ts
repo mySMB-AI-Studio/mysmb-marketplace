@@ -59,6 +59,29 @@ afterAll(() => {
 });
 
 describe("portable contracts", () => {
+  it("validates packageWritesOnly as a boolean without accepting unknown settings", () => {
+    for (const value of [true, false]) {
+      const { contentHash: _hash, ...payload } = table();
+      expect(() => validatePortableContent("record_type", signed({ ...payload, definition: { ...payload.definition, settings: { packageWritesOnly: value } } }))).not.toThrow();
+    }
+    for (const settings of [{ packageWritesOnly: "true" }, { anything: true }]) {
+      const { contentHash: _hash, ...payload } = table();
+      expect(() => validatePortableContent("record_type", signed({ ...payload, definition: { ...payload.definition, settings } }))).toThrow();
+    }
+  });
+  it("validates strict setup list requirements, matching keys and dependency references", () => {
+    const list = { key: "clients", label: "Clients", table: "client", columns: [{ column: "Client code", field: "code" }], matchOn: "client-code", sample: [{ "Client code": "DEMO" }] };
+    const payload = (lists: unknown[], tasks: unknown[] = []) => signed({ kind: "setup", originKey: setupOrigin, name: "Setup", definition: { version: 2, lists, tasks } });
+    expect(() => validatePortableContent("setup", payload([list], [{ key: "load", label: "Load", op: "records.query", after: ["clients"] }]))).not.toThrow();
+    for (const bad of [
+      { ...list, extra: true }, { ...list, matchOn: "missing" },
+      { ...list, columns: [...list.columns, { column: "client_code", field: "second" }] },
+      { ...list, columns: [...list.columns, { column: "Other", field: "code" }] },
+      { ...list, sample: [{ wrong: "value" }] },
+      { ...list, matchOn: { field: "code", columns: ["Client code", "Client code"] } },
+    ]) expect(() => validatePortableContent("setup", payload([bad]))).toThrow();
+    expect(() => validatePortableContent("setup", payload([list, list]))).toThrow();
+  });
   it("matches Workspace canonical byte ordering and accepts false/zero defaults", () => {
     expect(canonicalJson({ z: [2, 1], a: { Z: 1, a: 2, absent: undefined } })).toBe('{"a":{"Z":1,"a":2},"z":[2,1]}');
     expect(canonicalJson({ config: { "10": "ten", "2": "two" } })).toBe('{"config":{"2":"two","10":"ten"}}');
