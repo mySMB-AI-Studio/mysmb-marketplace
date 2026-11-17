@@ -5,7 +5,7 @@
   "category": "productivity",
   "tags": ["m365", "outlook", "mail", "email", "folders", "productivity"],
   "keywords": ["outlook", "mail folders", "inbox", "email", "m365", "office", "reading pane"],
-  "connectorsUsed": ["m365-mail-read"],
+  "connectorsUsed": ["m365-mail-read", "m365-mail-send"],
   "popularity": 0,
   "sizing": {
     "preferred": { "colSpan": 8, "rowSpan": 10 },
@@ -23,22 +23,32 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "divider1", "body", "divider2", "footer", "detailOverlay"],
+        "children": ["header", "divider1", "body", "divider2", "footer", "detailOverlay", "composeOverlay", "infoOverlay"],
         "watch": {
           "/m365-mail-read/list_mail_folders": [
             {
               "action": "setState",
               "params": {
                 "statePath": "/ui/sortedFolders",
-                "value": { "$computed": "microsoft-365_mail_folder_sorted", "args": { "items": { "$state": "/m365-mail-read/list_mail_folders" } } }
+                "value": {
+                  "$computed": "microsoft-365_mail_folder_sorted",
+                  "args": { "items": { "$state": "/m365-mail-read/list_mail_folders" }, "selectedPath": { "$state": "/ui/selectedFolderPath" } }
+                }
               }
             }
           ]
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["titleGroup", "headerActions"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "headerActions": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["composeBtn", "infoBtn"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
       "titleIcon": { "type": "Icon", "props": { "name": "Mail", "tone": "info", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Mail and Folders", "level": "h2" } },
@@ -82,7 +92,21 @@
         "props": { "gap": "none" },
         "children": ["folderRow"],
         "repeat": { "statePath": "/ui/sortedFolders", "key": "id" },
-        "visible": { "$state": "/_loading/m365-mail-read.list_mail_folders", "not": true }
+        "visible": { "$state": "/_loading/m365-mail-read.list_mail_folders", "not": true },
+        "watch": {
+          "/ui/selectedFolderPath": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sortedFolders",
+                "value": {
+                  "$computed": "microsoft-365_mail_folder_sorted",
+                  "args": { "items": { "$state": "/m365-mail-read/list_mail_folders" }, "selectedPath": { "$state": "/ui/selectedFolderPath" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "folderRow": {
         "type": "Row",
@@ -92,7 +116,7 @@
           "justify": "between",
           "hover": true,
           "clickable": true,
-          "selected": { "$cond": { "$state": "/ui/selectedFolderPath" }, "eq": { "$item": "path" }, "$then": true, "$else": false }
+          "selected": { "$item": "isSelected" }
         },
         "children": ["folderLeft", "folderUnreadBadge"],
         "on": {
@@ -124,7 +148,7 @@
       "rightColumn": {
         "type": "Stack",
         "props": { "gap": "sm", "grow": true },
-        "children": ["rightHeader", "messagesLoading", "messagesError", "messagesEmpty", "messageList"],
+        "children": ["rightHeader", "messagesLoading", "messagesError", "deleteError", "messagesEmpty", "messageList"],
         "watch": {
           "/m365-mail-read/list_mail_folders": [
             { "action": "m365-mail-read.list_emails", "params": { "folder": "Inbox", "limit": 20 } }
@@ -197,17 +221,45 @@
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["messageRow"],
-        "repeat": { "statePath": "/m365-mail-read/list_emails", "key": "id" },
-        "visible": { "$state": "/_loading/m365-mail-read.list_emails", "not": true }
+        "repeat": { "statePath": "/ui/messagesView", "key": "id" },
+        "visible": { "$state": "/_loading/m365-mail-read.list_emails", "not": true },
+        "watch": {
+          "/m365-mail-read/list_emails": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/messagesView",
+                "value": {
+                  "$computed": "microsoft-365_mark_pending_delete",
+                  "args": { "items": { "$state": "/m365-mail-read/list_emails" }, "pendingId": { "$state": "/ui/pendingDeleteId" } }
+                }
+              }
+            }
+          ],
+          "/ui/pendingDeleteId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/messagesView",
+                "value": {
+                  "$computed": "microsoft-365_mark_pending_delete",
+                  "args": { "items": { "$state": "/m365-mail-read/list_emails" }, "pendingId": { "$state": "/ui/pendingDeleteId" } }
+                }
+              }
+            }
+          ]
+        }
       },
       "messageRow": {
         "type": "Row",
         "props": { "gap": "sm", "align": "start", "justify": "between", "hover": true, "clickable": true },
-        "children": ["messageLeft", "messageReceived"],
+        "children": ["messageLeft", "messageRight"],
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/m365-mail-read/get_email", "value": {} } },
             { "action": "setState", "params": { "statePath": "/_errors/m365-mail-read.get_email", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/replyText", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/replySent", "value": false } },
             { "action": "setState", "params": { "statePath": "/ui/selectedEmailId", "value": { "$bindItem": "id" } } },
             { "action": "m365-mail-read.get_email", "params": { "id": { "$bindItem": "id" } } }
           ]
@@ -231,8 +283,55 @@
       "messageLeft": { "type": "Row", "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["messageUnreadDot", "messageAvatar", "messageLabels"] },
       "messageReceived": { "type": "Caption", "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "receivedDateTime" } } }, "tone": "muted" } },
 
+      "messageRight": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["messageReceived", "messageDeleteRow"] },
+      "messageDeleteRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["messageDeleteBtn", "messageDeleteConfirm"] },
+      "messageDeleteBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Trash2", "size": "sm", "tone": "muted", "ariaLabel": "Delete" },
+        "visible": { "$item": "isPendingDelete", "not": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pendingDeleteId", "value": { "$bindItem": "id" } } } }
+      },
+      "messageDeleteConfirm": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["messageDeleteConfirmLabel", "messageDeleteConfirmBtn", "messageDeleteCancelBtn"],
+        "visible": { "$item": "isPendingDelete" }
+      },
+      "messageDeleteConfirmLabel": { "type": "Caption", "props": { "text": "Delete?", "tone": "destructive" } },
+      "messageDeleteConfirmBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Check", "size": "sm", "tone": "destructive", "ariaLabel": "Confirm delete" },
+        "on": {
+          "click": [
+            { "action": "m365-mail-send.delete_email", "params": { "id": { "$bindItem": "id" } } },
+            { "action": "setState", "params": { "statePath": "/ui/pendingDeleteId", "value": "" } },
+            { "action": "m365-mail-read.list_emails", "params": { "folder": { "$state": "/ui/selectedFolderPath" }, "limit": 20 } }
+          ]
+        }
+      },
+      "messageDeleteCancelBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Cancel" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pendingDeleteId", "value": "" } } }
+      },
+      "deleteError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't delete that message: ${/_errors/m365-mail-send.delete_email}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-mail-send.delete_email" }
+      },
+
       "divider2": { "type": "Divider", "props": {} },
       "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openOutlookBtn"] },
+      "composeBtn": {
+        "type": "Button",
+        "props": { "label": "Compose", "tone": "info", "variant": "primary", "size": "sm", "leadingIcon": "SquarePen" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/composeOpen", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/composeSent", "value": false } }
+          ]
+        }
+      },
       "openOutlookBtn": {
         "type": "Button",
         "props": { "label": "Open Outlook", "tone": "info", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
@@ -252,7 +351,13 @@
       "detailCloseBtn": {
         "type": "IconButton",
         "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close" },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedEmailId", "value": "" } } }
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedEmailId", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/replyText", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/replySent", "value": false } }
+          ]
+        }
       },
       "detailDivider": { "type": "Divider", "props": {} },
       "detailSpinner": {
@@ -273,7 +378,7 @@
       "detailBody": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["kvFrom", "kvReceived", "bodySection", "detailActions"],
+        "children": ["kvFrom", "kvReceived", "bodySection", "detailActions", "replyDivider", "replySection"],
         "visible": { "$state": "/m365-mail-read/get_email/id", "eq": { "$state": "/ui/selectedEmailId" } }
       },
       "kvFrom": {
@@ -297,7 +402,148 @@
         "type": "Button",
         "props": { "label": "Open in Outlook", "variant": "primary", "size": "sm", "leadingIcon": "ExternalLink" },
         "on": { "click": { "action": "open_url", "params": { "url": { "$state": "/m365-mail-read/get_email/webLink" } } } }
-      }
+      },
+
+      "replyDivider": { "type": "Divider", "props": {} },
+      "replySection": { "type": "Stack", "props": { "gap": "xs" }, "children": ["replyLabel", "replyInput", "replyRow", "replySentCaption", "replyError"] },
+      "replyLabel": { "type": "Caption", "props": { "text": "Reply", "tone": "muted", "weight": "semibold" } },
+      "replyInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/replyText" }, "multiline": true, "rows": 3, "placeholder": "Write a reply…" }
+      },
+      "replyRow": { "type": "Row", "props": { "justify": "end" }, "children": ["replySendBtn"] },
+      "replySendBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send reply",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": { "$computed": "microsoft-365_is_blank", "args": { "value": { "$state": "/ui/replyText" } } }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-mail-send.reply_to_email",
+              "params": { "id": { "$state": "/ui/selectedEmailId" }, "comment": { "$state": "/ui/replyText" } }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/replyText", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/replySent", "value": true } }
+          ]
+        }
+      },
+      "replySentCaption": { "type": "Caption", "props": { "text": "Reply sent.", "tone": "success" }, "visible": { "$state": "/ui/replySent" } },
+      "replyError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't send that reply: ${/_errors/m365-mail-send.reply_to_email}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-mail-send.reply_to_email" }
+      },
+
+      "composeOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "36rem" },
+        "children": ["composeCard"],
+        "visible": { "$state": "/ui/composeOpen" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/composeOpen", "value": false } } }
+      },
+      "composeCard": { "type": "Card", "props": {}, "children": ["composeHeader", "composeDivider", "composeBody"] },
+      "composeHeader": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["composeTitle", "composeCloseBtn"] },
+      "composeTitle": { "type": "Heading", "props": { "text": "New message", "level": "h2" } },
+      "composeCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/composeOpen", "value": false } } }
+      },
+      "composeDivider": { "type": "Divider", "props": {} },
+      "composeBody": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["composeToInput", "composeSubjectInput", "composeBodyInput", "composeSendRow", "composeSentCaption", "composeError"]
+      },
+      "composeToInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/composeTo" }, "placeholder": "To (comma-separated emails)" }
+      },
+      "composeSubjectInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/composeSubject" }, "placeholder": "Subject" }
+      },
+      "composeBodyInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/composeBody" }, "multiline": true, "rows": 6, "placeholder": "Write your message…" }
+      },
+      "composeSendRow": { "type": "Row", "props": { "justify": "end" }, "children": ["composeSendBtn"] },
+      "composeSendBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Send",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Send",
+          "disabled": {
+            "$computed": "microsoft-365_compose_send_disabled",
+            "args": { "to": { "$state": "/ui/composeTo" }, "subject": { "$state": "/ui/composeSubject" } }
+          }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "m365-mail-send.send_email",
+              "params": {
+                "to": { "$computed": "microsoft-365_compose_to_list", "args": { "value": { "$state": "/ui/composeTo" } } },
+                "subject": { "$state": "/ui/composeSubject" },
+                "body": { "$state": "/ui/composeBody" },
+                "contentType": "Text"
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/composeTo", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/composeSubject", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/composeBody", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/composeSent", "value": true } }
+          ]
+        }
+      },
+      "composeSentCaption": { "type": "Caption", "props": { "text": "Message sent.", "tone": "success" }, "visible": { "$state": "/ui/composeSent" } },
+      "composeError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't send that message: ${/_errors/m365-mail-send.send_email}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-mail-send.send_email" }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Mail and Folders", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "An Outlook-style view of your mailbox: your folders on the left (Inbox, Drafts and Sent Items first, then the rest alphabetically), and whichever folder's messages on the right.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Click a folder to see its messages. Click a message to read it in full and reply. The trash icon on a message asks you to confirm before deleting it. Compose, at the top, opens a new message. Reply, delete and Compose all act on your real mailbox — there's no undo for sending, though a deleted message can still be recovered from Deleted Items.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] }
     }
   },
   "status": "published"

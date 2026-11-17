@@ -1,18 +1,18 @@
 {
-  "contentHash": "c8a0b08d5ec8e1c00c6130ab54f50564557e8eb7b666c0b5f879f4b3ac06a9c7",
+  "contentHash": "6d13bd059a3368dedb68cf34f7f766b72b21579cff12722ffd8a28c03c594ed1",
   "declaredScopes": [
     "records:od_orders:read",
     "records:od_orders:write"
   ],
   "dependencies": [],
-  "description": "Creates the order in the Orders table for one order file that was uploaded to Order Desk's Orders folder, and gives back the order number. If that file was registered before, it returns the same order instead of making a second one. Uses no AI.",
+  "description": "Creates the order in the Orders table for one order file that was uploaded to Order Desk's Orders folder, and gives back the order number. It keeps the PO number, the delivery date and the delivery address as the order states them. If that file was registered before, it returns the same order instead of making a second one. Uses no AI.",
   "flowIr": {
-    "description": "Creates the order in the Orders table for one order file that was uploaded to Order Desk's Orders folder, and gives back the order number. If that file was registered before, it returns the same order instead of making a second one. Uses no AI.",
+    "description": "Creates the order in the Orders table for one order file that was uploaded to Order Desk's Orders folder, and gives back the order number. It keeps the PO number, the delivery date and the delivery address as the order states them. If that file was registered before, it returns the same order instead of making a second one. Uses no AI.",
     "irVersion": 1,
     "name": "Order Desk: register order",
     "nodes": [
       {
-        "code": "import re\nimport datetime\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_now() -> str:\n    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\n\n\n\ndef od_order_number(message_ref: str) -> str:\n    import hashlib\n\n    return \"OD-\" + hashlib.sha1(message_ref.encode(\"utf-8\")).hexdigest()[:8].upper()\n\n\nfile_path = od_text(params.get(\"file_path\"))\nfile_name = od_text(params.get(\"file_name\")) or file_path.split(\"/\")[-1]\nsender = od_text(params.get(\"sender\"))\nsubject = od_text(params.get(\"subject\")) or file_name\nsource_text = od_text(params.get(\"source_text\"))\nif not file_path:\n    raise ValueError(\"file_path is required: the path of the order file in the agent's files, for example Orders/po-1042.pdf\")\nfingerprint = od_text(params.get(\"fingerprint\"))\nmessage_ref = \"file:\" + (fingerprint or file_path)\norder_number = od_order_number(message_ref)\nexisting = [r for r in od_rows(\"od_orders\", order_number) if od_text(r.get(\"title\")) == order_number]\nalready = bool(existing)\nif existing:\n    order_id = od_text(existing[0].get(\"id\"))\nelse:\n    header = [x for x in [\"From: \" + sender if sender else \"\", \"Subject: \" + subject if subject else \"\", \"File: \" + file_path] if x]\n    text = (\"\\n\".join(header) + \"\\n\\n\" + source_text).strip()\n    if len(text) > 60000:\n        text = text[:60000] + \"\\n[The rest of this order was too long to keep here. Open the original file.]\"\n    data: dict[str, Any] = {\"message_ref\": message_ref[:300], \"received_on\": od_now(), \"source_text\": text, \"source_file\": file_path[:500]}\n    order = api.records.create(type_slug=\"od_orders\", record={\"title\": order_number, \"data\": data})\n    order_id = od_text(order.get(\"id\"))\n",
+        "code": "import re\nimport datetime\nfrom typing import Any\n\n\ndef od_rows(type_slug: str, q: str = \"\") -> list[dict[str, Any]]:\n    out: list[dict[str, Any]] = []\n    cursor: str | None = None\n    for _ in range(100):\n        if q:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor, q=q)\n        else:\n            page = api.records.list(type_slug=type_slug, limit=200, cursor=cursor)\n        out.extend(page.get(\"records\") or [])\n        cursor = page.get(\"nextCursor\")\n        if not cursor:\n            break\n    return out\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_now() -> str:\n    return datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\n\n\ndef od_order_number(message_ref: str) -> str:\n    import hashlib\n\n    return \"OD-\" + hashlib.sha1(message_ref.encode(\"utf-8\")).hexdigest()[:8].upper()\n\n\nfile_path = od_text(params.get(\"file_path\"))\nfile_name = od_text(params.get(\"file_name\")) or file_path.split(\"/\")[-1]\nsender = od_text(params.get(\"sender\"))\nsubject = od_text(params.get(\"subject\")) or file_name\nsource_text = od_text(params.get(\"source_text\"))\nif not file_path:\n    raise ValueError(\"file_path is required: the path of the order file in the agent's files, for example Orders/po-1042.pdf\")\nfingerprint = od_text(params.get(\"fingerprint\"))\nmessage_ref = \"file:\" + (fingerprint or file_path)\norder_number = od_order_number(message_ref)\nstated: dict[str, Any] = {}\npo_number = od_text(params.get(\"po_number\"))[:120]\nif po_number:\n    stated[\"po_number\"] = po_number\ndelivery_date = od_text(params.get(\"delivery_date\"))[:10]\nif re.fullmatch(r\"\\d{4}-\\d{2}-\\d{2}\", delivery_date):\n    stated[\"delivery_date\"] = delivery_date\naddress_raw = od_text(params.get(\"delivery_address_raw\"))[:500]\nif address_raw:\n    stated[\"delivery_address_raw\"] = address_raw\nexisting = [r for r in od_rows(\"od_orders\", order_number) if od_text(r.get(\"title\")) == order_number]\nalready = bool(existing)\nif existing:\n    order_id = od_text(existing[0].get(\"id\"))\n    kept = od_data(existing[0])\n    fill = {key: value for key, value in stated.items() if not od_text(kept.get(key))}\n    if fill:\n        api.records.update(type_slug=\"od_orders\", record_id=order_id, record={\"data\": fill})\nelse:\n    header = [x for x in [\"From: \" + sender if sender else \"\", \"Subject: \" + subject if subject else \"\", \"File: \" + file_path] if x]\n    text = (\"\\n\".join(header) + \"\\n\\n\" + source_text).strip()\n    if len(text) > 60000:\n        text = text[:60000] + \"\\n[The rest of this order was too long to keep here. Open the original file.]\"\n    data: dict[str, Any] = {\"message_ref\": message_ref[:300], \"received_on\": od_now(), \"source_text\": text, \"source_file\": file_path[:500]}\n    data.update(stated)\n    order = api.records.create(type_slug=\"od_orders\", record={\"title\": order_number, \"data\": data})\n    order_id = od_text(order.get(\"id\"))\n",
         "id": "register",
         "kind": "python",
         "outputs": [
@@ -74,9 +74,30 @@
             "name": "source_text",
             "required": false,
             "type": "str"
+          },
+          {
+            "binding": "{{ params.po_number }}",
+            "control": "hidden",
+            "name": "po_number",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.delivery_date }}",
+            "control": "hidden",
+            "name": "delivery_date",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.delivery_address_raw }}",
+            "control": "hidden",
+            "name": "delivery_address_raw",
+            "required": false,
+            "type": "str"
           }
         ],
-        "summary": "Creates the order record for an uploaded order file and returns its id and order number.",
+        "summary": "Creates the order record for an uploaded order file, keeps its PO number, delivery date and address, and returns its id and order number.",
         "title": "Register the order"
       }
     ],
@@ -125,6 +146,30 @@
         "name": "source_text",
         "required": false,
         "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "The customer's PO number exactly as the order states it; leave empty when the order has none",
+        "label": "PO number",
+        "name": "po_number",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "The requested delivery date as YYYY-MM-DD; leave empty when the order states none",
+        "label": "Delivery date",
+        "name": "delivery_date",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "The delivery address as the order states it",
+        "label": "Delivery address",
+        "name": "delivery_address_raw",
+        "required": false,
+        "type": "str"
       }
     ],
     "rootOrder": [
@@ -140,5 +185,15 @@
   "level": "org",
   "name": "Order Desk: register order",
   "originKey": "26225954-ba4a-435a-a6fd-634b87108aac",
+  "practiceRun": {
+    "intendedActions": [
+      {
+        "method": "create",
+        "ns": "records",
+        "summary": "records.create"
+      }
+    ],
+    "version": 1
+  },
   "tags": []
 }

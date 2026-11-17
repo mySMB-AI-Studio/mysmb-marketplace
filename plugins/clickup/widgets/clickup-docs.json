@@ -1,0 +1,181 @@
+{
+  "id": "clickup-docs",
+  "title": "ClickUp Docs",
+  "description": "Docs in a ClickUp Workspace, drilling down into each Doc's pages.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "docs", "documents", "pages", "wiki"],
+  "tags": ["clickup", "project-management", "docs"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "teamSelect", "errorBanner", "statusCaption", "docListSection", "pageSection", "infoOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Docs" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Docs", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": { "text": "Every Doc in a ClickUp Workspace. Pick one to see its pages.", "size": "sm" }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": { "text": "Pick a workspace, then a Doc from the list. This tile is read-only — it doesn't create or edit Docs or pages.", "size": "sm" }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        },
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedDoc", "value": null } }
+          ],
+          "/ui/selectedDoc": [
+            {
+              "action": "clickup.get_doc_pages",
+              "params": { "workspace_id": { "$state": "/ui/selectedTeam" }, "doc_id": { "$state": "/ui/selectedDoc" } }
+            }
+          ]
+        }
+      },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load Docs: ${/_errors/clickup.list_docs}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_docs" }
+      },
+      "pagesErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load pages: ${/_errors/clickup.get_doc_pages}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.get_doc_pages" }
+      },
+      "statusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedTeam" },
+            "$then": {
+              "$cond": { "$state": "/_loading/clickup.list_docs" },
+              "$then": "Loading…",
+              "$else": { "$cond": { "$state": "/clickup/list_docs/docs/0" }, "$then": "", "$else": "No Docs found in this workspace." }
+            },
+            "$else": "Pick a workspace above to see its Docs."
+          },
+          "tone": "muted"
+        },
+        "visible": { "$state": "/ui/selectedDoc", "not": true },
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "clickup.list_docs", "params": { "workspace_id": { "$state": "/ui/selectedTeam" } } }
+          ]
+        }
+      },
+
+      "docName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "docUpdated": { "type": "Caption", "props": { "text": { "$computed": "clickup_date", "args": { "value": { "$item": "date_updated" } } }, "tone": "muted" } },
+      "docRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "clickable": true, "hover": true },
+        "children": ["docName", "docUpdated"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedDoc", "value": { "$bindItem": "id" } } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedDocName", "value": { "$bindItem": "name" } } }
+          ]
+        }
+      },
+      "docList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["docRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_docs/docs" }
+      },
+      "docListSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["docList"],
+        "visible": {
+          "$and": [
+            { "$state": "/ui/selectedDoc", "not": true },
+            { "$state": "/_loading/clickup.list_docs", "not": true }
+          ]
+        }
+      },
+
+      "backToDocsBtn": {
+        "type": "Button",
+        "props": { "label": "← All Docs", "size": "sm", "variant": "secondary" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedDoc", "value": null } } }
+      },
+      "selectedDocHeading": { "type": "Heading", "props": { "level": "h3", "text": { "$state": "/ui/selectedDocName" } } },
+      "pageHeaderRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["selectedDocHeading", "backToDocsBtn"] },
+      "pagesStatusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/_loading/clickup.get_doc_pages" },
+            "$then": "Loading…",
+            "$else": { "$cond": { "$state": "/clickup/get_doc_pages/0" }, "$then": "", "$else": "This Doc has no pages." }
+          },
+          "tone": "muted"
+        }
+      },
+      "pageName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "pageRow": { "type": "Stack", "props": { "gap": "none" }, "children": ["pageName"] },
+      "pageList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["pageRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/get_doc_pages" },
+        "visible": { "$state": "/_loading/clickup.get_doc_pages", "not": true }
+      },
+      "pageSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["pageHeaderRow", "pagesErrorBanner", "pagesStatusCaption", "pageList"],
+        "visible": { "$state": "/ui/selectedDoc" }
+      }
+    }
+  }
+}

@@ -402,6 +402,17 @@ const transcript_display_text = (args) => {
  * else sorts alphabetically by displayName.
  */
 const PINNED_FOLDER_ORDER = ['Inbox', 'Drafts', 'Sent Items'];
+/**
+ * Also tags each folder with `isSelected` when `selectedPath` is given, so
+ * folderRow's "selected" prop can read a plain `{"$item":"isSelected"}`
+ * instead of comparing $state against $item inline -- json-render's eq/neq
+ * only resolves `$state` (or a literal) on the comparison's right-hand side;
+ * an `$item` there is returned unresolved and never matches, confirmed live
+ * (every row read back `selected: true`, then all `false` once the $cond
+ * nesting itself was fixed -- the deeper bug). Pre-computing the comparison
+ * into the data, the same way this function already pre-sorts it, sidesteps
+ * the limitation entirely.
+ */
 const mail_folder_sorted = (args) => {
     const items = Array.isArray(args.items) ? args.items : [];
     const pinned = [];
@@ -414,7 +425,11 @@ const mail_folder_sorted = (args) => {
             pinned[idx] = it;
     }
     rest.sort((a, b) => String(a.displayName ?? '').localeCompare(String(b.displayName ?? '')));
-    return [...pinned.filter((it) => Boolean(it)), ...rest];
+    const sorted = [...pinned.filter((it) => Boolean(it)), ...rest];
+    if (args.selectedPath === undefined)
+        return sorted;
+    const selectedPath = String(args.selectedPath ?? '');
+    return sorted.map((it) => ({ ...it, isSelected: String(it.path ?? '') === selectedPath }));
 };
 const FOLDER_ICONS = {
     Inbox: 'Inbox',
@@ -454,6 +469,43 @@ const mail_folder_tone = (args) => {
     hash = (hash ^ (hash >>> 13)) >>> 0;
     return `chart-${(hash % CHART_TONE_COUNT) + 1}`;
 };
+/**
+ * Tags each message with `isPendingDelete` so the per-row delete button vs
+ * confirm/cancel pair can read a plain `{"$item":"isPendingDelete"}` --
+ * same state-vs-$item comparison limitation as mail_folder_sorted's
+ * `isSelected`, worked around the same way.
+ */
+const mark_pending_delete = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    const pendingId = String(args.pendingId ?? '');
+    return items.map((it) => ({ ...it, isPendingDelete: pendingId !== '' && String(it.id ?? '') === pendingId }));
+};
+// ── compose_to_list ──────────────────────────────────────────────────
+// send_email's `to` param is an array; the compose UI's "To" field is one
+// free-typed string. Splits on comma or semicolon (both common in mail
+// clients), trims, drops empties -- Graph itself validates address shape,
+// so no email-format checking here.
+// Args: { value: string }
+const compose_to_list = (args) => {
+    const raw = String(args.value ?? '');
+    return raw
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+};
+/** Send is disabled until both To and Subject have something in them. */
+const compose_send_disabled = (args) => {
+    return !String(args.to ?? '').trim() || !String(args.subject ?? '').trim();
+};
+/**
+ * `{"$state": path, "not": true}` as a plain prop value does NOT negate --
+ * `not` is only honored by the visibility-condition evaluator, not by
+ * resolvePropValue for ordinary props (confirmed live: a Button's
+ * `disabled` bound that way inverted, staying enabled when the field was
+ * empty and disabling once text was typed). Use this instead for a
+ * disabled-until-non-blank prop.
+ */
+const is_blank = (args) => !String(args.value ?? '').trim();
 const elements = {
     slug: 'microsoft-365',
     functions: {
@@ -482,6 +534,10 @@ const elements = {
         mail_folder_sorted,
         mail_folder_icon,
         mail_folder_tone,
+        compose_to_list,
+        compose_send_disabled,
+        mark_pending_delete,
+        is_blank,
     },
 };
 export default elements;
