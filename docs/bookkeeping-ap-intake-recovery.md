@@ -1,5 +1,11 @@
 # Bookkeeping AP intake checkpoints
 
+State is loaded with `api.files.read`, which returns text. `files.get` returns a
+scratch path and cannot be parsed as JSON. Only the filesystem's `ENOENT:`
+missing-file response initializes empty state. Permission/read failures,
+malformed JSON and invalid scope/checkpoint shapes stop before connector or
+record effects; they never overwrite the saved checkpoint.
+
 Each Xero organisation or mailbox folder keeps its existing cursor and recent
 item IDs in `bookkeeping-ap/*-intake-state.json`. Before processing a new item,
 the intake saves an additional `hold` with the item ID, timestamp and reason.
