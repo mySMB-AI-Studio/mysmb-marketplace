@@ -25,13 +25,23 @@ class FakeApi:
         self.created, self.updated, self.calls = [], [], []
         self.persisted = "{}"
         self.writes = 0
-        self.files = SimpleNamespace(get=lambda **kw: self.persisted, put=self.put_file, scratch_path=lambda name: str(Path(scratch) / name))
+        self.files = SimpleNamespace(read=self.read_file, get=self.get_file, put=self.put_file, scratch_path=lambda name: str(Path(scratch) / name))
+        self.scratch = Path(scratch)
         self.extension = SimpleNamespace(settings=lambda: {"start_reading_from": "2026-11-01", "mail_folders": ["Inbox"]})
         self.records = SimpleNamespace(list=self.list_records, create=self.create, update=self.update)
         self.connectors = SimpleNamespace(invoke=self.invoke)
         self.artifacts = SimpleNamespace(put=lambda **kw: {"artifact_id": "artifact-a"}, get=lambda **kw: str(Path(scratch) / "bill.pdf"))
         self.ai = SimpleNamespace(extract=lambda **kw: {"documents": [{"kind": "tax_invoice", "supplier_name": "Supplier", "bill_to_name": "Alpha", "invoice_number": "INV-1", "total": 123.45, "gst": 11.22, "confidence": 90, "currency": "AUD"}]})
         (Path(scratch) / "bill.pdf").write_bytes(b"synthetic PDF")
+
+    def read_file(self, *, file):
+        return self.persisted
+
+    def get_file(self, *, file):
+        # Match the live binary API: get returns a path, never file contents.
+        path = self.scratch / "downloaded-state.json"
+        path.write_text(self.persisted)
+        return str(path)
 
     def put_file(self, *, file, content):
         self.writes += 1
@@ -78,6 +88,39 @@ class FakeApi:
 
 
 class PackagedRecordCalls(unittest.TestCase):
+    def test_checkpoint_read_errors_and_corruption_stop_before_effects(self):
+        for document, code in scripts():
+            if "api.records.create" not in code:
+                continue
+            for saved in ("not JSON", "[]", "null", '{"Inbox": []}', '{"Inbox": {"recent": "bad"}}', '{"Inbox": {"cursor": 4}}', '{"Inbox": {"hold": null}}', '{"Inbox": {"hold": {}}}'):
+                with self.subTest(automation=document["name"], saved=saved), tempfile.TemporaryDirectory() as scratch:
+                    api = FakeApi(scratch)
+                    api.persisted = saved
+                    with self.assertRaises((RuntimeError, ValueError)):
+                        exec(compile(code, document["name"], "exec"), {"api": api})
+                    self.assertEqual((api.created, api.calls, api.writes), ([], [], 0))
+                    self.assertEqual(api.persisted, saved)
+            with self.subTest(automation=document["name"], failure="read"), tempfile.TemporaryDirectory() as scratch:
+                api = FakeApi(scratch)
+                def fail_read(**kw):
+                    raise RuntimeError("EACCES: permission denied")
+                api.files.read = fail_read
+                with self.assertRaisesRegex(RuntimeError, "EACCES"):
+                    exec(compile(code, document["name"], "exec"), {"api": api})
+                self.assertEqual((api.created, api.calls, api.writes), ([], [], 0))
+
+    def test_confirmed_missing_checkpoint_starts_fresh(self):
+        for document, code in scripts():
+            if "api.records.create" not in code:
+                continue
+            with self.subTest(automation=document["name"]), tempfile.TemporaryDirectory() as scratch:
+                api = FakeApi(scratch)
+                def missing_read(**kw):
+                    raise RuntimeError("ENOENT: no such file or directory, open checkpoint")
+                api.files.read = missing_read
+                exec(compile(code, document["name"], "exec"), {"api": api})
+                self.assertEqual(len(api.created), 1)
+
     def test_create_failure_preserves_cursor_and_holds_item_without_automatic_retry(self):
         for document, code in scripts():
             if "api.records.create" not in code:
