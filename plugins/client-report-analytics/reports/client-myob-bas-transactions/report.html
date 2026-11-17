@@ -283,19 +283,20 @@ sum,symbol,DISPLAY_DEFAULT,readDisplay,writeDisplay,money,pct,isNeg,PRESETS,pres
 <script>// CRA-07 BAS Related Transactions and GST (MYOB) — Client Report Analytics. Every invoice, bill and spend money line of the period with
 // its tax code, contact, source and GL account, grouped by tax type (or by contact / account), with totals that tie to MYOB's tax code
 // summary for the same period. MYOB's API returns the tax per document, not per line: each document's GST (TotalTax) is split across its
-// lines by their tax codes' rates, so a document's lines always add up to its own net, GST and gross. Receive money has no list tool on the
-// connector (nor do pay runs or general journals with tax): whatever they carry shows as a reconciling difference against the summary.
+// lines by their tax codes' rates, so a document's lines always add up to its own net, GST and gross. Receive money is listed from
+// list_receive_money (added 17 Nov 2026; optional, so a connector without it falls back to Not listed). Pay runs and general journals with
+// tax have no list tool: whatever they carry shows as a reconciling difference against the summary.
 // Accrual basis only: the line tools list documents by their date.
 var CRA_F = { tax: '', contact: '', account: '' };
 var CRA = MK.app({
-  title: 'MYOB BAS Related Transactions and GST', primary: 'gst', files: 'company_files', optional: ['tax_codes'],
+  title: 'MYOB BAS Related Transactions and GST', primary: 'gst', files: 'company_files', optional: ['tax_codes', 'receive'],
   inputs: { start: 'from_date', end: 'to_date', companyFile: 'company_file', persona: 'persona', display: 'display' },
   defaults: { from_date: '2026-04-01', to_date: '2026-06-30', company_file: '', persona: 'Bookkeeper',
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":0,"hdr":1,"ftr":1,"style":"mysmb","dens":"100","p":"last_quarter","a":"custom","c":"none","v":"tax"}' },
   presets: [['this_month', 'This month'], ['last_month', 'Last month'], ['this_quarter', 'This quarter'], ['last_quarter', 'Last quarter (BAS)'], ['this_fy', 'This financial year'], ['last_fy', 'Last financial year'], ['custom', 'Custom']],
-  uses: { inv_lines: ['from_date', 'to_date', 'company_file'], bill_lines: ['from_date', 'to_date', 'company_file'], spend: ['from_date', 'to_date', 'company_file'], invoices: ['from_date', 'to_date', 'company_file'], bills: ['from_date', 'to_date', 'company_file'],
+  uses: { inv_lines: ['from_date', 'to_date', 'company_file'], bill_lines: ['from_date', 'to_date', 'company_file'], spend: ['from_date', 'to_date', 'company_file'], receive: ['from_date', 'to_date', 'company_file'], invoices: ['from_date', 'to_date', 'company_file'], bills: ['from_date', 'to_date', 'company_file'],
     gst: ['from_date', 'to_date', 'company_file'], tax_codes: ['company_file'], accounts: ['company_file'], company_files: [] },
-  tools: { inv_lines: 'list_invoice_lines (every sales invoice line)', bill_lines: 'list_bill_lines (every bill line)', spend: 'list_spend_money (spend money and its lines)', invoices: 'list_invoices (each invoice’s GST and totals)', bills: 'list_bills (each bill’s GST and totals)',
+  tools: { inv_lines: 'list_invoice_lines (every sales invoice line)', bill_lines: 'list_bill_lines (every bill line)', spend: 'list_spend_money (spend money and its lines)', receive: 'list_receive_money (receive money and its lines)', invoices: 'list_invoices (each invoice’s GST and totals)', bills: 'list_bills (each bill’s GST and totals)',
     gst: 'get_gst_summary (tax code summary, accrual)', tax_codes: 'list_tax_codes (names and rates)', accounts: 'list_accounts', company_files: 'list_company_files' },
   views: [['tax', 'Grouped by tax type'], ['contact', 'Grouped by contact'], ['account', 'Grouped by account']],
   render: function (c) {
@@ -336,6 +337,10 @@ var CRA = MK.app({
     var SP = c.data.spend ? MK.items(c.data.spend) : null;
     if (SP) SP.forEach(function (t) { split({ tax: MK.num(t.TotalTax), gross: MK.num(t.AmountPaid), incl: !!t.IsTaxInclusive, src: 'Spend money', ref: t.PaymentNumber || '', date: MK.isoDate(t.Date), contact: (t.Contact || {}).Name || '', side: 'p' },
       (t.Lines || []).map(function (l) { return { amt: MK.num(l.Amount) || 0, code: String((l.TaxCode || {}).Code || '').toUpperCase(), account: acct(l.Account), desc: l.Memo || '' }; })); });
+    var RM = c.data.receive && !c.errors.receive ? MK.items(c.data.receive) : null;
+    if (RM) RM.forEach(function (t) { split({ tax: MK.num(t.TotalTax), gross: MK.num(t.AmountReceived), incl: !!t.IsTaxInclusive, src: 'Receive money', ref: t.ReceiptNumber || '', date: MK.isoDate(t.Date), contact: (t.Contact || {}).Name || '', side: 's' },
+      (t.Lines || []).map(function (l) { return { amt: MK.num(l.Amount) || 0, code: String((l.TaxCode || {}).Code || '').toUpperCase(), account: acct(l.Account), desc: l.Memo || '' }; })); });
+    var rmNote = RM ? 'pay runs or general journals with a tax code' : 'receive money (list_receive_money not available: ' + (c.errors.receive ? c.err('receive') : 'not loaded') + '), pay runs or general journals with a tax code';
     out.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)) || String(a.ref).localeCompare(String(b.ref)); });
     // ---- totals per tax code (listed) vs the summary
     var T = {}; out.forEach(function (r) { var x = T[r.code] || (T[r.code] = { s: 0, p: 0, tc: 0, tp: 0, n: 0 }); x.n++; if (r.side === 's') { x.s = r2(x.s + r.net); x.tc = r2(x.tc + r.gst); } else { x.p = r2(x.p + r.net); x.tp = r2(x.tp + r.gst); } });
@@ -368,7 +373,7 @@ var CRA = MK.app({
       '<tr class="k-total"><td colspan="6">Net GST (collected − paid)</td>' + mtd(r2(tot(shS).gst - tot(shP).gst)) + '<td></td></tr></tfoot></table></div></div>' +
       '<div class="mk-card"><h3>Tie to MYOB’s tax code summary (accrual)</h3><div class="mk-scroll"><table class="mk-grid" id="cra-rec"><thead><tr><th scope="col">Tax code</th><th scope="col" class="num">GST collected (lines)</th><th scope="col" class="num">Summary</th><th scope="col" class="num">Not listed</th><th scope="col" class="num">GST paid (lines)</th><th scope="col" class="num">Summary</th><th scope="col" class="num">Not listed</th></tr></thead><tbody>' +
       rec.map(function (x) { return '<tr><td>' + h(x.code + (x.name ? ' — ' + x.name : '')) + '</td>' + mtd(x.tc) + mtd(x.stc) + mtd(x.dtc) + mtd(x.tp) + mtd(x.stp) + mtd(x.dtp) + '</tr>'; }).join('') + '</tbody></table></div>' +
-      '<p class="muted">“Not listed” = the summary less the lines: receive money (the connector has no list of receive money), pay runs and general journals carrying a tax code are in MYOB’s summary but not in these lists.</p>' +
+      '<p class="muted">“Not listed” = the summary less the lines: ' + h(rmNote.charAt(0).toUpperCase() + rmNote.slice(1)) + ' are in MYOB’s summary but not in these lists.</p>' +
       '<details class="detail-block"><summary>Net amounts by tax code (information)</summary><div class="mk-scroll"><table class="mk-grid"><thead><tr><th scope="col">Tax code</th><th scope="col" class="num">Sales net (lines)</th><th scope="col" class="num">Summary</th><th scope="col" class="num">Purchases net (lines)</th><th scope="col" class="num">Summary</th></tr></thead><tbody>' +
       rec.map(function (x) { return '<tr><td>' + h(x.code) + '</td>' + mtd(x.ns) + mtd(x.sns) + mtd(x.np) + mtd(x.snp) + '</tr>'; }).join('') + '</tbody></table></div></details></div>';
     ['tax', 'contact', 'account'].forEach(function (k) { var e = document.getElementById('cra-f-' + k); if (e) e.addEventListener('change', function () { CRA_F[k] = this.value; CRA.render(); }); });
@@ -383,16 +388,16 @@ var CRA = MK.app({
       cov(INV, 'invoice', 'invoices'), cov(BIL, 'bill', 'bills'),
       { name: 'Every document’s lines: Net + GST = Gross, and add up to the document’s own total (list_invoices / list_bills / spend money AmountPaid)', pass: !docIssues.length && !fromRate, detail: docIssues.length ? docIssues.slice(0, 6).join('; ') + (docIssues.length > 6 ? ' … +' + (docIssues.length - 6) : '') : fromRate ? fromRate + ' document(s) without a header: GST computed from the rates' : out.length + ' line(s)' },
       { name: 'Every line’s tax code has a rate (list_tax_codes)', pass: !Object.keys(unknownRate).length, detail: Object.keys(unknownRate).length ? 'No rate for: ' + Object.keys(unknownRate).join(', ') : 'ok' },
-      c.errors.gst ? { name: 'GST per tax type = the tax code summary', pass: null, detail: c.err('gst') } : { name: 'GST per tax type = MYOB’s tax code summary for the period (collected and paid, code by code)', pass: !badT.length, detail: badT.length ? 'Not listed: ' + badT.map(function (x) { return x.code + (Math.abs(x.dtc) >= 0.005 ? ' collected ' + money(x.dtc) : '') + (Math.abs(x.dtp) >= 0.005 ? ' paid ' + money(x.dtp) : ''); }).join('; ') + ' — receive money (no list tool on the connector), pay runs or general journals with a tax code' : allCodes.length + ' tax code(s)' },
+      c.errors.gst ? { name: 'GST per tax type = the tax code summary', pass: null, detail: c.err('gst') } : { name: 'GST per tax type = MYOB’s tax code summary for the period (collected and paid, code by code)', pass: !badT.length, detail: badT.length ? 'Not listed: ' + badT.map(function (x) { return x.code + (Math.abs(x.dtc) >= 0.005 ? ' collected ' + money(x.dtc) : '') + (Math.abs(x.dtp) >= 0.005 ? ' paid ' + money(x.dtp) : ''); }).join('; ') + ' — ' + rmNote : allCodes.length + ' tax code(s)' },
       c.errors.gst ? { name: 'Grand total GST = net GST of the period', pass: null, detail: c.err('gst') } : { name: 'Grand total net GST (lines) = the period’s net GST (summary)', pass: MK.near(r2(G.tc - G.tp), r2(SG.tc - SG.tp)), detail: money(r2(G.tc - G.tp)) + ' vs ' + money(r2(SG.tc - SG.tp)) }
     ];
     if (c.errors.spend) checks.push({ name: 'Spend money loaded', pass: false, detail: c.err('spend') });
     self._x = { out: out, rec: rec, G: G, SG: SG, codeLabel: function (k) { var rt = rateOf(k); return k + (codes[k] && codes[k].name ? ' — ' + codes[k].name : '') + (rt != null ? ' (' + rt + '%)' : ''); } };
     return { checks: checks, period: MK.periodLine(from, to) + ' · Accrual basis',
-      notes: ['Lines: list_invoice_lines, list_bill_lines and list_spend_money for documents dated in the period (accrual). Credit notes / supplier credits are MYOB invoices / bills with a negative total.',
+      notes: ['Lines: list_invoice_lines, list_bill_lines, list_spend_money and list_receive_money for documents dated in the period (accrual). Credit notes / supplier credits are MYOB invoices / bills with a negative total.',
         'MYOB returns the GST per document, not per line: each document’s GST is split across its lines by their tax codes’ rates (single-code documents are exact), so the lines always add up to the document.',
-        'Receive money has no list tool on the myob-accounting connector, so it is not listed; its tax (with pay runs and general journals carrying a tax code) is the “Not listed” column of the tie to the summary, never a silent gap.'],
-      na: ['Receive money transactions (no list tool on the connector)', 'Pay runs and general journals by line (not listed; their tax shows as Not listed)', 'Cash basis (the line tools list documents by their date)'] };
+        'Pay runs and general journals carrying a tax code have no list tool on the myob-accounting connector, so they are not listed: their tax is the “Not listed” column of the tie to the summary, never a silent gap.'],
+      na: ['Pay runs and general journals by line (not listed; their tax shows as Not listed)', 'Cash basis (the line tools list documents by their date)'] };
   },
   excel: function (c) {
     var x = this._x; if (!x) return [];

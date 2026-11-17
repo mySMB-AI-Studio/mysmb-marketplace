@@ -13,7 +13,8 @@ const txRows = (t) => [...t.doc.querySelectorAll('#cra-tx tbody tr.detail-block'
   const inv = L.listInvoices(Object.assign({ status: 'All' }, Q)).Items, bills = L.listBills(Object.assign({ status: 'All' }, Q)).Items, il = L.listInvoiceLines(Q).Items, bl = L.listBillLines(Q).Items, sp = L.listSpendMoney(Q).Items;
   const nLines = il.length + bl.length + sp.reduce((a, x) => a + x.Lines.length, 0);
   ok('opens on the last BAS quarter and is green: periods, completeness, document ties, rates, GST per tax type, net GST', green(t) && /✓ Validation: 7\/7 checks passed/.test(banner(t)) && t.errs.length === 0, banner(t).slice(0, 900));
-  ok('every invoice, bill and spend money line is listed once', txRows(t).length === nLines && new RegExp('Lines' + nLines).test(body(t)), { shown: txRows(t).length, nLines });
+  const nRm = txRows(t).filter((r) => r[1] === 'Receive money').length;
+  ok('every invoice, bill, spend money and receive money line is listed once', txRows(t).length - nRm === nLines && nRm > 0 && new RegExp('Lines' + (nLines + nRm)).test(body(t)), { shown: txRows(t).length, nLines, nRm });
   ok('GST collected and paid = the tax code summary', new RegExp('GST collected \\(listed\\)' + fmt(code(S, 'GST').TaxCollected) + 'GST paid \\(listed\\)' + fmt(code(S, 'GST').TaxPaid)).test(body(t)), body(t).slice(0, 200));
   const rows = txRows(t), num = (s) => +s.replace(/[^\d.-]/g, '') * (/\(/.test(s) ? -1 : 1);
   ok('every row: Net + GST = Gross; columns Date, Source, Reference, Contact, Account', rows.every((r) => Math.abs(num(r[5]) + num(r[6]) - num(r[7])) < 0.005) && rows[0].length === 8);
@@ -44,11 +45,19 @@ const txRows = (t) => [...t.doc.querySelectorAll('#cra-tx tbody tr.detail-block'
   const td = await go(ID, { invoices: (p) => { const r = L.listInvoices(p); r.Items[0].TotalAmount = r2(r.Items[0].TotalAmount + 1); return r; } });
   ok('an invoice whose lines do not add up to its total → the document check fails', /✗ Every document’s lines.*lines .* vs document/.test(banner(td)) && red(td), banner(td).slice(0, 400));
   const rm = await go(ID, { gst: (p) => { const r = L.taxCodeSummary(p); code(r.TaxCodeBreakdown, 'GST').TaxCollected = r2(code(r.TaxCodeBreakdown, 'GST').TaxCollected + 15); return r; } });
-  ok('GST on receive money (in the summary, not listable) → shown as Not listed and the tie fails, naming receive money', /✗ GST per tax type.*GST collected \$15\.00 — receive money \(no list tool/.test(banner(rm)) && /\$15\.00/.test(text(rm.doc, '#cra-rec')) && /✗ Grand total net GST/.test(banner(rm)) && red(rm), banner(rm).slice(0, 600));
+  ok('GST in the summary but in no listed line (a pay run or general journal) → shown as Not listed and the tie fails, naming them', /✗ GST per tax type.*GST collected \$15\.00 — pay runs or general journals with a tax code/.test(banner(rm)) && /\$15\.00/.test(text(rm.doc, '#cra-rec')) && /✗ Grand total net GST/.test(banner(rm)) && red(rm), banner(rm).slice(0, 600));
   const cn = await go(ID, { invoices: (p) => { const r = L.listInvoices(p); r.Items.push({ UID: 'cn-1', Number: 'CN0001', Date: '2026-05-10T00:00:00', Customer: { UID: 'c', Name: 'Redwood Dental' }, Status: 'Closed', Subtotal: -100, TotalTax: -10, TotalAmount: -110, BalanceDueAmount: 0, IsTaxInclusive: false }); return r; },
     inv_lines: (p) => { const r = L.listInvoiceLines(p); r.Items.push({ DocumentUID: 'cn-1', Number: 'CN0001', Date: '2026-05-10T00:00:00', Layout: 'Service', Status: 'Closed', IsTaxInclusive: false, Customer: { UID: 'c', Name: 'Redwood Dental' }, RowID: 1, Type: 'Transaction', Description: 'Refund', Total: -100, TaxCode: { UID: 'x', Code: 'GST' }, Account: { UID: 'a', DisplayID: '4-1300', Name: 'Professional Fees' } }); return r; },
     gst: (p) => { const r = L.taxCodeSummary(p); const g = code(r.TaxCodeBreakdown, 'GST'); g.TaxCollected = r2(g.TaxCollected - 10); g.SalesTotal = r2(g.SalesTotal - 110); return r; } });
   ok('a credit note (negative invoice) is listed as a credit note with negative GST and still ties', txRows(cn).some((r) => r[1] === 'Credit note' && r[2] === 'CN0001' && num(r[6]) === -10) && green(cn), banner(cn).slice(0, 300));
+  // receive money (list_receive_money, 17 Nov 2026): its lines are listed and its GST ties to the summary
+  const rmRows = rows.filter((r) => r[1] === 'Receive money');
+  ok('receive money is listed (bank interest, ITS) and the report stays green', rmRows.length > 0 && rmRows.every((r) => /8-1000/.test(r[4])) && green(t), rmRows.length);
+  const rg = await go(ID, { receive: () => ({ Count: 1, Items: [{ UID: 'rm-g', ReceiptNumber: 'CR9001', Date: '2026-05-20T00:00:00', DepositTo: 'Account', Account: null, Contact: { UID: 'mc', Name: 'Medicare Australia', Type: 'Customer' }, AmountReceived: 165, IsTaxInclusive: true, TotalTax: 15, Memo: 'Bulk bill', Lines: [{ RowID: 1, Account: { UID: 'x', Name: 'Sales', DisplayID: '4-1400' }, Job: null, TaxCode: { UID: 'g', Code: 'GST' }, Amount: 165, Memo: 'Bulk bill' }] }] }),
+    gst: (p) => { const r = L.taxCodeSummary(p); const g = code(r.TaxCodeBreakdown, 'GST'); g.TaxCollected = r2(g.TaxCollected + 15); g.SalesTotal = r2(g.SalesTotal + 165); return r; } });
+  ok('receive money carrying GST (the Medicare case on QA) is listed with its GST and ties to the summary: green, nothing Not listed', txRows(rg).some((r) => r[1] === 'Receive money' && r[2] === 'CR9001' && num(r[6]) === 15) && green(rg), banner(rg).slice(0, 500));
+  const rf = await go(ID, null, { fail: { receive: { code: 'tool_error', message: 'Unknown tool list_receive_money' } } });
+  ok('a connector without list_receive_money falls back: no receive money lines, the report still loads and says why', !txRows(rf).some((r) => r[1] === 'Receive money') && /list_receive_money not available/.test(body(rf)), body(rf).slice(-600));
   const te = await go(ID, null, { fail: { spend: { code: 'tool_error', message: 'MYOB 500' } } });
   ok('spend money unavailable → failed, never silent', /✗ Data loaded: list_spend_money|✗ Spend money loaded/.test(banner(te)) && red(te), banner(te).slice(0, 300));
   t.doc.getElementById('mk-xlsx').click(); await wait(40); const xs = await xlsxText(t);
