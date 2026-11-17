@@ -16,9 +16,22 @@ function spendMoney(p) {
   r.Items.forEach((t) => t.Lines.forEach((l) => { const id = l.Account.DisplayID, pl = /^[4-9]-/.test(id), code = !pl ? 'N-T' : t.TotalTax > 0 ? 'GST' : DEF[id] || 'GST'; l.TaxCode = { UID: codeUid(cf, code), Code: code }; }));
   return r;
 }
+// list_receive_money (Banking/ReceiveMoneyTxn, myhub-mcp-servers listReceiveMoney): the ledger's ReceiveMoney journals (bank interest),
+// each income line with the code the ledger's tax code summary uses for it, so lines and summary come from one set of books.
+function receiveMoney(p) {
+  const B = L.expect.books(p.myob_company_file_id || L.CF1), cf = p.myob_company_file_id || L.CF1, ref = (id) => ({ UID: B.acc[id].UID, Name: B.acc[id].Name, DisplayID: id });
+  const inR = (d) => (!p.from_date || d >= p.from_date) && (!p.to_date || d <= p.to_date);
+  const items = B.tx.filter((t) => t.SourceTransaction.TransactionType === 'ReceiveMoney' && inR(String(t.DateOccurred).slice(0, 10))).map((t, k) => {
+    const dr = t.Lines.filter((x) => !x.IsCredit), cr = t.Lines.filter((x) => x.IsCredit && x.Account.DisplayID !== '2-1310');
+    return { UID: 'rm-' + k, ReceiptNumber: 'CR' + t.DisplayID.slice(2), Date: t.DateOccurred, DepositTo: 'Account', Account: ref(dr[0].Account.DisplayID), Contact: null,
+      AmountReceived: L.r2(dr.reduce((a, x) => a + x.Amount, 0)), PaymentMethod: null, IsTaxInclusive: false, TotalTax: 0, Memo: t.Description,
+      Lines: cr.map((x, i) => ({ RowID: i + 1, Account: ref(x.Account.DisplayID), Job: null, TaxCode: { UID: codeUid(cf, DEF[x.Account.DisplayID] || 'GST'), Code: DEF[x.Account.DisplayID] || 'GST' }, Amount: x.Amount, Memo: t.Description })) };
+  });
+  return { Count: items.length, Items: items };
+}
 const TOOL = { get_profit_and_loss: L.profitAndLoss, get_profit_and_loss_3m: L.profitAndLoss, get_balance_sheet: L.balanceSheet, list_accounts: L.listAccounts, list_company_files: L.companyFiles,
   list_invoices: L.listInvoices, list_bills: L.listBills, list_journal_transactions: L.listJournalTransactions, list_tax_codes: L.listTaxCodes, get_aged_receivables: L.agedReceivables, get_aged_payables: L.agedPayables,
-  get_gst_summary: L.taxCodeSummary, list_invoice_lines: L.listInvoiceLines, list_bill_lines: L.listBillLines, list_spend_money: spendMoney, list_payments: L.listPayments, list_supplier_payments: L.listSupplierPayments,
+  get_gst_summary: L.taxCodeSummary, list_invoice_lines: L.listInvoiceLines, list_bill_lines: L.listBillLines, list_spend_money: spendMoney, list_receive_money: receiveMoney, list_payments: L.listPayments, list_supplier_payments: L.listSupplierPayments,
   list_contacts: L.listContacts, workq_activity: workqActivity, list_bank_statement_lines: L.listBankStatementLines, list_payroll_advices: L.listPayrollAdvices,
   list_suppliers: L.listSuppliers, list_timesheets: L.listTimesheets };
 // workq_activity (the 'workspace' built-in report server, CRA-15): no production shape to copy from anywhere in this repo —
