@@ -23,13 +23,19 @@ def scripts():
 class FakeApi:
     def __init__(self, scratch):
         self.created, self.updated, self.calls = [], [], []
-        self.files = SimpleNamespace(get=lambda **kw: "{}", put=lambda **kw: None, scratch_path=lambda name: str(Path(scratch) / name))
+        self.persisted = "{}"
+        self.writes = 0
+        self.files = SimpleNamespace(get=lambda **kw: self.persisted, put=self.put_file, scratch_path=lambda name: str(Path(scratch) / name))
         self.extension = SimpleNamespace(settings=lambda: {"start_reading_from": "2026-11-01", "mail_folders": ["Inbox"]})
         self.records = SimpleNamespace(list=self.list_records, create=self.create, update=self.update)
         self.connectors = SimpleNamespace(invoke=self.invoke)
         self.artifacts = SimpleNamespace(put=lambda **kw: {"artifact_id": "artifact-a"}, get=lambda **kw: str(Path(scratch) / "bill.pdf"))
         self.ai = SimpleNamespace(extract=lambda **kw: {"documents": [{"kind": "tax_invoice", "supplier_name": "Supplier", "bill_to_name": "Alpha", "invoice_number": "INV-1", "total": 123.45, "gst": 11.22, "confidence": 90, "currency": "AUD"}]})
         (Path(scratch) / "bill.pdf").write_bytes(b"synthetic PDF")
+
+    def put_file(self, *, file, content):
+        self.writes += 1
+        self.persisted = content
 
     def list_records(self, *, type_slug, **kw):
         rows = [{"id": CLIENT, "title": "Alpha", "data": {"ap_enabled": True, "ap_xero_tenant_id": "xero-a", "ap_xero_org_name": "Alpha", "ap_approval_route": "draft_only"}}] if type_slug == "client" else []
@@ -72,6 +78,62 @@ class FakeApi:
 
 
 class PackagedRecordCalls(unittest.TestCase):
+    def test_create_failure_preserves_cursor_and_holds_item_without_automatic_retry(self):
+        for document, code in scripts():
+            if "api.records.create" not in code:
+                continue
+            with self.subTest(automation=document["name"]), tempfile.TemporaryDirectory() as scratch:
+                api = FakeApi(scratch)
+                key = "xero-a" if "Find new bills" in document["name"] else "Inbox"
+                original = {"cursor": "2026-11-01T00:00:00Z", "recent": ["older-item"], "history": "keep"}
+                api.persisted = json.dumps({key: original})
+                attempts = []
+                def fail_create(**kw):
+                    attempts.append(kw)
+                    raise RuntimeError("create outcome needs reconciliation")
+                api.records.create = fail_create
+                with self.assertRaisesRegex(RuntimeError, "held"):
+                    exec(compile(code, document["name"], "exec"), {"api": api})
+                held = json.loads(api.persisted)[key]
+                self.assertEqual(held["cursor"], original["cursor"])
+                self.assertEqual(held["recent"], original["recent"])
+                self.assertEqual(held["history"], "keep")
+                self.assertIn("hold", held)
+                with self.assertRaisesRegex(RuntimeError, "held"):
+                    exec(compile(code, document["name"], "exec"), {"api": api})
+                self.assertEqual(len(attempts), 1)
+                self.assertEqual(json.loads(api.persisted)[key], held)
+
+    def test_partial_message_and_failed_success_checkpoint_never_automatically_duplicate(self):
+        document, code = next((doc, code) for doc, code in scripts() if "(Outlook)" in doc["name"])
+        for failure in ("second_create", "success_checkpoint"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as scratch:
+                api = FakeApi(scratch)
+                if failure == "second_create":
+                    extract = api.ai.extract
+                    api.ai.extract = lambda **kw: {"documents": extract(**kw)["documents"] * 2}
+                    create = api.records.create
+                    def create_or_fail(**kw):
+                        if api.created:
+                            raise RuntimeError("second bill failed")
+                        return create(**kw)
+                    api.records.create = create_or_fail
+                else:
+                    put = api.files.put
+                    def fail_after_create(**kw):
+                        if api.created:
+                            raise RuntimeError("checkpoint unavailable")
+                        return put(**kw)
+                    api.files.put = fail_after_create
+                with self.assertRaises(RuntimeError):
+                    exec(compile(code, document["name"], "exec"), {"api": api})
+                self.assertEqual(len(api.created), 1)
+                self.assertIn("hold", json.loads(api.persisted)["Inbox"])
+                api.files.put = api.put_file
+                with self.assertRaisesRegex(RuntimeError, "held"):
+                    exec(compile(code, document["name"], "exec"), {"api": api})
+                self.assertEqual(len(api.created), 1)
+
     def test_all_intakes_run_to_strict_create_envelopes(self):
         for document, code in scripts():
             if "api.records.create" not in code:
@@ -91,6 +153,7 @@ class PackagedRecordCalls(unittest.TestCase):
                 self.assertIs(type(record["data"]["total"]), int)
                 self.assertNotIn("bill_name", record["data"])
                 self.assertNotIn("client", record["data"])
+                self.assertTrue(all("hold" not in value for value in json.loads(api.persisted).values()))
                 self.assertTrue(all(args.get("xero_tenant_id") == "xero-a" for server, tool, args in api.calls if server == "xero-accounting" and tool != "list_connections"))
 
     def test_unmatched_mail_bill_has_no_client_relation_or_title_in_data(self):
