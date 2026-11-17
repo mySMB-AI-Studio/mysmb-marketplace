@@ -3,6 +3,8 @@ name: draft-content
 description: Draft one social media post, article, email, announcement or visual for the Social Media Agent's content-piece process, from the confirmed Brand Kit, the request and the content-type rules. Returns the step's JSON only. Draft-only; never posts or sends.
 ---
 
+> **In a newer job (a prompted process)** the same fields come from the result of the prepare tool's "context" mode: where this skill says `steps.context.<x>`, use `<x>` from that result. Do not answer with the JSON there: write `document_markdown` to the draft file and pass `variants` to the check tool, as the process instructions say.
+
 > **Running the Plan a campaign step?** Skip the drafting rules and follow "Planning a campaign" at the end of this skill.
 
 # Draft a content piece
