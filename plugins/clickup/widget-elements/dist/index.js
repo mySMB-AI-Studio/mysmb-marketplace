@@ -115,6 +115,15 @@ const channel_type_label = (args) => {
     const v = args.value == null ? '' : String(args.value);
     return CHANNEL_TYPE_LABELS[v] ?? (v || 'Channel');
 };
+// ── channel_display_name ─────────────────────────────────────────────
+// DM and ASK_AI channels carry no `name` field at all (confirmed live) --
+// fall back to the type label ("Direct message", etc.) so every channel
+// row and the messages-view header always has something to show.
+// Args: { name: string | null, type: string | null }
+const channel_display_name = (args) => {
+    const name = typeof args.name === 'string' ? args.name.trim() : '';
+    return name || channel_type_label({ value: args.type });
+};
 // Decorative categorical colors (chart-1..5), not status tones -- a
 // channel's type isn't "good" or "bad", it's one of several kinds, same
 // reasoning as @myhub/widget-tokens' own chart-N doc comment.
@@ -148,6 +157,30 @@ const assignee_names = (args) => {
     const arr = Array.isArray(args.value) ? args.value : [];
     const names = arr.map((a) => a?.username).filter((n) => !!n);
     return names.length ? names.join(', ') : 'Unassigned';
+};
+// ── member_options ───────────────────────────────────────────────────
+// Turns a list_members response into Select-ready {value,label} options.
+// Confirmed live that a member's `username` can be null (email-only
+// invite, never set a display name) -- falls back to email, then a
+// "User <id>" placeholder, so the picker never shows a blank label.
+// Args: { value: array }
+const member_options = (args) => {
+    const members = Array.isArray(args.value) ? args.value : [];
+    return members.map((m) => {
+        const id = m.id == null ? '' : String(m.id);
+        const username = typeof m.username === 'string' ? m.username.trim() : '';
+        const email = typeof m.email === 'string' ? m.email.trim() : '';
+        return { value: id, label: username || email || `User ${id}` };
+    });
+};
+// ── assignee_param ───────────────────────────────────────────────────
+// Wraps a single Select'ed member id (a string, or '' for "unassigned")
+// into the array shape ClickUp's create_task `assignees` param expects.
+// Args: { value: string | null }
+const assignee_param = (args) => {
+    const id = typeof args.value === 'string' ? args.value.trim() : '';
+    const n = Number(id);
+    return id && Number.isFinite(n) ? [n] : [];
 };
 // ── task_url ─────────────────────────────────────────────────────────
 // ClickUp's stable public task URL pattern (app.clickup.com/t/<task_id>).
@@ -234,9 +267,17 @@ const board_rows = (args) => {
             return groups.get(a).label.localeCompare(groups.get(b).label);
         });
         const rows = [];
+        // Each assignee gets its own decorative chart-N tone (cycling, same
+        // convention as tag_tone/category_rank_tone) -- "who's carrying what"
+        // has no inherent severity ordering, so a flat tone for everyone made
+        // every assignee's section look identical. "Unassigned" always sorts
+        // last (above) and stays muted rather than taking a chart color, since
+        // it's an absence of an assignee, not one more category among equals.
+        let colorIndex = 0;
         for (const key of keys) {
             const g = groups.get(key);
-            rows.push({ kind: 'header', id: `h${ROW_ID_SEP}${key}`, label: g.label, count: g.tasks.length, tone: 'accent' });
+            const tone = key === 'unassigned' ? 'muted' : CATEGORY_TONE_CYCLE[colorIndex++ % CATEGORY_TONE_CYCLE.length];
+            rows.push({ kind: 'header', id: `h${ROW_ID_SEP}${key}`, label: g.label, count: g.tasks.length, tone });
             g.tasks.forEach((t) => rows.push({ kind: 'task', id: `t${ROW_ID_SEP}${key}${ROW_ID_SEP}${t.id}`, task: t }));
         }
         return rows;
@@ -320,6 +361,237 @@ const priority_value_to_int = (args) => {
     const n = Number(raw);
     return Number.isInteger(n) && n >= 1 && n <= 4 ? n : null;
 };
+// ── format_duration_ms ───────────────────────────────────────────────
+// A time entry's `duration` is an epoch-ms-style string (same convention
+// as every other ClickUp date/duration field this plugin already parses)
+// representing a LENGTH, not a point in time -- e.g. "5400000" = 1h30m.
+// Args: { value: string | number | null }
+const format_duration_ms = (args) => {
+    const ms = parseClickUpMs(args.value);
+    if (ms == null || ms <= 0)
+        return '0m';
+    const totalMinutes = Math.round(ms / 60_000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours === 0)
+        return `${minutes}m`;
+    if (minutes === 0)
+        return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+};
+// ── total_duration_ms ────────────────────────────────────────────────
+// Sums a list of time entries' `duration` fields and formats the total
+// the same way format_duration_ms does a single entry.
+// Args: { entries: Array<{ duration?: string | number | null }> }
+const total_duration_ms = (args) => {
+    const entries = Array.isArray(args.entries) ? args.entries : [];
+    const totalMs = entries.reduce((sum, e) => sum + (parseClickUpMs(e.duration) ?? 0), 0);
+    return format_duration_ms({ value: totalMs });
+};
+// ── days_ago_ms ──────────────────────────────────────────────────────
+// Epoch ms for "N days ago from now, at midnight local time" -- used to
+// build list_time_entries' start_date/end_date window from a simple
+// "Last N days" button instead of a raw timestamp.
+// Args: { days: number | string }
+const days_ago_ms = (args) => {
+    const days = Number(args.days ?? 0);
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (Number.isFinite(days) ? days : 0));
+    return d.getTime();
+};
+// ── now_ms ───────────────────────────────────────────────────────────
+// The current moment, for use as a range's END boundary. Deliberately
+// separate from days_ago_ms(0): that function returns midnight at the
+// START of today (by design, so "7 days ago" lines up to a clean day
+// boundary), which is WRONG as an end boundary -- it excludes everything
+// logged later today. Confirmed live: a time entry created minutes
+// earlier today didn't show up in Time Tracking's "Last 30 days" filter
+// until end_date switched from days_ago_ms(0) to this function.
+const now_ms = () => Date.now();
+// ── goal_percent_label ──────────────────────────────────────────────
+// ClickUp's `percent_completed` on a Goal is a float (e.g. 71.428571…).
+// Round it to a whole number for display.
+// Args: { value: number }
+const goal_percent_label = (args) => {
+    const n = Number(args.value);
+    if (!Number.isFinite(n))
+        return '0%';
+    return `${Math.round(n)}%`;
+};
+// ── goal_progress_tone ───────────────────────────────────────────────
+// Semantic (not decorative) tone for a Goal's progress bar/percent --
+// unlike CHANNEL_TYPE_TONES' categorical chart-N cycle, "25% complete"
+// really is worse than "90% complete", so a status-style tone fits.
+// Args: { value: number } -- a Goal's percent_completed (0-100 float)
+const goal_progress_tone = (args) => {
+    const n = Number(args.value);
+    if (!Number.isFinite(n))
+        return 'muted';
+    if (n >= 100)
+        return 'success';
+    if (n >= 50)
+        return 'accent';
+    if (n > 0)
+        return 'warning';
+    return 'muted';
+};
+// Decorative categorical cycle (chart-1..5) for things with no inherent
+// "good/bad" ordering -- same reasoning as CHANNEL_TYPE_TONES below.
+const CATEGORY_TONE_CYCLE = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+// ── tag_tone ─────────────────────────────────────────────────────────
+// ClickUp Tags carry their own tag_fg/tag_bg hex colors, but this
+// renderer's Badge only accepts a token `tone` (no raw-hex prop exists
+// on any system component -- confirmed against components.tsx) -- so
+// this assigns each tag a stable decorative tone by its position in the
+// full tag list, mirroring the system's own `category_rank_tone`
+// (functions.ts) but keyed on a tag's `name` field instead of `value`.
+// Args: { tags: array (the full list_tags response), name: string }
+const tag_tone = (args) => {
+    const tags = Array.isArray(args.tags) ? args.tags : [];
+    const name = String(args.name ?? '');
+    const index = tags.findIndex((t) => String(t?.name ?? '') === name);
+    if (index < 0)
+        return 'muted';
+    return CATEGORY_TONE_CYCLE[index % CATEGORY_TONE_CYCLE.length];
+};
+// ── custom_field_type_tone ───────────────────────────────────────────
+// Categorical (decorative) tone per ClickUp Custom Field `type` -- field
+// types confirmed against ClickUp's Custom Fields API docs.
+// Args: { value: string | null }
+const CUSTOM_FIELD_TYPE_TONES = {
+    text: 'chart-1',
+    short_text: 'chart-1',
+    email: 'chart-1',
+    url: 'chart-1',
+    phone: 'chart-1',
+    drop_down: 'chart-2',
+    labels: 'chart-2',
+    tasks: 'chart-2',
+    users: 'chart-2',
+    number: 'chart-3',
+    currency: 'chart-3',
+    emoji: 'chart-3',
+    date: 'chart-4',
+    checkbox: 'chart-5',
+    manual_progress: 'chart-5',
+    automatic_progress: 'chart-5',
+};
+const custom_field_type_tone = (args) => {
+    const v = args.value == null ? '' : String(args.value);
+    return CUSTOM_FIELD_TYPE_TONES[v] ?? 'muted';
+};
+// ── view_type_tone ───────────────────────────────────────────────────
+// Categorical (decorative) tone per ClickUp View `type`.
+// Args: { value: string | null }
+const VIEW_TYPE_TONES = {
+    list: 'chart-1',
+    board: 'chart-2',
+    calendar: 'chart-3',
+    gantt: 'chart-4',
+    table: 'chart-1',
+    doc: 'chart-5',
+    location_overview: 'chart-2',
+    timeline: 'chart-4',
+    workload: 'chart-3',
+    activity: 'chart-5',
+    map: 'chart-2',
+    mind_map: 'chart-5',
+    dashboard: 'chart-1',
+};
+const view_type_tone = (args) => {
+    const v = args.value == null ? '' : String(args.value);
+    return VIEW_TYPE_TONES[v] ?? 'muted';
+};
+// ── checklist_badge_tone ─────────────────────────────────────────────
+// Semantic tone for a checklist's "{resolved}/{total}" badge -- success
+// once every item is resolved, accent for partial progress, muted for an
+// empty (no items yet) checklist.
+// Args: { resolved: number, total: number }
+const checklist_badge_tone = (args) => {
+    const resolved = Number(args.resolved ?? 0);
+    const total = Number(args.total ?? 0);
+    if (total <= 0)
+        return 'muted';
+    if (resolved >= total)
+        return 'success';
+    if (resolved > 0)
+        return 'accent';
+    return 'muted';
+};
+// ── dependency_tone ──────────────────────────────────────────────────
+// Semantic tone per dependency_rows' `kind`/`label` -- "Waiting on" means
+// THIS task is blocked by another one (worth flagging, warning), "Blocking"
+// means this task blocks someone else (informational, not a problem for
+// the viewer), "Linked task" is a plain non-directional link (muted).
+// Args: { label: string }
+const dependency_tone = (args) => {
+    const label = String(args.label ?? '');
+    if (label === 'Waiting on')
+        return 'warning';
+    if (label === 'Blocking')
+        return 'info';
+    return 'muted';
+};
+// ── checklist_rows ───────────────────────────────────────────────────
+// Flattens a task's `checklists` array (each with its own nested `items`)
+// into ONE array of header + item rows for a single non-nested `repeat`,
+// following the same flattening convention as `board_rows` -- nested
+// `repeat` is untested in this renderer, so two-level data always gets
+// flattened with a synthetic `id` + `kind` tag instead.
+// Args: { checklists: array }
+const checklist_rows = (args) => {
+    const checklists = Array.isArray(args.checklists) ? args.checklists : [];
+    const rows = [];
+    for (const cl of checklists) {
+        const clId = String(cl.id ?? '');
+        const resolved = Number(cl.resolved ?? 0);
+        const unresolved = Number(cl.unresolved ?? 0);
+        rows.push({ id: `h::${clId}`, kind: 'header', name: cl.name, resolved, total: resolved + unresolved });
+        const items = Array.isArray(cl.items) ? cl.items : [];
+        for (const item of items) {
+            rows.push({
+                id: `i::${clId}::${String(item.id ?? '')}`,
+                kind: 'item',
+                name: item.name,
+                resolved: Boolean(item.resolved),
+            });
+        }
+    }
+    return rows;
+};
+// ── dependency_rows ──────────────────────────────────────────────────
+// Combines a task's `dependencies` (waiting-on / blocking links to other
+// tasks) and `linked_tasks` (plain links) into one flat array, each row
+// tagged with which OTHER task it points at and a plain-English label --
+// ClickUp's dependency objects only carry task ids on both sides, so the
+// row's own task_id/depends_on (or task_id/link_id) pair is compared
+// against the current task to work out which id is "the other one".
+// Args: { dependencies: array, linked_tasks: array, task_id: string }
+const dependency_rows = (args) => {
+    const taskId = String(args.task_id ?? '');
+    const deps = Array.isArray(args.dependencies) ? args.dependencies : [];
+    const links = Array.isArray(args.linked_tasks) ? args.linked_tasks : [];
+    const rows = [];
+    deps.forEach((d, i) => {
+        const depTaskId = String(d.task_id ?? '');
+        const dependsOn = String(d.depends_on ?? '');
+        const otherId = depTaskId === taskId ? dependsOn : depTaskId;
+        const label = depTaskId === taskId ? 'Waiting on' : 'Blocking';
+        if (!otherId)
+            return;
+        rows.push({ id: `dep::${i}::${otherId}`, kind: 'dependency', label, otherTaskId: otherId });
+    });
+    links.forEach((l, i) => {
+        const a = String(l.task_id ?? '');
+        const b = String(l.link_id ?? '');
+        const otherId = a === taskId ? b : a;
+        if (!otherId)
+            return;
+        rows.push({ id: `link::${i}::${otherId}`, kind: 'link', label: 'Linked task', otherTaskId: otherId });
+    });
+    return rows;
+};
 const elements = {
     slug: 'clickup',
     functions: {
@@ -341,6 +613,22 @@ const elements = {
         tab_variant,
         is_blank,
         priority_value_to_int,
+        format_duration_ms,
+        total_duration_ms,
+        days_ago_ms,
+        now_ms,
+        goal_percent_label,
+        checklist_rows,
+        dependency_rows,
+        channel_display_name,
+        member_options,
+        assignee_param,
+        goal_progress_tone,
+        tag_tone,
+        custom_field_type_tone,
+        view_type_tone,
+        checklist_badge_tone,
+        dependency_tone,
     },
 };
 export default elements;
