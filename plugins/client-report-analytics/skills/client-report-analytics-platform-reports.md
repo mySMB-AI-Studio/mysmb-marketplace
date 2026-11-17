@@ -1,6 +1,6 @@
 ---
 name: client-report-analytics-platform-reports
-description: CRA-16 Platform-native reports — opens any report of the Xero (P01–P15), MYOB (M00–M63) or QuickBooks (Q00–Q39) report library for the selected client from the reporting-studio extensions. Use when the user asks for a standard platform report for a client (Profit and Loss, Balance Sheet, aged receivables, GST/BAS summary, trial balance, general ledger …) that is not one of the Client Report Analytics reports.
+description: CRA-16 Platform-native reports — opens any report of the Xero (P01–P15), MYOB (M00–M63) or QuickBooks (Q00–Q39) report library for the selected client from the reporting-studio extensions. Use when the user asks for a standard platform report for a client (Profit and Loss, Balance Sheet, aged receivables, GST/BAS summary, trial balance, general ledger …) that is not one of the Client Report Analytics reports. The client is a connected Xero organisation, MYOB company file or QuickBooks company, named in full or in part (for example "Irvine Jackson" for Irvine Jackson Pty Ltd); it is never a contact.
 ---
 
 # CRA-16 Platform-native reports (pass-through)

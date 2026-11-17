@@ -1,6 +1,6 @@
 ---
 name: client-report-analytics-ledger-user-activity
-description: CRA-14 Ledger User Activity — what people have been doing in a client's accounting file. Routes to the QuickBooks Audit Log (Q21) and MYOB Journal Security Audit (M13) skills; Xero has no organisation-wide audit log. Use when the user asks who changed, added or deleted a transaction, for an audit trail, or for ledger user activity for a client.
+description: CRA-14 Ledger User Activity — what people have been doing in a client's accounting file. Routes to the QuickBooks Audit Log (Q21) and MYOB Journal Security Audit (M13) skills; Xero has no organisation-wide audit log. Use when the user asks who changed, added or deleted a transaction, for an audit trail, or for ledger user activity for a client. The client is a connected Xero organisation, MYOB company file or QuickBooks company, named in full or in part (for example "Irvine Jackson" for Irvine Jackson Pty Ltd); it is never a contact.
 ---
 
 # CRA-14 Ledger User Activity
