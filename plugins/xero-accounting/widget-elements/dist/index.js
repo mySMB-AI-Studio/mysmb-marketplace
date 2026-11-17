@@ -2829,6 +2829,30 @@ const bank_balance_view = (args) => {
     const adds = Math.round(allTotal * 100) === Math.round(difference * 100);
     const showAll = args.showAllAccounts === true;
     const arrow = bbArrow(difference);
+    // Entries recorded in Xero that haven't been matched to a bank statement line.
+    // Xero can't give us the bank's own balance, so this is what can be shown of
+    // any gap to it. Absent from the connector (older server, or the read failed)
+    // means the section is left out, never shown as "all matched".
+    const unrecKnown = summary.unreconciledAvailable === true && picked.length > 0;
+    const unrecAccounts = picked
+        .map((a) => ({ a, u: (a.unreconciled ?? {}) }))
+        .filter(({ u }) => bbNum(u.count) > 0);
+    const unrecCount = unrecAccounts.reduce((n, { u }) => n + bbNum(u.count), 0);
+    const unrecIn = bbRound2(unrecAccounts.reduce((n, { u }) => n + bbNum(u.moneyIn), 0));
+    const unrecOut = bbRound2(unrecAccounts.reduce((n, { u }) => n + bbNum(u.moneyOut), 0));
+    const unrecNet = bbRound2(unrecIn + unrecOut);
+    const unrecOldest = unrecAccounts
+        .filter(({ u }) => String(u.oldest ?? '') !== '')
+        .sort((x, y) => String(x.u.oldest).localeCompare(String(y.u.oldest)))[0];
+    const unrecCapped = summary.unreconciledTruncated === true;
+    const unrecRows = [...unrecAccounts]
+        .sort((x, y) => bbNum(y.u.count) - bbNum(x.u.count) || String(x.a.name ?? '').localeCompare(String(y.a.name ?? '')))
+        .map(({ a, u }) => ({
+        accountId: String(a.accountId ?? ''),
+        name: String(a.name ?? ''),
+        countText: `${bbNum(u.count).toLocaleString('en-AU')} ${bbNum(u.count) === 1 ? 'entry' : 'entries'}`,
+        netText: bbSigned(bbNum(u.net)),
+    }));
     return {
         // Selection
         accountOptions,
@@ -2912,6 +2936,23 @@ const bank_balance_view = (args) => {
         totalText: bbBalance(total),
         remaining,
         moreLabel: remaining > 0 ? `Show ${Math.min(shown, remaining)} more · ${remaining} remaining` : '',
+        // Entries in Xero not yet matched to the bank
+        unrecShow: unrecKnown,
+        unrecCount,
+        unrecHasAny: unrecKnown && unrecCount > 0,
+        unrecTone: unrecCount > 0 ? 'warning' : 'success',
+        unrecIcon: unrecCount > 0 ? 'Clock' : 'CircleCheck',
+        unrecHeadline: unrecCount === 0
+            ? 'Everything in Xero is matched to the bank'
+            : `${unrecCount.toLocaleString('en-AU')}${unrecCapped ? '+' : ''} ${unrecCount === 1 ? 'entry' : 'entries'} in Xero not yet matched to the bank`,
+        unrecDetail: unrecCount === 0
+            ? ''
+            : `${bbAud(unrecIn)} in · ${bbAud(unrecOut)} out · net ${bbSigned(unrecNet)}${unrecOldest ? ` · oldest ${String(unrecOldest.u.oldestText ?? '')}` : ''}`,
+        unrecNote: unrecCount === 0
+            ? 'Xero cannot show the bank balance itself, so any difference from your bank would be lines the bank feed has not brought in yet.'
+            : 'These are in the Xero balance but not yet matched to a bank statement line, so they can explain a difference from your bank. Xero cannot show the bank balance itself.',
+        unrecRows,
+        unrecShowRows: unrecRows.length > 1,
         // Footer
         checkText: adds
             ? `Transactions add up to the difference (${bbBalance(opening)} → ${bbBalance(closing)})`

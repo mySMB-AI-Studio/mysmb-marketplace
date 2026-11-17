@@ -1464,6 +1464,7 @@
           "period",
           "balances",
           "difference",
+          "unrec",
           "byAccount",
           "why",
           "truncNote",
@@ -3417,6 +3418,146 @@
         "visible": {
           "$state": "/ui/bbc/v/hasTxns"
         }
+      },
+      "unrec": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShow"
+        },
+        "children": [
+          "unrecStack"
+        ]
+      },
+      "unrecDetail": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecDetail"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecHead": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecHeadline"
+          },
+          "weight": "medium"
+        }
+      },
+      "unrecIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/bbc/v/unrecIcon"
+          },
+          "size": "sm",
+          "tone": {
+            "$state": "/ui/bbc/v/unrecTone"
+          }
+        }
+      },
+      "unrecList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShowRows"
+        },
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/ui/bbc/v/unrecRows"
+        },
+        "children": [
+          "unrecRow"
+        ]
+      },
+      "unrecNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecNote"
+          }
+        }
+      },
+      "unrecRow": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "children": [
+          "unrecRowName",
+          "unrecRowRight"
+        ]
+      },
+      "unrecRowCount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "countText"
+          }
+        }
+      },
+      "unrecRowName": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        }
+      },
+      "unrecRowNet": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "netText"
+          }
+        }
+      },
+      "unrecRowRight": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "unrecRowCount",
+          "unrecRowNet"
+        ]
+      },
+      "unrecStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "unrecTop",
+          "unrecDetail",
+          "unrecList",
+          "unrecNote"
+        ]
+      },
+      "unrecTop": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecIcon",
+          "unrecHead"
+        ]
       },
       "why": {
         "children": [
