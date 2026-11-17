@@ -16,7 +16,7 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "channelList", "countCaption", "infoOverlay"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "channelList", "countCaption", "messagesSection", "infoOverlay"] },
 
       "titleIcon": { "type": "Icon", "props": { "name": "Hash", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "ClickUp Channels" } },
@@ -48,6 +48,7 @@
         "children": ["teamSelect"],
         "watch": {
           "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedChannel", "value": null } },
             {
               "action": "clickup.list_channels",
               "params": { "team_id": { "$state": "/ui/selectedTeam" }, "limit": 100 }
@@ -80,13 +81,18 @@
           "tone": "muted"
         },
         "visible": {
-          "$cond": { "$state": "/ui/selectedTeam" },
-          "$then": {
-            "$cond": { "$state": "/_loading/clickup.list_channels" },
-            "$then": true,
-            "$else": { "$state": "/clickup/list_channels/data/0", "not": true }
-          },
-          "$else": true
+          "$and": [
+            { "$state": "/ui/selectedChannel", "not": true },
+            {
+              "$cond": { "$state": "/ui/selectedTeam" },
+              "$then": {
+                "$cond": { "$state": "/_loading/clickup.list_channels" },
+                "$then": true,
+                "$else": { "$state": "/clickup/list_channels/data/0", "not": true }
+              },
+              "$else": true
+            }
+          ]
         }
       },
 
@@ -128,12 +134,30 @@
         "visible": { "$item": "topic" }
       },
       "channelCard": { "type": "Stack", "props": { "gap": "xs" }, "children": ["channelTopRow", "channelMeta", "channelTopic"] },
+      "channelRow": {
+        "type": "Row",
+        "props": { "clickable": true, "hover": true },
+        "children": ["channelCard"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedChannel", "value": { "$bindItem": "id" } } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedChannelName",
+                "value": { "$computed": "clickup_channel_display_name", "args": { "name": { "$bindItem": "name" }, "type": { "$bindItem": "type" } } }
+              }
+            },
+            { "action": "clickup.list_channel_messages", "params": { "workspace_id": { "$state": "/ui/selectedTeam" }, "channel_id": { "$bindItem": "id" } } }
+          ]
+        }
+      },
       "channelList": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["channelCard"],
+        "children": ["channelRow"],
         "repeat": { "key": "id", "statePath": "/clickup/list_channels/data" },
-        "visible": { "$state": "/clickup/list_channels/data/0" }
+        "visible": { "$and": [{ "$state": "/clickup/list_channels/data/0" }, { "$state": "/ui/selectedChannel", "not": true }] }
       },
 
       "countCaption": {
@@ -149,7 +173,49 @@
           },
           "tone": "muted"
         },
-        "visible": { "$state": "/clickup/list_channels/data/0" }
+        "visible": { "$and": [{ "$state": "/clickup/list_channels/data/0" }, { "$state": "/ui/selectedChannel", "not": true }] }
+      },
+
+      "backToChannelsBtn": {
+        "type": "Button",
+        "props": { "label": "← All channels", "size": "sm", "variant": "secondary" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/selectedChannel", "value": null } } }
+      },
+      "messagesHeading": { "type": "Heading", "props": { "level": "h3", "text": { "$state": "/ui/selectedChannelName" } } },
+      "messagesHeaderRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["messagesHeading", "backToChannelsBtn"] },
+      "messagesErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load messages: ${/_errors/clickup.list_channel_messages}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_channel_messages" }
+      },
+      "messagesStatusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/_loading/clickup.list_channel_messages" },
+            "$then": "Loading…",
+            "$else": { "$cond": { "$state": "/clickup/list_channel_messages/data/0" }, "$then": "", "$else": "No messages in this channel yet." }
+          },
+          "tone": "muted"
+        }
+      },
+      "messageAuthor": { "type": "Caption", "props": { "text": { "$computed": "fmt", "args": { "pattern": "User {id}", "id": { "$item": "user_id" } } }, "tone": "muted" } },
+      "messageDate": { "type": "Caption", "props": { "text": { "$computed": "clickup_date", "args": { "value": { "$item": "date" } } }, "tone": "muted" } },
+      "messageMetaRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["messageAuthor", "messageDate"] },
+      "messageContent": { "type": "Text", "props": { "text": { "$item": "content" }, "size": "sm", "preserveLines": true } },
+      "messageCard": { "type": "Stack", "props": { "gap": "xs" }, "children": ["messageMetaRow", "messageContent"] },
+      "messagesList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["messageCard"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_channel_messages/data" },
+        "visible": { "$state": "/_loading/clickup.list_channel_messages", "not": true }
+      },
+      "messagesSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["messagesHeaderRow", "messagesErrorBanner", "messagesStatusCaption", "messagesList"],
+        "visible": { "$state": "/ui/selectedChannel" }
       },
 
       "infoOverlay": {
@@ -172,7 +238,7 @@
       "infoWhatText": {
         "type": "Text",
         "props": {
-          "text": "Lists the ClickUp Chat channels in a Workspace you pick — name, type (Channel, Direct message or Group DM), visibility (Public or Private), topic, and when each one last had a message.",
+          "text": "Lists the ClickUp Chat channels in a Workspace you pick — name, type (Channel, Direct message or Group DM), visibility (Public or Private), topic, and when each one last had a message. Click a channel to see its messages.",
           "size": "sm"
         }
       },
@@ -180,7 +246,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "This tile is read-only and shows channels only — it doesn't read or post messages, and channel rows aren't clickable yet (ClickUp Chat doesn't document a direct web link for a channel the way it does for a task).",
+          "text": "Click a channel to read its messages, most recent first. This tile is read-only — it can't post a message, and a message's sender shows as a user id rather than a name, since ClickUp Chat's message API doesn't include a display name.",
           "size": "sm"
         }
       },

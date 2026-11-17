@@ -1,0 +1,195 @@
+{
+  "id": "clickup-time-tracking",
+  "title": "ClickUp Time Tracking",
+  "description": "Time logged in a ClickUp Workspace over a date range you pick, who logged it and against which task.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "time tracking", "time entries", "hours", "timesheet", "billable"],
+  "tags": ["clickup", "project-management", "time"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "errorBanner", "statusCaption", "totalRow", "entryList", "infoOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "Clock", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Time Tracking" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Time Tracking", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Every time entry logged in a ClickUp Workspace over the date range you pick — who logged it, how long, and which task it was against.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Pick a workspace, then a date range. This tile is read-only — it only shows time already logged in ClickUp; it doesn't start or stop a timer.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        }
+      },
+      "range7Btn": {
+        "type": "Button",
+        "props": { "label": "Last 7 days", "size": "sm", "variant": { "$computed": "clickup_tab_variant", "args": { "active": { "$state": "/ui/timeRange" }, "match": "7" } } },
+        "visible": { "$state": "/ui/selectedTeam" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/timeRange", "value": "7" } },
+            {
+              "action": "clickup.list_time_entries",
+              "params": { "team_id": { "$state": "/ui/selectedTeam" }, "start_date": { "$computed": "clickup_days_ago_ms", "args": { "days": 7 } }, "end_date": { "$computed": "clickup_now_ms" } }
+            }
+          ]
+        }
+      },
+      "range30Btn": {
+        "type": "Button",
+        "props": { "label": "Last 30 days", "size": "sm", "variant": { "$computed": "clickup_tab_variant", "args": { "active": { "$state": "/ui/timeRange" }, "match": "30" } } },
+        "visible": { "$state": "/ui/selectedTeam" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/timeRange", "value": "30" } },
+            {
+              "action": "clickup.list_time_entries",
+              "params": { "team_id": { "$state": "/ui/selectedTeam" }, "start_date": { "$computed": "clickup_days_ago_ms", "args": { "days": 30 } }, "end_date": { "$computed": "clickup_now_ms" } }
+            }
+          ]
+        }
+      },
+      "range90Btn": {
+        "type": "Button",
+        "props": { "label": "Last 90 days", "size": "sm", "variant": { "$computed": "clickup_tab_variant", "args": { "active": { "$state": "/ui/timeRange" }, "match": "90" } } },
+        "visible": { "$state": "/ui/selectedTeam" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/timeRange", "value": "90" } },
+            {
+              "action": "clickup.list_time_entries",
+              "params": { "team_id": { "$state": "/ui/selectedTeam" }, "start_date": { "$computed": "clickup_days_ago_ms", "args": { "days": 90 } }, "end_date": { "$computed": "clickup_now_ms" } }
+            }
+          ]
+        }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["teamSelect", "range7Btn", "range30Btn", "range90Btn"],
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/timeRange", "value": "30" } }
+          ]
+        }
+      },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load time entries: ${/_errors/clickup.list_time_entries}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_time_entries" }
+      },
+      "statusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedTeam" },
+            "$then": {
+              "$cond": { "$state": "/_loading/clickup.list_time_entries" },
+              "$then": "Loading…",
+              "$else": { "$cond": { "$state": "/clickup/list_time_entries/data/0" }, "$then": "", "$else": "No time logged in this range." }
+            },
+            "$else": "Pick a workspace above to see time logged."
+          },
+          "tone": "muted"
+        },
+        "watch": {
+          "/ui/selectedTeam": [
+            {
+              "action": "clickup.list_time_entries",
+              "params": { "team_id": { "$state": "/ui/selectedTeam" }, "start_date": { "$computed": "clickup_days_ago_ms", "args": { "days": 30 } }, "end_date": { "$computed": "clickup_now_ms" } }
+            }
+          ]
+        }
+      },
+
+      "totalLabel": { "type": "Caption", "props": { "text": "Total logged", "tone": "muted", "weight": "semibold" } },
+      "totalValue": {
+        "type": "Text",
+        "props": { "text": { "$computed": "clickup_total_duration_ms", "args": { "entries": { "$state": "/clickup/list_time_entries/data" } } }, "size": "sm", "weight": "semibold" }
+      },
+      "totalRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["totalLabel", "totalValue"],
+        "visible": { "$state": "/clickup/list_time_entries/data/0" }
+      },
+
+      "entryTaskName": { "type": "Text", "props": { "text": { "$item": "task/name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "entryDuration": { "type": "Badge", "props": { "text": { "$computed": "clickup_format_duration_ms", "args": { "value": { "$item": "duration" } } }, "tone": "accent" } },
+      "entryTopRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["entryTaskName", "entryDuration"] },
+      "entryMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{user} · {date}", "user": { "$item": "user/username" }, "date": { "$computed": "clickup_date", "args": { "value": { "$item": "start" } } } }
+          },
+          "tone": "muted"
+        }
+      },
+      "entryContent": { "type": "Stack", "props": { "gap": "none" }, "children": ["entryTopRow", "entryMeta"] },
+      "entryRow": { "type": "Row", "props": {}, "children": ["entryContent"] },
+      "entryList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["entryRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_time_entries/data" },
+        "visible": { "$state": "/_loading/clickup.list_time_entries", "not": true }
+      }
+    }
+  }
+}

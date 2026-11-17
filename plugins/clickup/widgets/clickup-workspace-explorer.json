@@ -1,0 +1,358 @@
+{
+  "id": "clickup-workspace-explorer",
+  "title": "ClickUp Workspace Explorer",
+  "description": "Browse a ClickUp Workspace's Spaces, Folders and Lists to find where things live — click a List to open it in ClickUp.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "workspace", "space", "folder", "list", "structure", "navigate", "browser"],
+  "tags": ["clickup", "project-management", "navigation"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "preferred": { "colSpan": 5, "rowSpan": 9 },
+    "max": { "colSpan": 8, "rowSpan": 14 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "breadcrumbRow", "errorBanner", "statusCaption", "spaceList", "spaceItemList", "folderItemList", "spaceViewsSection", "infoOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "FolderTree", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Workspace Explorer" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Workspace Explorer", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "A map of a ClickUp Workspace's structure — every Space, its Folders and Lists, and the Views set up on that Space — so you can find where something lives without hunting through ClickUp itself.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Pick a workspace, then click a Space to see its Folders, Lists, and Views. Click a Folder to see the Lists inside it. Click a List to open it on app.clickup.com. This tile is read-only and never changes anything — for a List's actual tasks, use the companion ClickUp Tasks tile.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" }
+          },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["teamSelect"],
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/currentSpace", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/currentSpaceName", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/currentFolder", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/currentFolderName", "value": null } },
+            { "action": "clickup.list_spaces", "params": { "team_id": { "$state": "/ui/selectedTeam" } } }
+          ]
+        }
+      },
+
+      "upFromFolderBtn": {
+        "type": "Button",
+        "props": { "label": "Up", "size": "sm", "variant": "ghost", "tone": "info", "leadingIcon": "ArrowLeft" },
+        "visible": { "$state": "/ui/currentFolder" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/currentFolder", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/currentFolderName", "value": null } }
+          ]
+        }
+      },
+      "upFromSpaceBtn": {
+        "type": "Button",
+        "props": { "label": "Up", "size": "sm", "variant": "ghost", "tone": "info", "leadingIcon": "ArrowLeft" },
+        "visible": { "$and": [{ "$state": "/ui/currentSpace" }, { "$state": "/ui/currentFolder", "not": true }] },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/currentSpace", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/currentSpaceName", "value": null } }
+          ]
+        }
+      },
+      "breadcrumbCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{space}{folder}",
+              "space": { "$state": "/ui/currentSpaceName" },
+              "folder": {
+                "$cond": { "$state": "/ui/currentFolderName" },
+                "$then": { "$computed": "fmt", "args": { "pattern": " / {f}", "f": { "$state": "/ui/currentFolderName" } } },
+                "$else": ""
+              }
+            }
+          },
+          "tone": "info",
+          "weight": "semibold"
+        },
+        "visible": { "$state": "/ui/currentSpace" }
+      },
+      "breadcrumbRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["upFromFolderBtn", "upFromSpaceBtn", "breadcrumbCaption"],
+        "visible": { "$state": "/ui/currentSpace" }
+      },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$template": "Couldn't load: ${/_errors/clickup.list_spaces}${/_errors/clickup.list_folders}${/_errors/clickup.list_folderless_lists}${/_errors/clickup.list_lists}"
+          },
+          "tone": "destructive"
+        },
+        "visible": {
+          "$or": [
+            { "$state": "/_errors/clickup.list_spaces" },
+            { "$state": "/_errors/clickup.list_folders" },
+            { "$state": "/_errors/clickup.list_folderless_lists" },
+            { "$state": "/_errors/clickup.list_lists" }
+          ]
+        }
+      },
+
+      "statusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedTeam" },
+            "$then": {
+              "$cond": { "$state": "/ui/currentFolder" },
+              "$then": {
+                "$cond": { "$state": "/_loading/clickup.list_lists" },
+                "$then": "Loading…",
+                "$else": { "$cond": { "$state": "/ui/folderItems/0" }, "$then": "", "$else": "No lists in this folder." }
+              },
+              "$else": {
+                "$cond": { "$state": "/ui/currentSpace" },
+                "$then": {
+                  "$cond": { "$state": "/_loading/clickup.list_folders" },
+                  "$then": "Loading…",
+                  "$else": { "$cond": { "$state": "/ui/spaceItems/0" }, "$then": "", "$else": "Nothing in this space yet." }
+                },
+                "$else": {
+                  "$cond": { "$state": "/_loading/clickup.list_spaces" },
+                  "$then": "Loading…",
+                  "$else": { "$cond": { "$state": "/clickup/list_spaces/spaces/0" }, "$then": "Pick a Space below.", "$else": "No spaces in this workspace." }
+                }
+              }
+            },
+            "$else": "Pick a workspace above to see its structure."
+          },
+          "tone": "muted"
+        }
+      },
+
+      "spaceRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["spaceLeft", "spaceChevron"],
+        "visible": { "$state": "/ui/currentSpace", "not": true },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/currentSpace", "value": { "$bindItem": "id" } } },
+            { "action": "setState", "params": { "statePath": "/ui/currentSpaceName", "value": { "$bindItem": "name" } } },
+            { "action": "clickup.list_folders", "params": { "space_id": { "$bindItem": "id" } } },
+            { "action": "clickup.list_folderless_lists", "params": { "space_id": { "$bindItem": "id" } } },
+            { "action": "clickup.list_views", "params": { "space_id": { "$bindItem": "id" } } }
+          ]
+        }
+      },
+      "spaceIcon": { "type": "Icon", "props": { "name": "LayoutGrid", "size": "sm", "tone": "accent" } },
+      "spaceName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "spaceLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["spaceIcon", "spaceName"] },
+      "spaceChevron": { "type": "Icon", "props": { "name": "ChevronRight", "size": "sm", "tone": "muted" } },
+      "spaceList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["spaceRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_spaces/spaces" },
+        "visible": { "$and": [{ "$state": "/ui/currentSpace", "not": true }, { "$state": "/_loading/clickup.list_spaces", "not": true }] }
+      },
+
+      "explorerFolderRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["explorerItemLeft", "explorerFolderRight"],
+        "visible": { "$item": "kind", "eq": "folder" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/currentFolder", "value": { "$bindItem": "rawId" } } },
+            { "action": "setState", "params": { "statePath": "/ui/currentFolderName", "value": { "$bindItem": "name" } } },
+            { "action": "clickup.list_lists", "params": { "folder_id": { "$bindItem": "rawId" } } }
+          ]
+        }
+      },
+      "explorerListRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
+        "children": ["explorerItemLeft", "explorerListRight"],
+        "visible": { "$item": "kind", "eq": "list" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$computed": "clickup_list_url", "args": { "team_id": { "$state": "/ui/selectedTeam" }, "list_id": { "$bindItem": "rawId" } } },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "explorerItemIcon": {
+        "type": "Icon",
+        "props": {
+          "name": { "$cond": { "$item": "kind", "eq": "folder" }, "$then": "Folder", "$else": "List" },
+          "size": "sm",
+          "tone": { "$cond": { "$item": "kind", "eq": "folder" }, "$then": "accent", "$else": "info" }
+        }
+      },
+      "explorerItemName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "explorerItemLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["explorerItemIcon", "explorerItemName"] },
+      "explorerFolderCount": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} task{s}", "n": { "$item": "count" }, "s": { "$cond": { "$item": "count", "eq": 1 }, "$then": "", "$else": "s" } } }, "tone": "muted" }
+      },
+      "explorerFolderChevron": { "type": "Icon", "props": { "name": "ChevronRight", "size": "sm", "tone": "muted" } },
+      "explorerFolderRight": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["explorerFolderCount", "explorerFolderChevron"] },
+      "explorerListCount": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} task{s}", "n": { "$item": "count" }, "s": { "$cond": { "$item": "count", "eq": 1 }, "$then": "", "$else": "s" } } }, "tone": "muted" }
+      },
+      "explorerListOpenIcon": { "type": "Icon", "props": { "name": "ExternalLink", "size": "sm", "tone": "muted" } },
+      "explorerListRight": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["explorerListCount", "explorerListOpenIcon"] },
+
+      "spaceItemList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["explorerFolderRow", "explorerListRow"],
+        "repeat": { "key": "id", "statePath": "/ui/spaceItems" },
+        "visible": { "$and": [{ "$state": "/ui/currentSpace" }, { "$state": "/ui/currentFolder", "not": true }] },
+        "watch": {
+          "/clickup/list_folders": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/spaceItems",
+                "value": {
+                  "$computed": "clickup_explorer_items",
+                  "args": { "folders": { "$state": "/clickup/list_folders/folders" }, "lists": { "$state": "/clickup/list_folderless_lists/lists" } }
+                }
+              }
+            }
+          ],
+          "/clickup/list_folderless_lists": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/spaceItems",
+                "value": {
+                  "$computed": "clickup_explorer_items",
+                  "args": { "folders": { "$state": "/clickup/list_folders/folders" }, "lists": { "$state": "/clickup/list_folderless_lists/lists" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "folderItemList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["explorerListRow"],
+        "repeat": { "key": "id", "statePath": "/ui/folderItems" },
+        "visible": { "$state": "/ui/currentFolder" },
+        "watch": {
+          "/clickup/list_lists": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/folderItems",
+                "value": { "$computed": "clickup_folder_lists", "args": { "lists": { "$state": "/clickup/list_lists/lists" } } }
+              }
+            }
+          ]
+        }
+      },
+
+      "viewsHeading": { "type": "Caption", "props": { "text": "Views in this Space", "tone": "muted", "weight": "semibold" } },
+      "viewsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load views: ${/_errors/clickup.list_views}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_views" }
+      },
+      "viewIcon": { "type": "Icon", "props": { "name": "Eye", "size": "sm", "tone": "muted" } },
+      "viewName": { "type": "Text", "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "viewLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["viewIcon", "viewName"] },
+      "viewTypeBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "type" }, "tone": { "$computed": "clickup_view_type_tone", "args": { "value": { "$item": "type" } } } }
+      },
+      "viewRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["viewLeft", "viewTypeBadge"]
+      },
+      "viewsList": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["viewRow"],
+        "repeat": { "key": "id", "statePath": "/clickup/list_views/views" },
+        "visible": { "$state": "/clickup/list_views/views/0" }
+      },
+      "spaceViewsSection": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["viewsHeading", "viewsErrorBanner", "viewsList"],
+        "visible": { "$and": [{ "$state": "/ui/currentSpace" }, { "$state": "/ui/currentFolder", "not": true }, { "$state": "/clickup/list_views/views/0" }] }
+      }
+    }
+  }
+}
