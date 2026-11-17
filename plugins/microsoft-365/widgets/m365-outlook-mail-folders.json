@@ -23,7 +23,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "divider1", "body", "divider2", "footer", "detailOverlay", "composeOverlay"],
+        "children": ["header", "divider1", "body", "divider2", "footer", "detailOverlay", "composeOverlay", "infoOverlay"],
         "watch": {
           "/m365-mail-read/list_mail_folders": [
             {
@@ -40,8 +40,15 @@
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
+      "headerRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["titleGroup", "headerActions"] },
       "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "headerActions": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["composeBtn", "infoBtn"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
       "titleIcon": { "type": "Icon", "props": { "name": "Mail", "tone": "info", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Mail and Folders", "level": "h2" } },
@@ -314,10 +321,10 @@
       },
 
       "divider2": { "type": "Divider", "props": {} },
-      "footer": { "type": "Row", "props": { "justify": "between" }, "children": ["composeBtn", "openOutlookBtn"] },
+      "footer": { "type": "Row", "props": { "justify": "end" }, "children": ["openOutlookBtn"] },
       "composeBtn": {
         "type": "Button",
-        "props": { "label": "Compose", "tone": "accent", "variant": "secondary", "size": "sm", "leadingIcon": "SquarePen" },
+        "props": { "label": "Compose", "tone": "accent", "variant": "primary", "size": "sm", "leadingIcon": "SquarePen" },
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/composeOpen", "value": true } },
@@ -501,7 +508,42 @@
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't send that message: ${/_errors/m365-mail-send.send_email}" }, "tone": "destructive" },
         "visible": { "$state": "/_errors/m365-mail-send.send_email" }
-      }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Mail and Folders", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "An Outlook-style view of your mailbox: your folders on the left (Inbox, Drafts and Sent Items first, then the rest alphabetically), and whichever folder's messages on the right.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Click a folder to see its messages. Click a message to read it in full and reply. The trash icon on a message asks you to confirm before deleting it. Compose, at the top, opens a new message. Reply, delete and Compose all act on your real mailbox — there's no undo for sending, though a deleted message can still be recovered from Deleted Items.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] }
     }
   },
   "status": "published"
