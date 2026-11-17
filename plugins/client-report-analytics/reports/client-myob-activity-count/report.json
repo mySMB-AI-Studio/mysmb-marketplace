@@ -1,0 +1,201 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "invoices",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "bills",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        }
+      },
+      {
+        "id": "spend_money",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_spend_money"
+        }
+      },
+      {
+        "id": "payments",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "page_size": {
+            "kind": "static",
+            "value": 1000
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_payments"
+        }
+      },
+      {
+        "id": "journals",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_journal_transactions"
+        }
+      },
+      {
+        "id": "payroll",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_payroll_advices"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-07-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-09-30",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "",
+        "label": "Client (MYOB company file)",
+        "maxLength": 64,
+        "name": "company_file",
+        "type": "string"
+      },
+      {
+        "default": "Bookkeeper",
+        "label": "View as",
+        "name": "persona",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "{\"cents\":0,\"k\":0,\"zeros\":1,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"this_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
+  "description": "Client Report Analytics CRA-11 for one MYOB client: transaction counts by month across sales, purchases, banking, payroll and journals, so you can see how active the file has been. Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-myob-activity-count.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-11",
+    "myob",
+    "activity-count"
+  ],
+  "title": "MYOB Activity Count"
+}

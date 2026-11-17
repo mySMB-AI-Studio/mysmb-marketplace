@@ -1,0 +1,168 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "contacts",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_contacts"
+        }
+      },
+      {
+        "id": "invoices",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "statuses": {
+            "kind": "static",
+            "value": "AUTHORISED,PAID"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "credit_notes",
+        "params": {
+          "page": {
+            "input": "page",
+            "kind": "input"
+          },
+          "where": {
+            "kind": "static",
+            "value": "Status==\"AUTHORISED\""
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_credit_notes"
+        }
+      },
+      {
+        "id": "tax_rates",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_tax_rates"
+        }
+      },
+      {
+        "id": "org",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      },
+      {
+        "id": "registry",
+        "params": {
+          "abns": {
+            "input": "abn_list",
+            "kind": "input"
+          },
+          "include_names": {
+            "kind": "static",
+            "value": false
+          }
+        },
+        "tool": {
+          "mcp": "abr",
+          "name": "abr_lookup_abns"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-04-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-06-30",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "",
+        "label": "Organisation",
+        "maxLength": 64,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": 1,
+        "label": "Page",
+        "max": 20,
+        "min": 1,
+        "name": "page",
+        "type": "number"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":1,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "label": "ABNs to check on the register",
+        "maxLength": 500,
+        "name": "abn_list",
+        "type": "string"
+      }
+    ]
+  },
+  "description": "Client Report Analytics CRA-06 for one Xero client: every contact with the tax types used on their transactions and GST evidence on file, and on Xero each ABN's Australian Business Register record (needs ABR Lookup connected). Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-xero-contacts-bas.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-06",
+    "xero",
+    "contacts-bas"
+  ],
+  "title": "Xero Contact Details for BAS Preparation"
+}

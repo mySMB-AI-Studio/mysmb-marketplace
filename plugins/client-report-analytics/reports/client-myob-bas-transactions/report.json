@@ -1,0 +1,264 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "inv_lines",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "max_lines": {
+            "kind": "static",
+            "value": 5000
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoice_lines"
+        }
+      },
+      {
+        "id": "bill_lines",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "max_lines": {
+            "kind": "static",
+            "value": 5000
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bill_lines"
+        }
+      },
+      {
+        "id": "spend",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_spend_money"
+        }
+      },
+      {
+        "id": "receive",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_receive_money"
+        }
+      },
+      {
+        "id": "invoices",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoices"
+        }
+      },
+      {
+        "id": "bills",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "status": {
+            "kind": "static",
+            "value": "All"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bills"
+        }
+      },
+      {
+        "id": "gst",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "reporting_basis": {
+            "kind": "static",
+            "value": "Accrual"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "get_gst_summary"
+        }
+      },
+      {
+        "id": "tax_codes",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_tax_codes"
+        }
+      },
+      {
+        "id": "accounts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_accounts"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-04-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-06-30",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "",
+        "label": "Client (MYOB company file)",
+        "maxLength": 64,
+        "name": "company_file",
+        "type": "string"
+      },
+      {
+        "default": "Bookkeeper",
+        "label": "View as",
+        "name": "persona",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"tax\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
+  "description": "Client Report Analytics CRA-07 for one MYOB client: every BAS-relevant transaction line by tax type, with contact, source and GL account, and totals that tie to the GST figures. Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-myob-bas-transactions.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-07",
+    "myob",
+    "bas-transactions"
+  ],
+  "title": "MYOB BAS Related Transactions and GST"
+}
