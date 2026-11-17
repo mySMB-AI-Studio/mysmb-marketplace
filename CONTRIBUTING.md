@@ -78,6 +78,11 @@ re-commits its older copy over yours), and **Publish** it. AI Studio's
 this same flow. Want a review first? Push a short-lived branch and open a PR
 into `dev` instead — CI validates it — then Pull and Publish once it merges.
 
+`npm test` includes the Bookkeeping AP Python scenarios. They require Python 3
+(`python3` on macOS/Linux, `python` on Windows), use only its standard library,
+and run packaged nodes against synthetic APIs without any network or customer
+data. Run them directly with `python3 scripts/xero-bookkeeping-ap-records.test.py`.
+
 > `scripts/promote-plugin.mjs` is a break-glass fallback for when AI Studio is
 > unavailable. It copies the subtree and the manifest entry between branches but
 > does **not** rewrite the version or refresh the environment's marketplace —
