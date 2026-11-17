@@ -61,6 +61,95 @@ const settingsSchema = z.object({
   type: z.literal("object").optional(),
   properties: z.record(setupKey, z.record(z.string(), z.unknown())).default({}),
 }).passthrough();
+// List requirements mirror the strict platform contract in agents/installations/setup-requirements.ts.
+const columnName = z.string().trim().min(1).max(80);
+const fieldKey = z.string().regex(/^[a-z][a-z0-9_]{0,79}$/, 'field keys are lower-case words (letters, digits and _)');
+const tableSlug = z.string().regex(/^[a-z][a-z0-9_]{0,62}$/, 'a table is named by its slug (lower-case letters, digits and _)');
+
+/** The form a column heading is compared in: `Item Code`, `item-code` and `item_code` are one column. */
+export function normaliseListColumn(name: string): string {
+  return name.trim().toLowerCase().replace(/[\s_-]+/g, '_');
+}
+
+export const LIST_MAX_COLUMNS = 40;
+export const LIST_MAX_SAMPLE_ROWS = 200;
+/** How a combined key's parts are joined into the one text the row is matched on. */
+export const LIST_KEY_SEPARATOR = ' | ';
+
+const listColumnSchema = z
+  .object({
+    column: columnName,
+    /** The table field the cell is saved in; `title` is the record's own title. */
+    field: fieldKey,
+    required: z.boolean().default(false),
+    /** A sample cell, shown in the template people download. */
+    example: z.string().max(200).optional(),
+  })
+  .strict();
+
+const listSchema = z
+  .object({
+    key: setupKey,
+    label: requirementLabel,
+    table: tableSlug,
+    columns: z.array(listColumnSchema).min(1).max(LIST_MAX_COLUMNS),
+    /**
+     * What makes a row the same row when the list is loaded again: one column (its field must be the table's own
+     * required, unique text field), or several columns joined into a field kept only for that purpose.
+     */
+    matchOn: z.union([columnName, z.object({ field: fieldKey, columns: z.array(columnName).min(2).max(5) }).strict()]),
+    minRows: z.number().int().min(1).max(100_000).default(1),
+    required: z.boolean().default(true),
+    /** Made-up rows the person can load instead of a file of their own, keyed by column. */
+    sample: z.array(z.record(columnName, z.string().max(500))).min(1).max(LIST_MAX_SAMPLE_ROWS).optional(),
+  })
+  .strict()
+  .superRefine((list, ctx) => {
+    const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
+    const columns = new Map<string, number>();
+    const fields = new Set<string>();
+    list.columns.forEach((entry, i) => {
+      const name = normaliseListColumn(entry.column);
+      if (columns.has(name)) issue(['columns', i, 'column'], `column "${entry.column}" is listed twice`);
+      else columns.set(name, i);
+      if (fields.has(entry.field)) issue(['columns', i, 'field'], `two columns are saved in field "${entry.field}"`);
+      fields.add(entry.field);
+    });
+    const matchColumns = typeof list.matchOn === 'string' ? [list.matchOn] : list.matchOn.columns;
+    matchColumns.forEach((name, i) => {
+      const path = typeof list.matchOn === 'string' ? ['matchOn'] : ['matchOn', 'columns', i];
+      if (!columns.has(normaliseListColumn(name))) issue(path, `matches on column "${name}", which is not one of this list's columns`);
+    });
+    if (typeof list.matchOn !== 'string') {
+      if (new Set(matchColumns.map(normaliseListColumn)).size !== matchColumns.length) issue(['matchOn', 'columns'], 'lists a column twice');
+      if (fields.has(list.matchOn.field)) issue(['matchOn', 'field'], `field "${list.matchOn.field}" holds the combined key, so no column can be saved in it`);
+    }
+    list.sample?.forEach((row, i) => {
+      for (const name of Object.keys(row)) {
+        if (!columns.has(normaliseListColumn(name))) issue(['sample', i, name], `is not one of this list's columns`);
+      }
+    });
+  });
+
+/**
+ * A list a person loads from a spreadsheet during setup (products, customers): which table it fills, which columns
+ * the file carries, and how many rows the agent needs before it can work. Readiness counts the table's rows; the
+ * file itself is read by Workspace, never by package code.
+ */
+export type ListRequirement = z.output<typeof listSchema>;
+export type ListColumn = ListRequirement['columns'][number];
+
+/** The columns a row is matched on, as the list wrote them. */
+export const listMatchColumns = (list: Pick<ListRequirement, 'matchOn'>): string[] => (typeof list.matchOn === 'string' ? [list.matchOn] : [...list.matchOn.columns]);
+
+/** The table field that holds a row's key: the matched column's own field, or the combined key's field. */
+export function listKeyField(list: Pick<ListRequirement, 'matchOn' | 'columns'>): string {
+  if (typeof list.matchOn !== 'string') return list.matchOn.field;
+  const wanted = normaliseListColumn(list.matchOn);
+  return list.columns.find((entry) => normaliseListColumn(entry.column) === wanted)?.field ?? 'title';
+}
+
+
 export const setupRequirementsSchema = z.object({
   version: z.literal(2),
   connections: z.array(z.object({
@@ -68,6 +157,7 @@ export const setupRequirementsSchema = z.object({
     scope: z.enum(["personal", "service", "either"]), required: z.boolean().optional(),
   }).strict().refine((slot) => (slot.oneOf === undefined) !== (slot.server === undefined), 'give exactly one of "oneOf" or "server"')).max(20).default([]),
   settings: settingsSchema.optional(),
+  lists: z.array(listSchema).max(20).default([]),
   knowledge: z.array(z.object({
     key: setupKey, label: requirementLabel, folder: knowledgeFolder, minFiles: z.number().int().min(1).max(1000).optional(),
     extensions: z.array(z.string().regex(/^[.]?[A-Za-z0-9]{1,10}$/)).min(1).max(20).optional(),
@@ -90,6 +180,7 @@ export const setupRequirementsSchema = z.object({
   requirements.connections.forEach((slot) => claim(slot.key));
   Object.keys(requirements.settings?.properties ?? {}).forEach(claim);
   requirements.knowledge.forEach((entry) => claim(entry.key));
+  requirements.lists.forEach((entry) => claim(entry.key));
   requirements.tenantSettings.forEach((entry) => claim((entry.flag ?? entry.setting)!));
   requirements.people.forEach((entry) => claim(entry.role));
   requirements.tasks.forEach((task) => claim(task.key));
@@ -120,6 +211,7 @@ export const proposalTypeSchema = z.object({
     defaultSort: z.object({ key: z.string(), dir: z.enum(["asc", "desc"]) }).optional(), detailGroups: z.array(z.string()).optional(),
     sectionMeta: z.record(z.string(), z.object({ color: z.string().optional(), columns: z.union([z.literal(1), z.literal(2)]).optional() })).optional(),
     controlSlots: z.record(z.string(), z.string().nullable()).optional(),
+    packageWritesOnly: z.boolean().optional(),
   }).strict().optional(),
   fields: z.array(z.object({
     key: recordKey, label: z.string().min(1).max(80), kind: z.enum(["text", "long_text", "number", "percent", "money", "date", "datetime", "boolean", "select", "multi_select", "user", "relation", "email", "phone", "url", "pipeline"]),
