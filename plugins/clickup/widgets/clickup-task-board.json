@@ -1,0 +1,325 @@
+{
+  "id": "clickup-task-board",
+  "title": "ClickUp Task Board",
+  "description": "A ClickUp List's tasks grouped by status, by assignee, or by urgency — plus a quick way to add a task. Click a task to open it in ClickUp.",
+  "category": "tasks",
+  "connectorsUsed": ["clickup"],
+  "keywords": ["clickup", "tasks", "board", "kanban", "workload", "assignee", "overdue", "status", "quick add"],
+  "tags": ["clickup", "project-management", "tasks"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 4, "rowSpan": 6 },
+    "preferred": { "colSpan": 6, "rowSpan": 10 },
+    "max": { "colSpan": 10, "rowSpan": 16 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "clickup", "tool": "list_workspaces", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "pickerRow", "viewTabsRow", "errorBanner", "statusCaption", "rowList", "infoOverlay", "quickAddOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "LayoutDashboard", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "Task Board" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Pick a workspace, space and list" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "quickAddBtn": {
+        "type": "Button",
+        "props": { "label": "+ Task", "size": "sm", "variant": "primary", "tone": "info", "leadingIcon": "Plus" },
+        "visible": { "$state": "/ui/selectedList" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showQuickAdd", "value": true } },
+            { "action": "setState", "params": { "statePath": "/ui/quickAddName", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/quickAddDue", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/quickAddPriority", "value": "" } },
+            { "action": "setState", "params": { "statePath": "/ui/quickAddSaved", "value": false } }
+          ]
+        }
+      },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "headerActions": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["quickAddBtn", "infoBtn"] },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "headerActions"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About Task Board", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "One ClickUp List's tasks, grouped three different ways: by Status (a lightweight board), by Assignee (who's carrying what — a task with more than one assignee appears under each of them), or Urgent (overdue, due today, and due in the next 3 days only).",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Switch views with the tabs above the list. Click a task to open it on app.clickup.com. \"+ Task\" creates a new task in the selected List right away — it's the one action here that writes to ClickUp.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "teamSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedTeam" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_workspaces/teams" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose workspace…",
+          "size": "sm"
+        }
+      },
+      "spaceSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedSpace" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_spaces/spaces" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose space…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/ui/selectedTeam" }
+      },
+      "listSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedList" },
+          "options": { "$computed": "to_options", "args": { "value": { "$state": "/clickup/list_folderless_lists/lists" }, "valueField": "id", "labelField": "name" } },
+          "placeholder": "Choose list…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/ui/selectedSpace" }
+      },
+      "pickerRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm", "wrap": true },
+        "children": ["teamSelect", "spaceSelect", "listSelect"],
+        "watch": {
+          "/ui/selectedTeam": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedSpace", "value": null } },
+            { "action": "setState", "params": { "statePath": "/ui/selectedList", "value": null } },
+            { "action": "clickup.list_spaces", "params": { "team_id": { "$state": "/ui/selectedTeam" } } }
+          ],
+          "/ui/selectedSpace": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedList", "value": null } },
+            { "action": "clickup.list_folderless_lists", "params": { "space_id": { "$state": "/ui/selectedSpace" } } }
+          ],
+          "/ui/selectedList": [
+            { "action": "clickup.list_tasks", "params": { "list_id": { "$state": "/ui/selectedList" }, "include_closed": true } }
+          ]
+        }
+      },
+
+      "viewStatusBtn": {
+        "type": "Button",
+        "props": { "label": "Status", "size": "sm", "variant": { "$computed": "clickup_tab_variant", "args": { "active": { "$state": "/ui/boardView" }, "match": "status" } } },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/boardView", "value": "status" } } }
+      },
+      "viewAssigneeBtn": {
+        "type": "Button",
+        "props": { "label": "Assignee", "size": "sm", "variant": { "$computed": "clickup_tab_variant", "args": { "active": { "$state": "/ui/boardView" }, "match": "assignee" } } },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/boardView", "value": "assignee" } } }
+      },
+      "viewUrgentBtn": {
+        "type": "Button",
+        "props": { "label": "Urgent", "size": "sm", "variant": { "$computed": "clickup_tab_variant", "args": { "active": { "$state": "/ui/boardView" }, "match": "urgent" } } },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/boardView", "value": "urgent" } } }
+      },
+      "viewTabsRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "xs" },
+        "children": ["viewStatusBtn", "viewAssigneeBtn", "viewUrgentBtn"],
+        "visible": { "$state": "/ui/selectedList" },
+        "watch": {
+          "/ui/boardView": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/boardRows",
+                "value": {
+                  "$computed": "clickup_board_rows",
+                  "args": { "tasks": { "$state": "/clickup/list_tasks/tasks" }, "view": { "$state": "/ui/boardView" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load tasks: ${/_errors/clickup.list_tasks}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.list_tasks" }
+      },
+      "createError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't create that task: ${/_errors/clickup.create_task}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/clickup.create_task" }
+      },
+      "statusCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$cond": { "$state": "/ui/selectedList" },
+            "$then": {
+              "$cond": { "$state": "/_loading/clickup.list_tasks" },
+              "$then": "Loading…",
+              "$else": { "$cond": { "$state": "/ui/boardRows/0" }, "$then": "", "$else": "Nothing to show in this view." }
+            },
+            "$else": "Pick a workspace, space and list above to see its tasks."
+          },
+          "tone": "muted"
+        }
+      },
+
+      "headerLabel": { "type": "Text", "props": { "text": { "$item": "label" }, "size": "sm", "weight": "semibold" } },
+      "headerCountBadge": { "type": "Badge", "props": { "text": { "$item": "count" }, "tone": { "$item": "tone" } } },
+      "headerRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["headerLabel", "headerCountBadge"],
+        "visible": { "$item": "kind", "eq": "header" }
+      },
+
+      "rowTaskName": { "type": "Text", "props": { "text": { "$item": "task/name" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "rowDueBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$computed": "clickup_due_status_text", "args": { "value": { "$item": "task/due_date" } } },
+          "tone": { "$computed": "clickup_due_status_tone", "args": { "value": { "$item": "task/due_date" } } }
+        }
+      },
+      "rowTopRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["rowTaskName", "rowDueBadge"] },
+      "rowMeta": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{priority} · {assignees}",
+              "priority": { "$computed": "clickup_priority_label", "args": { "value": { "$item": "task/priority/priority" } } },
+              "assignees": { "$computed": "clickup_assignee_names", "args": { "value": { "$item": "task/assignees" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "rowContent": { "type": "Stack", "props": { "gap": "none" }, "children": ["rowTopRow", "rowMeta"] },
+      "taskRow": {
+        "type": "Row",
+        "props": { "clickable": true, "hover": true },
+        "children": ["rowContent"],
+        "visible": { "$item": "kind", "eq": "task" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$computed": "clickup_task_url", "args": { "task_id": { "$bindItem": "task/id" } } }, "target": "_blank" }
+          }
+        }
+      },
+
+      "rowList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["headerRow", "taskRow"],
+        "repeat": { "key": "id", "statePath": "/ui/boardRows" },
+        "visible": { "$state": "/_loading/clickup.list_tasks", "not": true },
+        "watch": {
+          "/clickup/list_tasks": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/boardRows",
+                "value": {
+                  "$computed": "clickup_board_rows",
+                  "args": { "tasks": { "$state": "/clickup/list_tasks/tasks" }, "view": { "$state": "/ui/boardView" } }
+                }
+              }
+            }
+          ]
+        }
+      },
+
+      "quickAddOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["quickAddCard"],
+        "visible": { "$state": "/ui/showQuickAdd" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showQuickAdd", "value": false } } }
+      },
+      "quickAddCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showQuickAdd", "value": false } } }
+      },
+      "quickAddTitle": { "type": "Heading", "props": { "text": "New task", "level": "h2" } },
+      "quickAddHeader": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["quickAddTitle", "quickAddCloseBtn"] },
+      "quickAddDivider": { "type": "Divider", "props": {} },
+      "quickAddNameInput": { "type": "TextInput", "props": { "value": { "$bindState": "/ui/quickAddName" }, "placeholder": "Task name" } },
+      "quickAddDueInput": { "type": "DateInput", "props": { "value": { "$bindState": "/ui/quickAddDue" }, "placeholder": "Due date (optional)" } },
+      "quickAddPrioritySelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/quickAddPriority" },
+          "options": [
+            { "value": "", "label": "No priority" },
+            { "value": "1", "label": "Urgent" },
+            { "value": "2", "label": "High" },
+            { "value": "3", "label": "Normal" },
+            { "value": "4", "label": "Low" }
+          ],
+          "size": "sm"
+        }
+      },
+      "quickAddSaveRow": { "type": "Row", "props": { "justify": "end" }, "children": ["quickAddSaveBtn"] },
+      "quickAddSaveBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Add task",
+          "variant": "primary",
+          "size": "sm",
+          "leadingIcon": "Plus",
+          "disabled": { "$computed": "clickup_is_blank", "args": { "value": { "$state": "/ui/quickAddName" } } }
+        },
+        "on": {
+          "click": [
+            {
+              "action": "clickup.create_task",
+              "params": {
+                "list_id": { "$state": "/ui/selectedList" },
+                "name": { "$state": "/ui/quickAddName" },
+                "due_date": { "$computed": "clickup_date_to_epoch_ms", "args": { "value": { "$state": "/ui/quickAddDue" } } },
+                "priority": { "$computed": "clickup_priority_value_to_int", "args": { "value": { "$state": "/ui/quickAddPriority" } } }
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/showQuickAdd", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/quickAddSaved", "value": true } },
+            { "action": "clickup.list_tasks", "params": { "list_id": { "$state": "/ui/selectedList" }, "include_closed": true } }
+          ]
+        }
+      },
+      "quickAddSavedCaption": { "type": "Caption", "props": { "text": "Task added.", "tone": "success" }, "visible": { "$state": "/ui/quickAddSaved" } },
+      "quickAddBody": { "type": "Stack", "props": { "gap": "sm" }, "children": ["quickAddNameInput", "quickAddDueInput", "quickAddPrioritySelect", "quickAddSaveRow", "createError", "quickAddSavedCaption"] },
+      "quickAddCard": { "type": "Card", "props": {}, "children": ["quickAddHeader", "quickAddDivider", "quickAddBody"] }
+    }
+  }
+}
