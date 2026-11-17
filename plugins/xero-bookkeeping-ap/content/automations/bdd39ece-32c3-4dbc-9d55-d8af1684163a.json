@@ -1,5 +1,5 @@
 {
-  "contentHash": "fc5298a163e2264eb85a3b0b2fbe52f41cfb38100719ca0ae877a60be3562b46",
+  "contentHash": "a8ab925dad090a6ad7448806424e2a9cf08ad97a505013aa0158c7b1258a63ad",
   "declaredScopes": [
     "connectors:m365-mail-read",
     "connectors:xero-accounting",
@@ -68,5 +68,30 @@
   "level": "org",
   "name": "Bookkeeping AP: Read bill emails (Outlook)",
   "originKey": "bdd39ece-32c3-4dbc-9d55-d8af1684163a",
+  "practiceRun": {
+    "intendedActions": [
+      {
+        "method": "invoke",
+        "ns": "connectors",
+        "summary": "connectors.invoke — list_emails"
+      },
+      {
+        "method": "invoke",
+        "ns": "connectors",
+        "summary": "connectors.invoke — list_connections"
+      },
+      {
+        "method": "invoke",
+        "ns": "connectors",
+        "summary": "connectors.invoke — list_emails"
+      },
+      {
+        "method": "put",
+        "ns": "files",
+        "summary": "files.put — bookkeeping-ap/outlook-intake-state.json"
+      }
+    ],
+    "version": 2
+  },
   "tags": []
 }

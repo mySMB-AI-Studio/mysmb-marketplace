@@ -1,5 +1,5 @@
 {
-  "contentHash": "1c961cacc7d5c5b768c8e3227096a8e95e75685af9ccdee52b01d7270e917d21",
+  "contentHash": "91e2375ace36264d3f8d7c34b439644455b077c44f3d8a456bb734567e39d52a",
   "declaredScopes": [
     "connectors:hotmail-mail",
     "connectors:xero-accounting",
@@ -68,5 +68,30 @@
   "level": "org",
   "name": "Bookkeeping AP: Read bill emails (Hotmail)",
   "originKey": "b3a9c99f-01eb-4b48-8a5b-7cb7b5765aa0",
+  "practiceRun": {
+    "intendedActions": [
+      {
+        "method": "invoke",
+        "ns": "connectors",
+        "summary": "connectors.invoke — list_emails"
+      },
+      {
+        "method": "invoke",
+        "ns": "connectors",
+        "summary": "connectors.invoke — list_connections"
+      },
+      {
+        "method": "invoke",
+        "ns": "connectors",
+        "summary": "connectors.invoke — list_emails"
+      },
+      {
+        "method": "put",
+        "ns": "files",
+        "summary": "files.put — bookkeeping-ap/hotmail-intake-state.json"
+      }
+    ],
+    "version": 2
+  },
   "tags": []
 }
