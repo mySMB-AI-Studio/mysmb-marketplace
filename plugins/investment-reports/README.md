@@ -16,7 +16,7 @@ Turns the investment documents in SharePoint into reports for the family. It's r
 
 1. It goes through one investment's folder and its subfolders, up to eight levels down, so folders that sit inside a wrapper folder are still reached. Documents are grouped by their own file name first and the folders above them second: capital calls, valuations (capital account and wealth statements), dividend and distribution statements, tax statements, annual reports, investor updates (including quarterly reports), terms and deeds (applications, subscriptions, trust deeds), due diligence and correspondence.
 2. It reads up to 50 documents. The investment can be shares in a company or an interest in a fund, trust or limited partnership. AI pulls out the facts each one states:
-   - money invested, including capital calls and drawdowns - counted only from capital call notices and signed subscription documents, never from correspondence that merely describes a call, which the model reads differently from one run to the next
+   - money invested, including capital calls and drawdowns - counted only from capital call notices and signed subscription documents, never from correspondence that merely describes a call. Each of those documents is asked one dedicated question about the money it moves, the same way every run, so the instalments behind the IRR do not change from one run to the next. A refund, repayment or return of an overpayment is money coming back, and is never counted as an instalment
    - dividends paid
    - valuations, capital account balances and net asset values
    - key terms
