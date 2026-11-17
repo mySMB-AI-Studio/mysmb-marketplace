@@ -11,6 +11,7 @@ const man = (r) => { const f = path.join(__dirname, r.ref + '.manifest.json'); r
 const S = (key) => PLUGIN + ':' + PLUGIN + '-' + key;
 const ITEM_14 = { cra: 'CRA-14', name: 'Ledger User Activity' };
 const CLIENT_INPUT = { xero: 'the organisation id (`tenantId` from `list_connections`)', myob: 'the company file id (`Id` from `list_company_files`)', quickbooks: 'none: QuickBooks is the one connected company' };
+const CLIENT_IS = ' The client is a connected Xero organisation, MYOB company file or QuickBooks company, named in full or in part (for example "Irvine Jackson" for Irvine Jackson Pty Ltd); it is never a contact.';
 const DISCOVERY = { xero: '`list_connections` (xero-accounting)', myob: '`list_company_files` (myob-accounting)', quickbooks: '`qbo_query` with `SELECT * FROM CompanyInfo` (quickbooks-accounting)' };
 
 function inputsTable(m) {
@@ -21,7 +22,7 @@ const COMMON = `## Rules for every client report
 
 - **Confirm the client first (never assume):** one client per report, from the user's own connections; ask if it isn't clear.
 - **Period: use the default unless the user gives one.** If the user names no dates or period, don't ask: create the report with the template's default period (don't set \`display\` or the dates) and say in your reply which period it shows ("this financial year to date", or "the last complete quarter" for the tax and BAS reports) and that they can change it in the report's Report period control or ask you for other dates. Cash or accrual and the persona also keep their defaults unless the user asks.
-- **Find the client's platform and id** with one discovery call: Xero ${DISCOVERY.xero}, MYOB ${DISCOVERY.myob}, QuickBooks ${DISCOVERY.quickbooks}. If the user names a client that none of their connections expose, say so and list the ones they can use. Never put another client's id in a report.
+- **Find the client's platform and id** with one discovery call: Xero ${DISCOVERY.xero}, MYOB ${DISCOVERY.myob}, QuickBooks ${DISCOVERY.quickbooks}. **The client is a connected organisation or company file, never a contact:** run the discovery calls first, even when the user gives only part of the name or no platform, and match the name against the organisation and company file names (case-insensitive, partial: "Irvine Jackson" matches "Irvine Jackson Pty Ltd"). Never search contacts, customers or suppliers to find the client. If more than one connection matches, ask which one. If the user names a client that none of their connections expose, say so and list the ones they can use. Never put another client's id in a report.
 - **Create the report with \`artifact_from_template\`**: \`plugin\` = \`${PLUGIN}\`, \`slug\` from the table below, \`title\` = "<Report name> — <client name> — <period>", and \`inputs\` = only the declared inputs the request changes (exact names from the table; dates as \`YYYY-MM-DD\`). You write no HTML and no figures: the report fetches live data every time it opens and recomputes its checks.
 - **The period is set by the \`display\` input's \`p\` key as well as the dates.** When a report opens it re-sets \`from_date\` / \`to_date\` from \`p\` unless \`p\` is \`custom\` (and \`as_at\` from \`a\` unless \`a\` is \`custom\`). So:
   - **Specific dates** (for example "1 July to 30 September 2026"): set \`from_date\` and \`to_date\` **and** \`display\` = the template's default display string from the table below with only \`"p":"custom"\` changed. For a specific as-at date, set \`as_at\` and change \`"a":"custom"\` too.
@@ -61,7 +62,7 @@ function reportSkill(id) {
   const key = id;
   const body = `---
 name: ${PLUGIN}-${key}
-description: ${it.cra} ${it.name} for one client (${orList(platformsOf(id))}) as a live, validated report. Use when the user asks for the ${it.name.toLowerCase()} of a client${ASKS[id] || ''}.
+description: ${it.cra} ${it.name} for one client (${orList(platformsOf(id))}) as a live, validated report. Use when the user asks for the ${it.name.toLowerCase()} of a client${ASKS[id] || ''}.${CLIENT_IS}
 ---
 
 # ${it.cra} ${it.name}
@@ -99,7 +100,7 @@ function catalogueSkill() {
   const key = 'catalogue';
   return { key, body: `---
 name: ${PLUGIN}-${key}
-description: CRA-00 Client catalogue — every client report as a box for the selected client (Financial, Tax & BAS, Sales & purchases, Quality, Activity, Time, Platform reports), with what is live and how to open it. Use when the user asks what client reports exist, for the client catalogue, or "what can you report on for <client>".
+description: CRA-00 Client catalogue — every client report as a box for the selected client (Financial, Tax & BAS, Sales & purchases, Quality, Activity, Time, Platform reports), with what is live and how to open it. Use when the user asks what client reports exist, for the client catalogue, or "what can you report on for <client>".${CLIENT_IS}
 ---
 
 # CRA-00 Client catalogue
@@ -120,7 +121,7 @@ function platformSkill() {
   const lists = Object.entries(LIB).map(([p, l]) => '### ' + PLATFORM[p] + ' — extension `' + l.plugin + '`' + (l.client ? ' (client input `' + l.client + '`)' : ' (no client input: one company per connection)') + '\n\n' + l.reports.map((r) => '- ' + (r.code ? r.code + ' ' : '') + r.title + ': `' + r.slug + '`').join('\n')).join('\n\n');
   return { key, body: `---
 name: ${PLUGIN}-${key}
-description: CRA-16 Platform-native reports — opens any report of the Xero (P01–P15), MYOB (M00–M63) or QuickBooks (Q00–Q39) report library for the selected client from the reporting-studio extensions. Use when the user asks for a standard platform report for a client (Profit and Loss, Balance Sheet, aged receivables, GST/BAS summary, trial balance, general ledger …) that is not one of the Client Report Analytics reports.
+description: CRA-16 Platform-native reports — opens any report of the Xero (P01–P15), MYOB (M00–M63) or QuickBooks (Q00–Q39) report library for the selected client from the reporting-studio extensions. Use when the user asks for a standard platform report for a client (Profit and Loss, Balance Sheet, aged receivables, GST/BAS summary, trial balance, general ledger …) that is not one of the Client Report Analytics reports.${CLIENT_IS}
 ---
 
 # CRA-16 Platform-native reports (pass-through)
@@ -143,7 +144,7 @@ function ledgerActivitySkill() {
   const key = 'ledger-user-activity';
   return { key, body: `---
 name: ${PLUGIN}-${key}
-description: ${ITEM_14.cra} ${ITEM_14.name} — what people have been doing in a client's accounting file. Routes to the QuickBooks Audit Log (Q21) and MYOB Journal Security Audit (M13) skills; Xero has no organisation-wide audit log. Use when the user asks who changed, added or deleted a transaction, for an audit trail, or for ledger user activity for a client.
+description: ${ITEM_14.cra} ${ITEM_14.name} — what people have been doing in a client's accounting file. Routes to the QuickBooks Audit Log (Q21) and MYOB Journal Security Audit (M13) skills; Xero has no organisation-wide audit log. Use when the user asks who changed, added or deleted a transaction, for an audit trail, or for ledger user activity for a client.${CLIENT_IS}
 ---
 
 # ${ITEM_14.cra} ${ITEM_14.name}
