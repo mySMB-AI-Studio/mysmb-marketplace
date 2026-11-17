@@ -2962,7 +2962,7 @@ const bank_balance_view: ComputedFunction = (args) => {
     .filter(({ u }) => String(u.oldest ?? '') !== '')
     .sort((x, y) => String(x.u.oldest).localeCompare(String(y.u.oldest)))[0];
   const unrecCapped = summary.unreconciledTruncated === true;
-  const unrecRows = [...unrecAccounts]
+  const unrecAllRows = [...unrecAccounts]
     .sort(
       (x, y) =>
         bbNum(y.u.count) - bbNum(x.u.count) || String(x.a.name ?? '').localeCompare(String(y.a.name ?? '')),
@@ -2973,6 +2973,9 @@ const bank_balance_view: ComputedFunction = (args) => {
       countText: `${bbNum(u.count).toLocaleString('en-AU')} ${bbNum(u.count) === 1 ? 'entry' : 'entries'}`,
       netText: bbSigned(bbNum(u.net)),
     }));
+  // Same cap as the by-account list: the section is a summary, not a second ledger.
+  const unrecRows = unrecAllRows.slice(0, BB_TOP_ACCOUNTS);
+  const unrecMore = unrecAllRows.length - unrecRows.length;
 
   return {
     // Selection
@@ -3087,7 +3090,9 @@ const bank_balance_view: ComputedFunction = (args) => {
         ? 'Xero cannot show the bank balance itself, so any difference from your bank would be lines the bank feed has not brought in yet.'
         : 'These are in the Xero balance but not yet matched to a bank statement line, so they can explain a difference from your bank. Xero cannot show the bank balance itself.',
     unrecRows,
-    unrecShowRows: unrecRows.length > 1,
+    unrecShowRows: unrecAllRows.length > 1,
+    unrecMoreText: unrecMore > 0 ? `+ ${unrecMore} more ${unrecMore === 1 ? 'account' : 'accounts'}` : '',
+    unrecHasMore: unrecMore > 0,
 
     // Footer
     checkText: adds
