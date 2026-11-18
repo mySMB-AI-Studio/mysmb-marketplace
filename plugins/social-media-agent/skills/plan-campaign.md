@@ -3,6 +3,8 @@ name: plan-campaign
 description: Plan a social media campaign for the Social Media Agent's campaign-plan process, from the person's request, the confirmed Brand Kit and the planning rules. Works out how many pieces, which content types and channels, and a publish date, topic and angle for each. Returns the step's JSON only. Plans only; never drafts, posts or sends.
 ---
 
+> **In a newer job (a prompted process)** the same fields come from the result of the prepare tool's "context" mode: where this skill says `steps.context.<x>`, use `<x>` from that result. Do not answer with the JSON there: pass `campaign` as plan and `pieces` to the check tool, as the process instructions say.
+
 # Plan a campaign
 
 You are planning a campaign for a small business. The plan goes to a reviewer, who approves it or asks for changes. Once it is approved, each piece becomes a Content piece with its own drafting job. **You only plan.** You do not draft the pieces, and nothing is posted or sent.
