@@ -6,7 +6,7 @@ Supplier bills and sales invoices from email or PDF into Xero, for bookkeeping p
 
 ## What's in the box
 
-- **Connectors:** `xero-accounting` (the mySMB Xero connector), and `m365-mail-shared` for reading a shared Outlook mailbox. Email intake otherwise uses `m365-mail-read` or, for a personal Hotmail / Outlook.com inbox, `hotmail-mail` (both in the Microsoft 365 extension), or `google-workspace-gmail` (Google Workspace extension).
+- **Connectors:** `xero-accounting` (the mySMB Xero connector, the only one everyone needs), and `m365-mail-shared` for reading a shared Outlook mailbox. Email intake otherwise uses `m365-mail-read` or, for a personal Hotmail / Outlook.com inbox, `hotmail-mail` (both in the Microsoft 365 extension), or `google-workspace-gmail` (Google Workspace extension). Only the mailbox you choose needs connecting: the others are optional (see *Which mailbox* below).
 <!-- >>> payroll -->
 - **Automations (19):**
 <!-- <<< payroll -->
@@ -74,7 +74,7 @@ No configuration variables are required. Settings are collected by the setup for
 5. **Run *Bookkeeping: Start setup*** and fill in the Bookkeeping setup form on the item it creates. The setup is kept in Knowledge (`Bookkeeping/settings.json`), so it survives removing and installing the extension again: to change it later, run *Start setup* with **Set up again: Yes** and submit the form it sends (client settings are kept).
 6. **Run it again with your client business names** (one per line), and fill in each client's settings form. Enter the Xero organisation name exactly as it appears in Xero.
 7. **Publish** *Process bill or invoice*, *File split documents*, *Apply bill or invoice review*, *Weekly AP digest* and *Ledger checks*.
-8. **For bills by email:** install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, and publish *Email intake (Outlook)* or *Email intake (Gmail)*. For a shared Outlook mailbox (accounts@…), put its address in the Bookkeeping setup form, connect *m365-mail-shared* as someone with Full Access to it, and publish *Email intake (Outlook shared mailbox)*. For a personal Hotmail, Outlook.com or Live.com inbox (the Microsoft 365 Outlook connection takes work or school accounts only), connect *hotmail-mail* (Microsoft 365 extension) as the automations' owner, signing in with that Hotmail account, and publish *Email intake (Hotmail)*. List any other folders to read in the setup form, and each client's own folder (if it has one) in its client settings. Each folder's first run looks back 24 hours.
+8. **For bills by email:** say which mailbox receives bills when the Workspace asks (*Which mailbox*, below), install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, and publish *Email intake (Outlook)* or *Email intake (Gmail)*. For a shared Outlook mailbox (accounts@…), put its address in the Bookkeeping setup form, connect *m365-mail-shared* as someone with Full Access to it, and publish *Email intake (Outlook shared mailbox)*. For a personal Hotmail, Outlook.com or Live.com inbox (the Microsoft 365 Outlook connection takes work or school accounts only), connect *hotmail-mail* (Microsoft 365 extension) as the automations' owner, signing in with that Hotmail account, and publish *Email intake (Hotmail)*. List any other folders to read in the setup form, and each client's own folder (if it has one) in its client settings. Each folder's first run looks back 24 hours.
 9. **Try it:** email a supplier bill PDF to that inbox, or drop one into `Bookkeeping Inbox/<client>/` in Knowledge.
 
 After every extension update, publish the updated automation drafts again. Updates arrive as drafts, and the previous version keeps running until you do.
@@ -174,6 +174,18 @@ A test company's ABNs are usually made up, so the register has no record of them
 - Delete the file to go back to the register: the next run forgets everything the file gave. *Register lookups* still needs the ABR Lookup extension connected to be published.
 
 Never use it for a real client.
+
+## Which mailbox
+
+The Workspace's setup guidance asks once which mailbox receives your bills: **Gmail**, **My Outlook mailbox**, **Hotmail or Outlook.com**, **A shared Outlook mailbox**, or **No mailbox** (you add bills as PDFs). Only Xero and the mailbox you choose are needed; the other mail connections stay optional and never hold the setup back. Until you choose, it goes by what you already run, then by what you told Welcome:
+
+- an *Email intake* automation that is already on and runs as you counts as your answer (if two are on, it asks);
+- otherwise, if you told Welcome you use Google or Microsoft 365 (and not both), Google means Gmail and Microsoft 365 means your own Outlook mailbox;
+- otherwise, or when it can't check what is already on, it asks.
+
+A shared mailbox is only ever used when you choose it or already run its intake: an address typed in the Bookkeeping setup form doesn't count on its own. Nothing is guessed from how you sign in or your email address.
+
+Choosing a mailbox only records your answer. It doesn't connect, publish, pause or switch any automation: you still connect the mailbox and publish its *Email intake* automation yourself, and an Email intake you already run keeps going from where it stopped until you pause it. Email intake reads the mailbox of the person it runs as (its owner), using their **default** account for that connection in Connections, so the address typed in the Bookkeeping setup form is for your records only. If someone else owns the automation, it reads their mailbox, not yours.
 
 ## How email intake works
 
