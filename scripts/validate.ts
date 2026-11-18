@@ -44,6 +44,12 @@
  *      bundle-relative path to an existing svg/png/jpg/webp/gif of ≤ 96 KB
  *      inside the plugin dir (marketplace sync inlines those as data URIs and
  *      silently drops anything else). Entries without the blocks are unaffected.
+ *  11. If a marketplace.json entry declares a top-level `connectionRequirements`
+ *      block (which of its connections a person owes — the rest are optional): it
+ *      parses strictly, its own servers are in the package's .mcp.json, every other
+ *      package it names is in marketplace.json and ships that server, and every
+ *      automation it names exists in the package under that name. See
+ *      scripts/connection-requirements.ts. Entries without the key are unaffected.
  *
  * Branch tiers: dev → qa → uat → main. CI (.github/workflows/validate.yml)
  * runs this on every PR and on every push to each tier — including the
@@ -57,6 +63,7 @@ import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, relative, sep, isAbsolute } from "node:path";
 import { setupKeys, validatePortableContent } from "./extension-content";
 import { fileURLToPath } from "node:url";
+import { validateConnectionRequirements } from "./connection-requirements";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Alternate roots permit full CLI fixtures without changing published plugins.
@@ -983,6 +990,20 @@ function main() {
     const relPath = sourcePath.replace(/^\.\//, "").replace(/^plugins\//, "");
     validatePlugin(relPath, p.name);
     validateStoreListing(relPath, p);
+    if ("connectionRequirements" in p) {
+      const dirOf = (name: string): string | null => {
+        const other = (marketplace.plugins ?? []).find((q) => q.name === name);
+        const src = other ? resolveSourcePath(other.source) : null;
+        return src ? join(repoRoot, "plugins", src.replace(/^\.\//, "").replace(/^plugins\//, "")) : null;
+      };
+      for (const msg of validateConnectionRequirements(
+        p as unknown as Record<string, unknown>,
+        join(repoRoot, "plugins", relPath),
+        dirOf,
+      )) {
+        fail(`marketplace.json: plugin "${p.name}" connectionRequirements: ${msg}`);
+      }
+    }
   }
 
   report();
