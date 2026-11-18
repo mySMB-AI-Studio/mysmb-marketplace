@@ -2852,6 +2852,7 @@ const bank_balance_view = (args) => {
         name: String(a.name ?? ''),
         countText: `${bbNum(u.count).toLocaleString('en-AU')} ${bbNum(u.count) === 1 ? 'entry' : 'entries'}`,
         netText: bbSigned(bbNum(u.net)),
+        countOnly: bbNum(u.count).toLocaleString('en-AU'),
     }));
     // Same cap as the by-account list: the section is a summary, not a second ledger.
     const unrecRows = unrecAllRows.slice(0, BB_TOP_ACCOUNTS);
@@ -2943,17 +2944,14 @@ const bank_balance_view = (args) => {
         unrecShow: unrecKnown,
         unrecCount,
         unrecHasAny: unrecKnown && unrecCount > 0,
-        unrecTone: unrecCount > 0 ? 'warning' : 'success',
-        unrecIcon: unrecCount > 0 ? 'Clock' : 'CircleCheck',
-        unrecHeadline: unrecCount === 0
-            ? 'Everything in Xero is matched to the bank'
-            : `${unrecCount.toLocaleString('en-AU')}${unrecCapped ? '+' : ''} ${unrecCount === 1 ? 'entry' : 'entries'} in Xero not yet matched to the bank`,
-        unrecDetail: unrecCount === 0
-            ? ''
-            : `${bbAud(unrecIn)} in · ${bbAud(unrecOut)} out · net ${bbSigned(unrecNet)}${unrecOldest ? ` · oldest ${String(unrecOldest.u.oldestText ?? '')}` : ''}`,
-        unrecNote: unrecCount === 0
-            ? 'Xero cannot show the bank balance itself, so any difference from your bank would be lines the bank feed has not brought in yet.'
-            : 'These are in the Xero balance but not yet matched to a bank statement line, so they can explain a difference from your bank. Xero cannot show the bank balance itself.',
+        unrecAllMatched: unrecKnown && unrecCount === 0,
+        unrecCountText: `${unrecCount.toLocaleString('en-AU')}${unrecCapped ? '+' : ''}`,
+        unrecCountLabel: `${unrecCount === 1 ? 'entry' : 'entries'} in Xero not yet matched to the bank`,
+        unrecInText: `${bbAud(unrecIn)} in`,
+        unrecOutText: `${bbAud(unrecOut)} out`,
+        unrecSubText: `${unrecOldest ? `Oldest ${String(unrecOldest.u.oldestText ?? '').replace(/^[A-Za-z]{3} /, '')} · ` : ''}net ${bbSigned(unrecNet)}`,
+        unrecNote: 'In the Xero balance but not yet matched to a bank statement line, so they can explain a difference from your bank. Xero cannot show the bank balance itself.',
+        unrecAllMatchedNote: 'Xero cannot show the bank balance itself, so any difference from your bank would be lines the bank feed has not brought in yet.',
         unrecRows,
         unrecShowRows: unrecAllRows.length > 1,
         unrecMoreText: unrecMore > 0 ? `+ ${unrecMore} more ${unrecMore === 1 ? 'account' : 'accounts'}` : '',

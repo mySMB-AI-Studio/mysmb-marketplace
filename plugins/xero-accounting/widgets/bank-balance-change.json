@@ -3424,43 +3424,75 @@
         "props": {
           "variant": "muted"
         },
-        "visible": {
-          "$state": "/ui/bbc/v/unrecShow"
-        },
         "children": [
           "unrecStack"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShow"
+        }
+      },
+      "unrecCountStat": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/bbc/v/unrecCountText"
+          }
+        }
+      },
+      "unrecHeader": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "unrecTitle",
+          "unrecOpen"
         ]
       },
-      "unrecDetail": {
-        "type": "Caption",
+      "unrecHero": {
+        "type": "Row",
         "props": {
-          "text": {
-            "$state": "/ui/bbc/v/unrecDetail"
-          }
+          "align": "center",
+          "gap": "md"
         },
+        "children": [
+          "unrecCountStat",
+          "unrecHeroText"
+        ],
         "visible": {
           "$state": "/ui/bbc/v/unrecHasAny"
         }
       },
-      "unrecHead": {
+      "unrecHeroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "children": [
+          "unrecLabel",
+          "unrecSub"
+        ]
+      },
+      "unrecInPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecInText"
+          },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "unrecLabel": {
         "type": "Text",
         "props": {
           "text": {
-            "$state": "/ui/bbc/v/unrecHeadline"
+            "$state": "/ui/bbc/v/unrecCountLabel"
           },
           "weight": "medium"
-        }
-      },
-      "unrecIcon": {
-        "type": "Icon",
-        "props": {
-          "name": {
-            "$state": "/ui/bbc/v/unrecIcon"
-          },
-          "size": "sm",
-          "tone": {
-            "$state": "/ui/bbc/v/unrecTone"
-          }
         }
       },
       "unrecList": {
@@ -3468,16 +3500,16 @@
         "props": {
           "gap": "xs"
         },
-        "visible": {
-          "$state": "/ui/bbc/v/unrecShowRows"
-        },
+        "children": [
+          "unrecRow"
+        ],
         "repeat": {
           "key": "accountId",
           "statePath": "/ui/bbc/v/unrecRows"
         },
-        "children": [
-          "unrecRow"
-        ]
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShowRows"
+        }
       },
       "unrecMore": {
         "type": "Caption",
@@ -3496,32 +3528,180 @@
           "text": {
             "$state": "/ui/bbc/v/unrecNote"
           }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecOk": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecOkIcon",
+          "unrecOkText"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecAllMatched"
+        }
+      },
+      "unrecOkIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CircleCheck",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "unrecOkNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecAllMatchedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecAllMatched"
+        }
+      },
+      "unrecOkText": {
+        "type": "Text",
+        "props": {
+          "text": "Everything in Xero is matched to the bank",
+          "weight": "medium"
+        }
+      },
+      "unrecOpen": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs"
+        },
+        "children": [
+          "unrecOpenText",
+          "unrecOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/bbc/v/xeroUrl"
+              }
+            }
+          }
+        }
+      },
+      "unrecOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpRight",
+          "size": "xs",
+          "tone": "accent"
+        }
+      },
+      "unrecOpenText": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "text": "Reconcile in Xero",
+          "tone": "accent"
+        }
+      },
+      "unrecOutPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecOutText"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        }
+      },
+      "unrecPills": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecInPill",
+          "unrecOutPill"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
         }
       },
       "unrecRow": {
         "type": "Row",
         "props": {
           "align": "center",
+          "clickable": true,
           "gap": "sm",
+          "hover": true,
           "justify": "between"
         },
         "children": [
-          "unrecRowName",
+          "unrecRowLeft",
           "unrecRowRight"
-        ]
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$bindItem": "accountId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        }
       },
       "unrecRowCount": {
-        "type": "Caption",
+        "type": "Badge",
         "props": {
           "text": {
-            "$item": "countText"
-          }
+            "$item": "countOnly"
+          },
+          "tone": "warning",
+          "variant": "soft"
         }
+      },
+      "unrecRowDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "unrecRowLeft": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "unrecRowDot",
+          "unrecRowName"
+        ]
       },
       "unrecRowName": {
         "type": "Text",
         "props": {
-          "size": "xs",
           "text": {
             "$item": "name"
           },
@@ -3543,33 +3723,39 @@
           "gap": "sm"
         },
         "children": [
-          "unrecRowCount",
-          "unrecRowNet"
+          "unrecRowNet",
+          "unrecRowCount"
         ]
       },
       "unrecStack": {
         "type": "Stack",
         "props": {
-          "gap": "xs"
+          "gap": "sm"
         },
         "children": [
-          "unrecTop",
-          "unrecDetail",
+          "unrecHeader",
+          "unrecHero",
+          "unrecPills",
           "unrecList",
           "unrecMore",
-          "unrecNote"
+          "unrecNote",
+          "unrecOk",
+          "unrecOkNote"
         ]
       },
-      "unrecTop": {
-        "type": "Row",
+      "unrecSub": {
+        "type": "Caption",
         "props": {
-          "align": "center",
-          "gap": "xs"
-        },
-        "children": [
-          "unrecIcon",
-          "unrecHead"
-        ]
+          "text": {
+            "$state": "/ui/bbc/v/unrecSubText"
+          }
+        }
+      },
+      "unrecTitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "NOT YET RECONCILED IN XERO"
+        }
       },
       "why": {
         "children": [
