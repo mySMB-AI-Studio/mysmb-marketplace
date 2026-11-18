@@ -1,6 +1,6 @@
 {
   "id": "m365-outlook-mail-folders",
-  "title": "Mail and Folders",
+  "title": "myOutlook",
   "description": "Outlook-style two-pane mailbox browser: folders on the left (Inbox, Drafts and Sent Items pinned, then alphabetical), that folder's messages on the right, click a message for full details.",
   "category": "productivity",
   "tags": ["m365", "outlook", "mail", "email", "folders", "productivity"],
@@ -15,7 +15,7 @@
   "dataProvider": {
     "mcp": "m365-mail-read",
     "tool": "list_mail_folders",
-    "params": { "maxDepth": 1 }
+    "params": { "maxDepth": 4 }
   },
   "spec": {
     "root": "card",
@@ -51,7 +51,7 @@
       },
       "titleIcon": { "type": "Icon", "props": { "name": "Mail", "tone": "info", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Mail and Folders", "level": "h2" } },
+      "title": { "type": "Heading", "props": { "text": "myOutlook", "level": "h2" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Outlook · Microsoft 365" } },
 
       "divider1": { "type": "Divider", "props": {} },
@@ -100,8 +100,28 @@
               "params": {
                 "statePath": "/ui/sortedFolders",
                 "value": {
-                  "$computed": "microsoft-365_mail_folder_sorted",
-                  "args": { "items": { "$state": "/m365-mail-read/list_mail_folders" }, "selectedPath": { "$state": "/ui/selectedFolderPath" } }
+                  "$computed": "microsoft-365_mail_folder_tree",
+                  "args": {
+                    "items": { "$state": "/m365-mail-read/list_mail_folders" },
+                    "selectedPath": { "$state": "/ui/selectedFolderPath" },
+                    "expandedPaths": { "$state": "/ui/expandedFolderPaths" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/expandedFolderPaths": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sortedFolders",
+                "value": {
+                  "$computed": "microsoft-365_mail_folder_tree",
+                  "args": {
+                    "items": { "$state": "/m365-mail-read/list_mail_folders" },
+                    "selectedPath": { "$state": "/ui/selectedFolderPath" },
+                    "expandedPaths": { "$state": "/ui/expandedFolderPaths" }
+                  }
                 }
               }
             }
@@ -122,25 +142,41 @@
         "on": {
           "click": [
             { "action": "setState", "params": { "statePath": "/ui/selectedFolderPath", "value": { "$bindItem": "path" } } },
-            { "action": "setState", "params": { "statePath": "/ui/selectedFolderName", "value": { "$bindItem": "displayName" } } }
+            { "action": "setState", "params": { "statePath": "/ui/selectedFolderName", "value": { "$bindItem": "displayName" } } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/expandedFolderPaths",
+                "value": {
+                  "$computed": "microsoft-365_mail_folder_toggle_expanded",
+                  "args": { "expandedPaths": { "$state": "/ui/expandedFolderPaths" }, "path": { "$bindItem": "path" } }
+                }
+              }
+            }
           ]
         }
       },
-      "folderLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["folderIcon", "folderName"] },
       "folderIcon": {
         "type": "Icon",
         "props": {
           "name": { "$computed": "microsoft-365_mail_folder_icon", "args": { "value": { "$item": "displayName" } } },
           "tone": { "$computed": "microsoft-365_mail_folder_tone", "args": { "value": { "$item": "displayName" } } },
           "size": "sm"
-        }
+        },
+        "visible": { "$item": "depth", "eq": 1 }
       },
-      "folderName": { "type": "Text", "props": { "text": { "$item": "displayName" }, "size": "sm", "weight": "medium", "truncate": true } },
+      "subFolderIcon": {
+        "type": "Icon",
+        "props": { "name": "Folder", "tone": "muted", "size": "sm" },
+        "visible": { "$item": "depth", "eq": 1, "not": true }
+      },
+      "folderLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["folderIcon", "subFolderIcon", "folderName"] },
+      "folderName": { "type": "Text", "props": { "text": { "$item": "indentedName" }, "size": "sm", "weight": "medium", "truncate": true } },
       "folderUnreadBadge": {
         "type": "Badge",
         "props": {
           "text": { "$item": "unreadItemCount" },
-          "tone": { "$computed": "microsoft-365_mail_folder_tone", "args": { "value": { "$item": "displayName" } } }
+          "tone": { "$cond": { "$item": "depth", "eq": 1 }, "$then": { "$computed": "microsoft-365_mail_folder_tone", "args": { "value": { "$item": "displayName" } } }, "$else": "muted" }
         },
         "visible": { "$item": "unreadItemCount" }
       },
@@ -523,14 +559,14 @@
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
       },
       "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
-      "infoTitleText": { "type": "Heading", "props": { "text": "About Mail and Folders", "level": "h2" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About myOutlook", "level": "h2" } },
       "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
       "infoDivider": { "type": "Divider", "props": {} },
       "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
       "infoWhatText": {
         "type": "Text",
         "props": {
-          "text": "An Outlook-style view of your mailbox: your folders on the left (Inbox, Drafts and Sent Items first, then the rest alphabetically), and whichever folder's messages on the right.",
+          "text": "An Outlook-style view of your mailbox: your folders on the left (Inbox, Drafts and Sent Items first, then the rest alphabetically), and whichever folder's messages on the right. Any folder with sub-folders can be expanded in place to show them.",
           "size": "sm"
         }
       },
@@ -538,7 +574,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "Click a folder to see its messages. Click a message to read it in full and reply. The trash icon on a message asks you to confirm before deleting it. Compose, at the top, opens a new message. Reply, delete and Compose all act on your real mailbox — there's no undo for sending, though a deleted message can still be recovered from Deleted Items.",
+          "text": "Click a folder to see its messages. If it has sub-folders, the same click also expands them inline underneath it, indented and shown with a plain folder icon — click it again to collapse. Click a message to read it in full and reply. The trash icon on a message asks you to confirm before deleting it. Compose, at the top, opens a new message. Reply, delete and Compose all act on your real mailbox — there's no undo for sending, though a deleted message can still be recovered from Deleted Items.",
           "size": "sm"
         }
       },
