@@ -411,39 +411,91 @@ const transcript_display_text: ComputedFunction = (args) => {
 };
 
 /**
- * The folder list tile shows top-level folders only (dataProvider calls
- * list_mail_folders with maxDepth: 1, so every item is already top-level --
- * no subfolder filtering needed). Inbox/Drafts/Sent Items pin to the top in
- * that fixed order (matching Outlook's own left-rail convention); everything
- * else sorts alphabetically by displayName.
+ * Inbox/Drafts/Sent Items pin to the top in that fixed order (matching
+ * Outlook's own left-rail convention); everything else at the same level
+ * sorts alphabetically by displayName.
  */
 const PINNED_FOLDER_ORDER = ['Inbox', 'Drafts', 'Sent Items'];
 
 /**
- * Also tags each folder with `isSelected` when `selectedPath` is given, so
- * folderRow's "selected" prop can read a plain `{"$item":"isSelected"}`
- * instead of comparing $state against $item inline -- json-render's eq/neq
- * only resolves `$state` (or a literal) on the comparison's right-hand side;
- * an `$item` there is returned unresolved and never matches, confirmed live
- * (every row read back `selected: true`, then all `false` once the $cond
- * nesting itself was fixed -- the deeper bug). Pre-computing the comparison
- * into the data, the same way this function already pre-sorts it, sidesteps
- * the limitation entirely.
+ * Flattens list_mail_folders' response (now fetched at maxDepth: 4, not 1 --
+ * every item already carries its full `path`, e.g. "Inbox/Bills/Acme
+ * Plumbing", and its own `childFolderCount`) into the rows the left rail
+ * actually renders: top-level folders always shown, a folder's children
+ * shown directly underneath it ONLY while that folder's path is in
+ * `expandedPaths` -- an inline expand/collapse tree, not a drill-down.
+ *
+ * Each returned row carries `depth` (1 = top-level), `hasChildren`,
+ * `isExpanded` and `isSelected` already resolved, and an `indentedName` with
+ * two U+00A0 (non-breaking space) per depth level prepended -- this system's
+ * components have no margin/indent prop, so indentation is composed into the
+ * text itself; regular spaces would collapse in HTML, NBSP doesn't.
+ * `isSelected`/`isExpanded` are pre-computed for the same reason
+ * `isPendingDelete` is on mark_pending_delete below: json-render's eq/neq
+ * never resolves an `$item` on the comparison's right-hand side, confirmed
+ * live earlier on this exact tile (every row read back `selected: true`
+ * until the comparison was pre-computed into the data instead of compared
+ * inline).
+ *
+ * Args: { items: array, selectedPath?: string, expandedPaths?: string[] }
  */
-const mail_folder_sorted: ComputedFunction = (args) => {
+const mail_folder_tree: ComputedFunction = (args) => {
   const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
-  const pinned: (Record<string, unknown> | undefined)[] = [];
-  const rest: Record<string, unknown>[] = [];
-  for (const it of items) {
-    const idx = PINNED_FOLDER_ORDER.indexOf(String(it.displayName ?? ''));
-    if (idx === -1) rest.push(it);
-    else pinned[idx] = it;
-  }
-  rest.sort((a, b) => String(a.displayName ?? '').localeCompare(String(b.displayName ?? '')));
-  const sorted = [...pinned.filter((it): it is Record<string, unknown> => Boolean(it)), ...rest];
-  if (args.selectedPath === undefined) return sorted;
   const selectedPath = String(args.selectedPath ?? '');
-  return sorted.map((it) => ({ ...it, isSelected: String(it.path ?? '') === selectedPath }));
+  const expanded = new Set(Array.isArray(args.expandedPaths) ? (args.expandedPaths as unknown[]).map(String) : []);
+
+  const childrenByParent = new Map<string, Record<string, unknown>[]>();
+  for (const it of items) {
+    const path = String(it.path ?? '');
+    const slash = path.lastIndexOf('/');
+    const parentPath = slash === -1 ? '' : path.slice(0, slash);
+    const list = childrenByParent.get(parentPath);
+    if (list) list.push(it);
+    else childrenByParent.set(parentPath, [it]);
+  }
+  const sortLevel = (level: Record<string, unknown>[], pinned: boolean) => {
+    if (!pinned) return [...level].sort((a, b) => String(a.displayName ?? '').localeCompare(String(b.displayName ?? '')));
+    const pinnedOut: (Record<string, unknown> | undefined)[] = [];
+    const rest: Record<string, unknown>[] = [];
+    for (const it of level) {
+      const idx = PINNED_FOLDER_ORDER.indexOf(String(it.displayName ?? ''));
+      if (idx === -1) rest.push(it);
+      else pinnedOut[idx] = it;
+    }
+    rest.sort((a, b) => String(a.displayName ?? '').localeCompare(String(b.displayName ?? '')));
+    return [...pinnedOut.filter((it): it is Record<string, unknown> => Boolean(it)), ...rest];
+  };
+
+  const out: Record<string, unknown>[] = [];
+  const walk = (parentPath: string, depth: number) => {
+    const level = childrenByParent.get(parentPath) ?? [];
+    for (const it of sortLevel(level, depth === 1)) {
+      const path = String(it.path ?? '');
+      const hasChildren = Number(it.childFolderCount ?? 0) > 0;
+      const isExpanded = hasChildren && expanded.has(path);
+      out.push({
+        ...it,
+        depth,
+        hasChildren,
+        isExpanded,
+        isSelected: path === selectedPath,
+        indentedName: `${'    '.repeat(depth - 1)}${String(it.displayName ?? '')}`,
+      });
+      if (isExpanded) walk(path, depth + 1);
+    }
+  };
+  walk('', 1);
+  return out;
+};
+
+/**
+ * Toggles one folder path in/out of the expanded set. Args: { expandedPaths:
+ * string[] | undefined, path: string }
+ */
+const mail_folder_toggle_expanded: ComputedFunction = (args) => {
+  const current = Array.isArray(args.expandedPaths) ? (args.expandedPaths as unknown[]).map(String) : [];
+  const path = String(args.path ?? '');
+  return current.includes(path) ? current.filter((p) => p !== path) : [...current, path];
 };
 
 const FOLDER_ICONS: Record<string, string> = {
@@ -552,7 +604,8 @@ const elements: PluginElementsModule = {
     day_end_iso,
     schedule_title,
     transcript_display_text,
-    mail_folder_sorted,
+    mail_folder_tree,
+    mail_folder_toggle_expanded,
     mail_folder_icon,
     mail_folder_tone,
     compose_to_list,
