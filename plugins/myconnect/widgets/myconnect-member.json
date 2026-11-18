@@ -153,7 +153,18 @@
         "props": { "gap": "xs", "wrap": true },
         "children": ["myActivityTabBtn", "membersTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
       },
-      "tabDivider": { "type": "Divider", "props": {} },
+      "tabDivider": {
+        "type": "Divider",
+        "props": {},
+        "watch": {
+          "/ui/selectedCommunity": [
+            { "action": "myconnect.list_members", "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 } }
+          ],
+          "/ui/activeTab": [
+            { "action": "myconnect.list_members", "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 } }
+          ]
+        }
+      },
 
       "infoOverlay": {
         "type": "Overlay",
@@ -183,7 +194,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "My Activity shows your own points, posts and comments. Members only searches by name — myConnect doesn't let a member browse the full list, only look someone up. Community Feed and Notifications work just like the myConnect app. This tile is read-only.",
+          "text": "My Activity shows your own points, posts and comments. Members shows every active member of the community — name and avatar only — and you can search by name to jump straight to someone. Community Feed and Notifications work just like the myConnect app. This tile is read-only.",
           "size": "sm"
         }
       },
@@ -292,13 +303,27 @@
           "disabled": { "$computed": "is_blank", "args": { "value": { "$state": "/ui/memberSearchQuery" } } }
         },
         "on": {
-          "click": {
-            "action": "myconnect.search_members",
-            "params": { "community": { "$state": "/ui/selectedCommunity" }, "query": { "$state": "/ui/memberSearchQuery" } }
-          }
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/memberSearchActive", "value": true } },
+            {
+              "action": "myconnect.search_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "query": { "$state": "/ui/memberSearchQuery" } }
+            }
+          ]
         }
       },
-      "memberSearchRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberSearchInput", "memberSearchBtn"] },
+      "memberClearSearchBtn": {
+        "type": "Button",
+        "props": { "label": "All members", "leadingIcon": "X", "size": "sm", "variant": "secondary" },
+        "visible": { "$state": "/ui/memberSearchActive" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/memberSearchActive", "value": false } },
+            { "action": "setState", "params": { "statePath": "/ui/memberSearchQuery", "value": "" } }
+          ]
+        }
+      },
+      "memberSearchRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberSearchInput", "memberSearchBtn", "memberClearSearchBtn"] },
       "memberSearchErrorBanner": {
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't search members: ${/_errors/myconnect.search_members}" }, "tone": "destructive" },
@@ -309,10 +334,42 @@
         "props": { "height": "2.5rem", "rounded": "md" },
         "visible": { "$state": "/_loading/myconnect.search_members" }
       },
-      "memberSearchPrompt": {
+      "memberSearchEmpty": {
         "type": "Empty",
-        "props": { "message": "Type a name above and press Search — myConnect only supports looking someone up by name, not browsing a full list." },
-        "visible": { "$state": "/myconnect/search_members/0", "not": true }
+        "props": { "message": "No members matched that name." },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/memberSearchActive" },
+            { "$state": "/_loading/myconnect.search_members", "not": true },
+            { "$state": "/myconnect/search_members/0", "not": true },
+            { "$state": "/_errors/myconnect.search_members", "not": true }
+          ]
+        }
+      },
+      "memberBrowseErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load members: ${/_errors/myconnect.list_members}" }, "tone": "destructive" },
+        "visible": { "$and": [{ "$state": "/ui/memberSearchActive", "not": true }, { "$state": "/_errors/myconnect.list_members" }] }
+      },
+      "memberBrowseLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "memberBrowseLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "memberBrowseLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberBrowseLoading1", "memberBrowseLoading2"],
+        "visible": { "$and": [{ "$state": "/ui/memberSearchActive", "not": true }, { "$state": "/_loading/myconnect.list_members" }] }
+      },
+      "memberBrowseEmpty": {
+        "type": "Empty",
+        "props": { "message": "No members found." },
+        "visible": {
+          "$and": [
+            { "$state": "/ui/memberSearchActive", "not": true },
+            { "$state": "/_loading/myconnect.list_members", "not": true },
+            { "$state": "/myconnect/list_members/items/0", "not": true },
+            { "$state": "/_errors/myconnect.list_members", "not": true }
+          ]
+        }
       },
       "memberResultAvatar": {
         "type": "Avatar",
@@ -340,12 +397,35 @@
         "props": { "gap": "xs" },
         "children": ["memberResultRow"],
         "repeat": { "key": "id", "statePath": "/myconnect/search_members" },
-        "visible": { "$state": "/myconnect/search_members/0" }
+        "visible": { "$and": [{ "$state": "/ui/memberSearchActive" }, { "$state": "/myconnect/search_members/0" }] }
+      },
+      "memberBrowseList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["memberResultRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect/list_members/items" },
+        "visible": { "$and": [{ "$state": "/ui/memberSearchActive", "not": true }, { "$state": "/myconnect/list_members/items/0" }] }
+      },
+      "memberBrowseMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — there are more.", "tone": "muted" },
+        "visible": { "$and": [{ "$state": "/ui/memberSearchActive", "not": true }, { "$state": "/myconnect/list_members/nextCursor" }] }
       },
       "membersPanel": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["memberSearchRow", "memberSearchErrorBanner", "memberSearchLoading", "memberSearchPrompt", "memberResultsList"],
+        "children": [
+          "memberSearchRow",
+          "memberSearchErrorBanner",
+          "memberSearchLoading",
+          "memberSearchEmpty",
+          "memberBrowseErrorBanner",
+          "memberBrowseLoading",
+          "memberBrowseEmpty",
+          "memberResultsList",
+          "memberBrowseList",
+          "memberBrowseMoreCaption"
+        ],
         "visible": { "$state": "/ui/activeTab", "eq": "members" }
       },
 
