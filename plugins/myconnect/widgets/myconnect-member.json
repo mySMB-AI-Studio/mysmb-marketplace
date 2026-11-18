@@ -1,0 +1,718 @@
+{
+  "id": "myconnect-member",
+  "title": "myConnect Member",
+  "description": "A member's view of their own myConnect community — pick which one from the dropdown if you belong to more than one. My Activity: your points, post and comment counts, your level, and your recent posts. Members: find a member by name — just their name and avatar, nothing else. Community Feed: the home feed across every channel, filterable by For you / Latest / Popular — click a post to preview it. Notifications: your notifications, unread count and status at a glance — click one to open what it's about.",
+  "category": "productivity",
+  "connectorsUsed": ["myconnect"],
+  "keywords": ["myconnect", "community", "member", "feed", "notifications", "members"],
+  "tags": ["myconnect", "community", "member"],
+  "popularity": 0,
+  "sizing": {
+    "min": { "colSpan": 5, "rowSpan": 6 },
+    "preferred": { "colSpan": 7, "rowSpan": 9 },
+    "max": { "colSpan": 10, "rowSpan": 12 }
+  },
+  "dataProvider": { "kind": "tool", "mcp": "myconnect", "tool": "list_communities", "params": {} },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberDetailOverlay", "feedPreviewOverlay"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Member" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Your community, as you" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["titleIcon", "titleStack"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect.get_my_profile",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect.get_my_profile",
+              "params": { "community": { "$state": "/ui/selectedCommunity" } }
+            }
+          ],
+          "/myconnect/get_my_profile/id": [
+            {
+              "action": "myconnect.get_member",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "memberId": { "$state": "/myconnect/get_my_profile/id" } }
+            }
+          ]
+        }
+      },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "communitySelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedCommunity" },
+          "options": {
+            "$computed": "to_options",
+            "args": { "value": { "$state": "/myconnect/list_communities" }, "valueField": "slug", "labelField": "name" }
+          },
+          "placeholder": "Choose community…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/myconnect/list_communities/1" }
+      },
+      "pillsRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["communitySelect", "infoBtn"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": { "$state": "/ui/feedMode" }, "limit": 20 }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect.get_feed",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": { "$state": "/ui/feedMode" }, "limit": 20 }
+            }
+          ]
+        }
+      },
+      "header": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["titleGroup", "pillsRow"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect.list_notifications",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
+            }
+          ],
+          "/ui/activeTab": [
+            {
+              "action": "myconnect.list_notifications",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "limit": 20 }
+            }
+          ]
+        }
+      },
+
+      "myActivityTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "My Activity",
+          "leadingIcon": "BarChart3",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "myActivity" }, "$then": "primary", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "primary", "$else": "secondary" } },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "myActivity" }, "$then": "info", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "info", "$else": "default" } }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "myActivity" } } }
+      },
+      "membersTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Members",
+          "leadingIcon": "Search",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "members" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "members" }, "$then": "info", "$else": "default" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "members" } } }
+      },
+      "communityFeedTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Community Feed",
+          "leadingIcon": "MessageSquare",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "communityFeed" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "communityFeed" }, "$then": "info", "$else": "default" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "communityFeed" } } }
+      },
+      "notificationsTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Notifications",
+          "leadingIcon": "Bell",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "notifications" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "notifications" }, "$then": "info", "$else": "default" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "notifications" } } }
+      },
+      "tabBar": {
+        "type": "Row",
+        "props": { "gap": "xs", "wrap": true },
+        "children": ["myActivityTabBtn", "membersTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
+      },
+      "tabDivider": { "type": "Divider", "props": {} },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About myConnect Member", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "The member's-eye view of a myConnect community you belong to. This tile acts only with your own access — it never shows other members' email, status, tags, role, join date or access groups, and it can't manage the community.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "Using it", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "My Activity shows your own points, posts and comments. Members only searches by name — myConnect doesn't let a member browse the full list, only look someone up. Community Feed and Notifications work just like the myConnect app. This tile is read-only.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
+
+      "myActivityHeading": { "type": "Heading", "props": { "level": "h3", "text": "My Activity" } },
+      "myActivitySubtitle": { "type": "Caption", "props": { "text": "Your own activity in this community", "tone": "muted" } },
+      "myActivityHeadingStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["myActivityHeading", "myActivitySubtitle"] },
+
+      "myActivityErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load your activity: ${/_errors/myconnect.get_my_profile}${/_errors/myconnect.get_member}" }, "tone": "destructive" },
+        "visible": { "$or": [{ "$state": "/_errors/myconnect.get_my_profile" }, { "$state": "/_errors/myconnect.get_member" }] }
+      },
+      "myActivityLoading": {
+        "type": "Skeleton",
+        "props": { "height": "4rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect.get_my_profile" }
+      },
+
+      "pointsStatIcon": { "type": "Icon", "props": { "name": "Star", "size": "sm", "tone": "accent" } },
+      "pointsStatLabel": { "type": "Caption", "props": { "text": "Points", "tone": "accent", "weight": "semibold" } },
+      "pointsStatHeader": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["pointsStatIcon", "pointsStatLabel"] },
+      "pointsStat": { "type": "Stat", "props": { "value": { "$state": "/myconnect/get_my_profile/pointsBalance" } } },
+      "pointsStatCard": { "type": "Card", "props": {}, "children": ["pointsStatHeader", "pointsStat"] },
+
+      "postsStatIcon": { "type": "Icon", "props": { "name": "FileText", "size": "sm", "tone": "info" } },
+      "postsStatLabel": { "type": "Caption", "props": { "text": "Posts", "tone": "info", "weight": "semibold" } },
+      "postsStatHeader": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["postsStatIcon", "postsStatLabel"] },
+      "postsStat": { "type": "Stat", "props": { "value": { "$state": "/myconnect/get_member/postCount" } } },
+      "postsStatCard": { "type": "Card", "props": {}, "children": ["postsStatHeader", "postsStat"] },
+
+      "commentsStatIcon": { "type": "Icon", "props": { "name": "MessageCircle", "size": "sm", "tone": "success" } },
+      "commentsStatLabel": { "type": "Caption", "props": { "text": "Comments", "tone": "success", "weight": "semibold" } },
+      "commentsStatHeader": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["commentsStatIcon", "commentsStatLabel"] },
+      "commentsStat": { "type": "Stat", "props": { "value": { "$state": "/myconnect/get_member/commentCount" } } },
+      "commentsStatCard": { "type": "Card", "props": {}, "children": ["commentsStatHeader", "commentsStat"] },
+
+      "myActivityStatsRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "wrap": true },
+        "children": ["pointsStatCard", "postsStatCard", "commentsStatCard"],
+        "visible": { "$state": "/_loading/myconnect.get_my_profile", "not": true }
+      },
+
+      "myLevelLabel": { "type": "Caption", "props": { "text": "Level", "tone": "muted", "weight": "semibold" } },
+      "myLevelValue": {
+        "type": "Text",
+        "props": {
+          "size": "sm",
+          "weight": "medium",
+          "text": { "$cond": { "$state": "/myconnect/get_member/level" }, "$then": { "$state": "/myconnect/get_member/level/name" }, "$else": "No level yet" }
+        }
+      },
+      "myLevelRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["myLevelLabel", "myLevelValue"],
+        "visible": { "$state": "/_loading/myconnect.get_my_profile", "not": true }
+      },
+
+      "recentPostsHeading": { "type": "Caption", "props": { "text": "My recent posts", "tone": "muted", "weight": "semibold" } },
+      "recentPostsEmpty": {
+        "type": "Empty",
+        "props": { "message": "You haven't posted yet." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect.get_my_profile", "not": true },
+            { "$state": "/myconnect/get_member/recentPosts/0", "not": true }
+          ]
+        }
+      },
+      "recentPostTitle": { "type": "Text", "props": { "size": "sm", "weight": "medium", "text": { "$item": "title" }, "truncate": true } },
+      "recentPostTime": { "type": "Caption", "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "publishedAt" } } }, "tone": "muted" } },
+      "recentPostTopRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["recentPostTitle", "recentPostTime"] },
+      "recentPostExcerpt": { "type": "Caption", "props": { "text": { "$item": "excerpt" }, "tone": "muted" } },
+      "recentPostRow": { "type": "Stack", "props": { "gap": "none" }, "children": ["recentPostTopRow", "recentPostExcerpt"] },
+      "recentPostsList": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["recentPostRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect/get_member/recentPosts" },
+        "visible": { "$state": "/myconnect/get_member/recentPosts/0" }
+      },
+
+      "myActivityPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["myActivityHeadingStack", "myActivityErrorBanner", "myActivityLoading", "myActivityStatsRow", "myLevelRow", "recentPostsHeading", "recentPostsEmpty", "recentPostsList"],
+        "visible": { "$or": [{ "$state": "/ui/activeTab", "eq": "myActivity" }, { "$state": "/ui/activeTab", "not": true }] }
+      },
+
+      "memberSearchInput": {
+        "type": "TextInput",
+        "props": { "value": { "$bindState": "/ui/memberSearchQuery" }, "placeholder": "Find a member by name…", "size": "sm" }
+      },
+      "memberSearchBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Search",
+          "leadingIcon": "Search",
+          "size": "sm",
+          "variant": "primary",
+          "tone": "info",
+          "disabled": { "$computed": "is_blank", "args": { "value": { "$state": "/ui/memberSearchQuery" } } }
+        },
+        "on": {
+          "click": {
+            "action": "myconnect.search_members",
+            "params": { "community": { "$state": "/ui/selectedCommunity" }, "query": { "$state": "/ui/memberSearchQuery" } }
+          }
+        }
+      },
+      "memberSearchRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberSearchInput", "memberSearchBtn"] },
+      "memberSearchErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't search members: ${/_errors/myconnect.search_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect.search_members" }
+      },
+      "memberSearchLoading": {
+        "type": "Skeleton",
+        "props": { "height": "2.5rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect.search_members" }
+      },
+      "memberSearchPrompt": {
+        "type": "Empty",
+        "props": { "message": "Type a name above and press Search — myConnect only supports looking someone up by name, not browsing a full list." },
+        "visible": { "$state": "/myconnect/search_members/0", "not": true }
+      },
+      "memberResultAvatar": {
+        "type": "Avatar",
+        "props": { "size": "sm", "tone": "accent", "imageUrl": { "$item": "avatarUrl" }, "initials": { "$computed": "initials", "args": { "value": { "$item": "name" } } } }
+      },
+      "memberResultName": { "type": "Text", "props": { "size": "sm", "weight": "medium", "text": { "$item": "name" } } },
+      "memberResultLeft": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberResultAvatar", "memberResultName"] },
+      "memberResultChevron": { "type": "Icon", "props": { "name": "ChevronRight", "size": "sm", "tone": "muted" } },
+      "memberResultRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "hover": true, "clickable": true },
+        "children": ["memberResultLeft", "memberResultChevron"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showMemberDetail", "value": true } },
+            {
+              "action": "myconnect.get_member",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "memberId": { "$bindItem": "id" } }
+            }
+          ]
+        }
+      },
+      "memberResultsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["memberResultRow"],
+        "repeat": { "key": "id", "statePath": "/myconnect/search_members" },
+        "visible": { "$state": "/myconnect/search_members/0" }
+      },
+      "membersPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberSearchRow", "memberSearchErrorBanner", "memberSearchLoading", "memberSearchPrompt", "memberResultsList"],
+        "visible": { "$state": "/ui/activeTab", "eq": "members" }
+      },
+
+      "feedForYouBtn": {
+        "type": "Button",
+        "props": {
+          "label": "For you",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/feedMode", "eq": "for_you" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/feedMode", "eq": "for_you" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/feedMode", "value": "for_you" } },
+            { "action": "myconnect.get_feed", "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": "for_you", "limit": 20 } }
+          ]
+        }
+      },
+      "feedLatestBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Latest",
+          "size": "sm",
+          "variant": {
+            "$cond": { "$state": "/ui/feedMode", "eq": "for_you" },
+            "$then": "secondary",
+            "$else": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "secondary", "$else": "primary" }
+          },
+          "tone": {
+            "$cond": { "$state": "/ui/feedMode", "eq": "for_you" },
+            "$then": "default",
+            "$else": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "default", "$else": "info" }
+          }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/feedMode", "value": "latest" } },
+            { "action": "myconnect.get_feed", "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": "latest", "limit": 20 } }
+          ]
+        }
+      },
+      "feedPopularBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Popular",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/feedMode", "eq": "popular" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/feedMode", "value": "popular" } },
+            { "action": "myconnect.get_feed", "params": { "community": { "$state": "/ui/selectedCommunity" }, "mode": "popular", "limit": 20 } }
+          ]
+        }
+      },
+      "feedModeToggle": { "type": "Row", "props": { "gap": "xs" }, "children": ["feedForYouBtn", "feedLatestBtn", "feedPopularBtn"] },
+      "feedErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load the feed: ${/_errors/myconnect.get_feed}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect.get_feed" }
+      },
+      "feedLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "feedLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "feedLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedLoading1", "feedLoading2"],
+        "visible": { "$state": "/_loading/myconnect.get_feed" }
+      },
+      "feedEmpty": {
+        "type": "Empty",
+        "props": { "message": "No posts found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect.get_feed", "not": true },
+            { "$state": "/myconnect/get_feed/items/0", "not": true },
+            { "$state": "/_errors/myconnect.get_feed", "not": true }
+          ]
+        }
+      },
+      "feedItemContent": {
+        "type": "ActivityItem",
+        "props": {
+          "title": { "$cond": { "$item": "title" }, "$then": { "$item": "title" }, "$else": { "$item": "excerpt" } },
+          "subtitle": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{a} · {s}",
+              "a": { "$cond": { "$item": "author" }, "$then": { "$item": "author/name" }, "$else": "myConnect" },
+              "s": { "$item": "space/name" }
+            }
+          },
+          "timestamp": { "$computed": "relative_time", "args": { "value": { "$item": "publishedAt" } } },
+          "initials": { "$computed": "initials", "args": { "value": { "$cond": { "$item": "author" }, "$then": { "$item": "author/name" }, "$else": "myConnect" } } },
+          "tone": {
+            "$cond": { "$item": "isPinned" },
+            "$then": "warning",
+            "$else": { "$cond": { "$item": "hasEvent" }, "$then": "info", "$else": { "$cond": { "$item": "hasPoll" }, "$then": "accent", "$else": null } }
+          }
+        }
+      },
+      "feedItem": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["feedItemContent"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": true } },
+            { "action": "myconnect.get_post", "params": { "community": { "$state": "/ui/selectedCommunity" }, "postId": { "$bindItem": "id" } } }
+          ]
+        }
+      },
+      "feedList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["feedItem"],
+        "repeat": { "key": "id", "statePath": "/myconnect/get_feed/items" },
+        "visible": { "$state": "/myconnect/get_feed/items/0" }
+      },
+      "feedMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — there are more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect/get_feed/nextCursor" }
+      },
+      "communityFeedPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedModeToggle", "feedErrorBanner", "feedLoading", "feedEmpty", "feedList", "feedMoreCaption"],
+        "visible": { "$state": "/ui/activeTab", "eq": "communityFeed" }
+      },
+
+      "notificationsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load notifications: ${/_errors/myconnect.list_notifications}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect.list_notifications" }
+      },
+      "notificationsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "notificationsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "notificationsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["notificationsLoading1", "notificationsLoading2"],
+        "visible": { "$state": "/_loading/myconnect.list_notifications" }
+      },
+      "notificationsUnreadBadge": {
+        "type": "Badge",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} unread", "n": { "$state": "/myconnect/list_notifications/unread" } } }, "tone": "info", "variant": "soft" },
+        "visible": { "$state": "/myconnect/list_notifications/unread" }
+      },
+      "notificationsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No notifications." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect.list_notifications", "not": true },
+            { "$state": "/myconnect/list_notifications/items/0", "not": true },
+            { "$state": "/_errors/myconnect.list_notifications", "not": true }
+          ]
+        }
+      },
+      "notificationItemContent": {
+        "type": "ActivityItem",
+        "props": {
+          "title": { "$item": "title" },
+          "subtitle": { "$item": "body" },
+          "timestamp": { "$computed": "relative_time", "args": { "value": { "$item": "createdAt" } } },
+          "initials": { "$computed": "initials", "args": { "value": { "$cond": { "$item": "actor" }, "$then": { "$item": "actor/name" }, "$else": "myConnect" } } },
+          "status": { "$cond": { "$item": "readAt", "eq": null }, "$then": "unread", "$else": "read" }
+        }
+      },
+      "notificationItem": {
+        "type": "Row",
+        "props": { "clickable": true },
+        "children": ["notificationItemContent"],
+        "on": { "click": { "action": "open_url", "params": { "url": { "$bindItem": "url" }, "target": "_blank" } } }
+      },
+      "notificationsList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["notificationItem"],
+        "repeat": { "key": "id", "statePath": "/myconnect/list_notifications/items" },
+        "visible": { "$state": "/myconnect/list_notifications/items/0" }
+      },
+      "notificationsMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 20 — there are more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect/list_notifications/nextCursor" }
+      },
+      "notificationsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["notificationsErrorBanner", "notificationsLoading", "notificationsUnreadBadge", "notificationsEmpty", "notificationsList", "notificationsMoreCaption"],
+        "visible": { "$state": "/ui/activeTab", "eq": "notifications" }
+      },
+
+      "body": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["myActivityPanel", "membersPanel", "communityFeedPanel", "notificationsPanel"]
+      },
+
+      "memberDetailOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["memberDetailCard"],
+        "visible": { "$state": "/ui/showMemberDetail" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showMemberDetail", "value": false } } }
+      },
+      "memberDetailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showMemberDetail", "value": false } } }
+      },
+      "memberDetailLoading": {
+        "type": "Skeleton",
+        "props": { "height": "6rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect.get_member" }
+      },
+      "memberDetailErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load member: ${/_errors/myconnect.get_member}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect.get_member" }
+      },
+      "memberDetailAvatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "md",
+          "tone": "accent",
+          "imageUrl": { "$state": "/myconnect/get_member/avatarUrl" },
+          "initials": { "$computed": "initials", "args": { "value": { "$state": "/myconnect/get_member/displayName" } } }
+        }
+      },
+      "memberDetailName": { "type": "Heading", "props": { "level": "h3", "text": { "$state": "/myconnect/get_member/displayName" } } },
+      "memberDetailHeadline": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/myconnect/get_member/headline" }, "tone": "muted" },
+        "visible": { "$state": "/myconnect/get_member/headline" }
+      },
+      "memberDetailNameStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["memberDetailName", "memberDetailHeadline"] },
+      "memberDetailHeaderRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberDetailAvatar", "memberDetailNameStack"] },
+      "memberDetailDivider": { "type": "Divider", "props": {} },
+      "memberDetailBio": {
+        "type": "Text",
+        "props": { "size": "sm", "preserveLines": true, "text": { "$state": "/myconnect/get_member/bio" } },
+        "visible": { "$state": "/myconnect/get_member/bio" }
+      },
+      "memberDetailLocation": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "📍 {l}", "l": { "$state": "/myconnect/get_member/location" } } }, "tone": "muted" },
+        "visible": { "$state": "/myconnect/get_member/location" }
+      },
+      "memberDetailJoined": {
+        "type": "Caption",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "Joined {d}", "d": { "$computed": "relative_time", "args": { "value": { "$state": "/myconnect/get_member/joinedAt" } } } } }, "tone": "muted" }
+      },
+      "memberDetailMetaRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["memberDetailLocation", "memberDetailJoined"] },
+      "memberDetailLevelBadge": {
+        "type": "Badge",
+        "props": { "text": { "$cond": { "$state": "/myconnect/get_member/level" }, "$then": { "$state": "/myconnect/get_member/level/name" }, "$else": "No level yet" }, "tone": "accent", "variant": "soft" }
+      },
+      "memberDetailPostsBadge": {
+        "type": "Badge",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} post(s)", "n": { "$state": "/myconnect/get_member/postCount" } } }, "tone": "info", "variant": "soft" }
+      },
+      "memberDetailCommentsBadge": {
+        "type": "Badge",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} comment(s)", "n": { "$state": "/myconnect/get_member/commentCount" } } }, "tone": "success", "variant": "soft" }
+      },
+      "memberDetailBadgeRow": { "type": "Row", "props": { "align": "center", "gap": "xs", "wrap": true }, "children": ["memberDetailLevelBadge", "memberDetailPostsBadge", "memberDetailCommentsBadge"] },
+      "memberDetailContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["memberDetailHeaderRow", "memberDetailDivider", "memberDetailBio", "memberDetailMetaRow", "memberDetailBadgeRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect.get_member", "not": true },
+            { "$state": "/_errors/myconnect.get_member", "not": true }
+          ]
+        }
+      },
+      "memberDetailCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["memberDetailCloseBtn", "memberDetailLoading", "memberDetailErrorBanner", "memberDetailContent"]
+      },
+
+      "feedPreviewOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["feedPreviewCard"],
+        "visible": { "$state": "/ui/showFeedPreview" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": false } } }
+      },
+      "feedPreviewCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showFeedPreview", "value": false } } }
+      },
+      "feedPreviewLoading": {
+        "type": "Skeleton",
+        "props": { "height": "6rem", "rounded": "md" },
+        "visible": { "$state": "/_loading/myconnect.get_post" }
+      },
+      "feedPreviewErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load post: ${/_errors/myconnect.get_post}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect.get_post" }
+      },
+      "feedPreviewPinnedBadge": {
+        "type": "Badge",
+        "props": { "text": "Pinned", "tone": "warning", "variant": "soft" },
+        "visible": { "$state": "/myconnect/get_post/isPinned" }
+      },
+      "feedPreviewTitleText": {
+        "type": "Heading",
+        "props": { "level": "h2", "text": { "$cond": { "$state": "/myconnect/get_post/title" }, "$then": { "$state": "/myconnect/get_post/title" }, "$else": "Post" } }
+      },
+      "feedPreviewTitleRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["feedPreviewTitleText", "feedPreviewPinnedBadge"] },
+      "feedPreviewAuthorAvatar": {
+        "type": "Avatar",
+        "props": {
+          "size": "sm",
+          "tone": "accent",
+          "initials": { "$computed": "initials", "args": { "value": { "$cond": { "$state": "/myconnect/get_post/author" }, "$then": { "$state": "/myconnect/get_post/author/name" }, "$else": "myConnect" } } }
+        }
+      },
+      "feedPreviewAuthorName": {
+        "type": "Text",
+        "props": { "size": "sm", "weight": "semibold", "text": { "$cond": { "$state": "/myconnect/get_post/author" }, "$then": { "$state": "/myconnect/get_post/author/name" }, "$else": "myConnect" } }
+      },
+      "feedPreviewMeta": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{s} · {t}", "s": { "$state": "/myconnect/get_post/space/name" }, "t": { "$computed": "relative_time", "args": { "value": { "$state": "/myconnect/get_post/publishedAt" } } } }
+          }
+        }
+      },
+      "feedPreviewAuthorStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["feedPreviewAuthorName", "feedPreviewMeta"] },
+      "feedPreviewAuthorRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["feedPreviewAuthorAvatar", "feedPreviewAuthorStack"] },
+      "feedPreviewDivider": { "type": "Divider", "props": {} },
+      "feedPreviewBody": { "type": "Text", "props": { "size": "sm", "preserveLines": true, "text": { "$state": "/myconnect/get_post/plainText" } } },
+      "feedPreviewLikeBadge": {
+        "type": "Badge",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} like(s)", "n": { "$state": "/myconnect/get_post/likeCount" } } }, "tone": "accent", "variant": "soft" },
+        "visible": { "$state": "/myconnect/get_post/likeCount", "neq": null }
+      },
+      "feedPreviewCommentBadge": {
+        "type": "Badge",
+        "props": { "text": { "$computed": "fmt", "args": { "pattern": "{n} comment(s)", "n": { "$state": "/myconnect/get_post/commentCount" } } }, "tone": "info", "variant": "soft" }
+      },
+      "feedPreviewStatsRow": { "type": "Row", "props": { "align": "center", "gap": "xs" }, "children": ["feedPreviewLikeBadge", "feedPreviewCommentBadge"] },
+      "feedPreviewContent": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["feedPreviewTitleRow", "feedPreviewAuthorRow", "feedPreviewDivider", "feedPreviewBody", "feedPreviewStatsRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect.get_post", "not": true },
+            { "$state": "/_errors/myconnect.get_post", "not": true }
+          ]
+        }
+      },
+      "feedPreviewCard": { "type": "Card", "props": {}, "children": ["feedPreviewCloseBtn", "feedPreviewLoading", "feedPreviewErrorBanner", "feedPreviewContent"] }
+    }
+  }
+}
