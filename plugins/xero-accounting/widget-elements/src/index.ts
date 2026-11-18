@@ -2946,6 +2946,38 @@ const bank_balance_view: ComputedFunction = (args) => {
   const showAll = args.showAllAccounts === true;
   const arrow = bbArrow(difference);
 
+  // Entries recorded in Xero that haven't been matched to a bank statement line.
+  // Xero can't give us the bank's own balance, so this is what can be shown of
+  // any gap to it. Absent from the connector (older server, or the read failed)
+  // means the section is left out, never shown as "all matched".
+  const unrecKnown = summary.unreconciledAvailable === true && picked.length > 0;
+  const unrecAccounts = picked
+    .map((a) => ({ a, u: (a.unreconciled ?? {}) as BbRec }))
+    .filter(({ u }) => bbNum(u.count) > 0);
+  const unrecCount = unrecAccounts.reduce((n, { u }) => n + bbNum(u.count), 0);
+  const unrecIn = bbRound2(unrecAccounts.reduce((n, { u }) => n + bbNum(u.moneyIn), 0));
+  const unrecOut = bbRound2(unrecAccounts.reduce((n, { u }) => n + bbNum(u.moneyOut), 0));
+  const unrecNet = bbRound2(unrecIn + unrecOut);
+  const unrecOldest = unrecAccounts
+    .filter(({ u }) => String(u.oldest ?? '') !== '')
+    .sort((x, y) => String(x.u.oldest).localeCompare(String(y.u.oldest)))[0];
+  const unrecCapped = summary.unreconciledTruncated === true;
+  const unrecAllRows = [...unrecAccounts]
+    .sort(
+      (x, y) =>
+        bbNum(y.u.count) - bbNum(x.u.count) || String(x.a.name ?? '').localeCompare(String(y.a.name ?? '')),
+    )
+    .map(({ a, u }) => ({
+      accountId: String(a.accountId ?? ''),
+      name: String(a.name ?? ''),
+      countText: `${bbNum(u.count).toLocaleString('en-AU')} ${bbNum(u.count) === 1 ? 'entry' : 'entries'}`,
+      netText: bbSigned(bbNum(u.net)),
+      countOnly: bbNum(u.count).toLocaleString('en-AU'),
+    }));
+  // Same cap as the by-account list: the section is a summary, not a second ledger.
+  const unrecRows = unrecAllRows.slice(0, BB_TOP_ACCOUNTS);
+  const unrecMore = unrecAllRows.length - unrecRows.length;
+
   return {
     // Selection
     accountOptions,
@@ -3039,6 +3071,25 @@ const bank_balance_view: ComputedFunction = (args) => {
     totalText: bbBalance(total),
     remaining,
     moreLabel: remaining > 0 ? `Show ${Math.min(shown, remaining)} more · ${remaining} remaining` : '',
+
+    // Entries in Xero not yet matched to the bank
+    unrecShow: unrecKnown,
+    unrecCount,
+    unrecHasAny: unrecKnown && unrecCount > 0,
+    unrecAllMatched: unrecKnown && unrecCount === 0,
+    unrecCountText: `${unrecCount.toLocaleString('en-AU')}${unrecCapped ? '+' : ''}`,
+    unrecCountLabel: `${unrecCount === 1 ? 'entry' : 'entries'} in Xero not yet matched to the bank`,
+    unrecInText: `${bbAud(unrecIn)} in`,
+    unrecOutText: `${bbAud(unrecOut)} out`,
+    unrecSubText: `${unrecOldest ? `Oldest ${String(unrecOldest.u.oldestText ?? '').replace(/^[A-Za-z]{3} /, '')} · ` : ''}net ${bbSigned(unrecNet)}`,
+    unrecNote:
+      'In the Xero balance but not yet matched to a bank statement line, so they can explain a difference from your bank. Xero cannot show the bank balance itself.',
+    unrecAllMatchedNote:
+      'Xero cannot show the bank balance itself, so any difference from your bank would be lines the bank feed has not brought in yet.',
+    unrecRows,
+    unrecShowRows: unrecAllRows.length > 1,
+    unrecMoreText: unrecMore > 0 ? `+ ${unrecMore} more ${unrecMore === 1 ? 'account' : 'accounts'}` : '',
+    unrecHasMore: unrecMore > 0,
 
     // Footer
     checkText: adds

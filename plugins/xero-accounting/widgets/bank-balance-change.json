@@ -1464,6 +1464,7 @@
           "period",
           "balances",
           "difference",
+          "unrec",
           "byAccount",
           "why",
           "truncNote",
@@ -3416,6 +3417,344 @@
         "type": "Stack",
         "visible": {
           "$state": "/ui/bbc/v/hasTxns"
+        }
+      },
+      "unrec": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "unrecStack"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShow"
+        }
+      },
+      "unrecCountStat": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/bbc/v/unrecCountText"
+          }
+        }
+      },
+      "unrecHeader": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "unrecTitle",
+          "unrecOpen"
+        ]
+      },
+      "unrecHero": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
+        "children": [
+          "unrecCountStat",
+          "unrecHeroText"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecHeroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "children": [
+          "unrecLabel",
+          "unrecSub"
+        ]
+      },
+      "unrecInPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecInText"
+          },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "unrecLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecCountLabel"
+          },
+          "weight": "medium"
+        }
+      },
+      "unrecList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "unrecRow"
+        ],
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/ui/bbc/v/unrecRows"
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShowRows"
+        }
+      },
+      "unrecMore": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecMoreText"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasMore"
+        }
+      },
+      "unrecNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecOk": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecOkIcon",
+          "unrecOkText"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecAllMatched"
+        }
+      },
+      "unrecOkIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CircleCheck",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "unrecOkNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecAllMatchedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecAllMatched"
+        }
+      },
+      "unrecOkText": {
+        "type": "Text",
+        "props": {
+          "text": "Everything in Xero is matched to the bank",
+          "weight": "medium"
+        }
+      },
+      "unrecOpen": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs"
+        },
+        "children": [
+          "unrecOpenText",
+          "unrecOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/bbc/v/xeroUrl"
+              }
+            }
+          }
+        }
+      },
+      "unrecOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpRight",
+          "size": "xs",
+          "tone": "accent"
+        }
+      },
+      "unrecOpenText": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "text": "Reconcile in Xero",
+          "tone": "accent"
+        }
+      },
+      "unrecOutPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecOutText"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        }
+      },
+      "unrecPills": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecInPill",
+          "unrecOutPill"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecRow": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "children": [
+          "unrecRowLeft",
+          "unrecRowRight"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$bindItem": "accountId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        }
+      },
+      "unrecRowCount": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "countOnly"
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "unrecRowDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "unrecRowLeft": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "unrecRowDot",
+          "unrecRowName"
+        ]
+      },
+      "unrecRowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        }
+      },
+      "unrecRowNet": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "netText"
+          }
+        }
+      },
+      "unrecRowRight": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "unrecRowNet",
+          "unrecRowCount"
+        ]
+      },
+      "unrecStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "unrecHeader",
+          "unrecHero",
+          "unrecPills",
+          "unrecList",
+          "unrecMore",
+          "unrecNote",
+          "unrecOk",
+          "unrecOkNote"
+        ]
+      },
+      "unrecSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecSubText"
+          }
+        }
+      },
+      "unrecTitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "NOT YET RECONCILED IN XERO"
         }
       },
       "why": {
