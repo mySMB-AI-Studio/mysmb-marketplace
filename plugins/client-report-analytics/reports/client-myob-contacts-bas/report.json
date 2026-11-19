@@ -1,0 +1,139 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "contacts",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "page_size": {
+            "kind": "static",
+            "value": 1000
+          },
+          "type": {
+            "kind": "static",
+            "value": "All"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_contacts"
+        }
+      },
+      {
+        "id": "invoice_lines",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_invoice_lines"
+        }
+      },
+      {
+        "id": "bill_lines",
+        "params": {
+          "from_date": {
+            "input": "from_date",
+            "kind": "input"
+          },
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          },
+          "to_date": {
+            "input": "to_date",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_bill_lines"
+        }
+      },
+      {
+        "id": "tax_codes",
+        "params": {
+          "myob_company_file_id": {
+            "input": "company_file",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_tax_codes"
+        }
+      },
+      {
+        "id": "company_files",
+        "params": {},
+        "tool": {
+          "mcp": "myob-accounting",
+          "name": "list_company_files"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "2026-04-01",
+        "label": "From",
+        "name": "from_date",
+        "type": "date"
+      },
+      {
+        "default": "2026-06-30",
+        "label": "To",
+        "name": "to_date",
+        "type": "date"
+      },
+      {
+        "default": "",
+        "label": "Client (MYOB company file)",
+        "maxLength": 64,
+        "name": "company_file",
+        "type": "string"
+      },
+      {
+        "default": "Bookkeeper",
+        "label": "View as",
+        "name": "persona",
+        "options": [
+          "Client",
+          "Bookkeeper",
+          "Practitioner",
+          "Executive"
+        ],
+        "type": "enum"
+      },
+      {
+        "default": "{\"cents\":1,\"k\":0,\"zeros\":0,\"neg\":\"paren\",\"red\":0,\"hdr\":1,\"ftr\":1,\"style\":\"mysmb\",\"dens\":\"100\",\"p\":\"last_quarter\",\"a\":\"custom\",\"c\":\"none\",\"v\":\"\"}",
+        "label": "Display settings",
+        "maxLength": 300,
+        "name": "display",
+        "type": "string"
+      }
+    ]
+  },
+  "description": "Client Report Analytics CRA-06 for one MYOB client: every contact with the tax types used on their transactions and GST evidence on file, and on Xero each ABN's Australian Business Register record (needs ABR Lookup connected). Live and validated on every open; mySMB branding by default.",
+  "fileName": "client-myob-contacts-bas.html",
+  "tags": [
+    "client-report-analytics",
+    "CRA-06",
+    "myob",
+    "contacts-bas"
+  ],
+  "title": "MYOB Contact Details for BAS Preparation"
+}
