@@ -54,7 +54,8 @@
  *      primaryTile vs widgets/*.json). See scripts/welcome-metadata.ts. Entries
  *      without a `welcome` key are unaffected.
  *  12. If a marketplace.json entry declares a top-level `connectionRequirements`
- *      block (which of its connections a person owes — the rest are optional): it
+ *      block (which of its connections a person owes — required servers, at most
+ *      one choice, and "at least N of these" groups; the rest are optional): it
  *      parses strictly, its own servers are in the package's .mcp.json, every other
  *      package it names is in marketplace.json and ships that server, and every
  *      automation it names exists in the package under that name. See
