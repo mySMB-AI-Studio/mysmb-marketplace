@@ -1,4 +1,6 @@
-# Xero Finance
+# Xero Finance — retired
+
+This connector is no longer offered in the marketplace. Existing Workspace installations are disabled by the production retirement operation, which preserves their credentials and data. Standard Xero financial reports use Xero Accounting. The package files remain here for controlled rollback; do not reinstall this connector.
 
 Read-only access to Xero's Finance API — higher-fidelity views over cash balances, accounts receivable/payable statements, account usage, and bank statement reconciliation. All tools are read-only.
 
