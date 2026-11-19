@@ -580,6 +580,26 @@ const move_destination_options = (args) => {
         .map((f) => ({ value: String(f.id ?? ''), label: String(f.path ?? '') }))
         .sort((a, b) => a.label.localeCompare(b.label));
 };
+/**
+ * Translates move_email's raw error into something actionable when it's the
+ * one specific, known cause: the tile's two Outlook connections (read and
+ * send) are authenticated as different Microsoft 365 accounts. Graph reports
+ * this as "ErrorInvalidMailboxItemId" / "doesn't belong to the targeted
+ * mailbox" -- confirmed live (QA, 2026-11-19): list_emails returns an id from
+ * the read connection's mailbox, move_email rejects it because the send
+ * connection is signed in as someone else. Any other error passes through
+ * unchanged so a genuinely different failure still shows its real message.
+ * Args: { value: string }
+ */
+const move_error_message = (args) => {
+    const raw = String(args.value ?? '');
+    if (!raw)
+        return '';
+    if (/ErrorInvalidMailboxItemId/i.test(raw) || /doesn.t belong to the targeted mailbox/i.test(raw)) {
+        return "Couldn't move that message — your Outlook Mail (read) and Outlook Mail (send) connections are linked to different Microsoft 365 accounts. Go to Connections and reconnect both to the same account, then try again.";
+    }
+    return `Couldn't move that message: ${raw}`;
+};
 // ── compose_to_list ──────────────────────────────────────────────────
 // send_email's `to` param is an array; the compose UI's "To" field is one
 // free-typed string. Splits on comma or semicolon (both common in mail
@@ -639,6 +659,7 @@ const elements = {
         compose_send_disabled,
         mark_pending_actions,
         move_destination_options,
+        move_error_message,
         folder_label_by_id,
         is_blank,
     },

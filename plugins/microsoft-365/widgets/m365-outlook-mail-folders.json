@@ -472,7 +472,10 @@
       },
       "moveError": {
         "type": "Caption",
-        "props": { "text": { "$template": "Couldn't move that message: ${/_errors/m365-mail-send.move_email}" }, "tone": "destructive" },
+        "props": {
+          "text": { "$computed": "microsoft-365_move_error_message", "args": { "value": { "$state": "/_errors/m365-mail-send.move_email" } } },
+          "tone": "destructive"
+        },
         "visible": { "$state": "/_errors/m365-mail-send.move_email" }
       },
 
