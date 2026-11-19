@@ -1,5 +1,5 @@
 {
-  "contentHash": "f825127af6901d6abff2a022b60f548342963e8830902eac95ed73414a9116ee",
+  "contentHash": "7307900ef29421ce468db0f3c38883693f31fd6b53315f8748a27d7e32798b83",
   "definition": {
     "connections": [
       {
@@ -23,11 +23,46 @@
     ],
     "knowledge": [],
     "people": [],
+    "settings": {
+      "additionalProperties": false,
+      "properties": {
+        "bas_payg_labels": {
+          "default": "gst_only",
+          "description": "gst_only: the review covers GST. payg_withholding: the BAS also reports PAYG withheld (W1, W2). payg_withholding_and_instalments: also PAYG instalments (T7 / 5A). The review checks GST only; the summary says which PAYG labels must be checked in payroll.",
+          "enum": [
+            "gst_only",
+            "payg_withholding",
+            "payg_withholding_and_instalments"
+          ],
+          "title": "PAYG on this practice's BAS",
+          "type": "string"
+        },
+        "material_question_amount": {
+          "default": 1000,
+          "description": "A client question from the previous review that is still open becomes a Stop when it is about GST or about an amount at or above this. Below it, it is a Note. 0 makes every open question a Stop.",
+          "maximum": 1000000,
+          "minimum": 0,
+          "title": "Unanswered client questions: Stop at or above ($)",
+          "type": "number"
+        },
+        "prior_period_from": {
+          "default": "previous_review",
+          "description": "previous_review: the date the previous BAS review for the client was approved. lock_date: the client's lock date in Xero (the date the previous period was closed), falling back to the previous review when there is no lock date.",
+          "enum": [
+            "previous_review",
+            "lock_date"
+          ],
+          "title": "Prior-period adjustments: look for changes since",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "tasks": [],
     "tenantSettings": [],
     "version": 2
   },
-  "description": "Connections only: connect Xero (required; a shared service connection for a team agent) and, optionally, ABR Lookup for the ABN register checks. The manager is named when the agent is activated. Reports load their data as the person who opens them, so reviewers need their own Xero access to the client.",
+  "description": "Connect Xero (required; a shared service connection for a team agent) and, optionally, ABR Lookup for the ABN register checks, then choose three BAS review settings (each has a default). The manager is named when the agent is activated. Reports load their data as the person who opens them, so reviewers need their own Xero access to the client.",
   "kind": "setup",
   "name": "Client Reporting Agent setup",
   "originKey": "9ebf24b7-8aa0-4bfb-b722-259d5551da5d"
