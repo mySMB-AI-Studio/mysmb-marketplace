@@ -82,7 +82,9 @@ Keep each client's lock date in `BAS readiness/Lock dates.md`, a table with the 
 
 ### 3b. Client questions from the last review (you run this check)
 
-If the previous period's summary file in `BAS reviews/` has drafted client questions, and its outcome was "Ready once the client answers" or the job ended "Client queried", carry each question into this review:
+The previous review is the summary file in `BAS reviews/` for the period just before this one. If there are several (a review run twice), use the latest one whose Outcome was approved, never one still awaiting approval.
+
+If it has drafted client questions, carry each one into this review, **whatever its outcome was** (a Not ready review's questions still go to the client):
 
 - If the finding it was about no longer appears in this review's results, list it as "answered or fixed".
 - Otherwise it is a `clientQuestionsOpen` finding: **Stop** when it is about GST (GST claimed, an ABN for a GST claim, a tax invoice) or about an amount at or above the setup setting `material_question_amount` (default $1,000 when the setting isn't listed); **Note** otherwise.
