@@ -57,7 +57,7 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 
 **Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). Add `changedSince` as the setup setting `prior_period_from` says:
 
-- `previous_review` (the default, also when the setting isn't listed): the date the previous BAS review for this client was approved, read from the Outcome section of its summary file in `BAS reviews/` (the period just before this one).
+- `previous_review` (the default, also when the setting isn't listed): the date the previous review (section 3b says which file) was approved, read from its Outcome section.
 - `lock_date`: the client's lock date (`organisation.lockDate` from Finding the client, or the row in `BAS readiness/Lock dates.md`). With no lock date, use the previous review's approval date.
 
 If neither date exists, leave `changedSince` out (the tool then uses `periodStart`). Say in the summary which date you used and why. It reads the whole period on the Xero side (every invoice, bill, credit note and bank transaction with its lines, the period's contacts and ABNs, the trial balance at `periodEnd` and the 12 months' profit and loss) and returns only:
@@ -82,12 +82,14 @@ Keep each client's lock date in `BAS readiness/Lock dates.md`, a table with the 
 
 ### 3b. Client questions from the last review (you run this check)
 
-The previous review is the summary file in `BAS reviews/` for the period just before this one. If there are several (a review run twice), use the latest one whose Outcome was approved, never one still awaiting approval.
+The previous review is the summary file in `BAS reviews/` for the period just before this one. If there are several (a review run twice), use the latest one whose Outcome was approved, never one still awaiting approval. Use this same file for `changedSince` (section 3) and for the questions below.
 
 If it has drafted client questions, carry each one into this review, **whatever its outcome was** (a Not ready review's questions still go to the client):
 
-- If the finding it was about no longer appears in this review's results, list it as "answered or fixed".
-- Otherwise it is a `clientQuestionsOpen` finding: **Stop** when it is about GST (GST claimed, an ABN for a GST claim, a tax invoice) or about an amount at or above the setup setting `material_question_amount` (default $1,000 when the setting isn't listed); **Note** otherwise.
+- **Re-check the previous period.** This review's checks only read this period, so they can't tell whether last period's items were fixed. Call `get_xero_bas_readiness_checks` a second time with the previous review's own `periodStart` and `periodEnd` (no `changedSince`); it returns findings only, so the reply stays small.
+- **Compare each question** with that call's findings: the same document or contact still flagged = **open**; no longer flagged (receipt attached, ABN added, item reconciled, duplicate removed) = **answered or fixed**. A question no check can answer (for example "were these invoices issued?" or "what was this payment for?") stays **open** unless a person said on this job that the client answered it.
+- **Mark each open question on its own line**, never as one group: **Stop** when it is about GST (GST claimed, an ABN or tax invoice for a GST claim, GST coding) or about an amount at or above the setup setting `material_question_amount` (default $1,000 when the setting isn't listed); **Note** otherwise. The open ones are the `clientQuestionsOpen` finding (count = open questions; it is a Stop when any open question is a Stop).
+- In the summary, list each carried question with its status (open Stop, open Note, or answered or fixed) and what decided it.
 - With no earlier summary file, or none with questions, say "no open questions from a previous review" in the summary.
 
 Questions are not tracked anywhere else: the summary file is the record. A person sends them and tells you on the job when they were sent or answered.
