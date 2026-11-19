@@ -69,11 +69,11 @@ There is no agent in this extension. People open the reports from **Reports → 
 | MYOB Trial Balance | M03 | `trial-balance` |
 | MYOB Unpaid Bills | M40 | `unpaid-bills` |
 | MYOB Unpaid Invoices | M32 | `unpaid-invoices` |
-| Unpaid & Aged Accounts — MYOB | Added | `unpaid-aged-accounts-myob` |
+| MYOB Unpaid & Aged Accounts | Added | `unpaid-aged-accounts-myob` |
 
 Every report has a company-file picker (when the connection reaches several files), period and accounting-basis controls, a choice of detail level, MYOB or mySMB styling, Download PDF and Download Excel. The window's Download and Share save a frozen snapshot. At the Summary detail level, payroll reports leave each employee's pay out of the page and the Excel file.
 
-**Unpaid & Aged Accounts — MYOB** is a hand-built template (not from the kit). The same template also ships in the `myob-accounting` extension, so a workspace with both installed lists it twice.
+**MYOB Unpaid & Aged Accounts** is a hand-built template (not from the kit). It previously also shipped in the `myob-accounting` extension; that copy was removed so this is now the one canonical version.
 
 ### Without a template
 
