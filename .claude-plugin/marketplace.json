@@ -2738,7 +2738,7 @@
             {
               "kind": "connect",
               "title": "Connect a mailbox for bills by email",
-              "detail": "Optional. Install the Microsoft 365 or Google Workspace extension, connect Outlook or Gmail as the automations' owner, then publish the matching email intake automation."
+              "detail": "Optional. Say which mailbox gets bills: Gmail, your Outlook, Hotmail, a shared Outlook mailbox or none. Connect only that one, as the automations' owner, then publish its Email intake automation."
             },
             {
               "kind": "learn",
@@ -2747,6 +2747,70 @@
             }
           ]
         }
+      },
+      "connectionRequirements": {
+        "schema": 1,
+        "required": [
+          "xero-accounting"
+        ],
+        "choices": [
+          {
+            "id": "bill_mailbox",
+            "question": "Which mailbox receives your bills?",
+            "options": [
+              {
+                "id": "gmail",
+                "label": "Gmail",
+                "provider": "google",
+                "providerDefault": true,
+                "server": "google-workspace-gmail",
+                "package": "google-workspace",
+                "automation": {
+                  "originKey": "a3f5f8ef-9a11-481b-8e7b-925d03eac22d",
+                  "name": "Bookkeeping: Email intake (Gmail)"
+                }
+              },
+              {
+                "id": "outlook",
+                "label": "My Outlook mailbox",
+                "provider": "m365",
+                "providerDefault": true,
+                "server": "m365-mail-read",
+                "package": "microsoft-365",
+                "automation": {
+                  "originKey": "b4911eb8-7259-40f7-9f97-f185083d0958",
+                  "name": "Bookkeeping: Email intake (Outlook)"
+                }
+              },
+              {
+                "id": "hotmail",
+                "label": "Hotmail or Outlook.com",
+                "provider": "m365",
+                "server": "hotmail-mail",
+                "package": "microsoft-365",
+                "automation": {
+                  "originKey": "87025680-c1d2-4c21-9c81-e7314ddde66b",
+                  "name": "Bookkeeping: Email intake (Hotmail)"
+                }
+              },
+              {
+                "id": "outlook_shared",
+                "label": "A shared Outlook mailbox",
+                "provider": "m365",
+                "server": "m365-mail-shared",
+                "reads": "configured_mailbox",
+                "automation": {
+                  "originKey": "0eb61df4-7dec-427e-8910-d79dda07ef5d",
+                  "name": "Bookkeeping: Email intake (Outlook shared mailbox)"
+                }
+              },
+              {
+                "id": "none",
+                "label": "No mailbox — I add bills as PDFs"
+              }
+            ]
+          }
+        ]
       },
       "source": "./plugins/bookkeeping-xero",
       "branding": {

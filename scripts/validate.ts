@@ -53,6 +53,12 @@
  *      (price vs cost, connection.authType / .mcp.json vs auth, dependencies,
  *      primaryTile vs widgets/*.json). See scripts/welcome-metadata.ts. Entries
  *      without a `welcome` key are unaffected.
+ *  12. If a marketplace.json entry declares a top-level `connectionRequirements`
+ *      block (which of its connections a person owes — the rest are optional): it
+ *      parses strictly, its own servers are in the package's .mcp.json, every other
+ *      package it names is in marketplace.json and ships that server, and every
+ *      automation it names exists in the package under that name. See
+ *      scripts/connection-requirements.ts. Entries without the key are unaffected.
  *
  * Branch tiers: dev → qa → uat → main. CI (.github/workflows/validate.yml)
  * runs this on every PR and on every push to each tier — including the
@@ -67,6 +73,7 @@ import { join, resolve, dirname, relative, sep, isAbsolute } from "node:path";
 import { setupKeys, validatePortableContent } from "./extension-content";
 import { fileURLToPath } from "node:url";
 import { validateWelcomeMetadata } from "./welcome-metadata";
+import { validateConnectionRequirements } from "./connection-requirements";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Alternate roots permit full CLI fixtures without changing published plugins.
@@ -1000,6 +1007,20 @@ function main() {
         join(repoRoot, "plugins", relPath),
       )) {
         fail(`marketplace.json: plugin "${p.name}" welcome: ${msg}`);
+      }
+    }
+    if ("connectionRequirements" in p) {
+      const dirOf = (name: string): string | null => {
+        const other = (marketplace.plugins ?? []).find((q) => q.name === name);
+        const src = other ? resolveSourcePath(other.source) : null;
+        return src ? join(repoRoot, "plugins", src.replace(/^\.\//, "").replace(/^plugins\//, "")) : null;
+      };
+      for (const msg of validateConnectionRequirements(
+        p as unknown as Record<string, unknown>,
+        join(repoRoot, "plugins", relPath),
+        dirOf,
+      )) {
+        fail(`marketplace.json: plugin "${p.name}" connectionRequirements: ${msg}`);
       }
     }
   }
