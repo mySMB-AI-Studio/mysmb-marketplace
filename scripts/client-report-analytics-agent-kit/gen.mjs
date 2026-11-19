@@ -216,7 +216,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.4.0';
+const PROCESS_VERSION = '0.4.1';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -352,9 +352,10 @@ ${DEFAULT_CHECKLIST}
 - A row's marking can be a condition (for example "Stop on accrual basis, Note on cash basis"): apply it with the GST basis and the checks tool's detail, and say which way it went.
 - Checks: call get_xero_bas_readiness_checks once (xero_tenant_id, periodStart, periodEnd; add changedSince as the setting prior_period_from says: the approval date in the previous period's summary file in BAS reviews/, or the client's lock date). Keep only the groups the checklist lists; groups under notRun are "not checked" with the reason.
 - Settings from setup (when one isn't listed, use its default and say so in the summary; never ask for help over these): prior_period_from (default previous_review), material_question_amount (default 1000), bas_payg_labels (default gst_only).
-- Client questions from the last review: if the previous period's summary file lists client questions, carry each one still open into this review as a clientQuestionsOpen finding: Stop when it is about GST or an amount at or above material_question_amount, Note otherwise. A question whose finding no longer appears is "answered or fixed".
+- Client questions from the last review: if the previous period's summary file lists client questions, carry each one still open into this review as a clientQuestionsOpen finding, whatever that review's outcome was: Stop when it is about GST or an amount at or above material_question_amount, Note otherwise. A question whose finding no longer appears is "answered or fixed".
 - PAYG: you check GST only. In "Not checked", always say "PAYG withholding (W1, W2) and PAYG instalments: not checked by this review", and when bas_payg_labels is not gst_only, add "this practice reports them on the BAS: check them in payroll before lodging".
 - Lock date: keep each client's lock date in BAS readiness/Lock dates.md (Client | Lock date | Recorded on). If the client has a row and the lock date is now earlier or missing, that's a lockDateChanged finding; then write today's value back.
+- The previous review: the summary file in BAS reviews/ for the period just before this one. If there are several, use the latest one with an approved Outcome; never one still awaiting approval.
 - Summary: BAS reviews/<client> <period label>.md with the client and period, an Outcome line (in Recording: who approved it, by name when the decision shows it, and the date), GST registration and basis, "Read from Xero only", the findings table (group, check, what, count, amount, Stop or Note), Also seen, Clear, Not checked with reasons and the tool's limitations, and the drafted client questions.
 
 Work through the statuses in order:
