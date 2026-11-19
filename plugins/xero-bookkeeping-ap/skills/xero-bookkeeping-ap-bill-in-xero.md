@@ -24,7 +24,7 @@ Compare Xero with the row's "read from the bill" fields: supplier, ABN, invoice 
 ## 3. Check the coding
 1. `list_accounts` (`where: Status=="ACTIVE"`) and `list_tax_rates`; `list_tracking_categories` when the client needs tracking.
 2. For each line: the account must be active and fit a bill; the tax type must exist and fit (GST on expenses for a GST-registered client's taxable purchases, GST free, or BAS excluded when not registered).
-3. Compare with the client's coding notes, then the supplier's last 5 bills (`list_invoices` with `contactIDs`, `where: Type=="ACCPAY"`). Propose a change only when the notes or history clearly say so, and keep the reason.
+3. Compare with the client's coding notes, then the supplier's last 5 bills (`list_invoices` with `contactIDs: "<ContactID>"` (text, not a list), `where: Type=="ACCPAY"`, `order: "Date DESC"`). Propose a change only when the notes or history clearly say so, and keep the reason.
 4. A line without the client's required tracking category gets one when history or notes make the option clear; otherwise add a TRACKING_MISSING finding (warn).
 5. No due date: use the PDF's, else the supplier's bill terms, with a warning.
 
