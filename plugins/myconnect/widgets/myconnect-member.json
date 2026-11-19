@@ -1,10 +1,10 @@
 {
   "id": "myconnect-member",
   "title": "myConnect Member",
-  "description": "A member's view of their own myConnect community — pick which one from the dropdown if you belong to more than one. My Activity: your points, post and comment counts, your level, and your recent posts. Members: find a member by name — just their name and avatar, nothing else. Community Feed: the home feed across every channel, filterable by For you / Latest / Popular — click a post to preview it. Notifications: your notifications, unread count and status at a glance — click one to open what it's about.",
+  "description": "A member's view of their own myConnect community — pick which one from the dropdown if you belong to more than one. Analytics: your points, post and comment counts, your level, and your recent posts. Members: find a member by name — just their name and avatar, nothing else. Community Feed: the home feed across every channel, filterable by For you / Latest / Popular — click a post to preview it. Notifications: your notifications, unread count and status at a glance — click one to open what it's about.",
   "category": "productivity",
   "connectorsUsed": ["myconnect"],
-  "keywords": ["myconnect", "community", "member", "feed", "notifications", "members"],
+  "keywords": ["myconnect", "community", "member", "feed", "notifications", "members", "analytics"],
   "tags": ["myconnect", "community", "member"],
   "popularity": 0,
   "sizing": {
@@ -16,7 +16,22 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberDetailOverlay", "feedPreviewOverlay"] },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "tabBar", "tabDivider", "body", "infoOverlay", "memberDetailOverlay", "feedPreviewOverlay"],
+        "watch": {
+          "/myconnect/list_communities": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCommunity",
+                "value": { "$cond": { "$state": "/ui/selectedCommunity" }, "$then": { "$state": "/ui/selectedCommunity" }, "$else": "mysmb" }
+              }
+            }
+          ]
+        }
+      },
 
       "titleIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Member" } },
@@ -104,16 +119,16 @@
         }
       },
 
-      "myActivityTabBtn": {
+      "analyticsTabBtn": {
         "type": "Button",
         "props": {
-          "label": "My Activity",
+          "label": "Analytics",
           "leadingIcon": "BarChart3",
           "size": "sm",
-          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "myActivity" }, "$then": "primary", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "primary", "$else": "secondary" } },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "myActivity" }, "$then": "info", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "info", "$else": "default" } }
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "analytics" }, "$then": "primary", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "primary", "$else": "secondary" } },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "analytics" }, "$then": "info", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "info", "$else": "default" } }
         },
-        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "myActivity" } } }
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "analytics" } } }
       },
       "membersTabBtn": {
         "type": "Button",
@@ -151,7 +166,7 @@
       "tabBar": {
         "type": "Row",
         "props": { "gap": "xs", "wrap": true },
-        "children": ["myActivityTabBtn", "membersTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
+        "children": ["analyticsTabBtn", "membersTabBtn", "communityFeedTabBtn", "notificationsTabBtn"]
       },
       "tabDivider": {
         "type": "Divider",
@@ -194,23 +209,23 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "My Activity shows your own points, posts and comments. Members shows every active member of the community — name and avatar only — and you can search by name to jump straight to someone. Community Feed and Notifications work just like the myConnect app. This tile is read-only.",
+          "text": "Analytics shows your own points, posts and comments. Members shows every active member of the community — name and avatar only — and you can search by name to jump straight to someone. Community Feed and Notifications work just like the myConnect app. This tile is read-only.",
           "size": "sm"
         }
       },
       "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoWhatLabel", "infoWhatText", "infoHowLabel", "infoHowText"] },
       "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] },
 
-      "myActivityHeading": { "type": "Heading", "props": { "level": "h3", "text": "My Activity" } },
-      "myActivitySubtitle": { "type": "Caption", "props": { "text": "Your own activity in this community", "tone": "muted" } },
-      "myActivityHeadingStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["myActivityHeading", "myActivitySubtitle"] },
+      "analyticsHeading": { "type": "Heading", "props": { "level": "h3", "text": "Analytics" } },
+      "analyticsSubtitle": { "type": "Caption", "props": { "text": "Your activity at a glance", "tone": "muted" } },
+      "analyticsHeadingStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["analyticsHeading", "analyticsSubtitle"] },
 
-      "myActivityErrorBanner": {
+      "analyticsErrorBanner": {
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't load your activity: ${/_errors/myconnect.get_my_profile}${/_errors/myconnect.get_member}" }, "tone": "destructive" },
         "visible": { "$or": [{ "$state": "/_errors/myconnect.get_my_profile" }, { "$state": "/_errors/myconnect.get_member" }] }
       },
-      "myActivityLoading": {
+      "analyticsLoading": {
         "type": "Skeleton",
         "props": { "height": "4rem", "rounded": "md" },
         "visible": { "$state": "/_loading/myconnect.get_my_profile" }
@@ -234,7 +249,7 @@
       "commentsStat": { "type": "Stat", "props": { "value": { "$state": "/myconnect/get_member/commentCount" } } },
       "commentsStatCard": { "type": "Card", "props": {}, "children": ["commentsStatHeader", "commentsStat"] },
 
-      "myActivityStatsRow": {
+      "analyticsStatsRow": {
         "type": "Row",
         "props": { "gap": "sm", "wrap": true },
         "children": ["pointsStatCard", "postsStatCard", "commentsStatCard"],
@@ -281,11 +296,11 @@
         "visible": { "$state": "/myconnect/get_member/recentPosts/0" }
       },
 
-      "myActivityPanel": {
+      "analyticsPanel": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["myActivityHeadingStack", "myActivityErrorBanner", "myActivityLoading", "myActivityStatsRow", "myLevelRow", "recentPostsHeading", "recentPostsEmpty", "recentPostsList"],
-        "visible": { "$or": [{ "$state": "/ui/activeTab", "eq": "myActivity" }, { "$state": "/ui/activeTab", "not": true }] }
+        "children": ["analyticsHeadingStack", "analyticsErrorBanner", "analyticsLoading", "analyticsStatsRow", "myLevelRow", "recentPostsHeading", "recentPostsEmpty", "recentPostsList"],
+        "visible": { "$or": [{ "$state": "/ui/activeTab", "eq": "analytics" }, { "$state": "/ui/activeTab", "not": true }] }
       },
 
       "memberSearchInput": {
@@ -625,7 +640,7 @@
       "body": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["myActivityPanel", "membersPanel", "communityFeedPanel", "notificationsPanel"]
+        "children": ["analyticsPanel", "membersPanel", "communityFeedPanel", "notificationsPanel"]
       },
 
       "memberDetailOverlay": {
