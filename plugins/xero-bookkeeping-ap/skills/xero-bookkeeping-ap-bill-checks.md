@@ -7,6 +7,8 @@ description: Check one supplier bill - client set-up, duplicates, supplier, ABN,
 
 Use when the step is "check" in the Enter a supplier bill process. You read; you never change anything. Every Xero call carries the bill's `xero_tenant_id`, and one job only ever touches one client's organisation.
 
+Xero filters such as `invoiceNumbers`, `contactIDs`, `statuses` and `ids` are text, never a list: one value, or several separated by commas. Write `invoiceNumbers: "INV-1042"`, not `["INV-1042"]`.
+
 ## 1. Read the bill and the client
 1. `records_get` with `slug: "ap_bill"` and `id: inputs.billRecordId`. If it isn't found, return `ready: false, problem: "billNotFound"`.
 2. `inXero` is true when the row has a `xero_bill_id` (it came from Hubdoc, Dext or was keyed into Xero). Otherwise it came by email and isn't in Xero yet.
@@ -18,7 +20,7 @@ Use when the step is "check" in the Enter a supplier bill process. You read; you
    - client found but `ap_enabled` is not true, or no Xero organisation ID: `problem: "clientNotSetUp"`
    - the reading notes say the document isn't a tax invoice (statement, quote, order, remittance, receipt), or (email bills only) there's no invoice number and no total: `problem: "notABill"`
    - (email bills only) reading confidence under 50%: `problem: "unreadable"`
-   - a Xero call fails twice: `problem: "xeroUnavailable"`, quoting Xero's error.
+   - a Xero call fails twice: `problem: "xeroUnavailable"`, quoting Xero's error. If the error says an argument has the wrong type, fix the argument (text, not a list) and try once more before you stop.
 
 ## 2. Supplier
 1. For a bill in Xero, start from its `Contact`. Otherwise `list_contacts` with `searchTerm` = the supplier name on the bill; if nothing matches, try the ABN.
@@ -27,7 +29,7 @@ Use when the step is "check" in the Enter a supplier bill process. You read; you
 
 ## 3. Checks
 Return each as `{ code, severity, message }` in `findings`. `severity` is `block`, `warn` or `info`.
-- **DUPLICATE** (block): `list_invoices` with `invoiceNumbers: [<number>]` and `where: Type=="ACCPAY"`. Another bill (a different InvoiceID from this one) from the same supplier that isn't DELETED or VOIDED is a duplicate: set `duplicate: true` and `duplicateOf` to its InvoiceID and status.
+- **DUPLICATE** (block): `list_invoices` with `invoiceNumbers: "<number>"` (text) and `where: Type=="ACCPAY"`. Another bill (a different InvoiceID from this one) from the same supplier that isn't DELETED or VOIDED is a duplicate: set `duplicate: true` and `duplicateOf` to its InvoiceID and status.
 - **POSSIBLE_DUPLICATE** (warn): same supplier, same total and same date, different invoice number.
 - **TOTALS** (block): line amounts plus GST don't add up to the total (allow 5 cents).
 - **NO_ABN_GST** (warn): GST is charged but the bill shows no ABN.
@@ -36,7 +38,7 @@ Return each as `{ code, severity, message }` in `findings`. `severity` is `block
 - **GST_RATE** (warn): GST isn't about 1/11 of a GST-inclusive taxable total.
 - **GST_NOT_REGISTERED** (warn): GST charged and the client isn't registered for GST.
 - **BANK_DETAILS_CHANGED** (warn): bank details on the bill differ from the contact's `BankAccountDetails`. Say: "Confirm the new bank details with the supplier by phone before paying."
-- **RATE_VARIANCE** (info): unit prices 15% or more away from the supplier's last bills (`list_invoices` with `contactIDs`, newest first).
+- **RATE_VARIANCE** (info): unit prices 15% or more away from the supplier's last bills (`list_invoices` with `contactIDs: "<ContactID>"` (text), `where: Type=="ACCPAY"`, `order: "Date DESC"`). Skip it for a new supplier.
 - **TRACKING_NEEDED** (info): the client needs a tracking category on every bill.
 
 `blocking` is true when any finding is `block`. `ready` is true when nothing in step 1 stopped you, even if there are findings.

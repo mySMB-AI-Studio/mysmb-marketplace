@@ -14,7 +14,7 @@ Use when the step is "prepare" in the Enter a supplier bill process. You prepare
 
 ## 2. Code each line, in this order
 1. **The client's coding notes** (`ap_coding_notes`) when one applies to this supplier or line.
-2. **The supplier's history**: `list_invoices` with `contactIDs: [<ContactID>]` and `where: Type=="ACCPAY"`, newest first. Use the most common account and tax type on its last 5 bills that weren't deleted or voided.
+2. **The supplier's history**: `list_invoices` with `contactIDs: "<ContactID>"` (text, not a list), `where: Type=="ACCPAY"` and `order: "Date DESC"` (newest first). Use the most common account and tax type on its last 5 bills that weren't deleted or voided. A new supplier has no history: go to 3.
 3. **Your judgement** from the valid accounts. For an Australian business registered for GST, taxable purchases use GST on expenses (usually `INPUT`); GST-free items use the GST-free expenses code; not registered means BAS excluded. Only use codes from the lists.
 
 For each line keep `{ description, amount, account, taxType, source: "notes" | "history" | "judgement", reason, confidence: "high" | "medium" | "low" }` in `codingSummary`.
