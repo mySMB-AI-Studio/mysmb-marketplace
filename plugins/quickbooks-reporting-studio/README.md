@@ -61,6 +61,8 @@ Connect QuickBooks under Settings → Connections (OAuth) before asking for a re
 
 The skills and report templates are generated from `scripts/quickbooks-reporting-kit/` (`npm run gen`, then `npm test` and `npm run roundtrip`): a report kit that is tested as one unit, with each family's `dataBindings` and config. Change a report there, in code. Publish it from dev in the Console. Pull it into the Developer Instance after a change on dev, and don't save it there before that Pull: a save commits the Developer Instance's older copy over dev.
 
+**Exception:** `unpaid-aged-accounts-quickbooks` is a hand-authored one-off, not part of the generator's family list (same pattern as `myob-reporting-studio`'s `unpaid-aged-accounts-myob`, which also has no generator). `gen-ext.js` deletes any `reports/` folder it doesn't recognize, so **running `npm run gen` in `scripts/quickbooks-reporting-kit` will silently delete this report** unless it's added to the kit's family config first.
+
 ## Configuration
 
 No configuration variables are required.
