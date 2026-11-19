@@ -13,18 +13,17 @@ Scopes requested:
 offline_access openid profile email
 finance.cashvalidation.read
 finance.statements.read
-finance.accountingactivity.read
 finance.bankstatementsplus.read
 ```
 
-## Tools (6)
+## Tools (4)
 
 - `get_cash_validation` — Validate cash balances (Xero vs imported bank statement)
 - `get_accounts_receivable_statements` — AR statements over a date range
 - `get_accounts_payable_statements` — AP statements over a date range
-- `get_account_usage` — Monthly account usage totals (anomaly detection)
-- `get_lock_history` — Period-lock / end-of-period close events
 - `get_bank_statement_accounting` — Line-item view of a bank statement with Xero accounting entries alongside
+
+Xero retired Accounting Activities on 4 May 2026, so `get_account_usage` and `get_lock_history` and their scope are gone.
 
 ## See also
 
