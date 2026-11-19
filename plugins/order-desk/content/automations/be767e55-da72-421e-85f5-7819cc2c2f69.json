@@ -1,0 +1,140 @@
+{
+  "contentHash": "2c4cd3454b3f1862fa78f336362cc1200b9ed3e94e827c6653fbd0ca3631345c",
+  "declaredScopes": [
+    "records:od_customer_profiles:read",
+    "records:od_customer_profiles:write"
+  ],
+  "dependencies": [],
+  "description": "Adds, rewords or removes one of a customer's order rules on their customer order profile. A reviewer approves every change before it is saved, and the profile's history shows who approved what.",
+  "flowIr": {
+    "description": "Adds, rewords or removes one of a customer's order rules on their customer order profile.",
+    "irVersion": 1,
+    "name": "Order Desk: change customer rules",
+    "nodes": [
+      {
+        "code": "import re\nfrom typing import Any\n\n\ndef od_text(value: Any) -> str:\n    return str(value).strip() if value is not None else \"\"\n\n\ndef od_data(row: Any) -> dict[str, Any]:\n    return dict((row or {}).get(\"data\") or {})\n\n\ndef od_norm(value: Any) -> str:\n    return re.sub(r\"[^a-z0-9]+\", \" \", od_text(value).lower()).strip()\n\n\ndef as_number(value: Any) -> float:\n    try:\n        return float(re.sub(r\"[^0-9.\\-]\", \"\", str(value)) or 0)\n    except ValueError:\n        return 0.0\n\n\naccount_code = od_text(params.get(\"account_code\"))\naction = od_text(params.get(\"action\")).lower()\nrule = re.sub(r\"\\s+\", \" \", od_text(params.get(\"rule\")))[:500]\nnumber = int(as_number(params.get(\"rule_number\")))\nchanged = False\nresult = \"\"\ncustomer_name = \"\"\nrules_now: list[str] = []\nprofile_id = \"\"\nif action not in (\"add\", \"change\", \"remove\"):\n    result = \"Nothing was changed: the action must be add, change or remove.\"\nelif not account_code:\n    result = \"Nothing was changed: give the customer's account code.\"\nelse:\n    page = api.records.list(type_slug=\"od_customer_profiles\", limit=200, q=account_code)\n    hits = [r for r in (page.get(\"records\") or []) if od_text(od_data(r).get(\"account_code\")).upper() == account_code.upper()]\n    if not hits:\n        result = \"Nothing was changed: no customer order profile has the account code \" + account_code + \".\"\n    else:\n        profile_id = od_text(hits[0].get(\"id\"))\n        customer_name = od_text(hits[0].get(\"title\")) or od_text(od_data(hits[0]).get(\"name\"))\n        rules_now = [line.strip() for line in od_text(od_data(hits[0]).get(\"order_rules\")).splitlines() if line.strip()]\n        new_rules = list(rules_now)\n        if action == \"add\":\n            if not rule:\n                result = \"Nothing was changed: give the rule to add.\"\n            elif any(od_norm(r) == od_norm(rule) for r in new_rules):\n                result = customer_name + \" already has this rule. Nothing was changed.\"\n            elif len(new_rules) >= 40:\n                result = \"Nothing was changed: \" + customer_name + \" already has 40 rules. Remove or merge one first.\"\n            else:\n                new_rules.append(rule)\n                result = \"Rule \" + str(len(new_rules)) + \" added for \" + customer_name + \": \" + rule\n        elif number < 1 or number > len(new_rules):\n            result = \"Nothing was changed: \" + customer_name + \" has \" + str(len(new_rules)) + \" rules. Give the number of the one to \" + action + \".\"\n        elif action == \"change\":\n            old = new_rules[number - 1]\n            if not rule:\n                result = \"Nothing was changed: give the new wording of the rule.\"\n            elif od_norm(old) == od_norm(rule):\n                result = \"Rule \" + str(number) + \" for \" + customer_name + \" already reads this way. Nothing was changed.\"\n            else:\n                new_rules[number - 1] = rule\n                result = \"Rule \" + str(number) + \" for \" + customer_name + \" changed from: \" + old + \" To: \" + rule\n        else:\n            old = new_rules.pop(number - 1)\n            result = \"Rule \" + str(number) + \" removed for \" + customer_name + \": \" + old\n        if new_rules != rules_now:\n            new_text = \"\\n\".join(new_rules)\n            if len(new_text) > 5000:\n                result = \"Nothing was changed: the rules of \" + customer_name + \" would be longer than the profile allows. Shorten or remove one first.\"\n            else:\n                api.records.update(type_slug=\"od_customer_profiles\", record_id=profile_id, record={\"data\": {\"order_rules\": new_text}})\n                rules_now = new_rules\n                changed = True\n",
+        "id": "change",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when the profile was changed",
+            "name": "changed",
+            "type": "bool"
+          },
+          {
+            "description": "What was done, or why nothing was changed, in plain words",
+            "name": "result",
+            "type": "str"
+          },
+          {
+            "description": "The customer's name",
+            "name": "customer_name",
+            "type": "str"
+          },
+          {
+            "description": "The customer's rules after the change, in order",
+            "name": "rules_now",
+            "type": "list[str]"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.account_code }}",
+            "control": "hidden",
+            "name": "account_code",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.action }}",
+            "control": "hidden",
+            "name": "action",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.rule }}",
+            "control": "hidden",
+            "name": "rule",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.rule_number }}",
+            "control": "hidden",
+            "name": "rule_number",
+            "required": false,
+            "type": "int"
+          },
+          {
+            "binding": "{{ params.reason }}",
+            "control": "hidden",
+            "name": "reason",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Adds, rewords or removes one rule on the customer's order profile.",
+        "title": "Change the customer's rules"
+      }
+    ],
+    "params": [
+      {
+        "control": "text",
+        "label": "Customer account code",
+        "name": "account_code",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "add, change or remove.",
+        "label": "What to do",
+        "name": "action",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "The rule in one plain sentence, as it should read on the profile. Needed for add and change.",
+        "label": "The rule",
+        "name": "rule",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "text",
+        "description": "For change and remove: the number of the rule in the customer's list, counted from 1.",
+        "label": "Which rule",
+        "name": "rule_number",
+        "required": false,
+        "type": "int"
+      },
+      {
+        "control": "text",
+        "description": "Where the rule comes from, for example the reviewer's correction on an order.",
+        "label": "Why",
+        "name": "reason",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "change"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Order Desk: change customer rules",
+  "originKey": "be767e55-da72-421e-85f5-7819cc2c2f69",
+  "practiceRun": {
+    "intendedActions": [],
+    "version": 2
+  },
+  "tags": []
+}

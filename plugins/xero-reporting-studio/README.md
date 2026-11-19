@@ -12,7 +12,7 @@ There is no agent in this extension. People open the reports from **Reports → 
 - **Xero GST Summary (BAS)** also reads Xero Payroll (AU) when that connector is installed and connected. Without it, those sections say "not connected" and the rest of the report still works.
 - **Xero Month-End Task List** also reads Xero Payroll (AU) and Xero Assets when those connectors are installed and connected. Without them, those sections say "not connected" and the rest of the report still works.
 
-### Report templates (25)
+### Report templates (26)
 
 | Report | Xero Reports Prompt Library | Template |
 |---|---|---|
@@ -40,6 +40,7 @@ There is no agent in this extension. People open the reports from **Reports → 
 | Xero Sales Register | Added | `xero-sales-register` |
 | Xero Profit and Loss by Tracking Category | Added | `xero-tracking-category-pnl` |
 | Xero Trial Balance | Added | `xero-trial-balance` |
+| Xero Unpaid & Aged Accounts | Added | `unpaid-aged-accounts-xero` |
 | Xero Visualise | P15 | `xero-visualise` |
 
 Every report has an organisation picker (when the connection reaches several organisations), period and accounting-basis controls, a choice of detail level, Xero or mySMB styling, Download PDF and Download Excel. The window's Download and Share save a frozen snapshot.
@@ -60,3 +61,5 @@ No configuration variables are required.
 ## Maintaining it
 
 The templates and skills are generated from `scripts/xero-reporting-kit` (see its README): change the kit, run its tests, regenerate, then open a PR. Publish from `dev` in the Console. Don't edit this extension in the Developer Instance: its copy is older than `dev`, and a save there would put the old copy back on `dev`.
+
+**Exception:** `unpaid-aged-accounts-xero` is a hand-authored one-off, not part of the generator's family list (same pattern as `myob-reporting-studio`'s `unpaid-aged-accounts-myob`, which also has no generator). `gen-xero.js` deletes any `reports/` folder it doesn't recognize, so **running `npm run gen` in `scripts/xero-reporting-kit` will silently delete this report** unless it's added to the kit's family config first.

@@ -17,7 +17,7 @@ Each practice decides which check groups **stop** lodgement and which are only a
 - A row's marking can be a condition, such as "Stop on accrual basis, Note on cash basis". Apply it with what you know: the GST basis from Finding the client, and the tool's detail (for suspense: how many documents dated in the period are coded to the account). In the summary, say which way it went and why.
 - If the file has no row for a group the default below has (a check added since the file was written), add that row with the default marking, keep every other row exactly as it is, and say in a job comment which rows you added.
 
-The default (a bookkeeper's recommendation, November 2026, with interim refinements until they answer the follow-up questions; the GST rows are still provisional):
+The default (a bookkeeper's recommendation, November 2026, with the practice's own interim answers of 16 and 19 November until the bookkeeper answers the follow-up questions; the GST rows are still provisional):
 
 ```markdown
 # BAS readiness checklist
@@ -44,6 +44,7 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 | lockDateChanged | CHK-135 the lock date was moved back or removed since the last review (someone may have edited a closed period) | Stop |
 | taxCodeMismatch | Lines coded GST-free or BAS Excluded where the account or supplier normally carries GST (heuristic; exports and input-taxed lines are left out) | Note |
 | priorPeriodAdjustments | Documents dated before the period that changed after the previous BAS (flag only) | Note |
+| clientQuestionsOpen | Client questions from the previous review still open | Stop when about GST or at or above the material amount in setup; Note otherwise |
 ```
 
 ## 2. Find the client and the period (status: Finding the client)
@@ -54,7 +55,12 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 
 ## 3. Run the checks (status: Checking)
 
-**Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). Add `changedSince`: the date the previous BAS review for this client was approved, read from the Outcome section of its summary file in `BAS reviews/` (the period just before this one). If there's no earlier review file, leave `changedSince` out. It reads the whole period on the Xero side (every invoice, bill, credit note and bank transaction with its lines, the period's contacts and ABNs, the trial balance at `periodEnd` and the 12 months' profit and loss) and returns only:
+**Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). Add `changedSince` as the setup setting `prior_period_from` says:
+
+- `previous_review` (the default, also when the setting isn't listed): the date the previous review (section 3b says which file) was approved, read from its Outcome section.
+- `lock_date`: the client's lock date (`organisation.lockDate` from Finding the client, or the row in `BAS readiness/Lock dates.md`). With no lock date, use the previous review's approval date.
+
+If neither date exists, leave `changedSince` out (the tool then uses `periodStart`). Say in the summary which date you used and why. It reads the whole period on the Xero side (every invoice, bill, credit note and bank transaction with its lines, the period's contacts and ABNs, the trial balance at `periodEnd` and the 12 months' profit and loss) and returns only:
 
 - `organisation`: GST registration (and whether it was inferred), GST basis and period, lock date;
 - `read`: how many documents it read, and `truncated` (anything it couldn't read in full);
@@ -74,9 +80,36 @@ Keep each client's lock date in `BAS readiness/Lock dates.md`, a table with the 
 - If the client has no row yet, there's nothing to compare: say so in the summary ("first review: lock date recorded"), not as a finding.
 - After the check, write the client's current lock date (or "none") and today's date to the file, keeping every other row.
 
+### 3b. Client questions from the last review (you run this check)
+
+The previous review is the summary file in `BAS reviews/` for the period just before this one. If there are several (a review run twice), use the latest one whose Outcome was approved, never one still awaiting approval. Use this same file for `changedSince` (section 3) and for the questions below.
+
+If it has drafted client questions, carry each one into this review, **whatever its outcome was** (a Not ready review's questions still go to the client):
+
+- **Re-check the previous period.** This review's checks only read this period, so they can't tell whether last period's items were fixed. Call `get_xero_bas_readiness_checks` a second time with the previous review's own `periodStart` and `periodEnd` (no `changedSince`); it returns findings only, so the reply stays small.
+- **Compare each question** with that call's findings: the same document or contact still flagged = **open**; no longer flagged (receipt attached, ABN added, item reconciled, duplicate removed) = **answered or fixed**. A question no check can answer (for example "were these invoices issued?" or "what was this payment for?") stays **open** unless a person said on this job that the client answered it.
+- **Mark each open question on its own line**, never as one group: **Stop** when it is about GST (GST claimed, an ABN or tax invoice for a GST claim, GST coding) or about an amount at or above the setup setting `material_question_amount` (default $1,000 when the setting isn't listed); **Note** otherwise. The open ones are the `clientQuestionsOpen` finding (count = open questions; it is a Stop when any open question is a Stop).
+- In the summary, list each carried question with its status (open Stop, open Note, or answered or fixed) and what decided it.
+- With no earlier summary file, or none with questions, say "no open questions from a previous review" in the summary.
+
+Questions are not tracked anywhere else: the summary file is the record. A person sends them and tells you on the job when they were sent or answered.
+
 Do **not** redo its checks by reading invoices, bills or bank transactions yourself: a quarter of documents with their lines is too large for you to read (the reply only says it was saved to a file). Use the list tools only to look closer at one finding, small and filtered: one supplier (`contactIDs`), one invoice number (`invoiceNumbers`) or one document (`ids`), always with `page: 1`.
 
-If `abr_lookup_abns` is available, check the ABNs of the contacts in the findings with it, and run the register groups (`gstFromUnregisteredSuppliers`, `cancelledAbn`, `gstStatusMismatch`). Otherwise they stay "not checked" with the reason. Never call a check you didn't run "clear".
+### 3c. The ABR register checks (you run these when ABR Lookup is connected)
+
+The checks tool returns `abnsToCheck`: every supplier and customer with a valid ABN that the business dealt with in the period (GST claimed first, up to 100, `more` = how many weren't listed).
+
+- **If `abr_lookup_abns` is in this job:** pass the ABNs to it (up to 100 per call; retry only the rows whose error starts "Timed out"). Then:
+  - `gstFromUnregisteredSuppliers`: GST claimed (`gstClaimed` above 0) from an ABN the register shows as **not registered for GST** on the document dates (`gst_registered` false, or the dates fall outside `gst_from`–`gst_to`).
+  - `cancelledAbn`: any dealing in the period with an ABN whose `status` is **Cancelled** (say from `status_from`).
+  - An ABN the register doesn't find, or with an invalid checksum, is a finding under `cancelledAbn` with that reason.
+  - Mark each from the checklist, with the contact, the ABN, and the GST claimed or the number of dealings. Groups that ran with nothing found are "clear".
+  - `gstStatusMismatch` stays "not checked: needs each contact's GST setting in Xero, which the checks tool doesn't return".
+  - If `abnsToCheck.more` is above 0, say in "Not checked" how many ABNs weren't looked up.
+- **If `abr_lookup_abns` isn't in this job**, the three groups are "not checked", and the reason is exactly "ABR Lookup isn't connected for this agent". If a call fails, the reason is "ABR lookup failed: <the error>". Never write "Xero doesn't hold ABR data": that's true but doesn't say what to fix.
+
+Never call a check you didn't run "clear".
 
 ## 4. The checks
 
@@ -102,6 +135,7 @@ Each row is a check group; the checks tool runs them all, and you keep the group
 | `lockDateChanged` | CHK-135 | the lock date is earlier than, or missing compared with, the one you recorded for this client last time (section 3a). You run this one, not the checks tool |
 | `taxCodeMismatch` | TAX-CODE (heuristic) | a line with no GST where its account normally carries GST, or the same supplier's other lines to that account carry GST. Say what the transaction looks like it is; the bookkeeper decides |
 | `priorPeriodAdjustments` | PRIOR-PERIOD | invoices, bills, credit notes and manual journals dated before the period that changed on or after `changedSince`. Flag only: never count them in this BAS; the bookkeeper or registered BAS agent decides whether each belongs here or in an amendment |
+| `clientQuestionsOpen` | CLIENT-Q | a client question from the previous review that is still open (section 3b). You run this one, not the checks tool |
 
 
 ## 5. Client questions
@@ -113,10 +147,11 @@ For findings only the client can resolve (a missing receipt or tax invoice, a mi
 Write it to `BAS reviews/<client name> <period label>.md` with `files_write`:
 
 - a heading with the client and the period (with the dates);
-- an "Outcome" line right under the heading: "Awaiting reviewer approval" while you write it in Checking. In Recording, after the approved run, replace it with an "Outcome" section: the outcome in words (Ready to lodge, Ready once the client answers, Not ready), approved by the reviewer on the date, their note if any, and in one or two lines what must happen before the BAS can be lodged (for Not ready: the Stop findings to clear);
+- an "Outcome" line right under the heading: "Awaiting reviewer approval" while you write it in Checking. In Recording, after the approved run, replace it with an "Outcome" section: the outcome in words (Ready to lodge, Ready once the client answers, Not ready), who approved it (the reviewer's name when the decision shows it, otherwise "the reviewer") and the date, their note if any, and in one or two lines what must happen before the BAS can be lodged (for Not ready: the Stop findings to clear);
 - the GST registration and basis, and "Read from Xero only: nothing was changed in Xero and nothing was lodged.";
-- a table of findings: group, check, what was found, count, amount, and Stop or Note (from the checklist); "No findings" when there are none;
-- "Not checked", with the reason for each group you couldn't run (for example ABR not connected);
+- a table of findings: group, check, what was found, count, amount, and Stop or Note (from the checklist); "No findings" when there are none. Write every amount in dollars with two decimals ($1,234.50), also in `stop_findings` and the decision card, and say what was found in plain words, not group keys;
+- "Not checked", with the reason for each group you couldn't run (for example ABR not connected), and always "PAYG withholding (W1, W2) and PAYG instalments: not checked by this review". When the setup setting `bas_payg_labels` is `payg_withholding` or `payg_withholding_and_instalments`, add that this practice reports them on the BAS, so they must be checked in payroll before lodging;
+- the settings used: the date `changedSince` came from, the material amount for open questions, and the PAYG setting (say "default" where a setting wasn't chosen);
 - the drafted client questions, if any;
 - "For the line-by-line detail, open the BAS Related Transactions and GST, GST Check and Contacts for BAS reports for this client and quarter."
 

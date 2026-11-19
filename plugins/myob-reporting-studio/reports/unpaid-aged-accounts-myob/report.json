@@ -1,84 +1,34 @@
 {
+  "title": "Unpaid & Aged Accounts",
+  "description": "Aged receivables and payables from MYOB, grouped by organisation and contact, with aging-bucket tiles, a chart and a review-only email draft per contact.",
+  "tags": ["myob", "accounts-receivable", "accounts-payable", "ageing", "unpaid"],
+  "fileName": "unpaid-aged-accounts-myob.html",
   "dataBindings": {
+    "inputs": [
+      { "name": "company_file", "label": "Company file", "type": "string", "default": "" }
+    ],
     "bindings": [
       {
-        "id": "company_files",
-        "params": {},
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_company_files"
-        }
+        "id": "companies",
+        "tool": { "mcp": "myob-accounting", "name": "list_company_files" },
+        "params": {}
       },
       {
         "id": "invoices",
+        "tool": { "mcp": "myob-accounting", "name": "list_invoices" },
         "params": {
-          "myob_company_file_id": {
-            "input": "company_file",
-            "kind": "input"
-          },
-          "status": {
-            "kind": "static",
-            "value": "Open"
-          }
-        },
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_invoices"
+          "myob_company_file_id": { "kind": "input", "input": "company_file" },
+          "status": { "kind": "static", "value": "Open" }
         }
       },
       {
         "id": "bills",
+        "tool": { "mcp": "myob-accounting", "name": "list_bills" },
         "params": {
-          "myob_company_file_id": {
-            "input": "company_file",
-            "kind": "input"
-          },
-          "status": {
-            "kind": "static",
-            "value": "Open"
-          }
-        },
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_bills"
+          "myob_company_file_id": { "kind": "input", "input": "company_file" },
+          "status": { "kind": "static", "value": "Open" }
         }
-      },
-      {
-        "id": "contacts",
-        "params": {
-          "myob_company_file_id": {
-            "input": "company_file",
-            "kind": "input"
-          },
-          "type": {
-            "kind": "static",
-            "value": "All"
-          }
-        },
-        "tool": {
-          "mcp": "myob-accounting",
-          "name": "list_contacts"
-        }
-      }
-    ],
-    "inputs": [
-      {
-        "default": "",
-        "label": "Company file",
-        "maxLength": 64,
-        "name": "company_file",
-        "type": "string"
       }
     ]
-  },
-  "description": "Unpaid sales invoices and purchase bills across your MYOB company files, aged into buckets, with one grouped payment-reminder draft per contact.",
-  "fileName": "myob-unpaid-aged-accounts.html",
-  "tags": [
-    "myob",
-    "aged-receivables",
-    "aged-payables",
-    "unpaid",
-    "ageing"
-  ],
-  "title": "Unpaid & Aged Accounts — MYOB"
+  }
 }

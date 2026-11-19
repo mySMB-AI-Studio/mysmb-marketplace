@@ -91,7 +91,7 @@ const setup = withHash({
   originKey: deterministicUuid(`setup:${SLUG}:connections`),
   name: 'Client Reporting Agent setup',
   description:
-    'Connections only: connect Xero (required; a shared service connection for a team agent) and, optionally, ABR Lookup for the ABN register checks. ' +
+    'Connect Xero (required; a shared service connection for a team agent) and, optionally, ABR Lookup for the ABN register checks, then choose three BAS review settings (each has a default). ' +
     'The manager is named when the agent is activated. Reports load their data as the person who opens them, so reviewers need their own Xero access to the client.',
   definition: {
     version: 2,
@@ -99,6 +99,37 @@ const setup = withHash({
       { key: 'xero', label: 'Xero', oneOf: ['xero-accounting'], required: true, scope: 'either' },
       { key: 'abr', label: 'ABR Lookup (ABN register checks)', oneOf: ['abr'], required: false, scope: 'either' },
     ],
+    // BAS review settings (19 Nov 2026): our own answers to the bookkeeper's open questions 5, 7 and 9, as defaults a
+    // practice can change. Job threads are told these values (thread-settings.ts); the process instructions say the
+    // default to use when an installation made before 0.4.0 has none.
+    settings: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        prior_period_from: {
+          type: 'string',
+          title: 'Prior-period adjustments: look for changes since',
+          description: 'previous_review: the date the previous BAS review for the client was approved. lock_date: the client\'s lock date in Xero (the date the previous period was closed), falling back to the previous review when there is no lock date.',
+          enum: ['previous_review', 'lock_date'],
+          default: 'previous_review',
+        },
+        material_question_amount: {
+          type: 'number',
+          title: 'Unanswered client questions: Stop at or above ($)',
+          description: 'A client question from the previous review that is still open becomes a Stop when it is about GST or about an amount at or above this. Below it, it is a Note. 0 makes every open question a Stop.',
+          minimum: 0,
+          maximum: 1000000,
+          default: 1000,
+        },
+        bas_payg_labels: {
+          type: 'string',
+          title: 'PAYG on this practice\'s BAS',
+          description: 'gst_only: the review covers GST. payg_withholding: the BAS also reports PAYG withheld (W1, W2). payg_withholding_and_instalments: also PAYG instalments (T7 / 5A). The review checks GST only; the summary says which PAYG labels must be checked in payroll.',
+          enum: ['gst_only', 'payg_withholding', 'payg_withholding_and_instalments'],
+          default: 'gst_only',
+        },
+      },
+    },
     knowledge: [],
     people: [],
     tasks: [],
@@ -185,7 +216,7 @@ const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.k
 // it lives in the step skill (the agent writes it to Files on its first job). Bump PROCESS_VERSION on any change
 // (a process version with runs is immutable).
 const PROCESS_KEY = 'bas-readiness-review';
-const PROCESS_VERSION = '0.3.2';
+const PROCESS_VERSION = '0.4.3';
 const PROCESS_CAPABILITIES = [
   'xero.connections.read', 'xero.organisation.read', 'xero.accounts.read', 'xero.tax_rates.read', 'xero.contacts.read',
   'xero.invoices.read', 'xero.credit_notes.read', 'xero.bank_transactions.read', 'xero.profit_and_loss.read',
@@ -319,9 +350,15 @@ If you can't load the skill (no skill tool in this session, or it fails), don't 
 ${DEFAULT_CHECKLIST}
 
 - A row's marking can be a condition (for example "Stop on accrual basis, Note on cash basis"): apply it with the GST basis and the checks tool's detail, and say which way it went.
-- Checks: call get_xero_bas_readiness_checks once (xero_tenant_id, periodStart, periodEnd; add changedSince = the approval date in the previous period's summary file in BAS reviews/, if there is one). Keep only the groups the checklist lists; groups under notRun are "not checked" with the reason.
+- Checks: call get_xero_bas_readiness_checks once (xero_tenant_id, periodStart, periodEnd; add changedSince as the setting prior_period_from says: the approval date in the previous period's summary file in BAS reviews/, or the client's lock date). Keep only the groups the checklist lists; groups under notRun are "not checked" with the reason.
+- Settings from setup (when one isn't listed, use its default and say so in the summary; never ask for help over these): prior_period_from (default previous_review), material_question_amount (default 1000), bas_payg_labels (default gst_only).
+- Client questions from the last review: if the previous review lists client questions (whatever its outcome), call get_xero_bas_readiness_checks a second time for THAT review's period (its own periodStart and periodEnd, no changedSince) and compare each question with what that call still finds: the same document or contact still flagged = open; no longer flagged = "answered or fixed"; a question no check can answer (for example "were these invoices issued?") = open unless a person said on this job that it was answered. Mark EACH open question on its own line: Stop when it is about GST (GST claimed, an ABN or tax invoice for a GST claim, GST coding) or an amount at or above material_question_amount, Note otherwise. The open ones are clientQuestionsOpen findings (count = open questions).
+- ABR register checks: if the ABR Lookup tool (abr_lookup_abns) is in this job, look up the checks tool's abnsToCheck (up to 100 per call; retry only rows that timed out) and run gstFromUnregisteredSuppliers (GST claimed from an ABN the register shows as not registered for GST on the document dates) and cancelledAbn (any dealing in the period with an ABN the register shows as cancelled). gstStatusMismatch stays "not checked: needs each contact's GST setting in Xero". If abnsToCheck.more is above 0, say how many ABNs were not checked. If the tool isn't in this job, the reason is exactly "ABR Lookup isn't connected for this agent"; if a call fails, "ABR lookup failed: <the error>". Never "Xero doesn't hold ABR data".
+- Amounts: write every amount as dollars with two decimals ($1,234.50) in the summary, the decision card and stop_findings, and describe findings in plain words (the check name in words, not the group key).
+- PAYG: you check GST only. In "Not checked", always say "PAYG withholding (W1, W2) and PAYG instalments: not checked by this review", and when bas_payg_labels is not gst_only, add "this practice reports them on the BAS: check them in payroll before lodging".
 - Lock date: keep each client's lock date in BAS readiness/Lock dates.md (Client | Lock date | Recorded on). If the client has a row and the lock date is now earlier or missing, that's a lockDateChanged finding; then write today's value back.
-- Summary: BAS reviews/<client> <period label>.md with the client and period, an Outcome line, GST registration and basis, "Read from Xero only", the findings table (group, check, what, count, amount, Stop or Note), Also seen, Clear, Not checked with reasons and the tool's limitations, and the drafted client questions.
+- The previous review: the summary file in BAS reviews/ for the period just before this one. If there are several, use the latest one with an approved Outcome; never one still awaiting approval. Use that same review for changedSince and for the client questions.
+- Summary: BAS reviews/<client> <period label>.md with the client and period, an Outcome line (in Recording: who approved it, by name when the decision shows it, and the date), GST registration and basis, "Read from Xero only", the findings table (group, check, what, count, amount, Stop or Note), Also seen, Clear, Not checked with reasons and the tool's limitations, and the drafted client questions.
 
 Work through the statuses in order:
 - Finding the client: read this practice's checklist from your files, find the client in Xero, note its GST registration and basis.
@@ -374,7 +411,7 @@ const processDefinition = {
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
       ] }),
     status('checking', 'Checking', 'working',
-      'Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd, and changedSince from the previous review\'s summary file when there is one): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Then run the lock-date check yourself against BAS readiness/Lock dates.md and update that file (skill section 3a). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
+      'Call get_xero_bas_readiness_checks ONCE for the period (xero_tenant_id, periodStart, periodEnd, and changedSince as the setting prior_period_from says, skill section 3): it runs the checks on the Xero side and returns only the findings, what came back clear and what could not run. Do not read invoices, bills or bank transactions one by one to redo its checks; use the list tools only to look closer at a specific finding (one supplier, one invoice number). Then run the lock-date check yourself against BAS readiness/Lock dates.md and update that file (skill section 3a), and carry over the previous review\'s open client questions (skill section 3b). Keep only the groups the checklist lists, and mark each Stop or Note from the checklist. Then write the summary (the layout is in the skill) to BAS reviews/<client name> <period>.md with files_write, and post a short job comment with the counts and the file\'s path. List, for the outputs: every finding (findings), the findings in groups the checklist marks Stop (stopFindings, one line each: check, what, count, amount), the drafted client questions (clientQuestions) and the summary file\'s path (summaryFile). Then move to Waiting for review with job_set_status. Do NOT call the record tool while the job is still in Checking: move first, then ask for approval.',
       { outputs: [
         { key: 'findings', type: 'array' }, { key: 'stopFindings', type: 'array' },
         { key: 'clientQuestions', type: 'array' }, { key: 'summaryFile', type: 'string' },
@@ -382,7 +419,7 @@ const processDefinition = {
     status('review', 'Waiting for review', 'waiting',
       'Decide the outcome you recommend with the rule in the skill: notReady whenever any Stop finding needs the practice to do work in Xero (reconcile, recode, clear a suspense balance, remove a duplicate, fix GST coding), even if the client must answer a question first; readyOnceClientAnswers only when every open item is just something the client sends (a receipt, a tax invoice, an ABN, an explanation) and no Stop finding needs a change in Xero; readyToLodge only when there are no findings at all. Never readyToLodge while stopFindings is not empty. Call the record tool (record BAS readiness outcome) with client_name, period_label, outcome, stop_findings (one per line), summary_file and a note of two or three sentences saying why. The platform asks the reviewer before it runs. If they approve, move to Recording straight away and run the tool there (see Recording); do not run it in this status, or the run will not count for Recording and the reviewer is asked twice. If they say no, read their note: when they want a different outcome, call the tool again with that outcome; when they want something checked again, move back to Checking. After you rework anything a reviewer asked for, always end by calling the record tool again with your updated values so they can approve: never leave this status without either a pending approval or a status move.'),
     status('recording', 'Recording', 'working',
-      'The reviewer has approved. Call the record tool now, with exactly the inputs they approved: the approval is used by this run, and the platform counts it only because it runs while the job is in Recording. Then make the outcome visible where people look, because the jobs list only shows "Done": (1) add an "Outcome" section at the TOP of the summary file (files_read, then files_write the whole file): the outcome in words (Ready to lodge, Ready once the client answers, or Not ready), that the reviewer approved it and the date, the reviewer\'s note if they gave one, and in one or two lines what must happen before the BAS can be lodged; (2) rename the job with job_rename to "BAS readiness review: <client> <period label> - <outcome in words>"; (3) post a one-line job comment with the outcome in words and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.',
+      'The reviewer has approved. Call the record tool now, with exactly the inputs they approved: the approval is used by this run, and the platform counts it only because it runs while the job is in Recording. Then make the outcome visible where people look, because the jobs list only shows "Done": (1) add an "Outcome" section at the TOP of the summary file (files_read, then files_write the whole file): the outcome in words (Ready to lodge, Ready once the client answers, or Not ready), who approved it (the reviewer\'s name when the decision shows it, otherwise "the reviewer") and the date, the reviewer\'s note if they gave one, and in one or two lines what must happen before the BAS can be lodged; (2) rename the job with job_rename to "BAS readiness review: <client> <period label> - <outcome in words>"; (3) post a one-line job comment with the outcome in words and the summary file. Then move to Ready to lodge when the outcome is readyToLodge, to Not ready when it is notReady, or to Waiting for the client when it is readyOnceClientAnswers.',
       { outputs: [{ key: 'outcome', type: 'string' }], ran: [{ automation: recordOriginKey }] }),
     status('waitingClient', 'Waiting for the client', 'waiting',
       'Post the drafted client questions as ONE job comment, numbered, ready for a person to copy and send, and say that a person sends them (you never contact the client). Wait for a person to reply on the job. When they say the questions were sent, move to Client queried. When they give you the client\'s answers and want the review run again, move back to Checking.'),

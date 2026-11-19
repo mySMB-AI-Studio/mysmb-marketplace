@@ -165,21 +165,17 @@
     <div>
       <div class="brandline">mySMB &middot; myHub</div>
       <h1>Unpaid &amp; Aged Accounts</h1>
-      <p class="sub">Aged receivables and payables, grouped by organisation and aging bucket.</p>
+      <p class="sub">Aged receivables and payables, grouped by contact and aging bucket.</p>
     </div>
     <div class="topRight">
       <div>Last refreshed: <span id="stamp">loading&hellip;</span></div>
-      <div>Source: MYOB AccountRight (open sales invoices and purchase bills)</div>
+      <div>Source: QuickBooks Online (open invoices and bills)</div>
     </div>
   </header>
 
   <div class="panel filterbar">
     <div class="fg">
-      <label for="fOrg">Organisation</label>
-      <select id="fOrg"></select>
-    </div>
-    <div class="fg">
-      <label for="fClient">Client</label>
+      <label for="fClient">Contact</label>
       <select id="fClient"></select>
     </div>
     <div class="fg">
@@ -239,7 +235,7 @@
     <p class="note">Each contact has one group header with its total and one Draft Email button. The draft lists every invoice or bill for that contact that matches the filters, for review only. Nothing is sent.</p>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:24px;">Read-only report. It does not create, change, approve, pay or delete any MYOB record. Only open items with a balance due above zero are included, and partly paid items show their remaining balance. Items flagged &quot;Possible test&quot; look like QA or test records; they are included in the totals and should be checked.</p>
+  <p class="note" style="text-align:center;margin-top:24px;">Read-only report. It does not create, change, approve, pay or delete any QuickBooks record. Only open items with a balance above zero are included, and partly paid items show their remaining balance. Items flagged &quot;Possible test&quot; look like QA or test records; they are included in the totals and should be checked.</p>
 </div>
 
 <div class="mask hid" id="mail">
@@ -273,13 +269,12 @@
 'use strict';
 
 var SENDER_NAME = 'Aidan Kavanagh';
-var CO_DEFAULT = '3534b893-813b-4b75-974b-ef55c44f9aeb';
 var OUTLOOK_LINK_LIMIT = 6500;
 
 var state = {
-  companies: [],
+  companyName: '',
+  currency: 'USD',
   records: [],
-  org: '',
   client: '',
   period: 'all',
   from: '',
@@ -298,7 +293,7 @@ function esc(s) {
 }
 
 function money(n) {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: state.currency || 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 }
 
 function dUTC(y, m, d) { return new Date(Date.UTC(y, m - 1, d)); }
@@ -353,8 +348,8 @@ function isTest(party, ref) {
   return false;
 }
 
-// Defensive extraction: JSON string, array, {Items:[...]}, or a nested object
-// holding the first non-empty array within `depth` levels.
+// Defensive extraction: JSON string, array, {QueryResponse:{Invoice:[...]}}, or a
+// nested object holding the first non-empty array within `depth` levels.
 function items(v, depth) {
   depth = depth == null ? 6 : depth;
   if (v == null) return [];
@@ -363,7 +358,9 @@ function items(v, depth) {
   }
   if (Array.isArray(v)) return v;
   if (typeof v === 'object') {
-    if (Array.isArray(v.Items)) return v.Items;
+    if (Array.isArray(v.Invoice)) return v.Invoice;
+    if (Array.isArray(v.Bill)) return v.Bill;
+    if (Array.isArray(v.CompanyInfo)) return v.CompanyInfo;
     if (depth <= 0) return [];
     var keys = Object.keys(v);
     for (var i = 0; i < keys.length; i++) {
@@ -383,49 +380,22 @@ function items(v, depth) {
 
 var MH = (typeof window !== 'undefined') ? window.MyHubReport : null;
 
-function companiesOf(v) {
-  return items(v).map(function (c) {
-    return { id: String(c.Id || c.id || ''), name: c.Name || c.name || '' };
-  }).filter(function (c) { return c.id; });
-}
-
-function normaliseInvoice(raw, co, today) {
-  var amt = Number(raw.BalanceDueAmount);
+function normaliseRecord(raw, ap, today) {
+  var amt = Number(raw.Balance);
   if (!(amt > 0)) return null;
-  var cust = raw.Customer || {};
-  var date = String(raw.Date || '').slice(0, 10);
-  var due = (raw.Terms && raw.Terms.DueDate) ? String(raw.Terms.DueDate).slice(0, 10) : date;
-  var party = cust.Name || '(no customer)';
+  var ref = ap ? (raw.VendorRef || {}) : (raw.CustomerRef || {});
+  var date = String(raw.TxnDate || '').slice(0, 10);
+  var due = String(raw.DueDate || '').slice(0, 10) || date;
+  var party = ref.name || (ap ? '(no vendor)' : '(no customer)');
   return {
     date: date, due: due,
     party: party,
-    uid: cust.UID || party,
-    ref: raw.Number || '',
+    uid: ref.value || party,
+    ref: raw.DocNumber || '',
     amt: amt,
-    ap: false,
-    co: co.id, coName: co.name,
+    ap: ap,
     days: daysBetween(today, parseIsoUTC(due) || today),
-    test: isTest(party, raw.Number)
-  };
-}
-
-function normaliseBill(raw, co, today) {
-  var amt = Number(raw.BalanceDueAmount);
-  if (!(amt > 0)) return null;
-  var sup = raw.Supplier || {};
-  var date = String(raw.Date || '').slice(0, 10);
-  var due = (raw.Terms && raw.Terms.DueDate) ? String(raw.Terms.DueDate).slice(0, 10) : date;
-  var party = sup.Name || '(no supplier)';
-  return {
-    date: date, due: due,
-    party: party,
-    uid: sup.UID || party,
-    ref: raw.Number || '',
-    amt: amt,
-    ap: true,
-    co: co.id, coName: co.name,
-    days: daysBetween(today, parseIsoUTC(due) || today),
-    test: isTest(party, raw.Number)
+    test: isTest(party, raw.DocNumber)
   };
 }
 
@@ -434,7 +404,7 @@ function $(id) { return document.getElementById(id); }
 function fetchBinding(id, inputs) {
   if (!MH) return Promise.resolve(null);
   return window.MyHubReport.getData(id, inputs).catch(function (e) {
-    console.error('[unpaid-aged-accounts-myob] ' + id + ' failed:', e);
+    console.error('[unpaid-aged-accounts-quickbooks] ' + id + ' failed:', e);
     return null;
   });
 }
@@ -442,55 +412,37 @@ function fetchBinding(id, inputs) {
 function loadAll(bundle) {
   if (busy) return;
   busy = true;
+  var today = todaySydney();
 
-  var companiesPromise;
-  var fromBundle = companiesOf(bundle && bundle.data && bundle.data.companies);
-  if (fromBundle.length) {
-    companiesPromise = Promise.resolve(fromBundle);
-  } else {
-    companiesPromise = fetchBinding('companies', {}).then(function (v) {
-      var list = companiesOf(v);
-      return list.length ? list : [{ id: CO_DEFAULT, name: 'mySMB.com' }];
-    });
-  }
+  var companyPromise = (bundle && bundle.data && bundle.data.company_info)
+    ? Promise.resolve(bundle.data.company_info)
+    : fetchBinding('company_info', {});
 
-  companiesPromise.then(function (companies) {
-    state.companies = companies;
-    var today = todaySydney();
-    return Promise.all(companies.map(function (co) {
-      return Promise.all([
-        fetchBinding('invoices', { company_file: co.id }),
-        fetchBinding('bills', { company_file: co.id })
-      ]).then(function (r) {
-        var inv = items(r[0]).map(function (raw) { return normaliseInvoice(raw, co, today); }).filter(Boolean);
-        var bills = items(r[1]).map(function (raw) { return normaliseBill(raw, co, today); }).filter(Boolean);
-        return inv.concat(bills);
-      });
-    })).then(function (perCompany) {
-      var all = [];
-      perCompany.forEach(function (arr) { all = all.concat(arr); });
-      state.records = all;
-      if (companies.length === 1 && !state.org) state.org = companies[0].id;
-      state.stamp = new Intl.DateTimeFormat('en-AU', {
-        timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: false
-      }).format(new Date()).replace(',', '');
-      busy = false;
-      render();
-    });
+  Promise.all([
+    companyPromise,
+    fetchBinding('invoices', {}),
+    fetchBinding('bills', {})
+  ]).then(function (r) {
+    var company = items(r[0])[0] || null;
+    state.companyName = (company && (company.CompanyName || company.LegalName)) || 'QuickBooks company';
+
+    var ar = items(r[1]).map(function (raw) { return normaliseRecord(raw, false, today); }).filter(Boolean);
+    var ap = items(r[2]).map(function (raw) { return normaliseRecord(raw, true, today); }).filter(Boolean);
+    state.records = ar.concat(ap);
+    state.stamp = new Intl.DateTimeFormat('en-AU', {
+      timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(new Date()).replace(',', '');
+    busy = false;
+    render();
   }).catch(function (e) {
-    console.error('[unpaid-aged-accounts-myob] load failed:', e);
+    console.error('[unpaid-aged-accounts-quickbooks] load failed:', e);
     busy = false;
     render();
   });
 }
 
 // ---------- filtering ----------
-
-function orgFilteredRecords() {
-  if (!state.org) return state.records;
-  return state.records.filter(function (r) { return r.co === state.org; });
-}
 
 function clientOptionsFor(records) {
   var seen = {}, out = [];
@@ -521,8 +473,7 @@ function inPeriod(dateIso, today) {
 
 function filteredRecords() {
   var today = todaySydney();
-  var byOrg = orgFilteredRecords();
-  return byOrg.filter(function (r) {
+  return state.records.filter(function (r) {
     if (state.client && r.uid !== state.client) return false;
     if (!inPeriod(r.date, today)) return false;
     return true;
@@ -548,9 +499,9 @@ function bucketTotals(rows) {
 function groupRecords(rows) {
   var byKey = {};
   rows.forEach(function (r) {
-    var key = r.co + '::' + (r.ap ? 'AP' : 'AR') + '::' + r.uid;
+    var key = (r.ap ? 'AP' : 'AR') + '::' + r.uid;
     if (!byKey[key]) {
-      byKey[key] = { key: key, co: r.co, coName: r.coName, ap: r.ap, party: r.party, uid: r.uid, items: [], total: 0, maxDays: -Infinity, test: false };
+      byKey[key] = { key: key, ap: r.ap, party: r.party, uid: r.uid, items: [], total: 0, maxDays: -Infinity, test: false };
     }
     var g = byKey[key];
     g.items.push(r);
@@ -573,16 +524,9 @@ function groupRecords(rows) {
 // ---------- rendering: filter bar ----------
 
 function renderFilterBar() {
-  var orgSel = $('fOrg');
-  var orgHtml = '<option value="">All organisations</option>' + state.companies.map(function (c) {
-    return '<option value="' + esc(c.id) + '"' + (c.id === state.org ? ' selected' : '') + '>' + esc(c.name) + '</option>';
-  }).join('');
-  orgSel.innerHTML = orgHtml;
-
-  var clientRecords = orgFilteredRecords();
-  var clientOpts = clientOptionsFor(clientRecords);
+  var clientOpts = clientOptionsFor(state.records);
   if (state.client && !clientOpts.some(function (c) { return c.uid === state.client; })) state.client = '';
-  var clientHtml = '<option value="">All clients</option>' + clientOpts.map(function (c) {
+  var clientHtml = '<option value="">All contacts</option>' + clientOpts.map(function (c) {
     return '<option value="' + esc(c.uid) + '"' + (c.uid === state.client ? ' selected' : '') + '>' + esc(c.name) + '</option>';
   }).join('');
   $('fClient').innerHTML = clientHtml;
@@ -728,11 +672,12 @@ function buildTable(headers, rows) {
   return lines.join('\n');
 }
 
-function buildBody(group, withTable, orgName, today) {
+function buildBody(group, withTable, today) {
   var isAR = !group.ap;
   var totalLabel = isAR ? 'Total outstanding' : 'Total payable';
   var noun = isAR ? 'invoice' : 'bill';
   var nounPlural = group.items.length === 1 ? noun : noun + 's';
+  var orgName = state.companyName || 'QuickBooks company';
 
   var tableText;
   if (withTable) {
@@ -804,7 +749,6 @@ function openDraft(groupIndex) {
   var g = state.groupByIndex[groupIndex];
   if (!g) return;
   var today = todaySydney();
-  var orgName = g.coName || 'mySMB.com';
   var isAR = !g.ap;
 
   $('mailT').textContent = isAR ? 'Email draft (customer, AR): not sent' : 'Email draft (supplier, AP): not sent';
@@ -818,11 +762,11 @@ function openDraft(groupIndex) {
     : 'Bills being processed – ' + g.party + ' – ' + auDate(todayIso(today));
   $('mSub').value = subject;
 
-  var fullBody = buildBody(g, true, orgName, today);
+  var fullBody = buildBody(g, true, today);
   $('mBody').value = fullBody;
   $('mNote').textContent = 'Nothing is sent from here. The draft opens in Outlook so you can review, edit and send it yourself.';
 
-  currentDraft = { group: g, orgName: orgName, today: today, subject: subject, fullBody: fullBody };
+  currentDraft = { group: g, today: today, subject: subject, fullBody: fullBody };
   $('mail').classList.remove('hid');
 }
 
@@ -863,7 +807,7 @@ function openInOutlook() {
   var url = buildOutlookUrl(to, subject, body);
 
   if (url.length > OUTLOOK_LINK_LIMIT) {
-    var shortBody = buildBody(currentDraft.group, false, currentDraft.orgName, currentDraft.today);
+    var shortBody = buildBody(currentDraft.group, false, currentDraft.today);
     url = buildOutlookUrl(to, subject, shortBody);
     $('mNote').textContent = 'The full list is too long for an Outlook link. Outlook has been opened with the totals only. Press "Copy full email" and paste the list into the draft in place of the internal line.';
   }
@@ -900,11 +844,6 @@ function wireRowEvents() {
 }
 
 function wireControls() {
-  $('fOrg').addEventListener('change', function () {
-    state.org = this.value;
-    state.client = '';
-    render();
-  });
   $('fClient').addEventListener('change', function () { state.client = this.value; render(); });
   $('fPeriod').addEventListener('change', function () { state.period = this.value; render(); });
   $('fFrom').addEventListener('change', function () { state.from = this.value; render(); });
@@ -926,7 +865,7 @@ if (MH) {
   window.MyHubReport.onData(loadAll);
   if (window.MyHubReport.onThemeChange) window.MyHubReport.onThemeChange(function () { render(); });
 } else {
-  console.error('[unpaid-aged-accounts-myob] window.MyHubReport is not available.');
+  console.error('[unpaid-aged-accounts-quickbooks] window.MyHubReport is not available.');
   render();
 }
 </script>

@@ -1,0 +1,35 @@
+{
+  "title": "Unpaid & Aged Accounts",
+  "description": "Aged receivables and payables from QuickBooks, grouped by contact and aging bucket, with aging-bucket tiles, a chart and a review-only email draft per contact.",
+  "tags": ["quickbooks", "accounts-receivable", "accounts-payable", "ageing", "unpaid"],
+  "fileName": "unpaid-aged-accounts-quickbooks.html",
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "company_info",
+        "tool": { "mcp": "quickbooks-accounting", "name": "qbo_query" },
+        "params": {
+          "query": { "kind": "static", "value": "SELECT * FROM CompanyInfo" }
+        }
+      },
+      {
+        "id": "invoices",
+        "tool": { "mcp": "quickbooks-accounting", "name": "list_invoice" },
+        "params": {
+          "where": { "kind": "static", "value": "Balance > '0'" },
+          "orderBy": { "kind": "static", "value": "DueDate" },
+          "maxResults": { "kind": "static", "value": 1000 }
+        }
+      },
+      {
+        "id": "bills",
+        "tool": { "mcp": "quickbooks-accounting", "name": "list_bill" },
+        "params": {
+          "where": { "kind": "static", "value": "Balance > '0'" },
+          "orderBy": { "kind": "static", "value": "DueDate" },
+          "maxResults": { "kind": "static", "value": 1000 }
+        }
+      }
+    ]
+  }
+}
