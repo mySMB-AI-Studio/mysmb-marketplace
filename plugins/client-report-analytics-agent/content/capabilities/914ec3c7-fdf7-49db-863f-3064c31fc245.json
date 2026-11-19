@@ -1,0 +1,72 @@
+{
+  "contentHash": "4def220704855dc229bc4f6a6f0be397baa59ade4447a5b0b6902411d75fbd81",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "order": "order",
+          "page": "page",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_bank_transactions"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "order": {
+          "description": "Optional Xero order clause, e.g. \"Date DESC\".",
+          "type": "string"
+        },
+        "page": {
+          "description": "Page (100 per page).",
+          "type": "integer"
+        },
+        "where": {
+          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\".",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bank_transactions.read",
+    "kind": "capability",
+    "originKey": "914ec3c7-fdf7-49db-863f-3064c31fc245",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "BankTransactions": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read bank transactions"
+  },
+  "kind": "capability",
+  "name": "Read bank transactions",
+  "originKey": "914ec3c7-fdf7-49db-863f-3064c31fc245"
+}

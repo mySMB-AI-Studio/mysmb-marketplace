@@ -1,0 +1,52 @@
+{
+  "contentHash": "def679245d49ad79cf1a9b011a82e56c48b95eb551994ce223367d26ddc4ee6b",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "abn": "abn",
+          "include_history": "include_history"
+        },
+        "server": "abr",
+        "tool": "abr_get_abn_details"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "abn": {
+          "description": "The ABN (11 digits; spaces allowed).",
+          "type": "string"
+        },
+        "include_history": {
+          "description": "Include past statuses, GST periods and names.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "abn"
+      ],
+      "type": "object"
+    },
+    "key": "abr.abn.read",
+    "kind": "capability",
+    "originKey": "e3f84946-29b3-445e-aeb5-c43f9ed9e381",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {},
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:abr"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read one ABN record from the Australian Business Register"
+  },
+  "kind": "capability",
+  "name": "Read one ABN record from the Australian Business Register",
+  "originKey": "e3f84946-29b3-445e-aeb5-c43f9ed9e381"
+}

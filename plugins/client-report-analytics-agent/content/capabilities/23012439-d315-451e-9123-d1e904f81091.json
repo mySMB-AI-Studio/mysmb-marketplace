@@ -1,0 +1,64 @@
+{
+  "contentHash": "2575498191025b45e2cf57ee93f37befd417668445fb86a280055cdac4df5024",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "abns": "abns"
+        },
+        "server": "abr",
+        "tool": "abr_lookup_abns"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "abns": {
+          "description": "ABNs to check: an array, or one string separated by commas, semicolons or new lines.",
+          "oneOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "abns"
+      ],
+      "type": "object"
+    },
+    "key": "abr.abns.check",
+    "kind": "capability",
+    "originKey": "23012439-d315-451e-9123-d1e904f81091",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "results": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:abr"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Check ABNs against the Australian Business Register"
+  },
+  "kind": "capability",
+  "name": "Check ABNs against the Australian Business Register",
+  "originKey": "23012439-d315-451e-9123-d1e904f81091"
+}

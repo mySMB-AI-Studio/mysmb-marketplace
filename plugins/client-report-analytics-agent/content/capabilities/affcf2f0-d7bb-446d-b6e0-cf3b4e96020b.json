@@ -1,0 +1,57 @@
+{
+  "contentHash": "ecc2b1125518897192fb072d72e6edf4887c3aaea45f9609d0a32cfd2cc675d3",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_organisation"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.organisation.read",
+    "kind": "capability",
+    "originKey": "affcf2f0-d7bb-446d-b6e0-cf3b4e96020b",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Organisations": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the client organisation"
+  },
+  "kind": "capability",
+  "name": "Read the client organisation",
+  "originKey": "affcf2f0-d7bb-446d-b6e0-cf3b4e96020b"
+}
