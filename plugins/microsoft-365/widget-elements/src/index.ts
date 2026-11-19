@@ -539,15 +539,65 @@ const mail_folder_tone: ComputedFunction = (args) => {
 };
 
 /**
- * Tags each message with `isPendingDelete` so the per-row delete button vs
- * confirm/cancel pair can read a plain `{"$item":"isPendingDelete"}` --
- * same state-vs-$item comparison limitation as mail_folder_sorted's
- * `isSelected`, worked around the same way.
+ * Tags each message with `isPendingDelete`, `isPendingMove` and
+ * `isMoveConfirming` so the per-row delete/move buttons vs their
+ * confirm/cancel pairs can read a plain `{"$item":"isPendingDelete"}` /
+ * `{"$item":"isPendingMove"}` / `{"$item":"isMoveConfirming"}` -- same
+ * state-vs-$item comparison limitation as mail_folder_sorted's
+ * `isSelected`, worked around the same way. All three flags come from this
+ * one function (not separate mark_pending_* calls) so a single watched-state
+ * change always recomputes a self-consistent view -- e.g. opening Move while
+ * Delete's confirm is still showing on a DIFFERENT row correctly clears that
+ * row's isPendingDelete too, since every flag is derived together from the
+ * same ids every time. `isPendingMove` is the folder-picker step;
+ * `isMoveConfirming` is the second "Move to X?" step after a destination has
+ * been picked -- the two are mutually exclusive per row.
  */
-const mark_pending_delete: ComputedFunction = (args) => {
+const mark_pending_actions: ComputedFunction = (args) => {
   const items = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
-  const pendingId = String(args.pendingId ?? '');
-  return items.map((it) => ({ ...it, isPendingDelete: pendingId !== '' && String(it.id ?? '') === pendingId }));
+  const pendingDeleteId = String(args.pendingDeleteId ?? '');
+  const pendingMoveId = String(args.pendingMoveId ?? '');
+  const moveConfirmId = String(args.moveConfirmId ?? '');
+  return items.map((it) => {
+    const id = String(it.id ?? '');
+    return {
+      ...it,
+      isPendingDelete: pendingDeleteId !== '' && id === pendingDeleteId,
+      isPendingMove: pendingMoveId !== '' && id === pendingMoveId,
+      isMoveConfirming: moveConfirmId !== '' && id === moveConfirmId,
+    };
+  });
+};
+
+/**
+ * Looks up a folder's display path by its id, for the final "Move to
+ * {path}?" confirmation label -- the picker's Select only gives us the
+ * chosen folder's id (`/ui/moveDestination`), not its human-readable path.
+ * Args: { folders: array, id: string }
+ */
+const folder_label_by_id: ComputedFunction = (args) => {
+  const folders = Array.isArray(args.folders) ? (args.folders as Record<string, unknown>[]) : [];
+  const id = String(args.id ?? '');
+  const match = folders.find((f) => String(f.id ?? '') === id);
+  return match ? String(match.path ?? '') : '';
+};
+
+/**
+ * Select options for the per-message "Move to folder" picker: every folder
+ * EXCEPT the one currently open (moving a message into the folder it's
+ * already in is a no-op the picker shouldn't offer), labeled by its full
+ * path so a nested folder reads unambiguously (e.g. "Inbox/Bills", not just
+ * "Bills"). `folders` is the same list_mail_folders response mail_folder_tree
+ * also consumes.
+ * Args: { folders: array, excludePath?: string }
+ */
+const move_destination_options: ComputedFunction = (args) => {
+  const folders = Array.isArray(args.folders) ? (args.folders as Record<string, unknown>[]) : [];
+  const excludePath = String(args.excludePath ?? '');
+  return folders
+    .filter((f) => String(f.path ?? '') !== excludePath)
+    .map((f) => ({ value: String(f.id ?? ''), label: String(f.path ?? '') }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 };
 
 // ── compose_to_list ──────────────────────────────────────────────────
@@ -610,7 +660,9 @@ const elements: PluginElementsModule = {
     mail_folder_tone,
     compose_to_list,
     compose_send_disabled,
-    mark_pending_delete,
+    mark_pending_actions,
+    move_destination_options,
+    folder_label_by_id,
     is_blank,
   },
 };

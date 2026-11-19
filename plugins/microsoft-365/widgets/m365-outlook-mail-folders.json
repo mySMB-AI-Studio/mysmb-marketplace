@@ -184,7 +184,7 @@
       "rightColumn": {
         "type": "Stack",
         "props": { "gap": "sm", "grow": true },
-        "children": ["rightHeader", "messagesLoading", "messagesError", "deleteError", "messagesEmpty", "messageList"],
+        "children": ["rightHeader", "messagesLoading", "messagesError", "deleteError", "moveError", "messagesEmpty", "messageList"],
         "watch": {
           "/m365-mail-read/list_mail_folders": [
             { "action": "m365-mail-read.list_emails", "params": { "folder": "Inbox", "limit": 20 } }
@@ -266,8 +266,13 @@
               "params": {
                 "statePath": "/ui/messagesView",
                 "value": {
-                  "$computed": "microsoft-365_mark_pending_delete",
-                  "args": { "items": { "$state": "/m365-mail-read/list_emails" }, "pendingId": { "$state": "/ui/pendingDeleteId" } }
+                  "$computed": "microsoft-365_mark_pending_actions",
+                  "args": {
+                    "items": { "$state": "/m365-mail-read/list_emails" },
+                    "pendingDeleteId": { "$state": "/ui/pendingDeleteId" },
+                    "pendingMoveId": { "$state": "/ui/pendingMoveId" },
+                    "moveConfirmId": { "$state": "/ui/moveConfirmId" }
+                  }
                 }
               }
             }
@@ -278,8 +283,47 @@
               "params": {
                 "statePath": "/ui/messagesView",
                 "value": {
-                  "$computed": "microsoft-365_mark_pending_delete",
-                  "args": { "items": { "$state": "/m365-mail-read/list_emails" }, "pendingId": { "$state": "/ui/pendingDeleteId" } }
+                  "$computed": "microsoft-365_mark_pending_actions",
+                  "args": {
+                    "items": { "$state": "/m365-mail-read/list_emails" },
+                    "pendingDeleteId": { "$state": "/ui/pendingDeleteId" },
+                    "pendingMoveId": { "$state": "/ui/pendingMoveId" },
+                    "moveConfirmId": { "$state": "/ui/moveConfirmId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/pendingMoveId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/messagesView",
+                "value": {
+                  "$computed": "microsoft-365_mark_pending_actions",
+                  "args": {
+                    "items": { "$state": "/m365-mail-read/list_emails" },
+                    "pendingDeleteId": { "$state": "/ui/pendingDeleteId" },
+                    "pendingMoveId": { "$state": "/ui/pendingMoveId" },
+                    "moveConfirmId": { "$state": "/ui/moveConfirmId" }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/moveConfirmId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/messagesView",
+                "value": {
+                  "$computed": "microsoft-365_mark_pending_actions",
+                  "args": {
+                    "items": { "$state": "/m365-mail-read/list_emails" },
+                    "pendingDeleteId": { "$state": "/ui/pendingDeleteId" },
+                    "pendingMoveId": { "$state": "/ui/pendingMoveId" },
+                    "moveConfirmId": { "$state": "/ui/moveConfirmId" }
+                  }
                 }
               }
             }
@@ -319,12 +363,32 @@
       "messageLeft": { "type": "Row", "props": { "gap": "sm", "align": "start", "grow": true }, "children": ["messageUnreadDot", "messageAvatar", "messageLabels"] },
       "messageReceived": { "type": "Caption", "props": { "text": { "$computed": "relative_time", "args": { "value": { "$item": "receivedDateTime" } } }, "tone": "muted" } },
 
-      "messageRight": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["messageReceived", "messageDeleteRow"] },
-      "messageDeleteRow": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["messageDeleteBtn", "messageDeleteConfirm"] },
+      "messageRight": { "type": "Stack", "props": { "gap": "xs", "align": "end" }, "children": ["messageReceived", "messageActionsRow", "messageDeleteConfirm", "messageMoveConfirm", "messageMoveFinalConfirm"] },
+      "messageActionsRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["messageMoveBtn", "messageDeleteBtn"],
+        "visible": {
+          "$and": [
+            { "$item": "isPendingDelete", "not": true },
+            { "$item": "isPendingMove", "not": true },
+            { "$item": "isMoveConfirming", "not": true }
+          ]
+        }
+      },
+      "messageMoveBtn": {
+        "type": "IconButton",
+        "props": { "icon": "FolderInput", "size": "sm", "tone": "muted", "ariaLabel": "Move to folder" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/pendingMoveId", "value": { "$bindItem": "id" } } },
+            { "action": "setState", "params": { "statePath": "/ui/moveDestination", "value": "" } }
+          ]
+        }
+      },
       "messageDeleteBtn": {
         "type": "IconButton",
         "props": { "icon": "Trash2", "size": "sm", "tone": "muted", "ariaLabel": "Delete" },
-        "visible": { "$item": "isPendingDelete", "not": true },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pendingDeleteId", "value": { "$bindItem": "id" } } } }
       },
       "messageDeleteConfirm": {
@@ -354,6 +418,92 @@
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't delete that message: ${/_errors/m365-mail-send.delete_email}" }, "tone": "destructive" },
         "visible": { "$state": "/_errors/m365-mail-send.delete_email" }
+      },
+
+      "messageMoveConfirm": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["moveDestinationSelect", "messageMoveConfirmBtn", "messageMoveCancelBtn"],
+        "visible": { "$item": "isPendingMove" }
+      },
+      "moveDestinationSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/moveDestination" },
+          "options": {
+            "$computed": "microsoft-365_move_destination_options",
+            "args": { "folders": { "$state": "/m365-mail-read/list_mail_folders" }, "excludePath": { "$state": "/ui/selectedFolderPath" } }
+          },
+          "placeholder": "Move to…",
+          "size": "sm"
+        }
+      },
+      "messageMoveConfirmBtn": {
+        "type": "IconButton",
+        "props": {
+          "icon": "Check",
+          "size": "sm",
+          "tone": "info",
+          "ariaLabel": "Confirm move",
+          "disabled": { "$computed": "microsoft-365_is_blank", "args": { "value": { "$state": "/ui/moveDestination" } } }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/moveConfirmId", "value": { "$bindItem": "id" } } },
+            { "action": "setState", "params": { "statePath": "/ui/moveConfirmDestinationId", "value": { "$state": "/ui/moveDestination" } } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/moveConfirmFolderLabel",
+                "value": {
+                  "$computed": "microsoft-365_folder_label_by_id",
+                  "args": { "folders": { "$state": "/m365-mail-read/list_mail_folders" }, "id": { "$state": "/ui/moveDestination" } }
+                }
+              }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/pendingMoveId", "value": "" } }
+          ]
+        }
+      },
+      "messageMoveCancelBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Cancel" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/pendingMoveId", "value": "" } } }
+      },
+      "moveError": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't move that message: ${/_errors/m365-mail-send.move_email}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/m365-mail-send.move_email" }
+      },
+
+      "messageMoveFinalConfirm": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["messageMoveFinalConfirmLabel", "messageMoveFinalConfirmBtn", "messageMoveFinalCancelBtn"],
+        "visible": { "$item": "isMoveConfirming" }
+      },
+      "messageMoveFinalConfirmLabel": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Move to ${/ui/moveConfirmFolderLabel}?" }, "tone": "info" }
+      },
+      "messageMoveFinalConfirmBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Check", "size": "sm", "tone": "info", "ariaLabel": "Yes, move it" },
+        "on": {
+          "click": [
+            {
+              "action": "m365-mail-send.move_email",
+              "params": { "id": { "$bindItem": "id" }, "destinationFolderId": { "$state": "/ui/moveConfirmDestinationId" } }
+            },
+            { "action": "setState", "params": { "statePath": "/ui/moveConfirmId", "value": "" } },
+            { "action": "m365-mail-read.list_emails", "params": { "folder": { "$state": "/ui/selectedFolderPath" }, "limit": 20 } }
+          ]
+        }
+      },
+      "messageMoveFinalCancelBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Cancel" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/moveConfirmId", "value": "" } } }
       },
 
       "divider2": { "type": "Divider", "props": {} },
@@ -574,7 +724,7 @@
       "infoHowText": {
         "type": "Text",
         "props": {
-          "text": "Click a folder to see its messages. If it has sub-folders, the same click also expands them inline underneath it, indented and shown with a plain folder icon — click it again to collapse. Click a message to read it in full and reply. The trash icon on a message asks you to confirm before deleting it. Compose, at the top, opens a new message. Reply, delete and Compose all act on your real mailbox — there's no undo for sending, though a deleted message can still be recovered from Deleted Items.",
+          "text": "Click a folder to see its messages. If it has sub-folders, the same click also expands them inline underneath it, indented and shown with a plain folder icon — click it again to collapse. Click a message to read it in full and reply. The folder icon on a message lets you move it: pick a destination, then confirm a second time on \"Move to <folder>?\" — the list refreshes right after, so the message visibly leaves this folder. The trash icon asks you to confirm before deleting it. Compose, at the top, opens a new message. Reply, delete, move and Compose all act on your real mailbox — there's no undo for sending, though a deleted message can still be recovered from Deleted Items.",
           "size": "sm"
         }
       },
