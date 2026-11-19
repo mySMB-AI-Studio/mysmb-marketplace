@@ -1,0 +1,607 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Letter of Engagement — Hammerjack</title>
+<style>
+  :root {
+    --bg:#f4f6fa; --card:#ffffff; --text:#16202c; --muted:#5d6878; --border:#dfe4ec;
+    --headerBg:#1f5f8b; --teal:#2bb3a3; --cardTitle:#1f5fbf; --input:#ffffff;
+  }
+  :root[data-myhub-theme='dark'] {
+    --bg:#0e1116; --card:#161b23; --text:#e7ebf1; --muted:#9aa5b5; --border:#2a313c;
+    --headerBg:#163f58; --teal:#34d6c4; --cardTitle:#6ea8ff; --input:#10151c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .topbar {
+    background: var(--headerBg);
+    border-bottom: 3px solid var(--teal);
+    color: #ffffff;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .topbar .brand { font-size: 16px; font-weight: 800; }
+  .topbar .brand .smb { color: var(--teal); }
+  .topbar .tag { font-size: 12px; opacity: .85; }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+
+  h1.pageTitle { font-size: 22px; margin: 0 0 4px; }
+  p.pageIntro { color: var(--muted); font-size: 13px; margin: 0 0 20px; max-width: 70ch; }
+
+  .cols { display: flex; gap: 20px; align-items: flex-start; }
+  .formCol { flex: 0 0 40%; max-width: 40%; display: flex; flex-direction: column; gap: 14px; }
+  .previewCol { flex: 1 1 60%; min-width: 0; }
+
+  @media (max-width: 860px) {
+    .cols { flex-direction: column; }
+    .formCol, .previewCol { flex: 1 1 100%; max-width: 100%; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .cardTitle {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: var(--cardTitle);
+    margin: 0 0 12px;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  .field .req { color: #b71c1c; }
+  .field input[type="text"], .field input[type="email"], .field input[type="number"],
+  .field input[type="date"], .field select, .field textarea {
+    width: 100%;
+    font-size: 13px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 54px; }
+
+  .row2 { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row2 .field { flex: 1 1 140px; margin-bottom: 0; }
+
+  .checks { display: flex; flex-direction: column; gap: 8px; }
+  .checkRow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .checkRow input[type="checkbox"] { width: 16px; height: 16px; flex: none; }
+  .checkRow .otherText { flex: 1; min-width: 100px; }
+  .checkRow .otherText input { width: 100%; font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--input); color: var(--text); }
+
+  .buttonsRow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .btn {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--headerBg);
+    background: var(--headerBg);
+    color: #ffffff;
+    cursor: pointer;
+  }
+  .btn.secondary { background: var(--card); color: var(--headerBg); }
+  .noteText { font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+
+  .checkBox {
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .checkBox.missing { background: rgba(183,28,28,.08); border: 1px solid rgba(183,28,28,.35); color: #b71c1c; }
+  .checkBox.ok { background: rgba(46,125,50,.1); border: 1px solid rgba(46,125,50,.35); color: #2e7d32; }
+  .checkBox ul { margin: 6px 0 0; padding-left: 18px; }
+  .checkBox.hid { display: none; }
+
+  /* ---- the letter "paper" -- always white/black, never themed ---- */
+  .paperOuter {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .letter {
+    background: #ffffff;
+    color: #000000;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 18mm 16mm;
+    box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  }
+  .letter [contenteditable="true"] { outline: none; }
+  .letter .ph { color: #8a5300; font-style: italic; }
+  .letter [contenteditable="true"]:hover { background: rgba(31,95,139,.05); }
+  .letter [contenteditable="true"]:focus { background: rgba(31,95,139,.08); }
+
+  .letterMainTitle { font-size: 20px; font-weight: 800; text-align: center; margin: 0 0 4px; }
+  .letterSubtitle { font-size: 14px; text-align: center; margin: 0 0 18px; }
+  .letterDate { margin: 0 0 16px; }
+  .letter p { margin: 0 0 10px; }
+  .letter h2 {
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    border-bottom: 1px solid #000;
+    padding-bottom: 4px;
+    margin: 20px 0 10px;
+  }
+  .letter ul { margin: 0 0 10px; padding-left: 20px; }
+  .letter li { margin-bottom: 6px; }
+  .letter table { border-collapse: collapse; width: 100%; margin: 0 0 14px; font-size: 13px; }
+  .letter th, .letter td { border: 1px solid #000; padding: 6px 8px; text-align: left; vertical-align: top; }
+  .letter th { font-weight: 800; }
+  .letter .defList { margin: 0 0 10px; padding-left: 22px; }
+  .letter .defList li { margin-bottom: 8px; }
+  .letter .sigRow { display: flex; gap: 40px; margin-top: 28px; }
+  .letter .sigCol { flex: 1; }
+  .letter .sigCol p { margin: 0 0 18px; }
+
+  .hid { display: none !important; }
+
+  @media print {
+    .topbar, .pageTitle, .pageIntro, .formCol, .buttonsRow, .noteText, .checkBox { display: none !important; }
+    .cols { display: block; }
+    .previewCol { max-width: 100%; }
+    .paperOuter { border: none; padding: 0; background: none; }
+    body { background: #ffffff; }
+    .letter { box-shadow: none; margin: 0; max-width: none; padding: 0; }
+    @page { size: A4; margin: 18mm 16mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">my<span class="smb">SMB</span>.com</div>
+  <div class="tag">Letter of Engagement &middot; draft wording for review</div>
+</div>
+
+<div class="wrap">
+  <h1 class="pageTitle">Letter of Engagement</h1>
+  <p class="pageIntro">The letter previews on the right as you complete the details on the left. Click any text in the letter to edit it. Blank details show in square brackets until you fill them in.</p>
+
+  <div class="cols">
+    <div class="formCol">
+
+      <div class="card">
+        <p class="cardTitle">From: Bookkeeper / Practice</p>
+        <div class="field">
+          <label for="pName">Practice name</label>
+          <input type="text" id="pName" value="hammerjack Pty Ltd">
+        </div>
+        <div class="field">
+          <label for="pACN">ACN</label>
+          <input type="text" id="pACN" value="608 171 142">
+        </div>
+        <div class="field">
+          <label for="pAddr">Address</label>
+          <textarea id="pAddr" rows="2">Level 9, 341 George Street, Sydney NSW 2000, Australia</textarea>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="pEmail">Email</label>
+            <input type="email" id="pEmail" value="accounting@hammerjack.com.au">
+          </div>
+          <div class="field">
+            <label for="pPhone">Phone</label>
+            <input type="text" id="pPhone" value="1300 788 451">
+          </div>
+        </div>
+        <div class="field">
+          <label for="bName">Bookkeeper name</label>
+          <input type="text" id="bName" placeholder="Name of the bookkeeper signing">
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="cardTitle">Client details</p>
+        <div class="field">
+          <label for="cName">Client organisation <span class="req">*</span></label>
+          <input type="text" id="cName" placeholder="Client legal name">
+        </div>
+        <div class="field">
+          <label for="cABN">ABN / ACN</label>
+          <input type="text" id="cABN" placeholder="Optional">
+        </div>
+        <div class="field">
+          <label for="cAddr">Client address</label>
+          <textarea id="cAddr" rows="2" placeholder="Street, suburb, state, postcode"></textarea>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="cContact">Contact name</label>
+            <input type="text" id="cContact">
+          </div>
+          <div class="field">
+            <label for="cEmail">Client email <span class="req">*</span></label>
+            <input type="email" id="cEmail">
+          </div>
+        </div>
+        <div class="field">
+          <label>Finance system(s) in use</label>
+          <div class="checks">
+            <label class="checkRow"><input type="checkbox" id="fsMyob"> MYOB</label>
+            <label class="checkRow"><input type="checkbox" id="fsXero"> Xero</label>
+            <label class="checkRow"><input type="checkbox" id="fsQb"> QuickBooks</label>
+            <div class="checkRow">
+              <input type="checkbox" id="fsOtherOn">
+              <span>Other:</span>
+              <span class="otherText"><input type="text" id="fsOther"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="cardTitle">Scope of services</p>
+        <div class="checks">
+          <label class="checkRow"><input type="checkbox" id="svAP" checked> Accounts Payable &amp; Receivable</label>
+          <label class="checkRow"><input type="checkbox" id="svBank" checked> Bank Reconciliation</label>
+          <label class="checkRow"><input type="checkbox" id="svPayroll"> Payroll</label>
+          <label class="checkRow"><input type="checkbox" id="svGst" checked> GST and BAS working papers</label>
+          <label class="checkRow"><input type="checkbox" id="svGl" checked> General ledger and month-end</label>
+          <label class="checkRow"><input type="checkbox" id="svFin"> Financial statements</label>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label for="svOther">Other services (one per line)</label>
+          <textarea id="svOther" rows="2" placeholder="e.g. Fixed asset register maintenance"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="cardTitle">Fees and terms</p>
+        <div class="field">
+          <label for="fee">Monthly fee (AUD, excl. GST) <span class="req">*</span></label>
+          <input type="number" id="fee" value="3915" step="0.01" min="0">
+        </div>
+        <div class="field">
+          <label for="billing">Billing frequency</label>
+          <select id="billing">
+            <option value="Monthly in advance" selected>Monthly in advance</option>
+            <option value="Monthly in arrears">Monthly in arrears</option>
+            <option value="Quarterly in advance">Quarterly in advance</option>
+            <option value="Per job">Per job</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="start">Commencement date <span class="req">*</span></label>
+          <input type="date" id="start">
+        </div>
+        <div class="field">
+          <label for="ldate">Letter date</label>
+          <input type="date" id="ldate">
+        </div>
+        <div class="field">
+          <label for="special">Special conditions</label>
+          <textarea id="special" rows="2" placeholder="Anything agreed that is not covered by the standard terms"></textarea>
+        </div>
+      </div>
+
+      <div id="checkBox" class="checkBox hid"></div>
+
+      <div class="buttonsRow">
+        <button type="button" class="btn" id="btnCheck">Check details</button>
+        <button type="button" class="btn secondary" id="btnDoc">Download Word (.doc)</button>
+        <button type="button" class="btn secondary" id="btnPrint">Print now</button>
+      </div>
+      <p class="noteText">Edits made directly in the letter are kept until you change a detail on the left, which rebuilds the letter from the form.</p>
+
+    </div>
+
+    <div class="previewCol">
+      <div class="paperOuter">
+        <div class="letter" id="letter"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function escBr(s) {
+  return esc(s).replace(/\r\n|\r|\n/g, '<br>');
+}
+
+function todayIso() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function fmtDateLong(iso) {
+  if (!iso) return null;
+  var p = String(iso).slice(0, 10).split('-');
+  if (p.length !== 3) return null;
+  var y = parseInt(p[0], 10), m = parseInt(p[1], 10), d = parseInt(p[2], 10);
+  if (!y || !m || !d) return null;
+  return d + ' ' + MONTHS[m - 1] + ' ' + y;
+}
+
+function fmtMoneyAuto(n) {
+  if (n == null || n === '' || isNaN(n)) return null;
+  var num = Number(n);
+  var hasCents = Math.round((num % 1) * 100) !== 0;
+  var opts = { minimumFractionDigits: hasCents ? 2 : 0, maximumFractionDigits: 2 };
+  return '$' + num.toLocaleString('en-AU', opts);
+}
+
+function shortName(practiceName) {
+  var w = String(practiceName || '').trim().split(/\s+/)[0] || '';
+  if (!w) return '';
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
+function bracket(value, placeholder) {
+  var v = String(value || '').trim();
+  return v ? esc(v) : '<span class="ph">[' + placeholder + ']</span>';
+}
+function bracketBr(value, placeholder) {
+  var v = String(value || '').trim();
+  return v ? escBr(v) : '<span class="ph">[' + placeholder + ']</span>';
+}
+
+function financeSystemsText() {
+  var list = [];
+  if ($('fsMyob').checked) list.push('MYOB');
+  if ($('fsXero').checked) list.push('Xero');
+  if ($('fsQb').checked) list.push('QuickBooks');
+  if ($('fsOtherOn').checked && $('fsOther').value.trim()) list.push(esc($('fsOther').value.trim()));
+  return list.length ? list.join(', ') : '—';
+}
+
+var SCOPE_ITEMS = [
+  { id: 'svAP', label: 'Accounts payable and accounts receivable', text: 'entering supplier bills and customer invoices, recording payments, and monthly aged reports.' },
+  { id: 'svBank', label: 'Bank reconciliation', text: 'reconciling bank and credit card accounts to the general ledger each period.' },
+  { id: 'svPayroll', label: 'Payroll', text: 'pay run processing, payroll records, PAYG withholding, superannuation, Single Touch Payroll and year-end payment summaries.' },
+  { id: 'svGst', label: 'GST and BAS', text: 'quarterly GST and BAS working papers for your review. BAS lodgement only on your written instruction.' },
+  { id: 'svGl', label: 'General ledger and month-end', text: 'maintaining the general ledger, month-end journals and control account reconciliations.' },
+  { id: 'svFin', label: 'Financial statements', text: 'profit and loss and balance sheet reports on request. These are not audited or reviewed.' }
+];
+
+function scopeListHtml() {
+  var html = '';
+  SCOPE_ITEMS.forEach(function (it) {
+    if ($(it.id).checked) {
+      html += '<li contenteditable="true"><strong>' + esc(it.label) + ':</strong> ' + esc(it.text) + '</li>';
+    }
+  });
+  var otherLines = String($('svOther').value || '').split(/\r\n|\r|\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+  otherLines.forEach(function (line) {
+    html += '<li contenteditable="true">' + esc(line) + '</li>';
+  });
+  return html;
+}
+
+function buildLetter() {
+  var pName = $('pName').value.trim();
+  var pACN = $('pACN').value.trim();
+  var pAddr = $('pAddr').value;
+  var pEmail = $('pEmail').value.trim();
+  var pPhone = $('pPhone').value.trim();
+  var bName = $('bName').value.trim();
+
+  var cName = $('cName').value.trim();
+  var cAddr = $('cAddr').value;
+
+  var fee = $('fee').value;
+  var billing = $('billing').value;
+  var start = $('start').value;
+  var ldate = $('ldate').value;
+  var special = $('special').value.trim();
+
+  var sName = shortName(pName);
+  var feeMoney = fmtMoneyAuto(fee) || '[monthly fee]';
+  var letterDateText = fmtDateLong(ldate) || '[letter date]';
+  var startText = fmtDateLong(start) || '[commencement date]';
+  var clientNameHtml = bracket(cName, 'Client Name');
+
+  var html = '';
+  html += '<div class="letterMainTitle" contenteditable="true">LETTER OF ENGAGEMENT</div>';
+  html += '<div class="letterSubtitle" contenteditable="true">Bookkeeping Services</div>';
+  html += '<p class="letterDate" contenteditable="true">' + esc(letterDateText) + '</p>';
+
+  html += '<p contenteditable="true"><strong>To:</strong></p>';
+  html += '<p contenteditable="true">' + clientNameHtml + '</p>';
+  html += '<p contenteditable="true">' + bracketBr(cAddr, 'Client address') + '</p>';
+  html += '<p contenteditable="true">Finance system(s): ' + financeSystemsText() + '</p>';
+
+  html += '<p contenteditable="true"><strong>From:</strong></p>';
+  html += '<p contenteditable="true">' + esc(pName) + ' (ACN ' + esc(pACN) + ')</p>';
+  html += '<p contenteditable="true">' + escBr(pAddr) + '</p>';
+  html += '<p contenteditable="true">' + esc(pEmail) + ' | ' + esc(pPhone) + '</p>';
+
+  html += '<p contenteditable="true">Dear ' + clientNameHtml + ',</p>';
+  html += '<p contenteditable="true">Thank you for engaging ' + esc(pName) + ' (&quot;' + esc(sName) + '&quot;) to provide bookkeeping services. This letter sets out the scope, fees and terms of our engagement.</p>';
+  html += '<p contenteditable="true">Our packages have been developed to remove the headache of day-to-day bookkeeping services, allowing you to focus on your core business, whilst ensuring that all your bookkeeping needs are being completed on time and to the highest standards.</p>';
+  html += '<p contenteditable="true">Please feel free to contact us if you have any enquiries or require further clarification.</p>';
+  html += '<p contenteditable="true">We are excited for the opportunity to provide this and other services to your business.</p>';
+
+  html += '<h2 contenteditable="true">Scope of Services</h2>';
+  html += '<p contenteditable="true">' + esc(sName) + ' will provide the following bookkeeping services:</p>';
+  html += '<ul>' + scopeListHtml() + '</ul>';
+
+  html += '<h2 contenteditable="true">Fees</h2>';
+  html += '<table><tbody>';
+  html += '<tr><th contenteditable="true">Fees</th><th contenteditable="true">Billing Frequency</th><th contenteditable="true">Commencement Date</th></tr>';
+  html += '<tr><td contenteditable="true">Fixed fee: ' + esc(feeMoney) + ' AUD</td><td contenteditable="true">' + esc(billing) + '</td><td contenteditable="true">' + esc(startText) + '</td></tr>';
+  html += '<tr><td contenteditable="true">One-time setup fee: $800.00 AUD</td><td contenteditable="true">One-off</td><td contenteditable="true">' + esc(startText) + '</td></tr>';
+  html += '</tbody></table>';
+
+  html += '<h2 contenteditable="true">Definitions and Interpretation</h2>';
+  html += '<p contenteditable="true">(a) Definitions</p>';
+  html += '<ol class="defList" type="i">';
+  html += '<li contenteditable="true">Claim means all claims, demands, suits, causes of action, damages, debts, costs, verdicts and judgments whatsoever, whether at law or in equity or under statute.</li>';
+  html += '<li contenteditable="true">Client means the Client and its officers, directors, agents, employees, or a Related Entity, Associated Entity or Related Body Corporate of the Client.</li>';
+  html += '<li contenteditable="true">Execution Date means the date of execution of this Agreement.</li>';
+  html += '<li contenteditable="true">Monthly Service Fee means ' + esc(feeMoney) + ' plus GST.</li>';
+  html += '<li contenteditable="true">Related Entity means each or any related entity as defined in section 9 of the Corporations Act 2001 (Cth) of the Client.</li>';
+  html += '<li contenteditable="true">Representatives means the Client or ' + esc(sName) + ' and its officers, directors, agents, employees, or a Related Entity, Associated Entity or Related Body Corporate.</li>';
+  html += '</ol>';
+
+  html += '<p contenteditable="true">(b) Interpretation</p>';
+  html += '<p contenteditable="true">In this Agreement, headings and boldings are for convenience only and do not affect the interpretation of this Agreement and, unless the context otherwise requires:</p>';
+  html += '<ol class="defList" type="i">';
+  html += '<li contenteditable="true">words importing the singular include the plural and vice versa;</li>';
+  html += '<li contenteditable="true">words importing a gender include any gender.</li>';
+  html += '<li contenteditable="true">other parts of speech and grammatical forms of a word or phrase defined in this Agreement have a corresponding meaning;</li>';
+  html += '<li contenteditable="true">any expression importing a natural person includes any company, partnership, joint venture, association, corporation or other body corporate and any Government Agency;</li>';
+  html += '<li contenteditable="true">a reference to any thing (including any right) includes a part of that thing;</li>';
+  html += '<li contenteditable="true">a reference to a, Clause, Party, Annexure or Schedule is a reference to a clause of, and a party, annexure or schedule to this Agreement and a reference to this Agreement includes any Annexure and Schedule;</li>';
+  html += '<li contenteditable="true">a reference to a statute, regulation, proclamation, ordinance or by-law includes all statutes, regulations, proclamations, ordinances or by-laws amending, consolidating or replacing it, and a reference to a statute includes all regulations, proclamations, ordinances and by-laws issued under that statute;</li>';
+  html += '<li contenteditable="true">a reference to a document includes all amendments or supplements to, or replacements or novations of, that document;</li>';
+  html += '<li contenteditable="true">a reference to a party to a document includes that party&#39;s successors and permitted assigns;</li>';
+  html += '<li contenteditable="true">no provision of this Agreement will be construed adversely to a party solely on the ground that the party was responsible for the preparation of this Agreement or that provision;</li>';
+  html += '</ol>';
+  html += '<ol class="defList" type="A">';
+  html += '<li contenteditable="true">a covenant or agreement on the part of two or more persons binds them jointly and severally;</li>';
+  html += '<li contenteditable="true">a reference to an agreement other than this Agreement includes an undertaking, deed, agreement or legally enforceable arrangement or understanding whether or not in writing;</li>';
+  html += '<li contenteditable="true">a reference to a document includes any Agreement in writing, or any certificate, notice, instrument or other document of any kind;</li>';
+  html += '<li contenteditable="true">a reference to time is a reference to Sydney time;</li>';
+  html += '<li contenteditable="true">a reference to $ or dollar is to Australian currency, unless otherwise specified; and</li>';
+  html += '<li contenteditable="true">if an act prescribed under this Agreement to be done by a Party on or by a given day is done after 5.00 pm on that day, it is taken to be done on the next day; and</li>';
+  html += '<li contenteditable="true">if an event must occur on or by a stipulated day which is not a Business Day then the stipulated day will be taken to be the next Business Day.</li>';
+  html += '</ol>';
+
+  html += '<p contenteditable="true">(c) Inclusive Expressions</p>';
+  html += '<p contenteditable="true">Specifying anything in this Agreement after the words include or for example or similar expressions does not limit what else is included unless there is express wording to the contrary.</p>';
+
+  if (special) {
+    html += '<h2 contenteditable="true">Special Conditions</h2>';
+    html += '<p contenteditable="true">' + escBr(special) + '</p>';
+  }
+
+  html += '<p contenteditable="true">We look forward to working with you. Please sign below to confirm your acceptance of this engagement.</p>';
+
+  html += '<div class="sigRow">';
+  html += '<div class="sigCol">';
+  html += '<p contenteditable="true">' + esc(pName) + '</p>';
+  html += '<p contenteditable="true">Name: ' + esc(bName) + '</p>';
+  html += '<p contenteditable="true">Date: ____________</p>';
+  html += '</div>';
+  html += '<div class="sigCol">';
+  html += '<p contenteditable="true">Client</p>';
+  html += '<p contenteditable="true">Name: ____________</p>';
+  html += '<p contenteditable="true">Date: ____________</p>';
+  html += '</div>';
+  html += '</div>';
+
+  $('letter').innerHTML = html;
+}
+
+// ---------- check details ----------
+
+function checkDetails() {
+  var missing = [];
+  if (!$('cName').value.trim()) missing.push('Client organisation');
+  if (!$('cEmail').value.trim()) missing.push('Client email');
+  if (!$('start').value.trim()) missing.push('Commencement date');
+  if (!$('fee').value.toString().trim()) missing.push('Monthly fee');
+
+  var box = $('checkBox');
+  box.classList.remove('hid', 'missing', 'ok');
+  if (missing.length) {
+    box.classList.add('missing');
+    box.innerHTML = '<strong>Please complete:</strong><ul>' + missing.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>';
+  } else {
+    box.classList.add('ok');
+    box.innerHTML = '<strong>All required details are filled in.</strong> The letter is ready to send.';
+  }
+}
+
+// ---------- download as Word ----------
+
+function sanitiseFileName(s) {
+  return String(s || '').replace(/[\\/:*?"<>|]/g, '').trim();
+}
+
+function downloadWord() {
+  var letterHtml = $('letter').innerHTML;
+  var clientName = $('cName').value.trim() || 'Client';
+  var docHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+    '<head><meta charset="utf-8"><title>Letter of Engagement</title>' +
+    '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->' +
+    '<style>' +
+    'body{font-family:Arial, Helvetica, sans-serif; color:#000000; font-size:13px;}' +
+    'h2{font-size:13px; font-weight:bold; text-transform:uppercase; border-bottom:1px solid #000; padding-bottom:4px;}' +
+    'table{border-collapse:collapse; width:100%;} th,td{border:1px solid #000; padding:6px 8px; text-align:left;}' +
+    '.letterMainTitle{font-size:20px; font-weight:bold; text-align:center;}' +
+    '.letterSubtitle{font-size:14px; text-align:center;}' +
+    '.sigRow{display:flex;} .sigCol{width:50%; display:inline-block;}' +
+    '</style></head><body>' + letterHtml + '</body></html>';
+
+  var blob = new Blob(['﻿', docHtml], { type: 'application/msword' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'Letter of Engagement - ' + sanitiseFileName(clientName) + '.doc';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function printLetter() {
+  window.print();
+}
+
+function wireControls() {
+  var formIds = ['pName', 'pACN', 'pAddr', 'pEmail', 'pPhone', 'bName',
+    'cName', 'cABN', 'cAddr', 'cContact', 'cEmail',
+    'fsMyob', 'fsXero', 'fsQb', 'fsOtherOn', 'fsOther',
+    'svAP', 'svBank', 'svPayroll', 'svGst', 'svGl', 'svFin', 'svOther',
+    'fee', 'billing', 'start', 'ldate', 'special'];
+  formIds.forEach(function (id) {
+    var el = $(id);
+    el.addEventListener('input', buildLetter);
+    el.addEventListener('change', buildLetter);
+  });
+
+  $('btnCheck').addEventListener('click', checkDetails);
+  $('btnDoc').addEventListener('click', downloadWord);
+  $('btnPrint').addEventListener('click', printLetter);
+}
+
+$('ldate').value = todayIso();
+wireControls();
+buildLetter();
+</script>
+</body>
+</html>
