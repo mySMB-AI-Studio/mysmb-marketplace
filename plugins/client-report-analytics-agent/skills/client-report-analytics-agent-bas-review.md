@@ -96,7 +96,20 @@ Questions are not tracked anywhere else: the summary file is the record. A perso
 
 Do **not** redo its checks by reading invoices, bills or bank transactions yourself: a quarter of documents with their lines is too large for you to read (the reply only says it was saved to a file). Use the list tools only to look closer at one finding, small and filtered: one supplier (`contactIDs`), one invoice number (`invoiceNumbers`) or one document (`ids`), always with `page: 1`.
 
-If `abr_lookup_abns` is available, check the ABNs of the contacts in the findings with it, and run the register groups (`gstFromUnregisteredSuppliers`, `cancelledAbn`, `gstStatusMismatch`). Otherwise they stay "not checked" with the reason. Never call a check you didn't run "clear".
+### 3c. The ABR register checks (you run these when ABR Lookup is connected)
+
+The checks tool returns `abnsToCheck`: every supplier and customer with a valid ABN that the business dealt with in the period (GST claimed first, up to 100, `more` = how many weren't listed).
+
+- **If `abr_lookup_abns` is in this job:** pass the ABNs to it (up to 100 per call; retry only the rows whose error starts "Timed out"). Then:
+  - `gstFromUnregisteredSuppliers`: GST claimed (`gstClaimed` above 0) from an ABN the register shows as **not registered for GST** on the document dates (`gst_registered` false, or the dates fall outside `gst_from`–`gst_to`).
+  - `cancelledAbn`: any dealing in the period with an ABN whose `status` is **Cancelled** (say from `status_from`).
+  - An ABN the register doesn't find, or with an invalid checksum, is a finding under `cancelledAbn` with that reason.
+  - Mark each from the checklist, with the contact, the ABN, and the GST claimed or the number of dealings. Groups that ran with nothing found are "clear".
+  - `gstStatusMismatch` stays "not checked: needs each contact's GST setting in Xero, which the checks tool doesn't return".
+  - If `abnsToCheck.more` is above 0, say in "Not checked" how many ABNs weren't looked up.
+- **If `abr_lookup_abns` isn't in this job**, the three groups are "not checked", and the reason is exactly "ABR Lookup isn't connected for this agent". If a call fails, the reason is "ABR lookup failed: <the error>". Never write "Xero doesn't hold ABR data": that's true but doesn't say what to fix.
+
+Never call a check you didn't run "clear".
 
 ## 4. The checks
 
@@ -136,7 +149,7 @@ Write it to `BAS reviews/<client name> <period label>.md` with `files_write`:
 - a heading with the client and the period (with the dates);
 - an "Outcome" line right under the heading: "Awaiting reviewer approval" while you write it in Checking. In Recording, after the approved run, replace it with an "Outcome" section: the outcome in words (Ready to lodge, Ready once the client answers, Not ready), who approved it (the reviewer's name when the decision shows it, otherwise "the reviewer") and the date, their note if any, and in one or two lines what must happen before the BAS can be lodged (for Not ready: the Stop findings to clear);
 - the GST registration and basis, and "Read from Xero only: nothing was changed in Xero and nothing was lodged.";
-- a table of findings: group, check, what was found, count, amount, and Stop or Note (from the checklist); "No findings" when there are none;
+- a table of findings: group, check, what was found, count, amount, and Stop or Note (from the checklist); "No findings" when there are none. Write every amount in dollars with two decimals ($1,234.50), also in `stop_findings` and the decision card, and say what was found in plain words, not group keys;
 - "Not checked", with the reason for each group you couldn't run (for example ABR not connected), and always "PAYG withholding (W1, W2) and PAYG instalments: not checked by this review". When the setup setting `bas_payg_labels` is `payg_withholding` or `payg_withholding_and_instalments`, add that this practice reports them on the BAS, so they must be checked in payroll before lodging;
 - the settings used: the date `changedSince` came from, the material amount for open questions, and the PAYG setting (say "default" where a setting wasn't chosen);
 - the drafted client questions, if any;
