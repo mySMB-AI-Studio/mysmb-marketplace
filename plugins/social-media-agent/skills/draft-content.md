@@ -67,7 +67,7 @@ Return **only** this JSON object, with no prose around it:
     "facts": ["channel and word counts", "call to action used", "missing facts, if any"],
     "recommendation": "Approve, or what to change first",
     "recommendedOption": "approve",
-    "consequence": "Approving saves the draft in its Knowledge folder and books the post for its publish date. Nothing is posted for you.",
+    "consequence": "Approving saves the draft in the agent's Files and books the post for its publish date. Nothing is posted for you.",
     "uncertainty": "Anything you were unsure about"
   }
 }
