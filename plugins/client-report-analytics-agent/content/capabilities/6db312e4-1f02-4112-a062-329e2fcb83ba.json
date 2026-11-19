@@ -1,0 +1,92 @@
+{
+  "contentHash": "5d7ac5a2c8b231f60c8eef7c03e678bc1b6e5b81a8d20a8240769c8860b26741",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "ids": "ids",
+          "includeArchived": "includeArchived",
+          "order": "order",
+          "page": "page",
+          "searchTerm": "searchTerm",
+          "summaryOnly": "summaryOnly",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.contacts.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_contacts"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Comma-separated ContactIDs.",
+          "type": "string"
+        },
+        "includeArchived": {
+          "description": "Include archived contacts.",
+          "type": "boolean"
+        },
+        "order": {
+          "description": "Optional Xero order clause, e.g. \"Date DESC\".",
+          "type": "string"
+        },
+        "page": {
+          "description": "Page (100 per page).",
+          "type": "integer"
+        },
+        "searchTerm": {
+          "description": "Search name, email or number.",
+          "type": "string"
+        },
+        "summaryOnly": {
+          "description": "Lighter rows.",
+          "type": "boolean"
+        },
+        "where": {
+          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\".",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.contacts.read",
+    "kind": "capability",
+    "originKey": "6db312e4-1f02-4112-a062-329e2fcb83ba",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Contacts": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read contacts"
+  },
+  "kind": "capability",
+  "name": "Read contacts",
+  "originKey": "6db312e4-1f02-4112-a062-329e2fcb83ba"
+}

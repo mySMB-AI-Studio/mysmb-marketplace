@@ -1,0 +1,81 @@
+{
+  "contentHash": "8c2809d8978fd2223e7076fb9d15415cfe2cbf48cb37926cdcfceb6749a29f69",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "date": "date",
+          "paymentsOnly": "paymentsOnly",
+          "periods": "periods",
+          "timeframe": "timeframe",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.reports.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_balance_sheet"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "description": "As-at date, YYYY-MM-DD.",
+          "type": "string"
+        },
+        "paymentsOnly": {
+          "description": "Cash basis.",
+          "type": "boolean"
+        },
+        "periods": {
+          "description": "Comparison periods.",
+          "type": "integer"
+        },
+        "timeframe": {
+          "enum": [
+            "MONTH",
+            "QUARTER",
+            "YEAR"
+          ],
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.balance_sheet.read",
+    "kind": "capability",
+    "originKey": "e94f8c84-995e-46e1-862f-d000e9fcb7b2",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Reports": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the Balance Sheet"
+  },
+  "kind": "capability",
+  "name": "Read the Balance Sheet",
+  "originKey": "e94f8c84-995e-46e1-862f-d000e9fcb7b2"
+}

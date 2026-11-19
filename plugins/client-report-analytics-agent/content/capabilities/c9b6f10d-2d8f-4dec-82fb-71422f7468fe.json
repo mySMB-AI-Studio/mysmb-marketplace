@@ -1,0 +1,67 @@
+{
+  "contentHash": "bbff9e7cbcad49544d07f583390d6f39b6011412ee514040eba0d58de27d3f5e",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "date": "date",
+          "paymentsOnly": "paymentsOnly",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.reports.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "get_trial_balance"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "description": "As-at date, YYYY-MM-DD.",
+          "type": "string"
+        },
+        "paymentsOnly": {
+          "description": "Cash basis.",
+          "type": "boolean"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.trial_balance.read",
+    "kind": "capability",
+    "originKey": "c9b6f10d-2d8f-4dec-82fb-71422f7468fe",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Reports": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the Trial Balance"
+  },
+  "kind": "capability",
+  "name": "Read the Trial Balance",
+  "originKey": "c9b6f10d-2d8f-4dec-82fb-71422f7468fe"
+}
