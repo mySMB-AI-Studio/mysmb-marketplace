@@ -1,0 +1,918 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Xero Unpaid & Aged Accounts</title>
+<style>
+  :root {
+    --bg:#f4f6fa; --card:#ffffff; --text:#16202c; --muted:#5d6878; --border:#dfe4ec; --head:#eef2f7;
+    --brand:#1f5fbf; --brand-text:#ffffff; --red:#b71c1c; --red-bg:rgba(183,28,28,.08);
+    --amber:#8a5300; --amber-bg:rgba(178,106,0,.12); --green:#2e7d32; --green-bg:rgba(46,125,50,.10);
+    --ar:#1f5fbf; --ap:#d9730d; --bar:#34DFBA; --input:#ffffff; --mask:rgba(16,22,32,.45);
+  }
+  :root[data-myhub-theme='dark'] {
+    --bg:#0e1116; --card:#161b23; --text:#e7ebf1; --muted:#9aa5b5; --border:#2a313c; --head:#1d242e;
+    --brand:#6ea8ff; --brand-text:#0e1116; --red:#ff8a8a; --red-bg:rgba(255,138,138,.12);
+    --amber:#ffc266; --amber-bg:rgba(255,194,102,.14); --green:#7fdc8a; --green-bg:rgba(127,220,138,.14);
+    --ar:#6ea8ff; --ap:#ffab5c; --bar:#34DFBA; --input:#10151c; --mask:rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 16px 48px; }
+
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brandline { text-transform: uppercase; color: var(--brand); font-size: 13px; font-weight: 800; }
+  h1 { font-size: 24px; margin: 4px 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0; }
+  .topRight { text-align: right; color: var(--muted); font-size: 12.5px; }
+  .topRight div { margin: 2px 0; }
+
+  .note { color: var(--muted); font-size: 12px; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 14px 0;
+  }
+
+  .filterbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+  .fg { display: flex; flex-direction: column; gap: 4px; }
+  .fg label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  select, input[type="date"] {
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    min-width: 180px;
+  }
+  input[type="date"] { min-width: 150px; }
+  #count { margin-left: auto; color: var(--muted); font-size: 12.5px; align-self: center; }
+
+  #tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .tile .lbl { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  .tile .val { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 2px 0; }
+  .tile .sub2 { font-size: 12px; color: var(--muted); }
+
+  .panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h2 { font-size: 16px; margin: 0; }
+
+  #chart { display: grid; grid-template-columns: repeat(5, 1fr); height: 230px; border-bottom: 1px solid var(--border); margin-top: 10px; }
+  .chartCol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; padding-bottom: 6px; }
+  .chartVal { font-size: 12px; font-weight: 700; }
+  .chartBarWrap { flex: 1; display: flex; align-items: flex-end; width: 100%; justify-content: center; }
+  .chartBar { width: 70%; background: var(--bar); border-radius: 6px 6px 0 0; }
+  .chartLbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 8px 10px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  th { position: sticky; top: 0; background: var(--head); font-size: 11px; text-transform: uppercase; color: var(--muted); text-align: left; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tableScroll { max-height: 520px; overflow: auto; margin-top: 10px; }
+
+  tr.grp td { background: var(--head); font-weight: 700; }
+  tr.item td:first-child { padding-left: 30px; }
+
+  .toggle { all: unset; cursor: pointer; color: var(--brand); font-weight: 800; margin-right: 6px; }
+
+  .badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; border: 1px solid; }
+  .badge.ar { color: var(--ar); border-color: var(--ar); }
+  .badge.ap { color: var(--ap); border-color: var(--ap); }
+
+  .pill { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+  .pill.overdue { color: var(--red); background: var(--red-bg); }
+  .pill.dueToday { color: var(--amber); background: var(--amber-bg); }
+  .pill.current { color: var(--green); background: var(--green-bg); }
+  .pill.test { color: var(--muted); border: 1px dashed var(--muted); background: none; }
+
+  .btn {
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 5px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--brand-text);
+    cursor: pointer;
+  }
+  .btn.ghost { background: var(--card); color: var(--brand); }
+
+  .empty { padding: 28px 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+  .mask {
+    position: fixed; inset: 0; background: var(--mask);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 16px;
+  }
+  .mbox {
+    width: min(820px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(0,0,0,.25);
+    padding: 20px 24px;
+  }
+  .mbox h3 { margin: 0 0 6px; font-size: 17px; }
+  .mrow { margin: 10px 0; }
+  .mrow label { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .mrow input[type="email"], .mrow input[type="text"] {
+    width: 100%; font-size: 13px; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--input); color: var(--text);
+  }
+  .mrow textarea {
+    width: 100%; min-height: 260px; font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+    font-size: 12.5px; padding: 9px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--input); color: var(--text); white-space: pre; resize: vertical;
+  }
+  .mnote { border-left: 3px solid var(--brand); background: var(--head); padding: 8px 10px; border-radius: 6px; font-size: 12.5px; color: var(--muted); margin: 10px 0; }
+  .mwarn { border-left: 3px solid var(--amber); background: var(--amber-bg); padding: 8px 10px; border-radius: 6px; font-size: 12.5px; color: var(--amber); margin: 10px 0; }
+  .mbtns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+  .hid { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brandline">mySMB &middot; myHub</div>
+      <h1>Unpaid &amp; Aged Accounts</h1>
+      <p class="sub">Aged receivables and payables, grouped by organisation and aging bucket.</p>
+    </div>
+    <div class="topRight">
+      <div>Last refreshed: <span id="stamp">loading&hellip;</span></div>
+      <div>Source: Xero (authorised invoices and bills)</div>
+    </div>
+  </header>
+
+  <div class="panel filterbar">
+    <div class="fg">
+      <label for="fOrg">Organisation</label>
+      <select id="fOrg"></select>
+    </div>
+    <div class="fg">
+      <label for="fClient">Contact</label>
+      <select id="fClient"></select>
+    </div>
+    <div class="fg">
+      <label for="fPeriod">Period (invoice / bill date)</label>
+      <select id="fPeriod">
+        <option value="all">All time</option>
+        <option value="thisMonth">This month</option>
+        <option value="lastMonth">Last month</option>
+        <option value="thisQuarter">This quarter</option>
+        <option value="lastQuarter">Last quarter</option>
+        <option value="thisFY">This financial year (1 Jul &ndash; 30 Jun)</option>
+        <option value="lastFY">Last financial year</option>
+        <option value="custom">Custom range</option>
+      </select>
+    </div>
+    <div class="fg hid" id="fFromWrap">
+      <label for="fFrom">From</label>
+      <input type="date" id="fFrom">
+    </div>
+    <div class="fg hid" id="fToWrap">
+      <label for="fTo">To</label>
+      <input type="date" id="fTo">
+    </div>
+    <div id="count">0 items &middot; 0 contact groups</div>
+  </div>
+
+  <div id="tiles"></div>
+
+  <div class="panel">
+    <div class="panelHead">
+      <h2 id="chartTitle">Aging Buckets &mdash; Accounts Receivable &mdash; $0.00</h2>
+      <div class="fg">
+        <label for="fSeries">Series</label>
+        <select id="fSeries">
+          <option value="AR">Accounts Receivable (AR)</option>
+          <option value="AP">Accounts Payable (AP)</option>
+        </select>
+      </div>
+    </div>
+    <div id="chart"></div>
+    <p class="note">Ageing is measured in days from each due date to today (Australia/Sydney). Current means not yet due.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Outstanding Items</h2>
+    <div class="tableScroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th><th>Contact</th><th>Ref #</th><th>Date</th><th>Due</th>
+            <th class="num">Amount</th><th>Status</th><th class="num">Action</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="note">Each contact has one group header with its total and one Draft Email button. The draft lists every invoice or bill for that contact that matches the filters, for review only. Nothing is sent.</p>
+  </div>
+
+  <p class="note" style="text-align:center;margin-top:24px;">Read-only report. It does not create, change, approve, pay or delete any Xero record. Only authorised items with a balance due above zero are included, and partly paid items show their remaining balance. Items flagged &quot;Possible test&quot; look like QA or test records; they are included in the totals and should be checked.</p>
+</div>
+
+<div class="mask hid" id="mail">
+  <div class="mbox">
+    <h3 id="mailT"></h3>
+    <p class="note" id="mSumm"></p>
+    <div class="mwarn hid" id="mWarn"></div>
+    <div class="mrow">
+      <label for="mTo">To</label>
+      <input type="email" id="mTo" placeholder="No email address on file: enter one">
+      <p class="note">No email address is held for this contact in this report. Enter one before sending, or leave blank and add it in Outlook.</p>
+    </div>
+    <div class="mrow">
+      <label for="mSub">Subject</label>
+      <input type="text" id="mSub">
+    </div>
+    <div class="mrow">
+      <label for="mBody">Body</label>
+      <textarea id="mBody" readonly></textarea>
+    </div>
+    <div class="mnote" id="mNote">Nothing is sent from here. The draft opens in Outlook so you can review, edit and send it yourself.</div>
+    <div class="mbtns">
+      <button type="button" class="btn ghost" id="mCopy">Copy full email</button>
+      <button type="button" class="btn ghost" id="mCancel">Cancel</button>
+      <button type="button" class="btn" id="mOpen">Open in Outlook</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+var SENDER_NAME = 'Aidan Kavanagh';
+var OUTLOOK_LINK_LIMIT = 6500;
+
+var state = {
+  orgs: [],
+  records: [],
+  org: '',
+  client: '',
+  period: 'all',
+  from: '',
+  to: '',
+  series: 'AR',
+  collapsed: {},
+  groupByIndex: [],
+  stamp: ''
+};
+var busy = false;
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function money(n) {
+  var ccy = state.currency || 'AUD';
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: ccy, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+}
+
+function dUTC(y, m, d) { return new Date(Date.UTC(y, m - 1, d)); }
+
+function parseIsoUTC(s) {
+  if (!s) return null;
+  var p = String(s).slice(0, 10).split('-');
+  if (p.length !== 3) return null;
+  var d = dUTC(Number(p[0]), Number(p[1]), Number(p[2]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function auDate(iso) {
+  var d = parseIsoUTC(iso);
+  if (!d) return '—';
+  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + d.getUTCFullYear();
+}
+
+function todaySydney() {
+  var iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
+  return parseIsoUTC(iso);
+}
+
+function daysBetween(a, b) { return Math.round((a.getTime() - b.getTime()) / 86400000); }
+
+function eom(y, m) { return dUTC(y, m + 1, 0); }
+function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
+function fyStartOf(d) {
+  var y = d.getUTCFullYear();
+  if (d.getUTCMonth() + 1 < 7) y -= 1;
+  return dUTC(y, 7, 1);
+}
+
+function periodRange(key, today) {
+  var y = today.getUTCFullYear(), m = today.getUTCMonth() + 1, qStartMonth = Math.floor((m - 1) / 3) * 3 + 1;
+  switch (key) {
+    case 'thisMonth': return [dUTC(y, m, 1), eom(y, m)];
+    case 'lastMonth': return [dUTC(y, m - 1, 1), eom(y, m - 1)];
+    case 'thisQuarter': return [dUTC(y, qStartMonth, 1), eom(y, qStartMonth + 2)];
+    case 'lastQuarter': return [dUTC(y, qStartMonth - 3, 1), eom(y, qStartMonth - 1)];
+    case 'thisFY': { var fs = fyStartOf(today); return [fs, addDays(dUTC(fs.getUTCFullYear() + 1, fs.getUTCMonth() + 1, fs.getUTCDate()), -1)]; }
+    case 'lastFY': { var fs2 = fyStartOf(today); return [dUTC(fs2.getUTCFullYear() - 1, 7, 1), addDays(fs2, -1)]; }
+    default: return null;
+  }
+}
+
+function isTest(party, ref) {
+  var p = String(party || '');
+  var r = String(ref || '');
+  if (/\b(QA|TEST|TST)\b/i.test(p)) return true;
+  if (/^\s*(TEST|TST)/i.test(r)) return true;
+  return false;
+}
+
+// Defensive extraction: JSON string, array, {Invoices:[...]}, or a nested object
+// holding the first non-empty array within `depth` levels.
+function items(v, depth) {
+  depth = depth == null ? 6 : depth;
+  if (v == null) return [];
+  if (typeof v === 'string') {
+    try { return items(JSON.parse(v), depth); } catch (e) { return []; }
+  }
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'object') {
+    if (Array.isArray(v.Invoices)) return v.Invoices;
+    if (Array.isArray(v.Connections)) return v.Connections;
+    if (depth <= 0) return [];
+    var keys = Object.keys(v);
+    for (var i = 0; i < keys.length; i++) {
+      var val = v[keys[i]];
+      if (Array.isArray(val) && val.length) return val;
+    }
+    for (var j = 0; j < keys.length; j++) {
+      var val2 = v[keys[j]];
+      if (val2 && typeof val2 === 'object') {
+        var found = items(val2, depth - 1);
+        if (found.length) return found;
+      }
+    }
+  }
+  return [];
+}
+
+var MH = (typeof window !== 'undefined') ? window.MyHubReport : null;
+
+function orgsOf(v) {
+  return items(v).map(function (c) {
+    return { id: String(c.tenantId || c.TenantId || ''), name: c.tenantName || c.TenantName || '' };
+  }).filter(function (c) { return c.id; });
+}
+
+function normaliseRecord(raw, ap, org, today) {
+  var amt = Number(raw.AmountDue);
+  if (!(amt > 0)) return null;
+  var contact = raw.Contact || {};
+  var date = String(raw.Date || '').slice(0, 10);
+  var due = String(raw.DueDate || '').slice(0, 10) || date;
+  var party = contact.Name || (ap ? '(no supplier)' : '(no customer)');
+  return {
+    date: date, due: due,
+    party: party,
+    uid: contact.ContactID || party,
+    ref: raw.InvoiceNumber || '',
+    amt: amt,
+    ap: ap,
+    co: org.id, coName: org.name,
+    days: daysBetween(today, parseIsoUTC(due) || today),
+    test: isTest(party, raw.InvoiceNumber)
+  };
+}
+
+function $(id) { return document.getElementById(id); }
+
+function fetchBinding(id, inputs) {
+  if (!MH) return Promise.resolve(null);
+  return window.MyHubReport.getData(id, inputs).catch(function (e) {
+    console.error('[unpaid-aged-accounts-xero] ' + id + ' failed:', e);
+    return null;
+  });
+}
+
+function loadAll(bundle) {
+  if (busy) return;
+  busy = true;
+
+  var orgsPromise;
+  var fromBundle = orgsOf(bundle && bundle.data && bundle.data.connections);
+  if (fromBundle.length) {
+    orgsPromise = Promise.resolve(fromBundle);
+  } else {
+    orgsPromise = fetchBinding('connections', {}).then(function (v) {
+      var list = orgsOf(v);
+      return list.length ? list : [{ id: '', name: 'Xero organisation' }];
+    });
+  }
+
+  orgsPromise.then(function (orgs) {
+    state.orgs = orgs;
+    var today = todaySydney();
+    return Promise.all(orgs.map(function (org) {
+      return Promise.all([
+        fetchBinding('ar_invoices', { org: org.id }),
+        fetchBinding('ap_invoices', { org: org.id }),
+        fetchBinding('organisation', { org: org.id })
+      ]).then(function (r) {
+        var ar = items(r[0]).map(function (raw) { return normaliseRecord(raw, false, org, today); }).filter(Boolean);
+        var ap = items(r[1]).map(function (raw) { return normaliseRecord(raw, true, org, today); }).filter(Boolean);
+        var orgData = r[2] && r[2].Organisations ? items(r[2].Organisations)[0] : (r[2] || {});
+        if (orgData && orgData.BaseCurrency) state.currency = orgData.BaseCurrency;
+        return ar.concat(ap);
+      });
+    })).then(function (perOrg) {
+      var all = [];
+      perOrg.forEach(function (arr) { all = all.concat(arr); });
+      state.records = all;
+      if (orgs.length === 1 && !state.org) state.org = orgs[0].id;
+      state.stamp = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).format(new Date()).replace(',', '');
+      busy = false;
+      render();
+    });
+  }).catch(function (e) {
+    console.error('[unpaid-aged-accounts-xero] load failed:', e);
+    busy = false;
+    render();
+  });
+}
+
+// ---------- filtering ----------
+
+function orgFilteredRecords() {
+  if (!state.org) return state.records;
+  return state.records.filter(function (r) { return r.co === state.org; });
+}
+
+function clientOptionsFor(records) {
+  var seen = {}, out = [];
+  records.forEach(function (r) {
+    if (!seen[r.uid]) { seen[r.uid] = true; out.push({ uid: r.uid, name: r.party }); }
+  });
+  out.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+  return out;
+}
+
+function inPeriod(dateIso, today) {
+  if (state.period === 'all') return true;
+  var range;
+  if (state.period === 'custom') {
+    var from = state.from ? parseIsoUTC(state.from) : null;
+    var to = state.to ? parseIsoUTC(state.to) : null;
+    range = [from, to];
+  } else {
+    range = periodRange(state.period, today);
+  }
+  if (!range) return true;
+  var d = parseIsoUTC(dateIso);
+  if (!d) return false;
+  if (range[0] && d < range[0]) return false;
+  if (range[1] && d > range[1]) return false;
+  return true;
+}
+
+function filteredRecords() {
+  var today = todaySydney();
+  var byOrg = orgFilteredRecords();
+  return byOrg.filter(function (r) {
+    if (state.client && r.uid !== state.client) return false;
+    if (!inPeriod(r.date, today)) return false;
+    return true;
+  });
+}
+
+// ---------- aggregation ----------
+
+var BUCKET_LABELS = ['Current', '1-30 days', '31-60 days', '61-90 days', '90+ days'];
+function bucketOf(days) {
+  if (days <= 0) return 0;
+  if (days <= 30) return 1;
+  if (days <= 60) return 2;
+  if (days <= 90) return 3;
+  return 4;
+}
+function bucketTotals(rows) {
+  var b = [0, 0, 0, 0, 0];
+  rows.forEach(function (r) { var i = bucketOf(r.days); b[i] = Math.round((b[i] + r.amt) * 100) / 100; });
+  return b;
+}
+
+function groupRecords(rows) {
+  var byKey = {};
+  rows.forEach(function (r) {
+    var key = r.co + '::' + (r.ap ? 'AP' : 'AR') + '::' + r.uid;
+    if (!byKey[key]) {
+      byKey[key] = { key: key, co: r.co, coName: r.coName, ap: r.ap, party: r.party, uid: r.uid, items: [], total: 0, maxDays: -Infinity, test: false };
+    }
+    var g = byKey[key];
+    g.items.push(r);
+    g.total = Math.round((g.total + r.amt) * 100) / 100;
+    if (r.days > g.maxDays) g.maxDays = r.days;
+    if (r.test) g.test = true;
+  });
+  var groups = Object.keys(byKey).map(function (k) { return byKey[k]; });
+  groups.sort(function (a, b) {
+    var ao = a.maxDays > 0 ? a.maxDays : -1, bo = b.maxDays > 0 ? b.maxDays : -1;
+    if (bo !== ao) return bo - ao;
+    return a.party.toLowerCase().localeCompare(b.party.toLowerCase());
+  });
+  groups.forEach(function (g) {
+    g.items.sort(function (a, b) { return (parseIsoUTC(a.due) || 0) - (parseIsoUTC(b.due) || 0); });
+  });
+  return groups;
+}
+
+// ---------- rendering: filter bar ----------
+
+function renderFilterBar() {
+  var orgSel = $('fOrg');
+  var orgHtml = '<option value="">All organisations</option>' + state.orgs.map(function (c) {
+    return '<option value="' + esc(c.id) + '"' + (c.id === state.org ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  }).join('');
+  orgSel.innerHTML = orgHtml;
+
+  var clientRecords = orgFilteredRecords();
+  var clientOpts = clientOptionsFor(clientRecords);
+  if (state.client && !clientOpts.some(function (c) { return c.uid === state.client; })) state.client = '';
+  var clientHtml = '<option value="">All contacts</option>' + clientOpts.map(function (c) {
+    return '<option value="' + esc(c.uid) + '"' + (c.uid === state.client ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  }).join('');
+  $('fClient').innerHTML = clientHtml;
+
+  $('fPeriod').value = state.period;
+  var isCustom = state.period === 'custom';
+  $('fFromWrap').classList.toggle('hid', !isCustom);
+  $('fToWrap').classList.toggle('hid', !isCustom);
+  $('fFrom').value = state.from;
+  $('fTo').value = state.to;
+  $('fSeries').value = state.series;
+}
+
+function renderCount(records, groups) {
+  var n = records.length, g = groups.length;
+  $('count').textContent = n + ' item' + (n === 1 ? '' : 's') + ' · ' + g + ' contact group' + (g === 1 ? '' : 's');
+}
+
+// ---------- rendering: tiles ----------
+
+function renderTiles(records) {
+  var ar = records.filter(function (r) { return !r.ap; });
+  var ap = records.filter(function (r) { return r.ap; });
+  var totalAR = ar.reduce(function (s, r) { return s + r.amt; }, 0);
+  var totalAP = ap.reduce(function (s, r) { return s + r.amt; }, 0);
+  var overdueAR = ar.filter(function (r) { return r.days > 0; });
+  var overdueAP = ap.filter(function (r) { return r.days > 0; });
+  var overdueARTotal = overdueAR.reduce(function (s, r) { return s + r.amt; }, 0);
+  var overdueAPTotal = overdueAP.reduce(function (s, r) { return s + r.amt; }, 0);
+  var net = totalAR - totalAP;
+
+  var tiles = [
+    { label: 'Total Receivable (AR)', value: totalAR, sub: ar.length + ' invoice' + (ar.length === 1 ? '' : 's'), accent: 'var(--ar)' },
+    { label: 'Total Payable (AP)', value: totalAP, sub: ap.length + ' bill' + (ap.length === 1 ? '' : 's'), accent: 'var(--ap)' },
+    { label: 'Net Position', value: net, sub: 'AR minus AP', accent: 'var(--muted)' },
+    { label: 'Overdue AR', value: overdueARTotal, sub: overdueAR.length + ' invoice' + (overdueAR.length === 1 ? '' : 's') + ' past due', accent: 'var(--red)', redValue: true },
+    { label: 'Overdue AP', value: overdueAPTotal, sub: overdueAP.length + ' bill' + (overdueAP.length === 1 ? '' : 's') + ' past due', accent: 'var(--red)', redValue: true }
+  ];
+
+  $('tiles').innerHTML = tiles.map(function (t) {
+    return '<div class="tile" style="border-left-color:' + t.accent + '">' +
+      '<div class="lbl">' + esc(t.label) + '</div>' +
+      '<div class="val"' + (t.redValue ? ' style="color:var(--red)"' : '') + '>' + money(t.value) + '</div>' +
+      '<div class="sub2">' + esc(t.sub) + '</div>' +
+      '</div>';
+  }).join('');
+
+  return { ar: ar, ap: ap };
+}
+
+// ---------- rendering: chart ----------
+
+function renderChart(ar, ap) {
+  var rows = state.series === 'AR' ? ar : ap;
+  var buckets = bucketTotals(rows);
+  var total = buckets.reduce(function (s, v) { return s + v; }, 0);
+  var max = Math.max.apply(null, buckets.concat([0.01]));
+  $('chartTitle').textContent = 'Aging Buckets — ' + (state.series === 'AR' ? 'Accounts Receivable' : 'Accounts Payable') + ' — ' + money(total);
+
+  $('chart').innerHTML = buckets.map(function (v, i) {
+    var h = v > 0 ? Math.max(2, Math.round((v / max) * 180)) : 0;
+    return '<div class="chartCol">' +
+      '<div class="chartVal">' + money(v) + '</div>' +
+      '<div class="chartBarWrap"><div class="chartBar" style="height:' + h + 'px"></div></div>' +
+      '<div class="chartLbl">' + esc(BUCKET_LABELS[i]) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+// ---------- rendering: table ----------
+
+function statusPill(days) {
+  if (days > 0) return '<span class="pill overdue">' + days + 'd overdue</span>';
+  if (days === 0) return '<span class="pill dueToday">Due today</span>';
+  return '<span class="pill current">Current</span>';
+}
+
+function renderTable(records) {
+  var groups = groupRecords(records);
+  state.groupByIndex = groups;
+
+  if (!MH) {
+    $('rows').innerHTML = '<tr><td colspan="8" class="empty">No data available</td></tr>';
+    return groups;
+  }
+  if (!records.length) {
+    $('rows').innerHTML = '<tr><td colspan="8" class="empty">No outstanding items match these filters.</td></tr>';
+    return groups;
+  }
+
+  var html = '';
+  groups.forEach(function (g, gi) {
+    var collapsed = !!state.collapsed[g.key];
+    var oldestText = g.maxDays > 0 ? ' · oldest ' + g.maxDays + ' days overdue' : '';
+    var testPill = g.test ? ' <span class="pill test">Possible test</span>' : '';
+    html += '<tr class="grp" data-group="' + gi + '">' +
+      '<td><span class="badge ' + (g.ap ? 'ap' : 'ar') + '">' + (g.ap ? 'AP' : 'AR') + '</span></td>' +
+      '<td><button type="button" class="toggle" data-toggle="' + gi + '">' + (collapsed ? '▸' : '▾') + '</button>' +
+        esc(g.party) + '<span class="note"> · ' + g.items.length + ' item' + (g.items.length === 1 ? '' : 's') + oldestText + '</span>' + testPill +
+      '</td>' +
+      '<td></td><td></td><td></td>' +
+      '<td class="num">' + money(g.total) + '</td>' +
+      '<td></td>' +
+      '<td class="num"><button type="button" class="btn ghost" data-draft="' + gi + '">Draft Email</button></td>' +
+      '</tr>';
+    if (!collapsed) {
+      g.items.forEach(function (it) {
+        var refPill = it.test ? ' <span class="pill test">Possible test</span>' : '';
+        html += '<tr class="item">' +
+          '<td></td><td></td>' +
+          '<td>' + (it.ref ? esc(it.ref) : '—') + refPill + '</td>' +
+          '<td>' + esc(auDate(it.date)) + '</td>' +
+          '<td>' + esc(auDate(it.due)) + '</td>' +
+          '<td class="num">' + money(it.amt) + '</td>' +
+          '<td>' + statusPill(it.days) + '</td>' +
+          '<td></td>' +
+          '</tr>';
+      });
+    }
+  });
+  $('rows').innerHTML = html;
+  return groups;
+}
+
+// ---------- email draft modal ----------
+
+function padColumn(values) {
+  var w = 0;
+  values.forEach(function (v) { w = Math.max(w, String(v).length); });
+  return values.map(function (v) { return String(v) + ' '.repeat(w - String(v).length); });
+}
+
+function buildTable(headers, rows) {
+  var cols = headers.map(function (h, i) {
+    return padColumn([h].concat(rows.map(function (r) { return r[i]; })));
+  });
+  var lineCount = headers.length ? cols[0].length : 0;
+  var lines = [];
+  for (var li = 0; li < lineCount; li++) {
+    var parts = cols.map(function (c) { return c[li]; });
+    lines.push(parts.join('  ').replace(/\s+$/, ''));
+  }
+  return lines.join('\n');
+}
+
+function buildBody(group, withTable, orgName, today) {
+  var isAR = !group.ap;
+  var totalLabel = isAR ? 'Total outstanding' : 'Total payable';
+  var noun = isAR ? 'invoice' : 'bill';
+  var nounPlural = group.items.length === 1 ? noun : noun + 's';
+
+  var tableText;
+  if (withTable) {
+    if (isAR) {
+      var headers = ['Invoice ref', 'Invoice date', 'Due date', 'Amount', 'Days overdue'];
+      var rows = group.items.map(function (it) {
+        return [it.ref || '—', auDate(it.date), auDate(it.due), money(it.amt), it.days > 0 ? (it.days + ' days') : '—'];
+      });
+      tableText = buildTable(headers, rows);
+    } else {
+      var headers2 = ['Bill ref', 'Bill date', 'Due date', 'Amount'];
+      var rows2 = group.items.map(function (it) {
+        return [it.ref || '—', auDate(it.date), auDate(it.due), money(it.amt)];
+      });
+      tableText = buildTable(headers2, rows2);
+    }
+  } else {
+    tableText = '[INTERNAL: paste the full list here from "Copy full email" before sending. The Outlook link could not hold it.]';
+  }
+
+  var lines = [];
+  if (isAR) {
+    lines.push('Hi ' + group.party + ',');
+    lines.push('');
+    lines.push('I hope you are well. Our records show the following invoices from ' + orgName + ' remain unpaid as at ' + auDate(todayIso(today)) + '.');
+    lines.push('');
+    lines.push(tableText);
+    lines.push('');
+    lines.push(totalLabel + ': ' + money(group.total) + ' across ' + group.items.length + ' ' + nounPlural + '.');
+    lines.push('');
+    lines.push('Could you please arrange payment at your earliest convenience, or let us know the expected payment date for any of these invoices? If you have already paid, please send the remittance details and we will update our records.');
+    lines.push('');
+    lines.push('Kind regards,');
+    lines.push(SENDER_NAME);
+    lines.push(orgName);
+  } else {
+    lines.push('Hi ' + group.party + ',');
+    lines.push('');
+    lines.push('We are currently processing the following bills:');
+    lines.push('');
+    lines.push(tableText);
+    lines.push('');
+    lines.push(totalLabel + ': ' + money(group.total) + ' across ' + group.items.length + ' ' + nounPlural + '.');
+    lines.push('');
+    lines.push('We will be in touch if we need anything further. Thank you.');
+    lines.push('');
+    lines.push('Kind regards,');
+    lines.push(SENDER_NAME);
+    lines.push(orgName);
+  }
+  return lines.join('\n');
+}
+
+function todayIso(today) {
+  return today.getUTCFullYear() + '-' + String(today.getUTCMonth() + 1).padStart(2, '0') + '-' + String(today.getUTCDate()).padStart(2, '0');
+}
+
+function buildOutlookUrl(to, subject, body) {
+  var params = [];
+  if (to) params.push('to=' + encodeURIComponent(to));
+  params.push('subject=' + encodeURIComponent(subject));
+  params.push('body=' + encodeURIComponent(body));
+  return 'https://outlook.office.com/mail/deeplink/compose?' + params.join('&');
+}
+
+var currentDraft = null;
+
+function openDraft(groupIndex) {
+  var g = state.groupByIndex[groupIndex];
+  if (!g) return;
+  var today = todaySydney();
+  var orgName = g.coName || 'mySMB.com';
+  var isAR = !g.ap;
+
+  $('mailT').textContent = isAR ? 'Email draft (customer, AR): not sent' : 'Email draft (supplier, AP): not sent';
+  $('mSumm').textContent = g.items.length + ' ' + (isAR ? 'invoice' : 'bill') + (g.items.length === 1 ? '' : 's') + ' for ' + g.party + ', totalling ' + money(g.total) + '. Based on the filters currently selected.';
+  $('mWarn').classList.toggle('hid', !g.test);
+  if (g.test) $('mWarn').textContent = 'This contact looks like a QA or test record. Check it before sending.';
+
+  $('mTo').value = '';
+  var subject = isAR
+    ? 'Payment reminder: outstanding invoices – ' + g.party + ' – ' + auDate(todayIso(today))
+    : 'Bills being processed – ' + g.party + ' – ' + auDate(todayIso(today));
+  $('mSub').value = subject;
+
+  var fullBody = buildBody(g, true, orgName, today);
+  $('mBody').value = fullBody;
+  $('mNote').textContent = 'Nothing is sent from here. The draft opens in Outlook so you can review, edit and send it yourself.';
+
+  currentDraft = { group: g, orgName: orgName, today: today, subject: subject, fullBody: fullBody };
+  $('mail').classList.remove('hid');
+}
+
+function closeDraft() {
+  $('mail').classList.add('hid');
+  currentDraft = null;
+}
+
+function copyFullEmail() {
+  var text = $('mBody').value;
+  var done = function () {
+    $('mNote').textContent = 'Full email copied. Paste it into the Outlook draft.';
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) { /* no-op */ }
+  document.body.removeChild(ta);
+  done();
+}
+
+function openInOutlook() {
+  if (!currentDraft) return;
+  var to = $('mTo').value.trim();
+  var subject = $('mSub').value;
+  var body = $('mBody').value;
+  var url = buildOutlookUrl(to, subject, body);
+
+  if (url.length > OUTLOOK_LINK_LIMIT) {
+    var shortBody = buildBody(currentDraft.group, false, currentDraft.orgName, currentDraft.today);
+    url = buildOutlookUrl(to, subject, shortBody);
+    $('mNote').textContent = 'The full list is too long for an Outlook link. Outlook has been opened with the totals only. Press "Copy full email" and paste the list into the draft in place of the internal line.';
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+// ---------- master render ----------
+
+function render() {
+  $('stamp').textContent = state.stamp || '—';
+  renderFilterBar();
+  var records = filteredRecords();
+  var tiles = renderTiles(records);
+  renderChart(tiles.ar, tiles.ap);
+  var groups = renderTable(records);
+  renderCount(records, groups);
+  wireRowEvents();
+}
+
+function wireRowEvents() {
+  document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var g = state.groupByIndex[Number(btn.getAttribute('data-toggle'))];
+      if (!g) return;
+      state.collapsed[g.key] = !state.collapsed[g.key];
+      render();
+    });
+  });
+  document.querySelectorAll('[data-draft]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openDraft(Number(btn.getAttribute('data-draft')));
+    });
+  });
+}
+
+function wireControls() {
+  $('fOrg').addEventListener('change', function () {
+    state.org = this.value;
+    state.client = '';
+    render();
+  });
+  $('fClient').addEventListener('change', function () { state.client = this.value; render(); });
+  $('fPeriod').addEventListener('change', function () { state.period = this.value; render(); });
+  $('fFrom').addEventListener('change', function () { state.from = this.value; render(); });
+  $('fTo').addEventListener('change', function () { state.to = this.value; render(); });
+  $('fSeries').addEventListener('change', function () { state.series = this.value; render(); });
+
+  $('mCancel').addEventListener('click', closeDraft);
+  $('mCopy').addEventListener('click', copyFullEmail);
+  $('mOpen').addEventListener('click', openInOutlook);
+  $('mail').addEventListener('click', function (e) { if (e.target.id === 'mail') closeDraft(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('mail').classList.contains('hid')) closeDraft();
+  });
+}
+
+wireControls();
+
+if (MH) {
+  window.MyHubReport.onData(loadAll);
+  if (window.MyHubReport.onThemeChange) window.MyHubReport.onThemeChange(function () { render(); });
+} else {
+  console.error('[unpaid-aged-accounts-xero] window.MyHubReport is not available.');
+  render();
+}
+</script>
+</body>
+</html>
