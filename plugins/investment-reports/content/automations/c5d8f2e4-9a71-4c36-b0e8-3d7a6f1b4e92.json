@@ -1,5 +1,5 @@
 {
-  "contentHash": "f3099b2a5cc71cebd707ebd2111432d087d53c52c50e2f2fe641aef4770a5173",
+  "contentHash": "4893cc43e31af6707f444a2611dbf59fb9997648577cfa93060232fea5001cab",
   "declaredScopes": [
     "ai:generate",
     "artifacts:write",
@@ -64,7 +64,7 @@
             "type": "str"
           }
         ],
-        "summary": "Opens the SharePoint folder and looks three levels down for investment folders: the ones that state an amount in their name or hold drawers such as Capital Calls, Reports and Tax. Whichever folder sits directly below the link is the investor entity. Lists every file inside each one and notes which drawers are empty. Changes nothing.",
+        "summary": "Looks three levels down for investment folders: those naming an amount, or holding drawers such as Capital Calls, Reports and Tax. The folder directly below the link is the investor entity. Lists the files in each and notes the empty drawers. Changes nothing.",
         "title": "Find every entity and investment"
       },
       {
@@ -98,7 +98,7 @@
             "type": "list[dict]"
           }
         ],
-        "summary": "For each investment, reads the six documents most likely to carry the register's columns (terms and deeds first, then valuations, payments, tax statements and updates) and asks AI one question about the lot: who holds it, what it is, what it cost, how long it runs, its tax status and liquidity, and what the business does. One question per investment, not one per document. Where the folder name states the amount, or a payment file name states the day, the name is used and the documents are not read for it.",
+        "summary": "For each investment, reads the six documents most likely to carry the register's columns - terms and deeds, valuations, payments, tax statements, updates - and asks AI one question about the lot, not one per document. Where a folder or file name states the amount or the day, the name is used.",
         "title": "Read the documents for each investment"
       },
       {
@@ -172,7 +172,7 @@
             "type": "str"
           }
         ],
-        "summary": "Opens the spreadsheet in SharePoint as it stands, fills in a row for each investment under the register columns, adds any of those columns it does not have yet, and replaces the Gaps and queries sheet behind it. Cells already filled in are left alone. Saves a dated copy beside it, writes the spreadsheet back to SharePoint, keeps a copy in Knowledge and puts the register in Reports as a page.",
+        "summary": "Opens the spreadsheet in SharePoint as it stands, fills in a row per investment, adds any register column it lacks, and replaces the Gaps and queries sheet. Cells already filled in are left alone. Saves a dated copy beside it, writes the file back, and puts the register in Reports.",
         "title": "Write the register"
       }
     ],
