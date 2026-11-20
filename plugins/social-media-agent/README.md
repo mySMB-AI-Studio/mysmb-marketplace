@@ -26,7 +26,7 @@ The agent works with three kinds of record (under **Records**):
 
 **Every week.** On Mondays you get a "Publishing this week" WorkQ item listing what's due and what still needs review, and the agent suggests campaigns 3 to 6 weeks ahead of Australian occasions ("Seasonal idea: ..."). Close a suggestion you don't want.
 
-**It learns from your changes.** Every time you choose **Ask for changes**, your note is saved to `Social posts/Brand Kit/reviewer-notes.md` (newest first, the last 20), and every new draft applies those notes as standing preferences. Edit or delete lines in that file to change what it applies.
+**It learns from your changes.** Every time you choose **Ask for changes**, your note is saved to the agent's **Files > Brand Kit > reviewer-notes.md** (newest first, the last 20), and every new draft applies those notes as standing preferences. Edit or delete lines in that file to change what it applies.
 
 **Keep a steady rhythm (optional).** Set **Posts per week** in the agent's Preferences (Agents > Social Media Agent > Setup). Every Monday the agent adds social posts to next week until it has that many, each built around one of your Brand Kit's key messages; each is drafted and reviewed as usual. Leave it empty to plan everything yourself.
 
@@ -39,7 +39,7 @@ The agent works with three kinds of record (under **Records**):
 - **Setup (1):** Preferences: drafts folder in Knowledge (default `Social posts`), time zone (default Sydney), review lead time (default 2 business days) and a default call to action.
 
 - **Processes (3):**
-  - *Confirm a Brand Kit:* checks a new Brand Kit, asks the reviewer to confirm it, then saves a versioned copy in Knowledge for the agent.
+  - *Confirm a Brand Kit:* checks a new Brand Kit, asks the reviewer to confirm it, then saves a versioned copy in the agent's Files (Brand Kit) for the agent to draft from.
   - *Draft a content piece:* drafts one piece from the confirmed Brand Kit, runs the brand and compliance checks and asks the reviewer to approve it or ask for changes. An approved draft is saved as Word and Markdown in the agent's Files (Approved, one folder per content type), with a "Post it" WorkQ item for its publish date. Starts when a content piece is created.
   - *Plan a campaign:* plans the pieces, content types, channels and dates from what you describe, shows the plan for approval, then creates the campaign and one content piece per planned piece and starts a drafting job for each.
   - All three are prompted processes (Agents 2.0): the job shows a status, and every action that changes something (confirm, file, create) runs only after the reviewer approves it on a card.
