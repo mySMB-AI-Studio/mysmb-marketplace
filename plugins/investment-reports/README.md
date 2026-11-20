@@ -1,6 +1,6 @@
 # Investment Reports
 
-Turns the investment documents in SharePoint into reports for the family: a register of every entity and investment in the fund area, a one-page summary of a single investment, and a combined report across portfolio summaries. It is read-only in SharePoint and Xero.
+Turns the investment documents in SharePoint into reports for the family: an investment register filled in from every entity and investment in the fund area, a one-page summary of a single investment, and a combined report across portfolio summaries. It is read-only in SharePoint and Xero.
 
 ## What's included
 
@@ -9,6 +9,7 @@ Turns the investment documents in SharePoint into reports for the family: a regi
 - **m365-sharepoint** reads SharePoint and OneDrive folders and files by link, using `list_sharepoint_folder` and `read_sharepoint_file`. It reads Word, Excel, PowerPoint, PDF, text, CSV and HTML files. Older formats such as .doc and .xls are converted by Microsoft first.
 - **xero-accounting** looks up bank receipts, using `list_bank_transactions`. Nothing is changed in Xero.
 - **m365-mail-send** emails the one-page summary with the PDF attached, using `send_email`.
+- **m365-sharepoint-write** writes the investment register back into its spreadsheet in SharePoint, using `read_sharepoint_file_bytes` and `write_sharepoint_file`. This is the only connector here that changes anything, and only the register automation uses it.
 
 ### Automation: One-page summary from SharePoint
 
@@ -48,9 +49,9 @@ Turns the investment documents in SharePoint into reports for the family: a regi
 1. It opens the folder link and looks three levels down for investment folders: the ones that state an amount in their name, such as `2024 09 Capital Investments - Head Co $527K`, or that hold drawers such as Capital Calls, Reports and Tax. Whichever folder sits directly below the link is the investor entity, so a link to the whole fund area gives every entity and a link to one entity's folder gives just that one.
 2. For each investment it reads the six documents most likely to carry the register's columns — terms and deeds first, then valuations, payments, tax statements and updates — and asks AI **one** question about the lot. One question per investment, not one per document, so a folder of 227 files costs the same as a folder of 8.
 3. Folder and file names settle what they can state. The commitment comes from the amount in the folder name (`$400K`, `$1M`, `$527,000`), and the first investment date from a payment file that names both a day and an amount. Those cells read the same on every run, whatever AI says.
-4. It writes `Investments/Reports/<folder> Investment Register <dd-Mmm-yy>.xlsx` to Knowledge, with a **MySMB** sheet of one row per investment under eighteen columns and a **Gaps and queries** sheet behind it. The register also goes to Reports as a web page.
+4. It opens the spreadsheet you pointed it at **in SharePoint**, fills in a row for each investment, adds any register column it does not have yet, and replaces the **Gaps and queries** sheet behind it. The spreadsheet is written back where it came from. Everything else in the workbook — other sheets, formulas, formatting — is left alone, because the file is edited in place rather than rebuilt. A copy of it as it stood is saved beside it as `<name> (before <dd-Mmm-yy>).xlsx` first. A copy also goes to Knowledge under `Investments/Reports/` and the register goes to Reports as a web page.
 
-The **Register to merge into** box takes the link to the register already in SharePoint. Every cell filled in there is kept exactly as it is and only the empty ones are written, so a tax status or a term someone has decided on is never overwritten by what AI reads next run. Rows are matched on the investor entity and the folder name together, which matters once two entities hold an investment with the same folder name.
+The **Spreadsheet to populate** box takes the link to that spreadsheet. Every cell filled in there is kept exactly as it is and only the empty ones are written, so a tax status or a term someone has decided on is never overwritten by what AI reads next run. Rows are matched on the investor entity and the folder name together, which matters once two entities hold an investment with the same folder name; a register that has no `Folder` column yet is matched on the investment name instead, so the first run finds the rows already there rather than writing over them.
 
 The Gaps and queries sheet raises: folders with no valuation document, so no carrying value, MOIC or IRR; folder names with no year and month, or no amount; payments filed in a folder whose investment is smaller than the payment; empty drawers; documents that could not be read; and the same folder name used under more than one entity.
 
