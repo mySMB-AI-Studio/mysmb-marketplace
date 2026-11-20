@@ -1,6 +1,6 @@
 # Investment Reports
 
-Turns the investment documents in SharePoint into reports for the family. It's read-only in SharePoint and Xero.
+Turns the investment documents in SharePoint into reports for the family: a register of every entity and investment in the fund area, a one-page summary of a single investment, and a combined report across portfolio summaries. It is read-only in SharePoint and Xero.
 
 ## What's included
 
@@ -40,6 +40,21 @@ Turns the investment documents in SharePoint into reports for the family. It's r
 1. It reads the portfolio summaries directly in a folder (up to 40) and pulls out each portfolio's figures.
 2. It adds them up and has AI write an overview with points to watch and actions.
 3. It saves the report to Knowledge in `Investments/Reports/` as `Combined Investment Report <dd-Mmm-yy>.docx` and `.md`.
+
+### Automation: Build the investment register from SharePoint
+
+"Investments: Build the investment register from SharePoint" runs on Run now only.
+
+1. It opens the folder link and looks three levels down for investment folders: the ones that state an amount in their name, such as `2024 09 Capital Investments - Head Co $527K`, or that hold drawers such as Capital Calls, Reports and Tax. Whichever folder sits directly below the link is the investor entity, so a link to the whole fund area gives every entity and a link to one entity's folder gives just that one.
+2. For each investment it reads the six documents most likely to carry the register's columns — terms and deeds first, then valuations, payments, tax statements and updates — and asks AI **one** question about the lot. One question per investment, not one per document, so a folder of 227 files costs the same as a folder of 8.
+3. Folder and file names settle what they can state. The commitment comes from the amount in the folder name (`$400K`, `$1M`, `$527,000`), and the first investment date from a payment file that names both a day and an amount. Those cells read the same on every run, whatever AI says.
+4. It writes `Investments/Reports/<folder> Investment Register <dd-Mmm-yy>.xlsx` to Knowledge, with a **MySMB** sheet of one row per investment under eighteen columns and a **Gaps and queries** sheet behind it. The register also goes to Reports as a web page.
+
+The **Register to merge into** box takes the link to the register already in SharePoint. Every cell filled in there is kept exactly as it is and only the empty ones are written, so a tax status or a term someone has decided on is never overwritten by what AI reads next run. Rows are matched on the investor entity and the folder name together, which matters once two entities hold an investment with the same folder name.
+
+The Gaps and queries sheet raises: folders with no valuation document, so no carrying value, MOIC or IRR; folder names with no year and month, or no amount; payments filed in a folder whose investment is smaller than the payment; empty drawers; documents that could not be read; and the same folder name used under more than one entity.
+
+The register's `Folder` column is what the one-page summary's **Reference sheet** box matches on, so this register can be handed straight back to that automation as its reference sheet.
 
 ## Configuration
 
