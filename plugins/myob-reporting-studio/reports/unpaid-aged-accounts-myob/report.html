@@ -1,421 +1,934 @@
 <!doctype html>
-<html lang="en-AU">
+<html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Unpaid & Aged Accounts — MYOB</title>
+<title>MYOB Unpaid & Aged Accounts</title>
 <style>
-:root{--accent:#6F2CBA;--btn:#5A1F9E;--btn-ink:#FFFFFF;--ink:#393A3D;--muted:#6B6C72;--line:#E3E5E8;--canvas:#F4F5F8;--card:#FFFFFF;--th:#6B6C72;--zebra:transparent;--neg:#D52B1E;--pos:#1B7F4B;--band:#FFFFFF;--band-ink:#393A3D}
-:root[data-myhub-theme='dark']{--accent:#A77BE8;--btn:#7A45C9;--btn-ink:#FFFFFF;--ink:#E6E8EB;--muted:#A3A7AE;--line:#33363C;--canvas:#16181B;--card:#1F2226;--th:#A3A7AE;--neg:#FF6B5E;--pos:#4CC38A;--band:#1F2226;--band-ink:#E6E8EB}
-*{box-sizing:border-box}
-body{margin:0;padding:16px;background:var(--canvas);color:var(--ink);font:14px/1.45 "Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif;font-variant-numeric:tabular-nums}
-a{color:var(--accent)}
-#controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-bottom:12px;border-top:3px solid var(--accent)}
-.ctl{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px}
-.ctl select,.ctl input[type=date]{font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:170px}
-.ctl select:disabled,.ctl input:disabled{opacity:.6}
-.count{margin-left:auto;font-size:12px;color:var(--muted);align-self:center}
-.mk-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:12px;border-top:4px solid var(--accent)}
-#head{text-align:center;padding:14px 0 18px;background:var(--band);color:var(--band-ink);border-radius:6px;margin-bottom:12px}
-#head .ti{font-size:18px;font-weight:700}#head .sub{font-size:13px;margin-top:2px}#head .stamp{font-size:11px;color:var(--muted);margin-top:6px}
-table{border-collapse:collapse;width:100%}
-th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--th);font-weight:600;text-align:left;padding:8px;border-bottom:2px solid var(--accent)}
-td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-.num{text-align:right;white-space:nowrap}
-.muted{color:var(--muted)}
-.mk-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:0 0 16px}
-.mk-kpi{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:12px 14px}
-.mk-kpi .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
-.mk-kpi .val{font-size:22px;font-weight:700;margin-top:2px}.mk-kpi .val.neg{color:var(--neg)}
-.seg{display:flex;gap:0;margin-bottom:10px}
-.seg button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 14px;cursor:pointer}
-.seg button:first-child{border-radius:4px 0 0 4px}.seg button:last-child{border-radius:0 4px 4px 0;border-left:0}
-.seg button.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
-.chart-heading{font-size:15px;font-weight:600;margin:0 0 10px}
-svg{width:100%;height:auto;max-height:260px;display:block}
-svg .axis{stroke:var(--line);stroke-width:1}svg .tick{fill:var(--muted);font-size:11px}svg .amt{fill:var(--ink);font-size:12px;font-weight:600}
-.empty{padding:28px 0;text-align:center;color:var(--muted);font-size:13px}
-.group-row td{background:var(--canvas);font-weight:600;border-bottom:1px solid var(--line)}
-.badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;border-radius:10px;padding:2px 8px;margin-left:6px;vertical-align:middle}
-.badge.ar{background:#E6F7F5;color:#007A6E}.badge.ap{background:#FDEEE6;color:#C15A1E}
-:root[data-myhub-theme='dark'] .badge.ar{background:#15302D;color:#2BC4B3}
-:root[data-myhub-theme='dark'] .badge.ap{background:#3A2416;color:#F0924E}
-.status-chip{display:inline-block;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px}
-.status-chip.overdue{background:#FDECEA;color:#D52B1E}.status-chip.ok{background:#EAF6E8;color:#1B7F4B}
-:root[data-myhub-theme='dark'] .status-chip.overdue{background:#3A1B19;color:#FF6B5E}
-:root[data-myhub-theme='dark'] .status-chip.ok{background:#18301A;color:#4CC38A}
-.draft-btn{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--btn);background:var(--card);color:var(--btn);border-radius:4px;padding:4px 10px;cursor:pointer}
-.draft-btn:hover{background:var(--btn);color:#fff}
-.overlay-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
-.overlay{background:var(--card);border-radius:10px;max-width:560px;width:100%;max-height:85vh;overflow:auto;padding:20px 24px}
-.overlay h3{margin:0 0 4px}
-.overlay .meta{font-size:12px;color:var(--muted);margin-bottom:12px}
-.overlay pre{white-space:pre-wrap;font-family:inherit;font-size:13px;background:var(--canvas);border:1px solid var(--line);border-radius:6px;padding:12px;margin:0 0 14px}
-.overlay .actions{display:flex;gap:8px;justify-content:flex-end}
-.overlay .actions a,.overlay .actions button{font:inherit;font-size:13px;font-weight:600;border-radius:4px;padding:7px 14px;cursor:pointer;text-decoration:none;border:1px solid var(--btn)}
-.overlay .actions a{background:var(--btn);color:#fff}
-.overlay .actions button{background:var(--card);color:var(--btn)}
-#foot{color:var(--muted);font-size:12px;text-align:center;padding:12px 0 4px}
-@media (min-width:900px){body{padding-right:64px}}
-@media print{#controls,.no-print{display:none!important}}
+  :root {
+    --bg:#f4f6fa; --card:#ffffff; --text:#16202c; --muted:#5d6878; --border:#dfe4ec; --head:#eef2f7;
+    --brand:#1f5fbf; --brand-text:#ffffff; --red:#b71c1c; --red-bg:rgba(183,28,28,.08);
+    --amber:#8a5300; --amber-bg:rgba(178,106,0,.12); --green:#2e7d32; --green-bg:rgba(46,125,50,.10);
+    --ar:#1f5fbf; --ap:#d9730d; --bar:#34DFBA; --input:#ffffff; --mask:rgba(16,22,32,.45);
+  }
+  :root[data-myhub-theme='dark'] {
+    --bg:#0e1116; --card:#161b23; --text:#e7ebf1; --muted:#9aa5b5; --border:#2a313c; --head:#1d242e;
+    --brand:#6ea8ff; --brand-text:#0e1116; --red:#ff8a8a; --red-bg:rgba(255,138,138,.12);
+    --amber:#ffc266; --amber-bg:rgba(255,194,102,.14); --green:#7fdc8a; --green-bg:rgba(127,220,138,.14);
+    --ar:#6ea8ff; --ap:#ffab5c; --bar:#34DFBA; --input:#10151c; --mask:rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px 16px 48px; }
+
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brandline { text-transform: uppercase; color: var(--brand); font-size: 13px; font-weight: 800; }
+  h1 { font-size: 24px; margin: 4px 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0; }
+  .topRight { text-align: right; color: var(--muted); font-size: 12.5px; }
+  .topRight div { margin: 2px 0; }
+
+  .note { color: var(--muted); font-size: 12px; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 14px 0;
+  }
+
+  .filterbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+  .fg { display: flex; flex-direction: column; gap: 4px; }
+  .fg label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  select, input[type="date"] {
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    min-width: 180px;
+  }
+  input[type="date"] { min-width: 150px; }
+  #count { margin-left: auto; color: var(--muted); font-size: 12.5px; align-self: center; }
+
+  #tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .tile {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .tile .lbl { font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  .tile .val { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 2px 0; }
+  .tile .sub2 { font-size: 12px; color: var(--muted); }
+
+  .panelHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  h2 { font-size: 16px; margin: 0; }
+
+  #chart { display: grid; grid-template-columns: repeat(5, 1fr); height: 230px; border-bottom: 1px solid var(--border); margin-top: 10px; }
+  .chartCol { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; padding-bottom: 6px; }
+  .chartVal { font-size: 12px; font-weight: 700; }
+  .chartBarWrap { flex: 1; display: flex; align-items: flex-end; width: 100%; justify-content: center; }
+  .chartBar { width: 70%; background: var(--bar); border-radius: 6px 6px 0 0; }
+  .chartLbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 8px 10px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  th { position: sticky; top: 0; background: var(--head); font-size: 11px; text-transform: uppercase; color: var(--muted); text-align: left; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tableScroll { max-height: 520px; overflow: auto; margin-top: 10px; }
+
+  tr.grp td { background: var(--head); font-weight: 700; }
+  tr.item td:first-child { padding-left: 30px; }
+
+  .toggle { all: unset; cursor: pointer; color: var(--brand); font-weight: 800; margin-right: 6px; }
+
+  .badge { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; border: 1px solid; }
+  .badge.ar { color: var(--ar); border-color: var(--ar); }
+  .badge.ap { color: var(--ap); border-color: var(--ap); }
+
+  .pill { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+  .pill.overdue { color: var(--red); background: var(--red-bg); }
+  .pill.dueToday { color: var(--amber); background: var(--amber-bg); }
+  .pill.current { color: var(--green); background: var(--green-bg); }
+  .pill.test { color: var(--muted); border: 1px dashed var(--muted); background: none; }
+
+  .btn {
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 5px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--brand);
+    background: var(--brand);
+    color: var(--brand-text);
+    cursor: pointer;
+  }
+  .btn.ghost { background: var(--card); color: var(--brand); }
+
+  .empty { padding: 28px 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+  .mask {
+    position: fixed; inset: 0; background: var(--mask);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 16px;
+  }
+  .mbox {
+    width: min(820px, 100%);
+    max-height: 90vh;
+    overflow: auto;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(0,0,0,.25);
+    padding: 20px 24px;
+  }
+  .mbox h3 { margin: 0 0 6px; font-size: 17px; }
+  .mrow { margin: 10px 0; }
+  .mrow label { display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .mrow input[type="email"], .mrow input[type="text"] {
+    width: 100%; font-size: 13px; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--input); color: var(--text);
+  }
+  .mrow textarea {
+    width: 100%; min-height: 260px; font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+    font-size: 12.5px; padding: 9px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--input); color: var(--text); white-space: pre; resize: vertical;
+  }
+  .mnote { border-left: 3px solid var(--brand); background: var(--head); padding: 8px 10px; border-radius: 6px; font-size: 12.5px; color: var(--muted); margin: 10px 0; }
+  .mwarn { border-left: 3px solid var(--amber); background: var(--amber-bg); padding: 8px 10px; border-radius: 6px; font-size: 12.5px; color: var(--amber); margin: 10px 0; }
+  .mbtns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+  .hid { display: none !important; }
 </style>
 </head>
 <body>
-<div id="controls"></div>
-<main class="mk-card">
-  <header id="head"></header>
-  <div id="body"><p class="muted">Loading MYOB data…</p></div>
-  <footer id="foot"></footer>
-</main>
-<div id="overlay-root"></div>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brandline">mySMB &middot; myHub</div>
+      <h1>Unpaid &amp; Aged Accounts</h1>
+      <p class="sub">Aged receivables and payables, grouped by organisation and aging bucket.</p>
+    </div>
+    <div class="topRight">
+      <div>Last refreshed: <span id="stamp">loading&hellip;</span></div>
+      <div>Source: MYOB AccountRight (open sales invoices and purchase bills)</div>
+    </div>
+  </header>
+
+  <div class="panel filterbar">
+    <div class="fg">
+      <label for="fOrg">Organisation</label>
+      <select id="fOrg"></select>
+    </div>
+    <div class="fg">
+      <label for="fClient">Client</label>
+      <select id="fClient"></select>
+    </div>
+    <div class="fg">
+      <label for="fPeriod">Period (invoice / bill date)</label>
+      <select id="fPeriod">
+        <option value="all">All time</option>
+        <option value="thisMonth">This month</option>
+        <option value="lastMonth">Last month</option>
+        <option value="thisQuarter">This quarter</option>
+        <option value="lastQuarter">Last quarter</option>
+        <option value="thisFY">This financial year (1 Jul &ndash; 30 Jun)</option>
+        <option value="lastFY">Last financial year</option>
+        <option value="custom">Custom range</option>
+      </select>
+    </div>
+    <div class="fg hid" id="fFromWrap">
+      <label for="fFrom">From</label>
+      <input type="date" id="fFrom">
+    </div>
+    <div class="fg hid" id="fToWrap">
+      <label for="fTo">To</label>
+      <input type="date" id="fTo">
+    </div>
+    <div id="count">0 items &middot; 0 contact groups</div>
+  </div>
+
+  <div id="tiles"></div>
+
+  <div class="panel">
+    <div class="panelHead">
+      <h2 id="chartTitle">Aging Buckets &mdash; Accounts Receivable &mdash; $0.00</h2>
+      <div class="fg">
+        <label for="fSeries">Series</label>
+        <select id="fSeries">
+          <option value="AR">Accounts Receivable (AR)</option>
+          <option value="AP">Accounts Payable (AP)</option>
+        </select>
+      </div>
+    </div>
+    <div id="chart"></div>
+    <p class="note">Ageing is measured in days from each due date to today (Australia/Sydney). Current means not yet due.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Outstanding Items</h2>
+    <div class="tableScroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th><th>Contact</th><th>Ref #</th><th>Date</th><th>Due</th>
+            <th class="num">Amount</th><th>Status</th><th class="num">Action</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="note">Each contact has one group header with its total and one Draft Email button. The draft lists every invoice or bill for that contact that matches the filters, for review only. Nothing is sent.</p>
+  </div>
+
+  <p class="note" style="text-align:center;margin-top:24px;">Read-only report. It does not create, change, approve, pay or delete any MYOB record. Only open items with a balance due above zero are included, and partly paid items show their remaining balance. Items flagged &quot;Possible test&quot; look like QA or test records; they are included in the totals and should be checked.</p>
+</div>
+
+<div class="mask hid" id="mail">
+  <div class="mbox">
+    <h3 id="mailT"></h3>
+    <p class="note" id="mSumm"></p>
+    <div class="mwarn hid" id="mWarn"></div>
+    <div class="mrow">
+      <label for="mTo">To</label>
+      <input type="email" id="mTo" placeholder="No email address on file: enter one">
+      <p class="note">No email address is held for this contact in this report. Enter one before sending, or leave blank and add it in Outlook.</p>
+    </div>
+    <div class="mrow">
+      <label for="mSub">Subject</label>
+      <input type="text" id="mSub">
+    </div>
+    <div class="mrow">
+      <label for="mBody">Body</label>
+      <textarea id="mBody" readonly></textarea>
+    </div>
+    <div class="mnote" id="mNote">Nothing is sent from here. The draft opens in Outlook so you can review, edit and send it yourself.</div>
+    <div class="mbtns">
+      <button type="button" class="btn ghost" id="mCopy">Copy full email</button>
+      <button type="button" class="btn ghost" id="mCancel">Cancel</button>
+      <button type="button" class="btn" id="mOpen">Open in Outlook</button>
+    </div>
+  </div>
+</div>
+
 <script>
-(function () {
-  "use strict";
+'use strict';
 
-  // ---------- small verified helpers (shared pattern used across myob-reporting-studio) ----------
-  function num(v) { if (v == null || v === "") return null; var n = Number(String(v).replace(/,/g, "")); return isFinite(n) ? n : null; }
-  function errorOf(v) { return v && typeof v === "object" && !Array.isArray(v) && v.__error != null ? String(v.__error) : null; }
-  function items(v) { return !v || errorOf(v) ? [] : Array.isArray(v) ? v : Array.isArray(v.Items) ? v.Items : []; }
-  function D(y, m, d) { return new Date(Date.UTC(y, m - 1, d)); }
-  function iso(dt) { return dt.getUTCFullYear() + "-" + String(dt.getUTCMonth() + 1).padStart(2, "0") + "-" + String(dt.getUTCDate()).padStart(2, "0"); }
-  function parseIso(s) { var p = String(s).split("-"); return D(+p[0], +p[1], +p[2]); }
-  function addDays(dt, n) { return new Date(dt.getTime() + n * 86400000); }
-  function eom(y, m) { return D(y, m + 1, 0); }
-  function today() { var t = new Date(); return D(t.getFullYear(), t.getMonth() + 1, t.getDate()); }
-  function isoDate(v) {
-    if (v == null || v === "") return null;
-    var m = /\/Date\((-?\d+)/.exec(String(v));
-    if (m) { var d = new Date(+m[1]); return iso(D(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())); }
-    return String(v).slice(0, 10);
-  }
-  function auDate(isoStr) { if (!isoStr) return "—"; var p = isoStr.split("-"); return p[2] + "/" + p[1] + "/" + p[0]; }
-  function money(v) {
-    if (v == null || !isFinite(Number(v))) return "—";
-    var n = Number(v), neg = n < 0, abs = Math.abs(n).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return (neg ? "-" : "") + "$" + abs;
-  }
-  function h(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+var SENDER_NAME = 'Aidan Kavanagh';
+var CO_DEFAULT = '3534b893-813b-4b75-974b-ef55c44f9aeb';
+var OUTLOOK_LINK_LIMIT = 6500;
 
-  // ---------- period presets ----------
-  function fyStart(d) { var y = d.getUTCFullYear(); if (d.getUTCMonth() + 1 < 7) y -= 1; return D(y, 7, 1); }
-  var PERIODS = [["all", "All time"], ["this_month", "This month"], ["last_month", "Last month"], ["this_quarter", "This quarter"], ["last_quarter", "Last quarter"], ["this_fy", "This financial year"], ["last_fy", "Last financial year"], ["custom", "Custom range"]];
-  function periodRange(key) {
-    var t = today(), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, qs = Math.floor((m - 1) / 3) * 3 + 1;
-    switch (key) {
-      case "this_month": return [D(y, m, 1), eom(y, m)];
-      case "last_month": return [D(y, m - 1, 1), eom(y, m - 1)];
-      case "this_quarter": return [D(y, qs, 1), eom(y, qs + 2)];
-      case "last_quarter": return [D(y, qs - 3, 1), eom(y, qs - 1)];
-      case "this_fy": { var fs = fyStart(t); return [fs, addDays(D(fs.getUTCFullYear() + 1, fs.getUTCMonth() + 1, 1), -1)]; }
-      case "last_fy": { var fs2 = fyStart(t); return [D(fs2.getUTCFullYear() - 1, 7, 1), addDays(fs2, -1)]; }
-      default: return null; // "all" / "custom" (custom handled via state.customFrom/To directly)
+var state = {
+  companies: [],
+  records: [],
+  org: '',
+  client: '',
+  period: 'all',
+  from: '',
+  to: '',
+  series: 'AR',
+  collapsed: {},
+  groupByIndex: [],
+  stamp: ''
+};
+var busy = false;
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function money(n) {
+  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
+}
+
+function dUTC(y, m, d) { return new Date(Date.UTC(y, m - 1, d)); }
+
+function parseIsoUTC(s) {
+  if (!s) return null;
+  var p = String(s).slice(0, 10).split('-');
+  if (p.length !== 3) return null;
+  var d = dUTC(Number(p[0]), Number(p[1]), Number(p[2]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function auDate(iso) {
+  var d = parseIsoUTC(iso);
+  if (!d) return '—';
+  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + d.getUTCFullYear();
+}
+
+function todaySydney() {
+  var iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
+  return parseIsoUTC(iso);
+}
+
+function daysBetween(a, b) { return Math.round((a.getTime() - b.getTime()) / 86400000); }
+
+function eom(y, m) { return dUTC(y, m + 1, 0); }
+function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
+function fyStartOf(d) {
+  var y = d.getUTCFullYear();
+  if (d.getUTCMonth() + 1 < 7) y -= 1;
+  return dUTC(y, 7, 1);
+}
+
+function periodRange(key, today) {
+  var y = today.getUTCFullYear(), m = today.getUTCMonth() + 1, qStartMonth = Math.floor((m - 1) / 3) * 3 + 1;
+  switch (key) {
+    case 'thisMonth': return [dUTC(y, m, 1), eom(y, m)];
+    case 'lastMonth': return [dUTC(y, m - 1, 1), eom(y, m - 1)];
+    case 'thisQuarter': return [dUTC(y, qStartMonth, 1), eom(y, qStartMonth + 2)];
+    case 'lastQuarter': return [dUTC(y, qStartMonth - 3, 1), eom(y, qStartMonth - 1)];
+    case 'thisFY': { var fs = fyStartOf(today); return [fs, addDays(dUTC(fs.getUTCFullYear() + 1, fs.getUTCMonth() + 1, fs.getUTCDate()), -1)]; }
+    case 'lastFY': { var fs2 = fyStartOf(today); return [dUTC(fs2.getUTCFullYear() - 1, 7, 1), addDays(fs2, -1)]; }
+    default: return null;
+  }
+}
+
+function isTest(party, ref) {
+  var p = String(party || '');
+  var r = String(ref || '');
+  if (/\b(QA|TEST|TST)\b/i.test(p)) return true;
+  if (/^\s*(TEST|TST)/i.test(r)) return true;
+  return false;
+}
+
+// Defensive extraction: JSON string, array, {Items:[...]}, or a nested object
+// holding the first non-empty array within `depth` levels.
+function items(v, depth) {
+  depth = depth == null ? 6 : depth;
+  if (v == null) return [];
+  if (typeof v === 'string') {
+    try { return items(JSON.parse(v), depth); } catch (e) { return []; }
+  }
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'object') {
+    if (Array.isArray(v.Items)) return v.Items;
+    if (depth <= 0) return [];
+    var keys = Object.keys(v);
+    for (var i = 0; i < keys.length; i++) {
+      var val = v[keys[i]];
+      if (Array.isArray(val) && val.length) return val;
+    }
+    for (var j = 0; j < keys.length; j++) {
+      var val2 = v[keys[j]];
+      if (val2 && typeof val2 === 'object') {
+        var found = items(val2, depth - 1);
+        if (found.length) return found;
+      }
     }
   }
+  return [];
+}
 
-  // ---------- state ----------
-  var MH = window.MyHubReport;
-  var live = !!(MH && MH.mode !== "snapshot");
-  var S = {
-    companyFiles: [],           // [{id,name}]
-    ar: [], ap: [], contacts: [], // currently loaded (post organisation selection), raw rows tagged with _orgId/_orgName
-    org: "",                    // "" once companyFiles load = first file's id; "__all__" = every file
-    client: "",                 // contact key ("" = all)
-    period: "all",
-    customFrom: "", customTo: "",
-    chartSide: "AR",
-    loading: true,
-    draft: null                 // {subject, body, mailto} while the review overlay is open
+var MH = (typeof window !== 'undefined') ? window.MyHubReport : null;
+
+function companiesOf(v) {
+  return items(v).map(function (c) {
+    return { id: String(c.Id || c.id || ''), name: c.Name || c.name || '' };
+  }).filter(function (c) { return c.id; });
+}
+
+function normaliseInvoice(raw, co, today) {
+  var amt = Number(raw.BalanceDueAmount);
+  if (!(amt > 0)) return null;
+  var cust = raw.Customer || {};
+  var date = String(raw.Date || '').slice(0, 10);
+  var due = (raw.Terms && raw.Terms.DueDate) ? String(raw.Terms.DueDate).slice(0, 10) : date;
+  var party = cust.Name || '(no customer)';
+  return {
+    date: date, due: due,
+    party: party,
+    uid: cust.UID || party,
+    ref: raw.Number || '',
+    amt: amt,
+    ap: false,
+    co: co.id, coName: co.name,
+    days: daysBetween(today, parseIsoUTC(due) || today),
+    test: isTest(party, raw.Number)
   };
+}
 
-  function $(id) { return document.getElementById(id); }
+function normaliseBill(raw, co, today) {
+  var amt = Number(raw.BalanceDueAmount);
+  if (!(amt > 0)) return null;
+  var sup = raw.Supplier || {};
+  var date = String(raw.Date || '').slice(0, 10);
+  var due = (raw.Terms && raw.Terms.DueDate) ? String(raw.Terms.DueDate).slice(0, 10) : date;
+  var party = sup.Name || '(no supplier)';
+  return {
+    date: date, due: due,
+    party: party,
+    uid: sup.UID || party,
+    ref: raw.Number || '',
+    amt: amt,
+    ap: true,
+    co: co.id, coName: co.name,
+    days: daysBetween(today, parseIsoUTC(due) || today),
+    test: isTest(party, raw.Number)
+  };
+}
 
-  // ---------- data loading ----------
-  function companyFiles(v) {
-    return items(v).map(function (f) { return { id: String(f.Id || f.id || ""), name: f.Name || f.name || "" }; }).filter(function (f) { return f.id; });
-  }
+function $(id) { return document.getElementById(id); }
 
-  function fetchOne(id, companyFileId) {
-    if (!MH || !live) return Promise.resolve(null);
-    return MH.getData(id, { company_file: companyFileId }).catch(function (e) {
-      console.error("[unpaid-aged-accounts-myob] " + id + " failed for " + companyFileId + ":", e);
-      return null;
+function fetchBinding(id, inputs) {
+  if (!MH) return Promise.resolve(null);
+  return window.MyHubReport.getData(id, inputs).catch(function (e) {
+    console.error('[unpaid-aged-accounts-myob] ' + id + ' failed:', e);
+    return null;
+  });
+}
+
+function loadAll(bundle) {
+  if (busy) return;
+  busy = true;
+
+  var companiesPromise;
+  var fromBundle = companiesOf(bundle && bundle.data && bundle.data.companies);
+  if (fromBundle.length) {
+    companiesPromise = Promise.resolve(fromBundle);
+  } else {
+    companiesPromise = fetchBinding('companies', {}).then(function (v) {
+      var list = companiesOf(v);
+      return list.length ? list : [{ id: CO_DEFAULT, name: 'mySMB.com' }];
     });
   }
 
-  function loadOrg(org) {
-    S.loading = true; render();
-    if (org === "__all__") {
-      return Promise.all(S.companyFiles.map(function (f) {
-        return Promise.all([fetchOne("invoices", f.id), fetchOne("bills", f.id), fetchOne("contacts", f.id)])
-          .then(function (r) { return { file: f, inv: items(r[0]), bills: items(r[1]), contacts: items(r[2]) }; });
-      })).then(function (results) {
-        var ar = [], ap = [], contacts = [];
-        results.forEach(function (r) {
-          r.inv.forEach(function (i) { i._orgId = r.file.id; i._orgName = r.file.name; ar.push(i); });
-          r.bills.forEach(function (b) { b._orgId = r.file.id; b._orgName = r.file.name; ap.push(b); });
-          r.contacts.forEach(function (c) { c._orgId = r.file.id; contacts.push(c); });
-        });
-        S.ar = ar; S.ap = ap; S.contacts = contacts; S.loading = false;
-        S.client = ""; render();
+  companiesPromise.then(function (companies) {
+    state.companies = companies;
+    var today = todaySydney();
+    return Promise.all(companies.map(function (co) {
+      return Promise.all([
+        fetchBinding('invoices', { company_file: co.id }),
+        fetchBinding('bills', { company_file: co.id })
+      ]).then(function (r) {
+        var inv = items(r[0]).map(function (raw) { return normaliseInvoice(raw, co, today); }).filter(Boolean);
+        var bills = items(r[1]).map(function (raw) { return normaliseBill(raw, co, today); }).filter(Boolean);
+        return inv.concat(bills);
       });
+    })).then(function (perCompany) {
+      var all = [];
+      perCompany.forEach(function (arr) { all = all.concat(arr); });
+      state.records = all;
+      if (companies.length === 1 && !state.org) state.org = companies[0].id;
+      state.stamp = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).format(new Date()).replace(',', '');
+      busy = false;
+      render();
+    });
+  }).catch(function (e) {
+    console.error('[unpaid-aged-accounts-myob] load failed:', e);
+    busy = false;
+    render();
+  });
+}
+
+// ---------- filtering ----------
+
+function orgFilteredRecords() {
+  if (!state.org) return state.records;
+  return state.records.filter(function (r) { return r.co === state.org; });
+}
+
+function clientOptionsFor(records) {
+  var seen = {}, out = [];
+  records.forEach(function (r) {
+    if (!seen[r.uid]) { seen[r.uid] = true; out.push({ uid: r.uid, name: r.party }); }
+  });
+  out.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+  return out;
+}
+
+function inPeriod(dateIso, today) {
+  if (state.period === 'all') return true;
+  var range;
+  if (state.period === 'custom') {
+    var from = state.from ? parseIsoUTC(state.from) : null;
+    var to = state.to ? parseIsoUTC(state.to) : null;
+    range = [from, to];
+  } else {
+    range = periodRange(state.period, today);
+  }
+  if (!range) return true;
+  var d = parseIsoUTC(dateIso);
+  if (!d) return false;
+  if (range[0] && d < range[0]) return false;
+  if (range[1] && d > range[1]) return false;
+  return true;
+}
+
+function filteredRecords() {
+  var today = todaySydney();
+  var byOrg = orgFilteredRecords();
+  return byOrg.filter(function (r) {
+    if (state.client && r.uid !== state.client) return false;
+    if (!inPeriod(r.date, today)) return false;
+    return true;
+  });
+}
+
+// ---------- aggregation ----------
+
+var BUCKET_LABELS = ['Current', '1-30 days', '31-60 days', '61-90 days', '90+ days'];
+function bucketOf(days) {
+  if (days <= 0) return 0;
+  if (days <= 30) return 1;
+  if (days <= 60) return 2;
+  if (days <= 90) return 3;
+  return 4;
+}
+function bucketTotals(rows) {
+  var b = [0, 0, 0, 0, 0];
+  rows.forEach(function (r) { var i = bucketOf(r.days); b[i] = Math.round((b[i] + r.amt) * 100) / 100; });
+  return b;
+}
+
+function groupRecords(rows) {
+  var byKey = {};
+  rows.forEach(function (r) {
+    var key = r.co + '::' + (r.ap ? 'AP' : 'AR') + '::' + r.uid;
+    if (!byKey[key]) {
+      byKey[key] = { key: key, co: r.co, coName: r.coName, ap: r.ap, party: r.party, uid: r.uid, items: [], total: 0, maxDays: -Infinity, test: false };
     }
-    return Promise.all([fetchOne("invoices", org), fetchOne("bills", org), fetchOne("contacts", org)]).then(function (r) {
-      var orgName = (S.companyFiles.filter(function (f) { return f.id === org; })[0] || {}).name || "";
-      S.ar = items(r[0]).map(function (i) { i._orgId = org; i._orgName = orgName; return i; });
-      S.ap = items(r[1]).map(function (b) { b._orgId = org; b._orgName = orgName; return b; });
-      S.contacts = items(r[2]).map(function (c) { c._orgId = org; return c; });
-      S.loading = false; S.client = ""; render();
-    });
+    var g = byKey[key];
+    g.items.push(r);
+    g.total = Math.round((g.total + r.amt) * 100) / 100;
+    if (r.days > g.maxDays) g.maxDays = r.days;
+    if (r.test) g.test = true;
+  });
+  var groups = Object.keys(byKey).map(function (k) { return byKey[k]; });
+  groups.sort(function (a, b) {
+    var ao = a.maxDays > 0 ? a.maxDays : -1, bo = b.maxDays > 0 ? b.maxDays : -1;
+    if (bo !== ao) return bo - ao;
+    return a.party.toLowerCase().localeCompare(b.party.toLowerCase());
+  });
+  groups.forEach(function (g) {
+    g.items.sort(function (a, b) { return (parseIsoUTC(a.due) || 0) - (parseIsoUTC(b.due) || 0); });
+  });
+  return groups;
+}
+
+// ---------- rendering: filter bar ----------
+
+function renderFilterBar() {
+  var orgSel = $('fOrg');
+  var orgHtml = '<option value="">All organisations</option>' + state.companies.map(function (c) {
+    return '<option value="' + esc(c.id) + '"' + (c.id === state.org ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  }).join('');
+  orgSel.innerHTML = orgHtml;
+
+  var clientRecords = orgFilteredRecords();
+  var clientOpts = clientOptionsFor(clientRecords);
+  if (state.client && !clientOpts.some(function (c) { return c.uid === state.client; })) state.client = '';
+  var clientHtml = '<option value="">All clients</option>' + clientOpts.map(function (c) {
+    return '<option value="' + esc(c.uid) + '"' + (c.uid === state.client ? ' selected' : '') + '>' + esc(c.name) + '</option>';
+  }).join('');
+  $('fClient').innerHTML = clientHtml;
+
+  $('fPeriod').value = state.period;
+  var isCustom = state.period === 'custom';
+  $('fFromWrap').classList.toggle('hid', !isCustom);
+  $('fToWrap').classList.toggle('hid', !isCustom);
+  $('fFrom').value = state.from;
+  $('fTo').value = state.to;
+  $('fSeries').value = state.series;
+}
+
+function renderCount(records, groups) {
+  var n = records.length, g = groups.length;
+  $('count').textContent = n + ' item' + (n === 1 ? '' : 's') + ' · ' + g + ' contact group' + (g === 1 ? '' : 's');
+}
+
+// ---------- rendering: tiles ----------
+
+function renderTiles(records) {
+  var ar = records.filter(function (r) { return !r.ap; });
+  var ap = records.filter(function (r) { return r.ap; });
+  var totalAR = ar.reduce(function (s, r) { return s + r.amt; }, 0);
+  var totalAP = ap.reduce(function (s, r) { return s + r.amt; }, 0);
+  var overdueAR = ar.filter(function (r) { return r.days > 0; });
+  var overdueAP = ap.filter(function (r) { return r.days > 0; });
+  var overdueARTotal = overdueAR.reduce(function (s, r) { return s + r.amt; }, 0);
+  var overdueAPTotal = overdueAP.reduce(function (s, r) { return s + r.amt; }, 0);
+  var net = totalAR - totalAP;
+
+  var tiles = [
+    { label: 'Total Receivable (AR)', value: totalAR, sub: ar.length + ' invoice' + (ar.length === 1 ? '' : 's'), accent: 'var(--ar)' },
+    { label: 'Total Payable (AP)', value: totalAP, sub: ap.length + ' bill' + (ap.length === 1 ? '' : 's'), accent: 'var(--ap)' },
+    { label: 'Net Position', value: net, sub: 'AR minus AP', accent: 'var(--muted)' },
+    { label: 'Overdue AR', value: overdueARTotal, sub: overdueAR.length + ' invoice' + (overdueAR.length === 1 ? '' : 's') + ' past due', accent: 'var(--red)', redValue: true },
+    { label: 'Overdue AP', value: overdueAPTotal, sub: overdueAP.length + ' bill' + (overdueAP.length === 1 ? '' : 's') + ' past due', accent: 'var(--red)', redValue: true }
+  ];
+
+  $('tiles').innerHTML = tiles.map(function (t) {
+    return '<div class="tile" style="border-left-color:' + t.accent + '">' +
+      '<div class="lbl">' + esc(t.label) + '</div>' +
+      '<div class="val"' + (t.redValue ? ' style="color:var(--red)"' : '') + '>' + money(t.value) + '</div>' +
+      '<div class="sub2">' + esc(t.sub) + '</div>' +
+      '</div>';
+  }).join('');
+
+  return { ar: ar, ap: ap };
+}
+
+// ---------- rendering: chart ----------
+
+function renderChart(ar, ap) {
+  var rows = state.series === 'AR' ? ar : ap;
+  var buckets = bucketTotals(rows);
+  var total = buckets.reduce(function (s, v) { return s + v; }, 0);
+  var max = Math.max.apply(null, buckets.concat([0.01]));
+  $('chartTitle').textContent = 'Aging Buckets — ' + (state.series === 'AR' ? 'Accounts Receivable' : 'Accounts Payable') + ' — ' + money(total);
+
+  $('chart').innerHTML = buckets.map(function (v, i) {
+    var h = v > 0 ? Math.max(2, Math.round((v / max) * 180)) : 0;
+    return '<div class="chartCol">' +
+      '<div class="chartVal">' + money(v) + '</div>' +
+      '<div class="chartBarWrap"><div class="chartBar" style="height:' + h + 'px"></div></div>' +
+      '<div class="chartLbl">' + esc(BUCKET_LABELS[i]) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+// ---------- rendering: table ----------
+
+function statusPill(days) {
+  if (days > 0) return '<span class="pill overdue">' + days + 'd overdue</span>';
+  if (days === 0) return '<span class="pill dueToday">Due today</span>';
+  return '<span class="pill current">Current</span>';
+}
+
+function renderTable(records) {
+  var groups = groupRecords(records);
+  state.groupByIndex = groups;
+
+  if (!MH) {
+    $('rows').innerHTML = '<tr><td colspan="8" class="empty">No data available</td></tr>';
+    return groups;
   }
-
-  // ---------- shaping ----------
-  function shapeInvoice(i) {
-    var bal = num(i.BalanceDueAmount) || 0;
-    if (bal === 0) return null;
-    var cu = i.Customer || {};
-    var date = isoDate(i.Date), due = isoDate((i.Terms || {}).DueDate) || date;
-    return { type: "AR", key: cu.UID || cu.Name || "(no customer)", name: cu.Name || "(no customer)", number: i.Number || "", date: date, due: due, balance: bal, age: Math.round((today() - parseIso(due)) / 86400000), orgId: i._orgId, orgName: i._orgName };
-  }
-  function shapeBill(b) {
-    var bal = num(b.BalanceDueAmount) || 0;
-    if (bal === 0) return null;
-    var cu = b.Supplier || {};
-    var date = isoDate(b.Date), due = isoDate((b.Terms || {}).DueDate) || date;
-    return { type: "AP", key: cu.UID || cu.Name || "(no supplier)", name: cu.Name || "(no supplier)", number: b.Number || "", date: date, due: due, balance: bal, age: Math.round((today() - parseIso(due)) / 86400000), orgId: b._orgId, orgName: b._orgName };
-  }
-  function contactEmail(key) {
-    var c = S.contacts.filter(function (x) { return x.UID === key || x.CompanyName === key; })[0];
-    if (!c) return "";
-    var addr = (c.Addresses || []).filter(function (a) { return a && a.Email; })[0];
-    return addr ? addr.Email : "";
-  }
-
-  function allAR() { return items2(S.ar, shapeInvoice); }
-  function allAP() { return items2(S.ap, shapeBill); }
-  function items2(arr, shaper) { var out = []; arr.forEach(function (x) { var s = shaper(x); if (s) out.push(s); }); return out; }
-
-  function inPeriod(dateIso) {
-    if (S.period === "all") return true;
-    var range = S.period === "custom" ? (S.customFrom && S.customTo ? [parseIso(S.customFrom), parseIso(S.customTo)] : null) : periodRange(S.period);
-    if (!range) return true;
-    var d = parseIso(dateIso);
-    return d >= range[0] && d <= range[1];
-  }
-  function inClient(row) { return !S.client || row.key === S.client; }
-
-  function filteredAR() { return allAR().filter(function (r) { return inPeriod(r.date) && inClient(r); }); }
-  function filteredAP() { return allAP().filter(function (r) { return inPeriod(r.date) && inClient(r); }); }
-
-  function clientOptions() {
-    var seen = {}, out = [];
-    allAR().concat(allAP()).forEach(function (r) { if (!seen[r.key]) { seen[r.key] = 1; out.push({ key: r.key, name: r.name }); } });
-    out.sort(function (a, b) { return a.name.localeCompare(b.name); });
-    return out;
-  }
-
-  var COLS = ["Current", "1-30", "31-60", "61-90", "90+"];
-  function bucketOf(age) { return age <= 0 ? 0 : age <= 30 ? 1 : age <= 60 ? 2 : age <= 90 ? 3 : 4; }
-  function buckets(rows) {
-    var b = COLS.map(function () { return 0; });
-    rows.forEach(function (r) { var i = bucketOf(r.age); b[i] = Math.round((b[i] + r.balance) * 100) / 100; });
-    return b;
-  }
-
-  // ---------- rendering ----------
-  function opt(list, cur) { return list.map(function (o) { return "<option value=\"" + h(o[0]) + "\"" + (String(o[0]) === String(cur) ? " selected" : "") + ">" + h(o[1]) + "</option>"; }).join(""); }
-
-  function renderControls() {
-    var el = $("controls"); if (!el) return;
-    var dis = live ? "" : " disabled";
-    var orgOpts = [["__all__", "All organisations"]].concat(S.companyFiles.map(function (f) { return [f.id, f.name]; }));
-    var clientOpts = [["", "All clients"]].concat(clientOptions().map(function (c) { return [c.key, c.name]; }));
-    var x = "";
-    x += "<label class=\"ctl\">Organisation<select id=\"ctl-org\"" + dis + ">" + opt(orgOpts, S.org) + "</select></label>";
-    x += "<label class=\"ctl\">Client<select id=\"ctl-client\"" + dis + ">" + opt(clientOpts, S.client) + "</select></label>";
-    x += "<label class=\"ctl\">Period<select id=\"ctl-period\"" + dis + ">" + opt(PERIODS, S.period) + "</select></label>";
-    if (S.period === "custom") {
-      x += "<label class=\"ctl\">From<input type=\"date\" id=\"ctl-from\" value=\"" + h(S.customFrom) + "\"" + dis + "></label>";
-      x += "<label class=\"ctl\">To<input type=\"date\" id=\"ctl-to\" value=\"" + h(S.customTo) + "\"" + dis + "></label>";
-    }
-    var count = filteredAR().length + filteredAP().length;
-    x += "<div class=\"count\">" + count + " outstanding item" + (count === 1 ? "" : "s") + "</div>";
-    el.innerHTML = x;
-    on("ctl-org", "change", function () { S.org = this.value; loadOrg(S.org); });
-    on("ctl-client", "change", function () { S.client = this.value; render(); });
-    on("ctl-period", "change", function () { S.period = this.value; render(); });
-    on("ctl-from", "change", function () { S.customFrom = this.value; render(); });
-    on("ctl-to", "change", function () { S.customTo = this.value; render(); });
-  }
-  function on(id, ev, fn) { var e = $(id); if (e) e.addEventListener(ev, fn); }
-
-  function renderHead() {
-    var el = $("head"); if (!el) return;
-    el.innerHTML = "<div class=\"ti\">Unpaid &amp; Aged Accounts — MYOB</div>" +
-      "<div class=\"sub\">Aged receivables and payables, grouped by contact and ageing bucket.</div>" +
-      "<div class=\"stamp\">Last refreshed " + new Date().toLocaleString("en-AU") + "</div>";
-  }
-
-  function renderTiles(ar, ap) {
-    var totalAR = ar.reduce(function (s, r) { return s + r.balance; }, 0);
-    var totalAP = ap.reduce(function (s, r) { return s + r.balance; }, 0);
-    var overdueAR = ar.filter(function (r) { return r.age > 0; }).reduce(function (s, r) { return s + r.balance; }, 0);
-    var overdueAP = ap.filter(function (r) { return r.age > 0; }).reduce(function (s, r) { return s + r.balance; }, 0);
-    var net = totalAR - totalAP;
-    var tiles = [
-      { label: "Total Receivable", value: totalAR },
-      { label: "Total Payable", value: totalAP },
-      { label: "Net Position", value: net },
-      { label: "Overdue AR", value: overdueAR },
-      { label: "Overdue AP", value: overdueAP }
-    ];
-    return "<div class=\"mk-kpis\">" + tiles.map(function (t) {
-      return "<div class=\"mk-kpi\"><div class=\"lbl\">" + h(t.label) + "</div><div class=\"val" + (t.value < 0 ? " neg" : "") + "\">" + money(t.value) + "</div></div>";
-    }).join("") + "</div>";
-  }
-
-  function renderChart(ar, ap) {
-    var rows = S.chartSide === "AR" ? ar : ap;
-    var b = buckets(rows), total = b.reduce(function (s, v) { return s + v; }, 0);
-    var W = 640, H = 230, P = 32, maxV = Math.max.apply(null, b.concat([1]));
-    var gw = (W - P * 2) / COLS.length, bw = gw * 0.5;
-    function y(v) { return H - P - 20 - (v / maxV) * (H - P * 2 - 20); }
-    var svg = "<svg viewBox=\"0 0 " + W + " " + H + "\" role=\"img\" aria-label=\"Ageing buckets\"><line x1=\"" + P + "\" x2=\"" + (W - P) + "\" y1=\"" + y(0) + "\" y2=\"" + y(0) + "\" class=\"axis\"/>";
-    COLS.forEach(function (lb, i) {
-      var v = b[i], x = P + gw * i + (gw - bw) / 2, y1 = y(v);
-      svg += "<rect x=\"" + x.toFixed(1) + "\" y=\"" + y1.toFixed(1) + "\" width=\"" + bw.toFixed(1) + "\" height=\"" + Math.max(1, y(0) - y1).toFixed(1) + "\" fill=\"#34DFBA\"/>";
-      svg += "<text x=\"" + (x + bw / 2).toFixed(1) + "\" y=\"" + (y1 - 6).toFixed(1) + "\" class=\"amt\" text-anchor=\"middle\">" + h(money(v)) + "</text>";
-      svg += "<text x=\"" + (x + bw / 2).toFixed(1) + "\" y=\"" + (H - 8) + "\" class=\"tick\" text-anchor=\"middle\">" + h(lb) + "</text>";
-    });
-    svg += "</svg>";
-    var heading = (S.chartSide === "AR" ? "Accounts Receivable" : "Accounts Payable") + " — " + money(total);
-    return "<div class=\"mk-card\"><div class=\"seg no-print\">" +
-      "<button type=\"button\" id=\"chart-ar\" class=\"" + (S.chartSide === "AR" ? "active" : "") + "\">Accounts Receivable</button>" +
-      "<button type=\"button\" id=\"chart-ap\" class=\"" + (S.chartSide === "AP" ? "active" : "") + "\">Accounts Payable</button>" +
-      "</div><h3 class=\"chart-heading\">" + h(heading) + "</h3>" + (total ? svg : "<p class=\"empty\">No data available.</p>") + "</div>";
-  }
-
-  function groupRows(rows) {
-    var byKey = {};
-    rows.forEach(function (r) {
-      var gk = r.type + "::" + r.key;
-      if (!byKey[gk]) byKey[gk] = { type: r.type, key: r.key, name: r.name, items: [], total: 0, maxAge: -Infinity };
-      var g = byKey[gk];
-      g.items.push(r); g.total = Math.round((g.total + r.balance) * 100) / 100; g.maxAge = Math.max(g.maxAge, r.age);
-    });
-    var groups = Object.keys(byKey).map(function (k) { return byKey[k]; });
-    groups.sort(function (a, b) { return b.total - a.total; });
-    groups.forEach(function (g) { g.items.sort(function (a, b) { return parseIso(a.due) - parseIso(b.due); }); });
+  if (!records.length) {
+    $('rows').innerHTML = '<tr><td colspan="8" class="empty">No outstanding items match these filters.</td></tr>';
     return groups;
   }
 
-  function renderTable(ar, ap) {
-    var groups = groupRows(ar.concat(ap));
-    if (!groups.length) return "<div class=\"mk-card\"><h3>Outstanding Items</h3><p class=\"empty\">No data available.</p></div>";
-    var rowsHtml = "";
-    groups.forEach(function (g, gi) {
-      rowsHtml += "<tr class=\"group-row\"><td colspan=\"5\">" + h(g.name) +
-        "<span class=\"badge " + (g.type === "AR" ? "ar" : "ap") + "\">" + g.type + "</span>" +
-        " &nbsp;·&nbsp; " + g.items.length + " item" + (g.items.length === 1 ? "" : "s") +
-        " &nbsp;·&nbsp; " + money(g.total) +
-        " &nbsp;·&nbsp; " + (g.maxAge > 0 ? g.maxAge + " day(s) overdue (oldest)" : "Not yet due") +
-        "</td><td class=\"num\"><button type=\"button\" class=\"draft-btn no-print\" data-group=\"" + gi + "\">Draft Email</button></td></tr>";
+  var html = '';
+  groups.forEach(function (g, gi) {
+    var collapsed = !!state.collapsed[g.key];
+    var oldestText = g.maxDays > 0 ? ' · oldest ' + g.maxDays + ' days overdue' : '';
+    var testPill = g.test ? ' <span class="pill test">Possible test</span>' : '';
+    html += '<tr class="grp" data-group="' + gi + '">' +
+      '<td><span class="badge ' + (g.ap ? 'ap' : 'ar') + '">' + (g.ap ? 'AP' : 'AR') + '</span></td>' +
+      '<td><button type="button" class="toggle" data-toggle="' + gi + '">' + (collapsed ? '▸' : '▾') + '</button>' +
+        esc(g.party) + '<span class="note"> · ' + g.items.length + ' item' + (g.items.length === 1 ? '' : 's') + oldestText + '</span>' + testPill +
+      '</td>' +
+      '<td></td><td></td><td></td>' +
+      '<td class="num">' + money(g.total) + '</td>' +
+      '<td></td>' +
+      '<td class="num"><button type="button" class="btn ghost" data-draft="' + gi + '">Draft Email</button></td>' +
+      '</tr>';
+    if (!collapsed) {
       g.items.forEach(function (it) {
-        var statusCell = "<td class=\"muted\" style=\"padding-left:20px\">" + (it.age > 0 ? "<span class=\"status-chip overdue\">" + it.age + "d overdue</span>" : "<span class=\"status-chip ok\">Not yet due</span>") + "</td>";
-        rowsHtml += "<tr>" + statusCell + "<td>" + h(it.number) + "</td><td>" + h(auDate(it.date)) + "</td><td>" + h(auDate(it.due)) +
-          "</td><td class=\"num\">" + h(money(it.balance)) + "</td></tr>";
+        var refPill = it.test ? ' <span class="pill test">Possible test</span>' : '';
+        html += '<tr class="item">' +
+          '<td></td><td></td>' +
+          '<td>' + (it.ref ? esc(it.ref) : '—') + refPill + '</td>' +
+          '<td>' + esc(auDate(it.date)) + '</td>' +
+          '<td>' + esc(auDate(it.due)) + '</td>' +
+          '<td class="num">' + money(it.amt) + '</td>' +
+          '<td>' + statusPill(it.days) + '</td>' +
+          '<td></td>' +
+          '</tr>';
       });
-    });
-    S._groups = groups;
-    return "<div class=\"mk-card\"><h3>Outstanding Items</h3><div style=\"overflow-x:auto\"><table><thead><tr><th>Status</th><th>Ref #</th><th>Date</th><th>Due</th><th class=\"num\">Amount</th></tr></thead><tbody>" + rowsHtml + "</tbody></table></div></div>";
-  }
+    }
+  });
+  $('rows').innerHTML = html;
+  return groups;
+}
 
-  function buildDraft(group) {
-    var email = contactEmail(group.key);
-    var lines = [];
-    if (group.type === "AR") {
-      lines.push("Hi " + (group.name || "there") + ",");
-      lines.push("");
-      lines.push("This is a friendly reminder that the following invoice(s) remain outstanding:");
-      lines.push("");
-      group.items.forEach(function (it) {
-        lines.push(it.number + "  |  Invoice date: " + auDate(it.date) + "  |  Due: " + auDate(it.due) + "  |  Amount: " + money(it.balance) + (it.age > 0 ? "  |  " + it.age + " day(s) overdue" : "  |  Not yet due"));
+// ---------- email draft modal ----------
+
+function padColumn(values) {
+  var w = 0;
+  values.forEach(function (v) { w = Math.max(w, String(v).length); });
+  return values.map(function (v) { return String(v) + ' '.repeat(w - String(v).length); });
+}
+
+function buildTable(headers, rows) {
+  var cols = headers.map(function (h, i) {
+    return padColumn([h].concat(rows.map(function (r) { return r[i]; })));
+  });
+  var lineCount = headers.length ? cols[0].length : 0;
+  var lines = [];
+  for (var li = 0; li < lineCount; li++) {
+    var parts = cols.map(function (c) { return c[li]; });
+    lines.push(parts.join('  ').replace(/\s+$/, ''));
+  }
+  return lines.join('\n');
+}
+
+function buildBody(group, withTable, orgName, today) {
+  var isAR = !group.ap;
+  var totalLabel = isAR ? 'Total outstanding' : 'Total payable';
+  var noun = isAR ? 'invoice' : 'bill';
+  var nounPlural = group.items.length === 1 ? noun : noun + 's';
+
+  var tableText;
+  if (withTable) {
+    if (isAR) {
+      var headers = ['Invoice ref', 'Invoice date', 'Due date', 'Amount', 'Days overdue'];
+      var rows = group.items.map(function (it) {
+        return [it.ref || '—', auDate(it.date), auDate(it.due), money(it.amt), it.days > 0 ? (it.days + ' days') : '—'];
       });
-      lines.push("");
-      lines.push("Total outstanding: " + money(group.total));
-      lines.push("");
-      lines.push("Could you please arrange payment at your earliest convenience, or let us know if you have any queries regarding these invoices?");
-      lines.push("");
-      lines.push("Kind regards,");
+      tableText = buildTable(headers, rows);
     } else {
-      lines.push("Hi " + (group.name || "there") + ",");
-      lines.push("");
-      lines.push("Just a note to let you know we're finalising payment for the following bill(s):");
-      lines.push("");
-      group.items.forEach(function (it) {
-        lines.push(it.number + "  |  Date: " + auDate(it.date) + "  |  Due: " + auDate(it.due) + "  |  Amount: " + money(it.balance));
+      var headers2 = ['Bill ref', 'Bill date', 'Due date', 'Amount'];
+      var rows2 = group.items.map(function (it) {
+        return [it.ref || '—', auDate(it.date), auDate(it.due), money(it.amt)];
       });
-      lines.push("");
-      lines.push("Total: " + money(group.total));
-      lines.push("");
-      lines.push("Kind regards,");
+      tableText = buildTable(headers2, rows2);
     }
-    var subject = (group.type === "AR" ? "Payment reminder — " : "Bills being processed — ") + group.name;
-    return { to: email, subject: subject, body: lines.join("\n") };
-  }
-
-  function renderOverlay() {
-    var root = $("overlay-root");
-    if (!S.draft) { root.innerHTML = ""; return; }
-    var d = S.draft, mailto = "mailto:" + encodeURIComponent(d.to || "") + "?subject=" + encodeURIComponent(d.subject) + "&body=" + encodeURIComponent(d.body);
-    root.innerHTML = "<div class=\"overlay-bg\" id=\"overlay-bg\"><div class=\"overlay\">" +
-      "<h3>" + h(d.subject) + "</h3>" +
-      "<div class=\"meta\">" + (d.to ? "To: " + h(d.to) : "No email on file for this contact — add a recipient in your email client.") + "</div>" +
-      "<pre>" + h(d.body) + "</pre>" +
-      "<div class=\"actions\"><button type=\"button\" id=\"overlay-close\">Close</button><a href=\"" + mailto + "\" id=\"overlay-open\">Open in email client</a></div>" +
-      "</div></div>";
-    on("overlay-bg", "click", function (e) { if (e.target.id === "overlay-bg") { S.draft = null; renderOverlay(); } });
-    on("overlay-close", "click", function () { S.draft = null; renderOverlay(); });
-  }
-
-  function render() {
-    renderHead();
-    var body = $("body");
-    if (S.loading) { body.innerHTML = "<p class=\"muted\">Loading MYOB data…</p>"; renderControls(); return; }
-    var ar = filteredAR(), ap = filteredAP();
-    renderControls();
-    body.innerHTML = renderTiles(ar, ap) + renderChart(ar, ap) + renderTable(ar, ap);
-    on("chart-ar", "click", function () { S.chartSide = "AR"; render(); });
-    on("chart-ap", "click", function () { S.chartSide = "AP"; render(); });
-    document.querySelectorAll(".draft-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var g = S._groups[Number(btn.getAttribute("data-group"))];
-        S.draft = buildDraft(g); renderOverlay();
-      });
-    });
-    var ft = $("foot");
-    if (ft) ft.textContent = "Prepared from MYOB Business · myob-accounting connector (MYOB Business API v2) · figures reflect each invoice/bill's balance due today.";
-  }
-
-  // ---------- boot ----------
-  function boot(bundle) {
-    S.companyFiles = companyFiles(bundle.data && bundle.data.company_files);
-    if (!S.companyFiles.length) {
-      S.loading = false;
-      $("body").innerHTML = "<p class=\"empty\">No data available.</p>";
-      renderControls(); renderHead();
-      return;
-    }
-    S.org = S.companyFiles[0].id;
-    loadOrg(S.org);
-  }
-
-  if (MH) {
-    window.MyHubReport.onData(boot);
-    if (MH.onThemeChange) MH.onThemeChange(function () { render(); });
   } else {
-    $("body").innerHTML = "<p class=\"empty\">Open this report in mySMB to load MYOB data.</p>";
+    tableText = '[INTERNAL: paste the full list here from "Copy full email" before sending. The Outlook link could not hold it.]';
   }
-})();
+
+  var lines = [];
+  if (isAR) {
+    lines.push('Hi ' + group.party + ',');
+    lines.push('');
+    lines.push('I hope you are well. Our records show the following invoices from ' + orgName + ' remain unpaid as at ' + auDate(todayIso(today)) + '.');
+    lines.push('');
+    lines.push(tableText);
+    lines.push('');
+    lines.push(totalLabel + ': ' + money(group.total) + ' across ' + group.items.length + ' ' + nounPlural + '.');
+    lines.push('');
+    lines.push('Could you please arrange payment at your earliest convenience, or let us know the expected payment date for any of these invoices? If you have already paid, please send the remittance details and we will update our records.');
+    lines.push('');
+    lines.push('Kind regards,');
+    lines.push(SENDER_NAME);
+    lines.push(orgName);
+  } else {
+    lines.push('Hi ' + group.party + ',');
+    lines.push('');
+    lines.push('We are currently processing the following bills:');
+    lines.push('');
+    lines.push(tableText);
+    lines.push('');
+    lines.push(totalLabel + ': ' + money(group.total) + ' across ' + group.items.length + ' ' + nounPlural + '.');
+    lines.push('');
+    lines.push('We will be in touch if we need anything further. Thank you.');
+    lines.push('');
+    lines.push('Kind regards,');
+    lines.push(SENDER_NAME);
+    lines.push(orgName);
+  }
+  return lines.join('\n');
+}
+
+function todayIso(today) {
+  return today.getUTCFullYear() + '-' + String(today.getUTCMonth() + 1).padStart(2, '0') + '-' + String(today.getUTCDate()).padStart(2, '0');
+}
+
+function buildOutlookUrl(to, subject, body) {
+  var params = [];
+  if (to) params.push('to=' + encodeURIComponent(to));
+  params.push('subject=' + encodeURIComponent(subject));
+  params.push('body=' + encodeURIComponent(body));
+  return 'https://outlook.office.com/mail/deeplink/compose?' + params.join('&');
+}
+
+var currentDraft = null;
+
+function openDraft(groupIndex) {
+  var g = state.groupByIndex[groupIndex];
+  if (!g) return;
+  var today = todaySydney();
+  var orgName = g.coName || 'mySMB.com';
+  var isAR = !g.ap;
+
+  $('mailT').textContent = isAR ? 'Email draft (customer, AR): not sent' : 'Email draft (supplier, AP): not sent';
+  $('mSumm').textContent = g.items.length + ' ' + (isAR ? 'invoice' : 'bill') + (g.items.length === 1 ? '' : 's') + ' for ' + g.party + ', totalling ' + money(g.total) + '. Based on the filters currently selected.';
+  $('mWarn').classList.toggle('hid', !g.test);
+  if (g.test) $('mWarn').textContent = 'This contact looks like a QA or test record. Check it before sending.';
+
+  $('mTo').value = '';
+  var subject = isAR
+    ? 'Payment reminder: outstanding invoices – ' + g.party + ' – ' + auDate(todayIso(today))
+    : 'Bills being processed – ' + g.party + ' – ' + auDate(todayIso(today));
+  $('mSub').value = subject;
+
+  var fullBody = buildBody(g, true, orgName, today);
+  $('mBody').value = fullBody;
+  $('mNote').textContent = 'Nothing is sent from here. The draft opens in Outlook so you can review, edit and send it yourself.';
+
+  currentDraft = { group: g, orgName: orgName, today: today, subject: subject, fullBody: fullBody };
+  $('mail').classList.remove('hid');
+}
+
+function closeDraft() {
+  $('mail').classList.add('hid');
+  currentDraft = null;
+}
+
+function copyFullEmail() {
+  var text = $('mBody').value;
+  var done = function () {
+    $('mNote').textContent = 'Full email copied. Paste it into the Outlook draft.';
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text, done); });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function fallbackCopy(text, done) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) { /* no-op */ }
+  document.body.removeChild(ta);
+  done();
+}
+
+function openInOutlook() {
+  if (!currentDraft) return;
+  var to = $('mTo').value.trim();
+  var subject = $('mSub').value;
+  var body = $('mBody').value;
+  var url = buildOutlookUrl(to, subject, body);
+
+  if (url.length > OUTLOOK_LINK_LIMIT) {
+    var shortBody = buildBody(currentDraft.group, false, currentDraft.orgName, currentDraft.today);
+    url = buildOutlookUrl(to, subject, shortBody);
+    $('mNote').textContent = 'The full list is too long for an Outlook link. Outlook has been opened with the totals only. Press "Copy full email" and paste the list into the draft in place of the internal line.';
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
+// ---------- master render ----------
+
+function render() {
+  $('stamp').textContent = state.stamp || '—';
+  renderFilterBar();
+  var records = filteredRecords();
+  var tiles = renderTiles(records);
+  renderChart(tiles.ar, tiles.ap);
+  var groups = renderTable(records);
+  renderCount(records, groups);
+  wireRowEvents();
+}
+
+function wireRowEvents() {
+  document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var g = state.groupByIndex[Number(btn.getAttribute('data-toggle'))];
+      if (!g) return;
+      state.collapsed[g.key] = !state.collapsed[g.key];
+      render();
+    });
+  });
+  document.querySelectorAll('[data-draft]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openDraft(Number(btn.getAttribute('data-draft')));
+    });
+  });
+}
+
+function wireControls() {
+  $('fOrg').addEventListener('change', function () {
+    state.org = this.value;
+    state.client = '';
+    render();
+  });
+  $('fClient').addEventListener('change', function () { state.client = this.value; render(); });
+  $('fPeriod').addEventListener('change', function () { state.period = this.value; render(); });
+  $('fFrom').addEventListener('change', function () { state.from = this.value; render(); });
+  $('fTo').addEventListener('change', function () { state.to = this.value; render(); });
+  $('fSeries').addEventListener('change', function () { state.series = this.value; render(); });
+
+  $('mCancel').addEventListener('click', closeDraft);
+  $('mCopy').addEventListener('click', copyFullEmail);
+  $('mOpen').addEventListener('click', openInOutlook);
+  $('mail').addEventListener('click', function (e) { if (e.target.id === 'mail') closeDraft(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !$('mail').classList.contains('hid')) closeDraft();
+  });
+}
+
+wireControls();
+
+if (MH) {
+  window.MyHubReport.onData(loadAll);
+  if (window.MyHubReport.onThemeChange) window.MyHubReport.onThemeChange(function () { render(); });
+} else {
+  console.error('[unpaid-aged-accounts-myob] window.MyHubReport is not available.');
+  render();
+}
 </script>
 </body>
 </html>
