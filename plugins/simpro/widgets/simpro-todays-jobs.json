@@ -52,7 +52,15 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Simpro" }
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Simpro · {n} today",
+              "n": { "$computed": "count", "args": { "value": { "$state": "/simpro/list_todays_jobs/jobs" } } }
+            }
+          }
+        }
       },
 
       "divider": { "type": "Divider", "props": {} },
@@ -97,7 +105,22 @@
 
       "row": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "start" },
+        "props": { "gap": "sm", "align": "start", "hover": true, "clickable": true },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "simpro_build_record_url",
+                "args": {
+                  "build_domain": { "$state": "/simpro/list_todays_jobs/buildDomain" },
+                  "kind": "job",
+                  "id": { "$item": "ID" }
+                }
+              }
+            }
+          }
+        },
         "children": ["rowTime", "rowBody"]
       },
 
