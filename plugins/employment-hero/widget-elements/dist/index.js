@@ -195,17 +195,11 @@ const flatten_upcoming_leave = (args) => {
         const empName = (typeof item.employee_name === 'string' && item.employee_name)
             ? item.employee_name
             : emp
-                ? (typeof emp.name === 'string' && emp.name)
-                    ? emp.name
-                    : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+                ? (typeof emp.name === 'string' && emp.name ? emp.name : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim())
                 : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
         const rawStatus = String(item.status ?? '').toLowerCase();
-        const statusLabel = rawStatus === 'approved' ? 'Approved'
-            : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined'
-                : 'Pending';
-        const statusTone = rawStatus === 'approved' ? 'success'
-            : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive'
-                : 'muted';
+        const statusLabel = rawStatus === 'approved' ? 'Approved' : rawStatus === 'declined' || rawStatus === 'rejected' ? 'Declined' : 'Pending';
+        const statusTone = rawStatus === 'approved' ? 'success' : rawStatus === 'declined' || rawStatus === 'rejected' ? 'destructive' : 'muted';
         return {
             id: String(item.id ?? ''),
             employee_name: empName,
@@ -250,9 +244,7 @@ const flatten_my_leave_requests = (args) => {
         const empName = (typeof item.employee_name === 'string' && item.employee_name)
             ? item.employee_name
             : emp
-                ? (typeof emp.name === 'string' && emp.name)
-                    ? emp.name
-                    : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim()
+                ? (typeof emp.name === 'string' && emp.name ? emp.name : `${emp.first_name ?? ''} ${emp.last_name ?? ''}`.trim())
                 : `${item.first_name ?? ''} ${item.last_name ?? ''}`.trim();
         const { display: submittedDisplay } = formatEhDate(item.created_at ?? item.submitted_at ?? item.lodged_at ?? item.lodgement_date ?? item.date_lodged);
         let submittedLabel = submittedDisplay ? `Submitted ${submittedDisplay}` : '';
