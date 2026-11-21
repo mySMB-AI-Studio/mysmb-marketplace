@@ -1,0 +1,309 @@
+{
+  "id": "stripe-customers",
+  "title": "Stripe Customers",
+  "description": "Recent customers in your Stripe account — name, email, and sign-up date.",
+  "category": "payments",
+  "tags": ["stripe", "customers", "billing", "contacts"],
+  "keywords": ["customers", "stripe", "billing", "email", "contacts", "clients"],
+  "connectorsUsed": ["stripe"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 5, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 3 },
+    "max": { "colSpan": 8, "rowSpan": 8 }
+  },
+  "dataProvider": {
+    "mcp": "stripe",
+    "tool": "list_customers",
+    "params": { "limit": 20 }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "children": ["titleRow", "divider", "body"],
+        "watch": {
+          "/stripe/list_customers/data": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sortKey",
+                "value": "name|asc"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sorted",
+                "value": {
+                  "$computed": "stripe_sort_by_key",
+                  "args": {
+                    "value": { "$state": "/stripe/list_customers/data" },
+                    "key": "name|asc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/sorted",
+                "value": {
+                  "$computed": "stripe_sort_by_key",
+                  "args": {
+                    "value": { "$state": "/stripe/list_customers/data" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Stripe Customers", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Stripe · {n} recent",
+              "n": {
+                "$computed": "count",
+                "args": { "value": { "$state": "/stripe/list_customers/data" } }
+              }
+            }
+          }
+        }
+      },
+      "divider": { "type": "Divider", "props": {} },
+      "body": {
+        "type": "Body",
+        "children": ["loading", "empty", "columnHeaders", "list"]
+      },
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/stripe.list_customers" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No customers found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_customers", "not": true },
+            { "$state": "/stripe/list_customers/data/0", "not": true }
+          ]
+        }
+      },
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0, 1fr) 7rem 6rem",
+          "padded": true
+        },
+        "children": ["headerCustomer", "headerCreated", "headerSpend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_customers", "not": true },
+            { "$state": "/stripe/list_customers/data/0" }
+          ]
+        }
+      },
+      "headerCustomer": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["customerLabel", "sortBtn"]
+      },
+      "customerLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Customer" }
+      },
+      "sortBtn": {
+        "type": "Button",
+        "props": {
+          "leadingIcon": "ArrowUpDown",
+          "variant": "ghost",
+          "size": "sm",
+          "ariaLabel": "Sort by customer name"
+        },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": {
+                  "current": { "$state": "/ui/sortKey" },
+                  "field": "name"
+                }
+              }
+            }
+          }
+        }
+      },
+      "headerCreated": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["headerCreatedLabel", "sortCreatedBtn"]
+      },
+      "headerCreatedLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Created" }
+      },
+      "sortCreatedBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by date created" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "created" }
+              }
+            }
+          }
+        }
+      },
+      "headerSpend": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["headerSpendLabel", "sortBalanceBtn"]
+      },
+      "headerSpendLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Balance" }
+      },
+      "sortBalanceBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by balance" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "balance" }
+              }
+            }
+          }
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": {
+          "statePath": "/ui/sorted",
+          "key": "id"
+        },
+        "visible": { "$state": "/_loading/stripe.list_customers", "not": true }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "minmax(0, 1fr) 7rem 6rem"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$computed": "stripe_build_customer_url",
+                "args": {
+                  "customer_id": { "$item": "id" },
+                  "livemode": { "$item": "livemode" },
+                  "platform_id": { "$state": "/stripe/list_customers/platform_account_id" },
+                  "connected_id": { "$state": "/stripe/list_customers/connected_account_id" }
+                }
+              }
+            }
+          }
+        },
+        "children": ["identity", "createdDate", "balanceText"]
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["nameText", "emailText"]
+      },
+      "nameText": {
+        "type": "Text",
+        "props": {
+          "text": { "$item": "name" },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "emailText": {
+        "type": "Caption",
+        "props": {
+          "text": { "$item": "email" },
+          "truncate": true
+        }
+      },
+      "createdDate": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "stripe_format_stripe_date_dmy",
+            "args": { "value": { "$item": "created" } }
+          }
+        }
+      },
+      "balanceText": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$item": "balance" },
+              "currency": "aud"
+            }
+          }
+        }
+      }
+    }
+  }
+}

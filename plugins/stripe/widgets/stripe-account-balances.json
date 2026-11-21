@@ -1,0 +1,172 @@
+{
+  "id": "stripe-account-balances",
+  "title": "Account Balances",
+  "description": "Overview of your Stripe account: available balance, funds on hold, amount in transit to bank, and lifetime total charge volume.",
+  "category": "payments",
+  "tags": ["stripe", "balance", "payments", "finance"],
+  "keywords": ["balance", "available", "pending", "stripe", "funds", "payout", "lifetime", "volume", "in transit"],
+  "connectorsUsed": ["stripe"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 3 },
+    "min": { "colSpan": 3, "rowSpan": 2 },
+    "max": { "colSpan": 6, "rowSpan": 4 }
+  },
+  "dataProvider": {
+    "mcp": "stripe",
+    "tool": "get_balance_overview",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "body"]
+      },
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "Wallet", "tone": "accent", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["title", "subtitle"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Account Balances", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Stripe · Account Overview" }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "grid"]
+      },
+      "loading": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/stripe.get_balance_overview" }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No balance data available." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.get_balance_overview", "not": true },
+            { "$state": "/stripe/get_balance_overview/currency", "not": true }
+          ]
+        }
+      },
+      "grid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "md" },
+        "children": ["tileTotal", "tileInTransit", "tileOnHold", "tileLifetime"],
+        "visible": { "$state": "/_loading/stripe.get_balance_overview", "not": true }
+      },
+      "tileTotal": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["totalLabel", "totalValue"]
+      },
+      "totalLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Total Balance" }
+      },
+      "totalValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$state": "/stripe/get_balance_overview/available_amount" },
+              "currency": { "$state": "/stripe/get_balance_overview/currency" }
+            }
+          }
+        }
+      },
+      "tileInTransit": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["inTransitLabel", "inTransitValue"]
+      },
+      "inTransitLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "In Transit to Bank" }
+      },
+      "inTransitValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$state": "/stripe/get_balance_overview/in_transit_amount" },
+              "currency": { "$state": "/stripe/get_balance_overview/currency" }
+            }
+          }
+        }
+      },
+      "tileOnHold": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["onHoldLabel", "onHoldValue"]
+      },
+      "onHoldLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Funds on Hold" }
+      },
+      "onHoldValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$state": "/stripe/get_balance_overview/pending_amount" },
+              "currency": { "$state": "/stripe/get_balance_overview/currency" }
+            }
+          }
+        }
+      },
+      "tileLifetime": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["lifetimeLabel", "lifetimeValue"]
+      },
+      "lifetimeLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "Lifetime Total Volume" }
+      },
+      "lifetimeValue": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$computed": "stripe_format_currency",
+            "args": {
+              "amount": { "$state": "/stripe/get_balance_overview/lifetime_total_amount" },
+              "currency": { "$state": "/stripe/get_balance_overview/currency" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
