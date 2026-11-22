@@ -1,0 +1,99 @@
+{
+  "contentHash": "840df9b5712da0df8956788dbab610b2a20cfcc4dc11df80ed01dfcb02683c19",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoiceId": "invoiceId",
+          "patch": "patch",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "update_invoice"
+      }
+    ],
+    "idempotency": {
+      "keyParam": "invoiceId",
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoiceId": {
+          "description": "The Xero InvoiceID of the draft bill created for this job.",
+          "type": "string"
+        },
+        "patch": {
+          "additionalProperties": false,
+          "properties": {
+            "Status": {
+              "enum": [
+                "SUBMITTED",
+                "AUTHORISED"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "Status"
+          ],
+          "type": "object"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "invoiceId",
+        "patch"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bill.approve",
+    "kind": "capability",
+    "originKey": "d7a7fddc-974f-4bdd-8d70-fe83d754cbc2",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "properties": {
+              "InvoiceID": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "UpdatedDateUTC": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Invoices"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "get_invoice"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "financial",
+    "title": "Approve a bill in Xero"
+  },
+  "kind": "capability",
+  "name": "Approve a bill in Xero",
+  "originKey": "d7a7fddc-974f-4bdd-8d70-fe83d754cbc2"
+}

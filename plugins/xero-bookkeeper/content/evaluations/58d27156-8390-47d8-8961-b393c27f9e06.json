@@ -1,0 +1,257 @@
+{
+  "contentHash": "d5f0760cd9322eede5a4af08e6369cd03fc7951c9eebdf7763d1cf1470924e51",
+  "definition": {
+    "key": "client-onboarding-controls",
+    "kind": "evaluation",
+    "originKey": "58d27156-8390-47d8-8961-b393c27f9e06",
+    "process": "97f54b6f-6b6f-480e-afb7-07033a22efbd",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "activate",
+              "step": "confirm"
+            }
+          ],
+          "outcome": "clientReady",
+          "stepsReached": [
+            "resolve",
+            "confirm",
+            "ready"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "resolve": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "data": {
+                  "clientSlug": "demo-company-au",
+                  "contactEmail": "owner@demo.example",
+                  "contactName": "Dana Owner",
+                  "gstRegistered": true,
+                  "name": "Demo Company (AU)",
+                  "xeroOrgName": "Demo Company (AU)",
+                  "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+                },
+                "gstRegistered": true,
+                "slug": "bookkeeping_clients",
+                "title": "Demo Company (AU)"
+              },
+              "missing": [],
+              "ready": true,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
+          },
+          "responses": [
+            {
+              "option": "activate",
+              "step": "confirm"
+            }
+          ],
+          "xero": {
+            "organisations": [
+              {
+                "CountryCode": "AU",
+                "Name": "Demo Company (AU)",
+                "TaxNumber": "51824753556",
+                "TenantID": "00000000-0000-4000-8000-00000000d001"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientName": "Demo Company (AU)",
+          "contactEmail": "owner@demo.example",
+          "contactName": "Dana Owner",
+          "xeroOrgName": "Demo Company (AU)"
+        },
+        "key": "activate",
+        "rubric": [
+          {
+            "criterion": "The client record carries the Xero organisation id, GST registration and the contact email, and nothing is written in Xero.",
+            "weight": 1
+          }
+        ],
+        "title": "A matched organisation is recorded on the manager's decision"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "decline",
+              "step": "confirm"
+            }
+          ],
+          "intentsNotAllowed": [
+            "records.write"
+          ],
+          "outcome": "declined",
+          "stepsReached": [
+            "resolve",
+            "confirm",
+            "declined"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "resolve": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "data": {
+                  "clientSlug": "demo-company-au",
+                  "contactEmail": "owner@demo.example",
+                  "contactName": "Dana Owner",
+                  "gstRegistered": true,
+                  "name": "Demo Company (AU)",
+                  "xeroOrgName": "Demo Company (AU)",
+                  "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+                },
+                "gstRegistered": true,
+                "slug": "bookkeeping_clients",
+                "title": "Demo Company (AU)"
+              },
+              "missing": [],
+              "ready": true,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
+          },
+          "responses": [
+            {
+              "option": "decline",
+              "step": "confirm"
+            }
+          ],
+          "xero": {
+            "organisations": [
+              {
+                "CountryCode": "AU",
+                "Name": "Demo Company (AU)",
+                "TaxNumber": "51824753556",
+                "TenantID": "00000000-0000-4000-8000-00000000d001"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientName": "Demo Company (AU)",
+          "contactEmail": "owner@demo.example",
+          "contactName": "Dana Owner",
+          "xeroOrgName": "Demo Company (AU)"
+        },
+        "key": "decline",
+        "title": "The manager declines: nothing is saved"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "records.write"
+          ],
+          "stepsReached": [
+            "resolve",
+            "confirm"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "resolve": {
+              "client": {
+                "contactEmail": "owner@demo.example",
+                "data": {
+                  "clientSlug": "demo-company-au",
+                  "contactEmail": "owner@demo.example",
+                  "contactName": "Dana Owner",
+                  "gstRegistered": true,
+                  "name": "Demo Company (AU)",
+                  "xeroOrgName": "Demo Company (AU)",
+                  "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+                },
+                "gstRegistered": true,
+                "slug": "bookkeeping_clients",
+                "title": "Demo Company (AU)"
+              },
+              "missing": [],
+              "ready": true,
+              "xeroTenantId": "00000000-0000-4000-8000-00000000d001"
+            }
+          },
+          "responses": [],
+          "xero": {
+            "organisations": [
+              {
+                "CountryCode": "AU",
+                "Name": "Demo Company (AU)",
+                "TaxNumber": "51824753556",
+                "TenantID": "00000000-0000-4000-8000-00000000d001"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientName": "Demo Company (AU)",
+          "contactEmail": "owner@demo.example",
+          "contactName": "Dana Owner",
+          "xeroOrgName": "Demo Company (AU)"
+        },
+        "key": "noDecision",
+        "title": "Nobody confirms: no record is saved"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "records.write"
+          ],
+          "outcome": "needsAttention",
+          "stepsReached": [
+            "resolve",
+            "needsAttention"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "resolve": {
+              "client": null,
+              "missing": [
+                "No connected Xero organisation is named 'Acme Fitouts Pty Ltd'"
+              ],
+              "ready": false,
+              "xeroTenantId": null
+            }
+          },
+          "responses": [],
+          "xero": {
+            "organisations": [
+              {
+                "Name": "Demo Company (AU)",
+                "TenantID": "00000000-0000-4000-8000-00000000d001"
+              }
+            ]
+          }
+        },
+        "inputs": {
+          "clientName": "Acme Fitouts",
+          "xeroOrgName": "Acme Fitouts Pty Ltd"
+        },
+        "key": "organisationNotFound",
+        "rubric": [
+          {
+            "criterion": "The missing list names the Xero organisation that could not be found.",
+            "weight": 1
+          }
+        ],
+        "title": "No Xero organisation matches: ends as needsAttention"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1,
+      "rubricMinScore": 0.7
+    },
+    "title": "Client onboarding: controls"
+  },
+  "kind": "evaluation",
+  "name": "Client onboarding: controls",
+  "originKey": "58d27156-8390-47d8-8961-b393c27f9e06"
+}

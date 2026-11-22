@@ -1,0 +1,179 @@
+<ws-stack gap="5">
+  <ws-card heading="Connections" description="Xero is needed. Each mailbox is optional and can be added later from the agent's Setup page.">
+    <ws-stack id="connections" gap="3">
+      <ws-row gap="2"><ws-spinner size="sm" label="Loading connections"></ws-spinner><span class="ws-text-sm ws-text-muted">Loading connections</span></ws-row>
+    </ws-stack>
+  </ws-card>
+
+  <ws-empty id="not-connected" heading="Connect Xero first" description="The agent reads your clients' books through this connection. Nothing in Xero is changed on this page." hidden>
+    <ws-button id="connect">Connect Xero</ws-button>
+  </ws-empty>
+
+  <ws-alert id="read-error" variant="destructive" heading="Could not read Xero" hidden>
+    <ws-stack gap="2">
+      <span id="read-error-text"></span>
+      <ws-row><ws-button id="retry" variant="outline" size="sm">Try again</ws-button></ws-row>
+    </ws-stack>
+  </ws-alert>
+
+  <ws-row id="loading" gap="2" hidden><ws-spinner label="Reading Xero"></ws-spinner><span class="ws-text-sm ws-text-muted">Reading Xero</span></ws-row>
+
+  <ws-card id="xero" hidden>
+    <ws-badge slot="action" variant="success">Readable</ws-badge>
+    <ws-stack gap="4">
+      <span id="xero-note" class="ws-text-sm ws-text-muted"></span>
+      <ws-table id="account-groups" caption="Active accounts in the chart of accounts" empty-text="Xero returned no active accounts."></ws-table>
+      <ws-field label="Find an account" description="Search by name or code to confirm the agent sees the account you expect.">
+        <ws-combobox id="account" placeholder="Search accounts" empty-text="No account matches"></ws-combobox>
+      </ws-field>
+      <span id="account-detail" class="ws-text-sm" aria-live="polite"></span>
+    </ws-stack>
+  </ws-card>
+</ws-stack>
+<script>
+(() => {
+  const ORG_CAPABILITY = 'xero.organisation.read';
+  const ACCOUNTS_CAPABILITY = 'xero.accounts.read';
+  const SERVICES = [
+    { server: 'xero-accounting', label: 'Xero', required: true },
+    { server: 'm365-mail-read', label: 'Intake mailbox', required: false },
+    { server: 'm365-mail-send', label: 'Sending mailbox', required: false },
+  ];
+  // Xero account types, grouped the way a bookkeeper reads a chart of accounts.
+  const GROUPS = [
+    { label: 'Revenue', types: ['REVENUE', 'SALES', 'OTHERINCOME'] },
+    { label: 'Expenses', types: ['EXPENSE', 'OVERHEADS', 'DIRECTCOSTS', 'DEPRECIATN'] },
+    { label: 'Assets', types: ['BANK', 'CURRENT', 'FIXED', 'NONCURRENT', 'INVENTORY', 'PREPAYMENT'] },
+    { label: 'Liabilities', types: ['CURRLIAB', 'LIABILITY', 'TERMLIAB', 'PAYGLIABILITY', 'SUPERANNUATIONEXPENSE', 'SUPERANNUATIONLIABILITY', 'WAGESEXPENSE', 'WAGESPAYABLELIABILITY'] },
+    { label: 'Equity', types: ['EQUITY'] },
+  ];
+  const el = (id) => document.getElementById(id);
+  const show = (id, visible) => { el(id).hidden = !visible; };
+  const canContinue = (value) => workspace.wizard.setCanContinue({ value }).catch(() => {});
+  const listOf = (result, key) => {
+    if (!result || typeof result !== 'object') return [];
+    const found = result[key] ?? result[key.toLowerCase()];
+    return Array.isArray(found) ? found : [];
+  };
+  let accounts = [];
+
+  function renderConnections(capabilities) {
+    const list = el('connections');
+    list.replaceChildren();
+    for (const service of SERVICES) {
+      const binding = capabilities.map((capability) => capability.servers.includes(service.server) ? capability.binding : null).find((found) => found && found.server === service.server) || null;
+      const row = document.createElement('ws-row');
+      row.setAttribute('justify', 'between');
+      row.setAttribute('wrap', '');
+      const name = document.createElement('span');
+      name.textContent = service.label;
+      const badge = document.createElement('ws-badge');
+      if (binding && binding.status !== 'revoked') {
+        badge.setAttribute('variant', 'success');
+        badge.textContent = binding.identity ? `Connected as ${binding.identity}` : 'Connected';
+      } else if (binding) {
+        badge.setAttribute('variant', 'warning');
+        badge.textContent = 'Disconnected: connect it again';
+      } else {
+        badge.setAttribute('variant', service.required ? 'warning' : 'secondary');
+        badge.textContent = service.required ? 'Not connected' : 'Optional, not connected';
+      }
+      row.append(name, badge);
+      list.append(row);
+    }
+  }
+
+  function failed(error) {
+    show('loading', false);
+    el('read-error-text').textContent = error && error.message
+      ? `${error.message}. Check the Xero connection on the previous page, then try again.`
+      : 'Xero did not answer. Check the Xero connection on the previous page, then try again.';
+    show('read-error', true);
+  }
+
+  function renderAccounts(org, found) {
+    const active = found.filter((account) => !account.Status || account.Status === 'ACTIVE');
+    const groups = GROUPS.map((group) => ({ group: group.label, count: active.filter((account) => group.types.includes(account.Type)).length }));
+    const grouped = groups.reduce((sum, row) => sum + row.count, 0);
+    if (active.length > grouped) groups.push({ group: 'Other', count: active.length - grouped });
+    const table = el('account-groups');
+    table.columns = [{ key: 'group', label: 'Group' }, { key: 'count', label: 'Accounts', align: 'end' }];
+    table.rows = groups.filter((row) => row.count > 0).map((row) => ({ group: row.group, count: String(row.count) }));
+    accounts = active;
+    el('account').options = active
+      .slice()
+      .sort((a, b) => String(a.Code || '').localeCompare(String(b.Code || ''), 'en-AU', { numeric: true }))
+      .map((account) => ({ value: account.AccountID || account.Code || account.Name, label: account.Code ? `${account.Code} · ${account.Name}` : account.Name, description: account.Type }));
+  }
+
+  async function check() {
+    for (const id of ['not-connected', 'read-error', 'xero']) show(id, false);
+    canContinue(false);
+    let capabilities;
+    try {
+      ({ capabilities } = await workspace.capabilities.list());
+    } catch (error) {
+      el('connections').replaceChildren();
+      failed(error);
+      return;
+    }
+    renderConnections(capabilities);
+    const org = capabilities.find((capability) => capability.key === ORG_CAPABILITY);
+    if (!org || !org.binding || org.binding.status === 'revoked') { show('not-connected', true); return; }
+
+    show('loading', true);
+    let organisation;
+    try {
+      const { result } = await workspace.capabilities.invoke({ capability: ORG_CAPABILITY, input: {} });
+      organisation = listOf(result, 'Organisations')[0];
+      if (!organisation || !organisation.Name) throw new Error('Xero returned no organisation for this connection');
+    } catch (error) {
+      if (error && error.code === 'precondition_failed') { show('loading', false); show('not-connected', true); return; }
+      failed(error);
+      return;
+    }
+    const card = el('xero');
+    card.setAttribute('heading', organisation.Name);
+    const where = [organisation.BaseCurrency && `Base currency ${organisation.BaseCurrency}`, organisation.CountryCode].filter(Boolean).join(' · ');
+    if (where) card.setAttribute('description', where); else card.removeAttribute('description');
+    el('xero-note').textContent = `This is the organisation the connection opens by default. Each client organisation the connection can see is onboarded later, through the agent.`;
+    canContinue(true);
+
+    try {
+      const input = { where: 'Status=="ACTIVE"' };
+      if (organisation.OrganisationID) input.xero_tenant_id = organisation.OrganisationID;
+      const { result } = await workspace.capabilities.invoke({ capability: ACCOUNTS_CAPABILITY, input });
+      renderAccounts(organisation, listOf(result, 'Accounts'));
+    } catch (error) {
+      el('account-groups').setAttribute('empty-text', error && error.message ? `The chart of accounts could not be read: ${error.message}` : 'The chart of accounts could not be read. The agent tries again when it onboards a client.');
+      el('account-groups').rows = [];
+    } finally {
+      show('loading', false);
+      show('xero', true);
+    }
+  }
+
+  el('account').addEventListener('change', () => {
+    const picked = el('account').value;
+    const account = accounts.find((candidate) => (candidate.AccountID || candidate.Code || candidate.Name) === picked);
+    el('account-detail').textContent = account
+      ? `${account.Name}${account.Code ? ` (code ${account.Code})` : ''}: ${account.Type || 'no type'}${account.TaxType ? `, tax type ${account.TaxType}` : ''}.`
+      : '';
+  });
+  el('connect').addEventListener('click', async () => {
+    const button = el('connect');
+    button.setAttribute('loading', '');
+    try {
+      await workspace.connections.connect({ capability: ORG_CAPABILITY });
+      await check();
+    } catch (error) {
+      if (error && error.code !== 'cancelled') failed(error);
+    } finally {
+      button.removeAttribute('loading');
+    }
+  });
+  el('retry').addEventListener('click', () => check());
+
+  check();
+})();
+</script>

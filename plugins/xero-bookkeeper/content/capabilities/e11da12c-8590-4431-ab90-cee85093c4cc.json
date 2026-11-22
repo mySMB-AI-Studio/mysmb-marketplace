@@ -1,0 +1,110 @@
+{
+  "contentHash": "6992fca84a31dd459a135d88db8a5e88bc149105506c1d0318c1183e789528cb",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "ids": "ids",
+          "includeArchived": "includeArchived",
+          "page": "page",
+          "searchTerm": "searchTerm",
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.contacts.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_contacts"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "includeArchived": {
+          "type": "boolean"
+        },
+        "page": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "searchTerm": {
+          "description": "Name, email or ABN fragment.",
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.contacts.read",
+    "kind": "capability",
+    "originKey": "e11da12c-8590-4431-ab90-cee85093c4cc",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Contacts": {
+          "items": {
+            "properties": {
+              "BankAccountDetails": {
+                "type": "string"
+              },
+              "ContactID": {
+                "type": "string"
+              },
+              "ContactStatus": {
+                "type": "string"
+              },
+              "EmailAddress": {
+                "type": "string"
+              },
+              "IsCustomer": {
+                "type": "boolean"
+              },
+              "IsSupplier": {
+                "type": "boolean"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "TaxNumber": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Contacts"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Find Xero contacts"
+  },
+  "kind": "capability",
+  "name": "Find Xero contacts",
+  "originKey": "e11da12c-8590-4431-ab90-cee85093c4cc"
+}

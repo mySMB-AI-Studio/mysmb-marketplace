@@ -1,0 +1,178 @@
+{
+  "contentHash": "add1eded1097362a168f4fcb27ad2b179dcf444e6ef233e463a0d3e80aeba1d0",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoice": "invoice",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.transactions"
+        ],
+        "server": "xero-accounting",
+        "tool": "create_invoice"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoice": {
+          "additionalProperties": false,
+          "properties": {
+            "Contact": {
+              "properties": {
+                "ContactID": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ContactID"
+              ],
+              "type": "object"
+            },
+            "CurrencyCode": {
+              "type": "string"
+            },
+            "Date": {
+              "type": "string"
+            },
+            "DueDate": {
+              "type": "string"
+            },
+            "InvoiceNumber": {
+              "type": "string"
+            },
+            "LineAmountTypes": {
+              "enum": [
+                "Exclusive",
+                "Inclusive",
+                "NoTax"
+              ],
+              "type": "string"
+            },
+            "LineItems": {
+              "items": {
+                "properties": {
+                  "AccountCode": {
+                    "type": "string"
+                  },
+                  "Description": {
+                    "type": "string"
+                  },
+                  "Quantity": {
+                    "type": "number"
+                  },
+                  "TaxAmount": {
+                    "type": "number"
+                  },
+                  "TaxType": {
+                    "type": "string"
+                  },
+                  "Tracking": {
+                    "type": "array"
+                  },
+                  "UnitAmount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "Description",
+                  "Quantity",
+                  "UnitAmount",
+                  "AccountCode"
+                ],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "Reference": {
+              "description": "Carries the job externalRef.",
+              "maxLength": 255,
+              "type": "string"
+            },
+            "Status": {
+              "enum": [
+                "DRAFT"
+              ],
+              "type": "string"
+            },
+            "Type": {
+              "enum": [
+                "ACCPAY"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "Type",
+            "Contact",
+            "LineItems",
+            "Date",
+            "DueDate",
+            "Reference",
+            "Status"
+          ],
+          "type": "object"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "invoice"
+      ],
+      "type": "object"
+    },
+    "key": "xero.bill.draft_create",
+    "kind": "capability",
+    "originKey": "9f129396-eb79-47c6-9a00-8bf8df5a5bce",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "properties": {
+              "InvoiceID": {
+                "type": "string"
+              },
+              "InvoiceNumber": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "Total": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Invoices"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "list_invoices"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "write_external",
+    "title": "Create a draft bill in Xero"
+  },
+  "kind": "capability",
+  "name": "Create a draft bill in Xero",
+  "originKey": "9f129396-eb79-47c6-9a00-8bf8df5a5bce"
+}

@@ -1,0 +1,112 @@
+{
+  "contentHash": "9bca9e8d0dc475a36cc619d124d875fd853c6a5eebc01ed63fea17062c09a531",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "where": "where",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_accounts"
+      },
+      {
+        "argMap": {
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.settings.read"
+        ],
+        "server": "xero-accounting",
+        "tool": "list_tax_rates"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "where": {
+          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\" AND Type!=\"BANK\".",
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "description": "The client's Xero organisation id (always from the client record).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id"
+      ],
+      "type": "object"
+    },
+    "key": "xero.accounts.read",
+    "kind": "capability",
+    "originKey": "2a09df8f-2e5f-4ba2-b816-541528afb70c",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Accounts": {
+          "items": {
+            "properties": {
+              "AccountID": {
+                "type": "string"
+              },
+              "Code": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "TaxType": {
+                "type": "string"
+              },
+              "Type": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "TaxRates": {
+          "items": {
+            "properties": {
+              "EffectiveRate": {
+                "type": "number"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "TaxType": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the chart of accounts and tax rates"
+  },
+  "kind": "capability",
+  "name": "Read the chart of accounts and tax rates",
+  "originKey": "2a09df8f-2e5f-4ba2-b816-541528afb70c"
+}

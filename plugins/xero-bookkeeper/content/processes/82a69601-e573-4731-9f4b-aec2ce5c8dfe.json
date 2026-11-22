@@ -1,0 +1,331 @@
+{
+  "contentHash": "645ffd03ec05f1b2ec04a91aee0aa994fd05890d808fb4c4b806b74cca4c3b03",
+  "definition": {
+    "capabilities": [
+      "xero.organisation.read",
+      "xero.accounts.read",
+      "xero.contacts.read",
+      "xero.contacts.upsert",
+      "xero.bills.read",
+      "xero.invoice.draft_create",
+      "email.send_reviewed",
+      "knowledge.read"
+    ],
+    "description": "Drafts a sales invoice from a client's request (email text or a chat brief), matches the customer in Xero, raises it for the reviewer, creates it as a DRAFT on approval and emails it to the client only on a further recorded decision.",
+    "exceptions": [
+      {
+        "allowedPaths": [
+          "draft",
+          "review",
+          "needsAttention"
+        ],
+        "blocks": [
+          "record"
+        ],
+        "key": "customerNotInXero"
+      }
+    ],
+    "inputs": [
+      {
+        "key": "clientSlug",
+        "label": "Client (slug of the client record)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "requestRef",
+        "label": "Request reference (email id or a short handle)",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "requestText",
+        "label": "What the client asked for",
+        "required": true,
+        "type": "string"
+      }
+    ],
+    "key": "invoice-request",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 1,
+      "maxAgentTurnsPerStep": 12,
+      "maxAiUnits": 200,
+      "maxSteps": 30,
+      "maxWaitingDays": 14
+    },
+    "modelPolicy": {
+      "brief": "haiku",
+      "judgement": "sonnet",
+      "plan": "sonnet"
+    },
+    "originKey": "82a69601-e573-4731-9f4b-aec2ce5c8dfe",
+    "outcomes": [
+      {
+        "evidence": [
+          "xero_invoice_id",
+          "decision_record"
+        ],
+        "key": "invoiceDrafted",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "discarded",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "missing_items"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "decision_record"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "An invoice is created in Xero only as the effect of the reviewer's recorded approval, and only as a DRAFT.",
+        "key": "noInvoiceWithoutDecision"
+      },
+      {
+        "description": "The invoice is emailed to the client only as the effect of a recorded decision; the agent never sends.",
+        "key": "noClientEmailWithoutDecision"
+      },
+      {
+        "description": "Every Xero call carries the xero_tenant_id of the job's client record.",
+        "key": "oneClientPerJob"
+      }
+    ],
+    "rework": [
+      {
+        "from": "send",
+        "requires": "reviewer",
+        "to": "draft"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "steps.draft.proposal != null",
+        "steps.draft.ready != null"
+      ],
+      "sampleInputs": {
+        "clientSlug": "demo-company-au",
+        "requestRef": "REQ-SAMPLE-0001",
+        "requestText": "Please invoice Ridgeway University for 10 hours of consulting in October at the usual rate."
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "draft",
+        "kind": "agent",
+        "outputs": [
+          "proposal",
+          "customer",
+          "total",
+          "ready",
+          "missing"
+        ],
+        "proposalSchema": "invoiceProposal",
+        "skill": "xero-bookkeeper-bill-coding",
+        "title": "Draft the invoice from the request"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "review",
+        "kind": "decision",
+        "materiality": [
+          "steps.draft.total",
+          "steps.draft.proposal.lines",
+          "steps.draft.customer.contactId"
+        ],
+        "options": [
+          {
+            "effect": "Creates the sales invoice in the client's Xero organisation as a DRAFT. It is not sent and not authorised.",
+            "intent": {
+              "capability": "xero.invoice.draft_create",
+              "payloadFrom": "steps.draft.proposal.xeroInvoice"
+            },
+            "key": "create",
+            "label": "Create the draft invoice in Xero",
+            "suggested": true
+          },
+          {
+            "effect": "Sends the draft back to the agent with your note. Nothing is created.",
+            "key": "revise",
+            "label": "Ask for changes",
+            "transition": "draft"
+          },
+          {
+            "effect": "Ends the job. Nothing is created in Xero.",
+            "key": "discard",
+            "label": "Discard the request"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Review the drafted invoice",
+        "type": "invoice_request_review"
+      },
+      {
+        "key": "record",
+        "kind": "agent",
+        "outputs": [
+          "invoiceId",
+          "invoiceNumber",
+          "sendPayload"
+        ],
+        "skill": "xero-bookkeeper-foundation",
+        "title": "Confirm the draft in Xero and prepare the email"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "send",
+        "kind": "decision",
+        "materiality": [
+          "steps.record.invoiceId",
+          "steps.record.sendPayload.to",
+          "steps.draft.total"
+        ],
+        "options": [
+          {
+            "effect": "Sends the reviewed email with the invoice to the client's named contact.",
+            "intent": {
+              "capability": "email.send_reviewed",
+              "payloadFrom": "steps.record.sendPayload"
+            },
+            "key": "sendToClient",
+            "label": "Email the invoice to the client"
+          },
+          {
+            "effect": "Ends the job with the DRAFT invoice in Xero for you to approve and send there. Nothing is emailed.",
+            "key": "handBack",
+            "label": "I will send it from Xero",
+            "suggested": true
+          }
+        ],
+        "sla": {
+          "escalateTo": "installation.manager",
+          "expireAfterBusinessDays": 10,
+          "remindAfterBusinessDays": "{{reminderDays}}"
+        },
+        "title": "Send the invoice to the client",
+        "type": "invoice_send"
+      },
+      {
+        "evidence": [
+          "steps.record.invoiceId",
+          "steps.review.responseId",
+          "steps.send.responseId"
+        ],
+        "key": "issued",
+        "kind": "gate",
+        "outcome": "invoiceDrafted",
+        "requires": [
+          "steps.record.invoiceId != null"
+        ],
+        "title": "Invoice drafted"
+      },
+      {
+        "evidence": [
+          "steps.review.responseId"
+        ],
+        "key": "discarded",
+        "kind": "gate",
+        "outcome": "discarded",
+        "requires": [
+          "steps.review.decision == 'discard'"
+        ],
+        "title": "Discarded"
+      },
+      {
+        "evidence": [
+          "steps.draft.missing"
+        ],
+        "key": "needsAttention",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "steps.draft.ready == false"
+        ],
+        "title": "Request incomplete"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "clientSlug",
+        "requestRef"
+      ],
+      "kind": "none"
+    },
+    "title": "Requested sales invoice (Xero)",
+    "transitions": [
+      {
+        "from": "draft",
+        "to": "review",
+        "when": "steps.draft.ready == true"
+      },
+      {
+        "from": "draft",
+        "to": "needsAttention",
+        "when": "steps.draft.ready == false"
+      },
+      {
+        "from": "review",
+        "to": "record",
+        "when": "steps.review.decision == 'create'"
+      },
+      {
+        "from": "review",
+        "to": "discarded",
+        "when": "steps.review.decision == 'discard'"
+      },
+      {
+        "from": "record",
+        "to": "send"
+      },
+      {
+        "from": "send",
+        "to": "issued"
+      }
+    ],
+    "variationPoints": [
+      {
+        "default": 2,
+        "editableBy": "manager",
+        "key": "reminderDays",
+        "max": 10,
+        "min": 1,
+        "type": "number"
+      }
+    ],
+    "version": "0.1.0",
+    "vocabulary": {
+      "subject": "Invoice request"
+    }
+  },
+  "kind": "process",
+  "name": "Requested sales invoice (Xero)",
+  "originKey": "82a69601-e573-4731-9f4b-aec2ce5c8dfe"
+}

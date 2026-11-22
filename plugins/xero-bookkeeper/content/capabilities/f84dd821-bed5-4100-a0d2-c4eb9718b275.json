@@ -1,0 +1,100 @@
+{
+  "contentHash": "0eda9216c36148b0acaa246d98fea3b5e3e73330e2b04f288a40408c37172a71",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "contact": "contact",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "scopes": [
+          "accounting.contacts"
+        ],
+        "server": "xero-accounting",
+        "tool": "create_contact"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "contact": {
+          "additionalProperties": false,
+          "properties": {
+            "EmailAddress": {
+              "format": "email",
+              "type": "string"
+            },
+            "IsCustomer": {
+              "type": "boolean"
+            },
+            "IsSupplier": {
+              "type": "boolean"
+            },
+            "Name": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "TaxNumber": {
+              "description": "ABN",
+              "type": "string"
+            }
+          },
+          "required": [
+            "Name"
+          ],
+          "type": "object"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "xero_tenant_id",
+        "contact"
+      ],
+      "type": "object"
+    },
+    "key": "xero.contacts.upsert",
+    "kind": "capability",
+    "originKey": "f84dd821-bed5-4100-a0d2-c4eb9718b275",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Contacts": {
+          "items": {
+            "properties": {
+              "ContactID": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Contacts"
+      ],
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:xero-accounting"
+    ],
+    "reconcile": {
+      "by": "externalRef",
+      "tool": "list_contacts"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "write_external",
+    "title": "Create a Xero contact"
+  },
+  "kind": "capability",
+  "name": "Create a Xero contact",
+  "originKey": "f84dd821-bed5-4100-a0d2-c4eb9718b275"
+}
