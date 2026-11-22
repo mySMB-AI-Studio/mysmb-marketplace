@@ -1,0 +1,103 @@
+{
+  "contentHash": "7594472aef96aa84897f30441063828f53104b39ee59db917a9e96dd3b225227",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "invoiceId": "invoiceId",
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "server": "xero-accounting",
+        "tool": "get_invoice"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "invoiceId": {
+          "type": "string"
+        },
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "invoiceId"
+      ],
+      "type": "object"
+    },
+    "key": "xero.invoice.read",
+    "kind": "capability",
+    "originKey": "0f181f32-3c87-49ba-a22c-0180d9306c5b",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Invoices": {
+          "items": {
+            "properties": {
+              "AmountDue": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "AmountPaid": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "CurrencyCode": {
+                "type": "string"
+              },
+              "DueDate": {
+                "type": "string"
+              },
+              "DueDateString": {
+                "type": "string"
+              },
+              "InvoiceID": {
+                "type": "string"
+              },
+              "InvoiceNumber": {
+                "type": "string"
+              },
+              "Status": {
+                "type": "string"
+              },
+              "Total": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "Type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "InvoiceID",
+              "Type",
+              "Status"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Invoices"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read one Xero invoice"
+  },
+  "kind": "capability",
+  "name": "Read one Xero invoice",
+  "originKey": "0f181f32-3c87-49ba-a22c-0180d9306c5b"
+}

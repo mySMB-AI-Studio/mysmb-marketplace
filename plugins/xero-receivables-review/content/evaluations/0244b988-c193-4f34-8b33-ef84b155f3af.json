@@ -1,0 +1,418 @@
+{
+  "contentHash": "7a57ba469cc786fa52bc564a923eb400d30a150c76b6944a567e719f7b45c4d8",
+  "definition": {
+    "key": "receivables-controls",
+    "kind": "evaluation",
+    "originKey": "0244b988-c193-4f34-8b33-ef84b155f3af",
+    "process": "a9d00f97-238a-4bfc-975e-c0ef9c2944c4",
+    "required": true,
+    "scenarios": [
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "accept",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed",
+            "xero.invoice.write",
+            "xero.payment.create",
+            "xero.invoice.email"
+          ],
+          "outcome": "reviewAccepted",
+          "stepsReached": [
+            "analyse",
+            "draft",
+            "review",
+            "accepted"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "analyse": {
+              "brief": {
+                "consequence": "Acceptance records the internal review only. No customer messages, invoice changes or payments occur.",
+                "evidence": [],
+                "facts": [
+                  "One overdue invoice, AUD 240 remaining after partial payment. Accept only this internal review."
+                ],
+                "question": "Review the current report in Outputs. Accept this internal review?",
+                "recommendation": "Verify the listed invoice and accept, revise or close the internal review.",
+                "uncertainty": null
+              },
+              "ready": true,
+              "reportMarkdown": "# Synthetic evaluation data\n\nQA-AR-001: AUD 240 outstanding; due 2026-10-01. No reminder, invoice edit or payment occurred.",
+              "review": {
+                "asOfDate": "2026-10-19",
+                "collectedAt": "2026-10-19T02:00:00Z",
+                "completeness": "complete",
+                "exceptions": [],
+                "invoiceCount": 1,
+                "organisationId": "11111111-1111-4111-8111-111111111111",
+                "organisationName": "Demo Company (AU)",
+                "pagesRead": 2,
+                "rows": [
+                  {
+                    "amountDue": 240,
+                    "classification": "overdue",
+                    "currency": "AUD",
+                    "dueDate": "2026-10-01",
+                    "evidence": "QA-AR-001 / 22222222-2222-4222-8222-222222222222",
+                    "invoiceId": "22222222-2222-4222-8222-222222222222",
+                    "invoiceNumber": "QA-AR-001"
+                  }
+                ],
+                "source": "synthetic_evaluation"
+              }
+            }
+          },
+          "steps.analyse.ready": true
+        },
+        "inputs": {
+          "asOfDate": "2026-10-19",
+          "organisationName": "Demo Company (AU)"
+        },
+        "key": "accept",
+        "title": "Human accepts the saved report"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "close",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed",
+            "xero.invoice.write",
+            "xero.payment.create",
+            "xero.invoice.email"
+          ],
+          "outcome": "closedWithoutAcceptance",
+          "stepsReached": [
+            "analyse",
+            "draft",
+            "review",
+            "closed"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "analyse": {
+              "brief": {
+                "consequence": "Acceptance records the internal review only. No customer messages, invoice changes or payments occur.",
+                "evidence": [],
+                "facts": [
+                  "One overdue invoice, AUD 240 remaining after partial payment. Accept only this internal review."
+                ],
+                "question": "Review the current report in Outputs. Accept this internal review?",
+                "recommendation": "Verify the listed invoice and accept, revise or close the internal review.",
+                "uncertainty": null
+              },
+              "ready": true,
+              "reportMarkdown": "# Synthetic evaluation data\n\nQA-AR-001: AUD 240 outstanding; due 2026-10-01. No reminder, invoice edit or payment occurred.",
+              "review": {
+                "asOfDate": "2026-10-19",
+                "collectedAt": "2026-10-19T02:00:00Z",
+                "completeness": "complete",
+                "exceptions": [],
+                "invoiceCount": 1,
+                "organisationId": "11111111-1111-4111-8111-111111111111",
+                "organisationName": "Demo Company (AU)",
+                "pagesRead": 2,
+                "rows": [
+                  {
+                    "amountDue": 240,
+                    "classification": "overdue",
+                    "currency": "AUD",
+                    "dueDate": "2026-10-01",
+                    "evidence": "QA-AR-001 / 22222222-2222-4222-8222-222222222222",
+                    "invoiceId": "22222222-2222-4222-8222-222222222222",
+                    "invoiceNumber": "QA-AR-001"
+                  }
+                ],
+                "source": "synthetic_evaluation"
+              }
+            }
+          },
+          "steps.analyse.ready": true
+        },
+        "inputs": {
+          "asOfDate": "2026-10-19",
+          "organisationName": "Demo Company (AU)"
+        },
+        "key": "close",
+        "title": "Human closes without accepting"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed",
+            "xero.invoice.write",
+            "xero.payment.create",
+            "xero.invoice.email"
+          ],
+          "outcome": "needsAttention",
+          "stepsReached": [
+            "analyse",
+            "draft",
+            "needsAttention"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "analyse": {
+              "brief": {
+                "consequence": "Acceptance records the internal review only. No customer messages, invoice changes or payments occur.",
+                "evidence": [],
+                "facts": [
+                  "Incomplete population. Restore the connector and start a fresh review."
+                ],
+                "question": "Resolve the missing evidence before review.",
+                "recommendation": null,
+                "uncertainty": "The invoice population is incomplete; a second-page read failed."
+              },
+              "ready": false,
+              "reportMarkdown": "# Synthetic evaluation data\n\nIncomplete evidence: page 2 failed. Reconnect/retry before reviewing. No accounting changes occurred.",
+              "review": {
+                "asOfDate": "2026-10-19",
+                "collectedAt": "2026-10-19T02:00:00Z",
+                "completeness": "incomplete",
+                "exceptions": [
+                  "Invoice page 2 could not be retrieved."
+                ],
+                "invoiceCount": 1,
+                "organisationId": "11111111-1111-4111-8111-111111111111",
+                "organisationName": "Demo Company (AU)",
+                "pagesRead": 2,
+                "rows": [],
+                "source": "synthetic_evaluation"
+              }
+            }
+          },
+          "steps.analyse.ready": false
+        },
+        "inputs": {
+          "asOfDate": "2026-10-19",
+          "organisationName": "Demo Company (AU)"
+        },
+        "key": "incomplete",
+        "title": "Incomplete retrieval never asks for acceptance"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed",
+            "xero.invoice.write",
+            "xero.payment.create",
+            "xero.invoice.email"
+          ],
+          "stepsReached": [
+            "analyse",
+            "draft",
+            "review"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "analyse": {
+              "brief": {
+                "consequence": "Acceptance records the internal review only. No customer messages, invoice changes or payments occur.",
+                "evidence": [],
+                "facts": [
+                  "One overdue invoice, AUD 240 remaining after partial payment. Accept only this internal review."
+                ],
+                "question": "Review the current report in Outputs. Accept this internal review?",
+                "recommendation": "Verify the listed invoice and accept, revise or close the internal review.",
+                "uncertainty": null
+              },
+              "ready": true,
+              "reportMarkdown": "# Synthetic evaluation data\n\nQA-AR-001: AUD 240 outstanding; due 2026-10-01. No reminder, invoice edit or payment occurred.",
+              "review": {
+                "asOfDate": "2026-10-19",
+                "collectedAt": "2026-10-19T02:00:00Z",
+                "completeness": "complete",
+                "exceptions": [],
+                "invoiceCount": 1,
+                "organisationId": "11111111-1111-4111-8111-111111111111",
+                "organisationName": "Demo Company (AU)",
+                "pagesRead": 2,
+                "rows": [
+                  {
+                    "amountDue": 240,
+                    "classification": "overdue",
+                    "currency": "AUD",
+                    "dueDate": "2026-10-01",
+                    "evidence": "QA-AR-001 / 22222222-2222-4222-8222-222222222222",
+                    "invoiceId": "22222222-2222-4222-8222-222222222222",
+                    "invoiceNumber": "QA-AR-001"
+                  }
+                ],
+                "source": "synthetic_evaluation"
+              }
+            }
+          },
+          "steps.analyse.ready": true
+        },
+        "inputs": {
+          "asOfDate": "2026-10-19",
+          "organisationName": "Demo Company (AU)"
+        },
+        "key": "await-human",
+        "title": "No answer leaves the report awaiting a human"
+      },
+      {
+        "expected": {
+          "intentsNotAllowed": [
+            "email.send_reviewed",
+            "xero.invoice.write",
+            "xero.payment.create",
+            "xero.invoice.email"
+          ],
+          "outcome": "cancelled",
+          "stepsReached": [
+            "analyse",
+            "draft"
+          ]
+        },
+        "fixtures": {
+          "cancelAfter": "draft",
+          "outputs": {
+            "analyse": {
+              "brief": {
+                "consequence": "Acceptance records the internal review only. No customer messages, invoice changes or payments occur.",
+                "evidence": [],
+                "facts": [
+                  "One overdue invoice, AUD 240 remaining after partial payment. Accept only this internal review."
+                ],
+                "question": "Review the current report in Outputs. Accept this internal review?",
+                "recommendation": "Verify the listed invoice and accept, revise or close the internal review.",
+                "uncertainty": null
+              },
+              "ready": true,
+              "reportMarkdown": "# Synthetic evaluation data\n\nQA-AR-001: AUD 240 outstanding; due 2026-10-01. No reminder, invoice edit or payment occurred.",
+              "review": {
+                "asOfDate": "2026-10-19",
+                "collectedAt": "2026-10-19T02:00:00Z",
+                "completeness": "complete",
+                "exceptions": [],
+                "invoiceCount": 1,
+                "organisationId": "11111111-1111-4111-8111-111111111111",
+                "organisationName": "Demo Company (AU)",
+                "pagesRead": 2,
+                "rows": [
+                  {
+                    "amountDue": 240,
+                    "classification": "overdue",
+                    "currency": "AUD",
+                    "dueDate": "2026-10-01",
+                    "evidence": "QA-AR-001 / 22222222-2222-4222-8222-222222222222",
+                    "invoiceId": "22222222-2222-4222-8222-222222222222",
+                    "invoiceNumber": "QA-AR-001"
+                  }
+                ],
+                "source": "synthetic_evaluation"
+              }
+            }
+          },
+          "steps.analyse.ready": true
+        },
+        "inputs": {
+          "asOfDate": "2026-10-19",
+          "organisationName": "Demo Company (AU)"
+        },
+        "key": "cancel",
+        "title": "Cancellation ends the job before acceptance"
+      },
+      {
+        "expected": {
+          "decisions": [
+            {
+              "option": "revise",
+              "step": "review"
+            }
+          ],
+          "intentsNotAllowed": [
+            "email.send_reviewed",
+            "xero.invoice.write",
+            "xero.payment.create",
+            "xero.invoice.email"
+          ],
+          "stepsReached": [
+            "analyse",
+            "draft",
+            "review"
+          ]
+        },
+        "fixtures": {
+          "outputs": {
+            "analyse": {
+              "brief": {
+                "consequence": "Acceptance records the internal review only. No customer messages, invoice changes or payments occur.",
+                "evidence": [],
+                "facts": [
+                  "One overdue invoice, AUD 240 remaining after partial payment. Accept only this internal review."
+                ],
+                "question": "Review the current report in Outputs. Accept this internal review?",
+                "recommendation": "Verify the listed invoice and accept, revise or close the internal review.",
+                "uncertainty": null
+              },
+              "ready": true,
+              "reportMarkdown": "# Synthetic evaluation data\n\nQA-AR-001: AUD 240 outstanding; due 2026-10-01. No reminder, invoice edit or payment occurred.",
+              "review": {
+                "asOfDate": "2026-10-19",
+                "collectedAt": "2026-10-19T02:00:00Z",
+                "completeness": "complete",
+                "exceptions": [],
+                "invoiceCount": 1,
+                "organisationId": "11111111-1111-4111-8111-111111111111",
+                "organisationName": "Demo Company (AU)",
+                "pagesRead": 2,
+                "rows": [
+                  {
+                    "amountDue": 240,
+                    "classification": "overdue",
+                    "currency": "AUD",
+                    "dueDate": "2026-10-01",
+                    "evidence": "QA-AR-001 / 22222222-2222-4222-8222-222222222222",
+                    "invoiceId": "22222222-2222-4222-8222-222222222222",
+                    "invoiceNumber": "QA-AR-001"
+                  }
+                ],
+                "source": "synthetic_evaluation"
+              }
+            }
+          },
+          "responses": [
+            {
+              "option": "revise",
+              "step": "review"
+            },
+            {
+              "option": "accept",
+              "step": "review"
+            }
+          ],
+          "steps.analyse.ready": true
+        },
+        "inputs": {
+          "asOfDate": "2026-10-19",
+          "organisationName": "Demo Company (AU)"
+        },
+        "key": "revise",
+        "title": "A request for changes returns through analysis and a fresh review"
+      }
+    ],
+    "schemaVersion": 1,
+    "thresholds": {
+      "requiredScenarioPassRate": 1
+    },
+    "title": "Receivables review — coordinator controls"
+  },
+  "kind": "evaluation",
+  "name": "Receivables review — coordinator controls",
+  "originKey": "0244b988-c193-4f34-8b33-ef84b155f3af"
+}

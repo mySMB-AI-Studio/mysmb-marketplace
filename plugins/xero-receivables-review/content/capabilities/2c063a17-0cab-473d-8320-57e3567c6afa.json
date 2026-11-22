@@ -1,0 +1,70 @@
+{
+  "contentHash": "d4fa7954749a90efe5da6fd1c87551ecac19db22cf99d1ec913fa15251c26334",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "xero_tenant_id": "xero_tenant_id"
+        },
+        "server": "xero-accounting",
+        "tool": "get_organisation"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "xero_tenant_id": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "key": "xero.organisation.read",
+    "kind": "capability",
+    "originKey": "2c063a17-0cab-473d-8320-57e3567c6afa",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "Organisations": {
+          "items": {
+            "properties": {
+              "BaseCurrency": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "OrganisationID": {
+                "type": "string"
+              },
+              "Timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "OrganisationID",
+              "Name",
+              "BaseCurrency"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "Organisations"
+      ],
+      "type": "object"
+    },
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read the connected Xero organisation"
+  },
+  "kind": "capability",
+  "name": "Read the connected Xero organisation",
+  "originKey": "2c063a17-0cab-473d-8320-57e3567c6afa"
+}

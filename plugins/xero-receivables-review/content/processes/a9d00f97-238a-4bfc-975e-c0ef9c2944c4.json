@@ -1,0 +1,257 @@
+{
+  "contentHash": "7ae295604e05cc78305ce16e0fe3366039ac1f08eb337a2ac88edf55de9a22c7",
+  "definition": {
+    "capabilities": [
+      "xero.organisation.read",
+      "xero.receivables.list",
+      "xero.invoice.read"
+    ],
+    "description": "Read-only invoice review with scoped evidence, a saved report and a human acceptance decision. No customer communication or accounting changes.",
+    "exceptions": [],
+    "inputs": [
+      {
+        "key": "organisationName",
+        "label": "Xero organisation name",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "key": "asOfDate",
+        "label": "Review date (today in the organisation timezone)",
+        "required": true,
+        "type": "date"
+      }
+    ],
+    "key": "receivables-review",
+    "kind": "process",
+    "limits": {
+      "maxActiveHours": 1,
+      "maxAgentTurnsPerStep": 20,
+      "maxAiUnits": 200,
+      "maxSteps": 30,
+      "maxWaitingDays": 7
+    },
+    "modelPolicy": {
+      "brief": "sonnet",
+      "judgement": "sonnet"
+    },
+    "originKey": "a9d00f97-238a-4bfc-975e-c0ef9c2944c4",
+    "outcomes": [
+      {
+        "evidence": [
+          "artifact",
+          "decision"
+        ],
+        "key": "reviewAccepted",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "artifact",
+          "decision"
+        ],
+        "key": "closedWithoutAcceptance",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "artifact",
+          "source_gaps"
+        ],
+        "key": "needsAttention",
+        "terminal": true
+      },
+      {
+        "evidence": [
+          "cancellation"
+        ],
+        "key": "cancelled",
+        "terminal": true
+      }
+    ],
+    "protectedRules": [
+      {
+        "description": "Only the three declared read capabilities exist. A decision cannot authorise messages, payments or invoice edits.",
+        "key": "readOnly"
+      },
+      {
+        "description": "Incomplete evidence ends as needsAttention; no acceptance request is opened.",
+        "key": "evidenceFirst"
+      },
+      {
+        "description": "Completion requires an eligible human decision and the exact report artifact.",
+        "key": "humanAcceptance"
+      }
+    ],
+    "rework": [
+      {
+        "from": "review",
+        "to": "analyse"
+      }
+    ],
+    "roles": {
+      "manager": "installation.manager",
+      "reviewer": "installation.reviewer"
+    },
+    "safeTest": {
+      "assertions": [
+        "No external writes or messages",
+        "Only a human can accept",
+        "Incomplete evidence ends as needsAttention",
+        "Saved report cites invoice IDs and preserves currency"
+      ],
+      "sampleInputs": {
+        "asOfDate": "2026-10-20",
+        "organisationName": "Demo Company (AU)"
+      }
+    },
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "key": "analyse",
+        "kind": "agent",
+        "outputs": [
+          "ready",
+          "review",
+          "reportMarkdown",
+          "brief"
+        ],
+        "skill": "review-receivables",
+        "title": "Read Xero and prepare the review"
+      },
+      {
+        "artifactKind": "receivablesReview",
+        "key": "draft",
+        "kind": "output",
+        "template": "receivables-review-report",
+        "title": "Save the review pack"
+      },
+      {
+        "eligible": [
+          "reviewer"
+        ],
+        "key": "review",
+        "kind": "decision",
+        "materiality": [
+          "steps.analyse.review",
+          "steps.analyse.reportMarkdown",
+          "steps.analyse.ready",
+          "steps.draft.artifactId",
+          "steps.draft.version",
+          "inputs.asOfDate",
+          "inputs.organisationName"
+        ],
+        "options": [
+          {
+            "effect": "Records acceptance of this review only. No Xero record changes or messages.",
+            "key": "accept",
+            "label": "Accept the internal review",
+            "transition": "accepted"
+          },
+          {
+            "effect": "Returns to analysis and creates a new report revision.",
+            "key": "revise",
+            "label": "Request changes and a fresh read",
+            "transition": "analyse"
+          },
+          {
+            "effect": "Retains the report and decision history without accepting the findings.",
+            "key": "close",
+            "label": "Close without acceptance",
+            "transition": "closed"
+          }
+        ],
+        "separation": "preparerCannotDecide",
+        "sla": {
+          "escalateTo": "manager",
+          "expireAfterBusinessDays": 5,
+          "remindAfterBusinessDays": 1
+        },
+        "title": "Review the invoice evidence",
+        "type": "receivablesReview"
+      },
+      {
+        "evidence": [
+          "steps.draft.artifactId",
+          "steps.review.responseId"
+        ],
+        "key": "accepted",
+        "kind": "gate",
+        "outcome": "reviewAccepted",
+        "requires": [
+          "steps.review.decision == 'accept'",
+          "steps.draft.artifactId",
+          "steps.analyse.ready == true"
+        ],
+        "title": "Record the accepted review"
+      },
+      {
+        "evidence": [
+          "steps.draft.artifactId",
+          "steps.review.responseId"
+        ],
+        "key": "closed",
+        "kind": "gate",
+        "outcome": "closedWithoutAcceptance",
+        "requires": [
+          "steps.review.decision == 'close'",
+          "steps.draft.artifactId"
+        ],
+        "title": "Record the reviewer closure"
+      },
+      {
+        "evidence": [
+          "steps.draft.artifactId",
+          "steps.analyse.review"
+        ],
+        "key": "needsAttention",
+        "kind": "gate",
+        "outcome": "needsAttention",
+        "requires": [
+          "steps.analyse.ready == false",
+          "steps.draft.artifactId"
+        ],
+        "title": "Record incomplete evidence"
+      }
+    ],
+    "subject": {
+      "dedupeBy": [
+        "organisationName",
+        "asOfDate"
+      ],
+      "kind": "none"
+    },
+    "title": "Review current Xero receivables",
+    "transitions": [
+      {
+        "from": "analyse",
+        "to": "draft"
+      },
+      {
+        "from": "draft",
+        "to": "review",
+        "when": "steps.analyse.ready == true"
+      },
+      {
+        "from": "draft",
+        "to": "needsAttention",
+        "when": "steps.analyse.ready == false"
+      },
+      {
+        "from": "review",
+        "to": "accepted",
+        "when": "steps.review.decision == 'accept'"
+      },
+      {
+        "from": "review",
+        "to": "closed",
+        "when": "steps.review.decision == 'close'"
+      }
+    ],
+    "variationPoints": [],
+    "version": "1.0.0"
+  },
+  "kind": "process",
+  "name": "Review current Xero receivables",
+  "originKey": "a9d00f97-238a-4bfc-975e-c0ef9c2944c4"
+}
