@@ -369,25 +369,64 @@ const deal_stage_tone = (args) => {
         return 'info';
     return 'muted';
 };
+/**
+ * Return the value as a string, or an em-dash if null / undefined / empty.
+ * Use this instead of hiding cells with `visible` when you want "–" for missing data.
+ *
+ * Args: { value: unknown }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_or_dash", "args": { "value": { "$item": "Phone" } } }
+ */
 const or_dash = (args) => {
     const v = args.value;
     if (v === null || v === undefined || v === '')
         return '–';
     return String(v);
 };
+/**
+ * Build a Salesforce Lightning list-view URL for a given object.
+ * Requires the connected org's instance URL passed as `instanceUrl`.
+ * Returns null if instanceUrl is not provided (button becomes a no-op).
+ *
+ * Args: { object: string, instanceUrl?: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_list_url", "args": { "object": "Campaign" } }
+ */
 const list_url = (args) => {
     const object = String(args.object ?? '');
     const instanceUrl = args.instanceUrl ? String(args.instanceUrl).replace(/\/$/, '') : null;
-    if (!object) return null;
-    if (!instanceUrl) return null;
+    if (!object)
+        return null;
+    if (!instanceUrl)
+        return null;
     return `${instanceUrl}/lightning/o/${object}/list?filterName=Recent`;
 };
 const case_priority_tone = (args) => {
     const v = String(args.value ?? '').toLowerCase();
-    if (v === 'high') return 'destructive';
-    if (v === 'medium') return 'warning';
-    if (v === 'low') return 'success';
+    if (v === 'high')
+        return 'destructive';
+    if (v === 'medium')
+        return 'warning';
+    if (v === 'low')
+        return 'success';
     return 'muted';
+};
+/**
+ * Case Subject with a readable fallback. Salesforce allows Subject to be blank,
+ * which would otherwise render a title-less row.
+ *
+ * Args: { value: string | null }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_case_subject", "args": { "value": { "$item": "Subject" } } }
+ */
+const case_subject = (args) => {
+    const v = args.value;
+    if (v === null || v === undefined || String(v).trim() === '')
+        return '(No Subject)';
+    return String(v);
 };
 const STATE_ABBR_MAP = {
     'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
@@ -411,17 +450,22 @@ const STATE_ABBR_MAP = {
 };
 const state_abbr = (args) => {
     const raw = String(args.value ?? '').trim();
-    if (!raw) return raw;
-    if (STATE_ABBR_MAP[raw]) return STATE_ABBR_MAP[raw];
-    if (raw.length <= 3) return raw.toUpperCase();
+    if (!raw)
+        return raw;
+    if (STATE_ABBR_MAP[raw])
+        return STATE_ABBR_MAP[raw];
+    if (raw.length <= 3)
+        return raw.toUpperCase();
     return raw;
 };
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const format_date = (args) => {
     const raw = args.value;
-    if (!raw) return '';
+    if (!raw)
+        return '';
     const ms = Date.parse(String(raw));
-    if (Number.isNaN(ms)) return '';
+    if (Number.isNaN(ms))
+        return '';
     const d = new Date(ms);
     const day = String(d.getDate()).padStart(2, '0');
     const month = MONTH_ABBR[d.getMonth()];
@@ -430,6 +474,6 @@ const format_date = (args) => {
 };
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, format_date, state_abbr },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr },
 };
 export default elements;
