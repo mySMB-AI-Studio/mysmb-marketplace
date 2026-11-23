@@ -1,0 +1,556 @@
+{
+  "id": "myconnect-analytics",
+  "title": "myConnect Analytics",
+  "description": "A dedicated analytics dashboard for a myConnect community you administer — pick which one from the dropdown if you administer more than one. Choose a date range (Today, 7 days, 30 days, To Date, or Custom), then switch between Sign-ups, Active Members, Posts & Comments and RSVP to see that data in a table. Sign-ups (live): everyone who joined in the selected date range — member, email, role, status, tags, access groups and date joined — with a Download CSV of the same rows. Active Members (live): every current active-status member — member, email, role and last seen date, most recently seen first — independent of the date range. Posts & Comments (live): every channel's post count and comment count for the selected date range, busiest channel first. RSVP (live): every RSVP across every event for the selected date range — member, email, event, RSVP status, RSVP date and confirmed sessions.",
+  "category": "productivity",
+  "tags": ["myconnect", "community", "analytics", "signups"],
+  "keywords": ["myconnect", "analytics", "signups", "members", "rsvp", "posts", "comments"],
+  "connectorsUsed": ["myconnect-community-admin"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 8, "rowSpan": 9 },
+    "min": { "colSpan": 6, "rowSpan": 6 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
+  },
+  "dataProvider": {
+    "mcp": "myconnect-community-admin",
+    "tool": "list_communities",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "communityRow", "dateRangeRow", "tabBar", "divider2", "body"] },
+
+      "titleIcon": { "type": "Icon", "props": { "name": "BarChart3", "tone": "accent", "size": "sm" } },
+      "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Analytics" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Community growth, at a glance" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "header": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "divider1": { "type": "Divider", "props": {} },
+
+      "communitySelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/selectedCommunity" },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": { "$state": "/myconnect-community-admin/list_communities" },
+              "valueField": "slug",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select community…",
+          "size": "sm"
+        },
+        "visible": { "$state": "/myconnect-community-admin/list_communities/1" }
+      },
+      "communityRow": {
+        "type": "Row",
+        "props": { "align": "center", "gap": "sm" },
+        "children": ["communitySelect"]
+      },
+
+      "todayBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Today",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "today" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "today" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/dateRangeMode", "value": "today" } },
+            { "action": "setState", "params": { "statePath": "/ui/range", "value": { "from": { "$computed": "myconnect-community-admin_today" }, "to": { "$computed": "myconnect-community-admin_today" } } } }
+          ]
+        }
+      },
+      "last7Btn": {
+        "type": "Button",
+        "props": {
+          "label": "7 days",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "7d" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "7d" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/dateRangeMode", "value": "7d" } },
+            { "action": "setState", "params": { "statePath": "/ui/range", "value": { "from": { "$computed": "myconnect-community-admin_days_ago", "args": { "days": 6 } }, "to": { "$computed": "myconnect-community-admin_today" } } } }
+          ]
+        }
+      },
+      "last30Btn": {
+        "type": "Button",
+        "props": {
+          "label": "30 days",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "30d" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "30d" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/dateRangeMode", "value": "30d" } },
+            { "action": "setState", "params": { "statePath": "/ui/range", "value": { "from": { "$computed": "myconnect-community-admin_days_ago", "args": { "days": 29 } }, "to": { "$computed": "myconnect-community-admin_today" } } } }
+          ]
+        }
+      },
+      "toDateBtn": {
+        "type": "Button",
+        "props": {
+          "label": "To Date",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "todate" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "todate" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/dateRangeMode", "value": "todate" } },
+            { "action": "setState", "params": { "statePath": "/ui/range", "value": { "from": "2000-01-01", "to": { "$computed": "myconnect-community-admin_today" } } } }
+          ]
+        }
+      },
+      "customBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Custom",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "custom" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/dateRangeMode", "eq": "custom" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/dateRangeMode", "value": "custom" } },
+            { "action": "setState", "params": { "statePath": "/ui/range", "value": { "from": { "$computed": "myconnect-community-admin_year_start" }, "to": { "$computed": "myconnect-community-admin_today" } } } }
+          ]
+        }
+      },
+      "presetPills": { "type": "Row", "props": { "gap": "xs", "wrap": true }, "children": ["todayBtn", "last7Btn", "last30Btn", "toDateBtn", "customBtn"] },
+
+      "customFromLabel": { "type": "Caption", "props": { "text": "From", "tone": "muted" } },
+      "customFromInput": { "type": "DateInput", "props": { "size": "sm", "value": { "$bindState": "/ui/range/from" } } },
+      "customFromStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["customFromLabel", "customFromInput"] },
+      "customToLabel": { "type": "Caption", "props": { "text": "To", "tone": "muted" } },
+      "customToInput": { "type": "DateInput", "props": { "size": "sm", "value": { "$bindState": "/ui/range/to" } } },
+      "customToStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["customToLabel", "customToInput"] },
+      "customDateInputs": {
+        "type": "Row",
+        "props": { "align": "end", "gap": "sm" },
+        "children": ["customFromStack", "customToStack"],
+        "visible": { "$state": "/ui/dateRangeMode", "eq": "custom" }
+      },
+
+      "dateRangeRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm", "wrap": true },
+        "children": ["presetPills", "customDateInputs"],
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "fromDate": { "$cond": { "$state": "/ui/range/from" }, "$then": { "$state": "/ui/range/from" }, "$else": { "$computed": "myconnect-community-admin_today" } }, "toDate": { "$cond": { "$state": "/ui/range/to" }, "$then": { "$state": "/ui/range/to" }, "$else": { "$computed": "myconnect-community-admin_today" } }, "limit": 100 }
+            }
+          ],
+          "/ui/range": [
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "fromDate": { "$state": "/ui/range/from" }, "toDate": { "$state": "/ui/range/to" }, "limit": 100 }
+            }
+          ]
+        }
+      },
+
+      "signupsTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Sign-ups",
+          "leadingIcon": "UserPlus",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "signups" }, "$then": "primary", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "primary", "$else": "secondary" } },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "signups" }, "$then": "info", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "info", "$else": "default" } }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "signups" } } }
+      },
+      "activeMembersTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Active Members",
+          "leadingIcon": "Users",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "activeMembers" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "activeMembers" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "activeMembers" } },
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "status": "active", "limit": 100 }
+            }
+          ]
+        }
+      },
+      "postsCommentsTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Posts & Comments",
+          "leadingIcon": "MessageSquare",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "postsComments" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "postsComments" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "postsComments" } }
+        }
+      },
+      "rsvpTabBtn": {
+        "type": "Button",
+        "props": {
+          "label": "RSVP",
+          "leadingIcon": "Calendar",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "rsvp" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "rsvp" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "rsvp" } }
+        }
+      },
+      "tabBar": { "type": "Row", "props": { "gap": "xs", "wrap": true }, "children": ["signupsTabBtn", "activeMembersTabBtn", "postsCommentsTabBtn", "rsvpTabBtn"] },
+      "divider2": { "type": "Divider", "props": {} },
+
+      "signupsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load sign-ups: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+      },
+      "signupsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "signupsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "signupsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["signupsLoading1", "signupsLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
+      },
+      "signupsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No sign-ups in this date range." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/ui/signupsRows/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_members", "not": true }
+          ]
+        }
+      },
+      "signupsTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myconnect-community-admin.list_members" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/signupsRows" },
+          "columns": [
+            { "id": "member", "header": "Member", "field": "member", "priority": 1 },
+            { "id": "email", "header": "Email", "field": "email", "priority": 2 },
+            { "id": "role", "header": "Role", "field": "role", "width": 90, "priority": 3 },
+            { "id": "status", "header": "Status", "field": "status", "width": 90, "priority": 3 },
+            { "id": "tags", "header": "Tags", "field": "tags", "priority": 4 },
+            { "id": "accessGroups", "header": "Access Groups", "field": "accessGroups", "priority": 4 },
+            { "id": "dateJoined", "header": "Date joined", "field": "dateJoined", "width": 100, "priority": 2 }
+          ]
+        },
+        "visible": { "$state": "/ui/signupsRows/0" }
+      },
+      "signupsMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 100 — narrow the date range or download the CSV for the complete list.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/nextCursor" }
+      },
+      "signupsCsvNotice": {
+        "type": "Caption",
+        "props": { "text": { "$state": "/ui/signupsCsv/notice" }, "tone": "muted" },
+        "visible": { "$state": "/ui/signupsCsv/notice" }
+      },
+      "downloadCsvBtn": {
+        "type": "Button",
+        "props": {
+          "label": { "$cond": { "$state": "/ui/signupsCsv/busy" }, "$then": "Preparing CSV…", "$else": "Download CSV" },
+          "leadingIcon": "Download",
+          "size": "sm",
+          "variant": "secondary",
+          "disabled": { "$state": "/ui/signupsCsv/busy" }
+        },
+        "on": {
+          "click": {
+            "action": "myconnect-community-admin_export_signups_csv",
+            "params": {
+              "op": "start",
+              "community": { "$state": "/ui/selectedCommunity" },
+              "fromDate": { "$state": "/ui/range/from" },
+              "toDate": { "$state": "/ui/range/to" }
+            }
+          }
+        }
+      },
+      "signupsFooterRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["signupsCsvNotice", "downloadCsvBtn"] },
+      "signupsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["signupsErrorBanner", "signupsLoading", "signupsEmpty", "signupsTable", "signupsMoreCaption", "signupsFooterRow"],
+        "visible": { "$or": [{ "$state": "/ui/activeTab", "eq": "signups" }, { "$state": "/ui/activeTab", "not": true }] },
+        "watch": {
+          "/myconnect-community-admin/list_members/items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/signupsRows",
+                "value": { "$computed": "myconnect-community-admin_signups_rows", "args": { "items": { "$state": "/myconnect-community-admin/list_members/items" } } }
+              }
+            }
+          ]
+        }
+      },
+
+      "activeMembersErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load active members: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
+        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+      },
+      "activeMembersLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "activeMembersLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "activeMembersLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["activeMembersLoading1", "activeMembersLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
+      },
+      "activeMembersEmpty": {
+        "type": "Empty",
+        "props": { "message": "No active members found." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/ui/activeMembersRows/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_members", "not": true }
+          ]
+        }
+      },
+      "activeMembersTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myconnect-community-admin.list_members" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/activeMembersRows" },
+          "columns": [
+            { "id": "member", "header": "Member", "field": "member", "priority": 1 },
+            { "id": "email", "header": "Email", "field": "email", "priority": 2 },
+            { "id": "role", "header": "Role", "field": "role", "width": 90, "priority": 3 },
+            { "id": "lastSeen", "header": "Last Seen Date", "field": "lastSeen", "width": 120, "priority": 2 }
+          ]
+        },
+        "visible": { "$state": "/ui/activeMembersRows/0" }
+      },
+      "activeMembersMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 100 active members, most recently seen first.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_members/nextCursor" }
+      },
+      "activeMembersPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["activeMembersErrorBanner", "activeMembersLoading", "activeMembersEmpty", "activeMembersTable", "activeMembersMoreCaption"],
+        "visible": { "$state": "/ui/activeTab", "eq": "activeMembers" },
+        "watch": {
+          "/myconnect-community-admin/list_members/items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activeMembersRows",
+                "value": { "$computed": "myconnect-community-admin_active_members_rows", "args": { "items": { "$state": "/myconnect-community-admin/list_members/items" } } }
+              }
+            }
+          ],
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_members",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "status": "active", "limit": 100 }
+            }
+          ]
+        }
+      },
+      "postsCommentsErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load posts and comments: ${/_errors/myconnect-community-admin.get_posts_comments_summary}" }, "tone": "destructive" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.get_posts_comments_summary" },
+            { "$state": "/ui/range/from" }
+          ]
+        }
+      },
+      "postsCommentsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "postsCommentsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "postsCommentsLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["postsCommentsLoading1", "postsCommentsLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.get_posts_comments_summary" }
+      },
+      "postsCommentsPrompt": {
+        "type": "Empty",
+        "props": { "message": "Pick a date range above to see posts and comments per channel." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.get_posts_comments_summary", "not": true },
+            { "$state": "/myconnect-community-admin/get_posts_comments_summary/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.get_posts_comments_summary", "not": true },
+            { "$state": "/ui/range/from", "not": true }
+          ]
+        }
+      },
+      "postsCommentsEmpty": {
+        "type": "Empty",
+        "props": { "message": "No posts in this date range." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.get_posts_comments_summary", "not": true },
+            { "$state": "/myconnect-community-admin/get_posts_comments_summary/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.get_posts_comments_summary", "not": true },
+            { "$state": "/ui/range/from" }
+          ]
+        }
+      },
+      "postsCommentsTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myconnect-community-admin.get_posts_comments_summary" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/myconnect-community-admin/get_posts_comments_summary" },
+          "columns": [
+            { "id": "channel", "header": "Channel", "field": "channelName", "priority": 1 },
+            { "id": "posts", "header": "# of Posts", "field": "posts", "width": 100, "priority": 1 },
+            { "id": "comments", "header": "# of Comments", "field": "comments", "width": 120, "priority": 2 }
+          ]
+        },
+        "visible": { "$state": "/myconnect-community-admin/get_posts_comments_summary/0" }
+      },
+      "postsCommentsPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["postsCommentsErrorBanner", "postsCommentsLoading", "postsCommentsPrompt", "postsCommentsEmpty", "postsCommentsTable"],
+        "visible": { "$state": "/ui/activeTab", "eq": "postsComments" },
+        "watch": {
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.get_posts_comments_summary",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "fromDate": { "$cond": { "$state": "/ui/range/from" }, "$then": { "$state": "/ui/range/from" }, "$else": { "$computed": "myconnect-community-admin_today" } }, "toDate": { "$cond": { "$state": "/ui/range/to" }, "$then": { "$state": "/ui/range/to" }, "$else": { "$computed": "myconnect-community-admin_today" } } }
+            }
+          ],
+          "/ui/range": [
+            {
+              "action": "myconnect-community-admin.get_posts_comments_summary",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "fromDate": { "$state": "/ui/range/from" }, "toDate": { "$state": "/ui/range/to" } }
+            }
+          ]
+        }
+      },
+      "rsvpErrorBanner": {
+        "type": "Caption",
+        "props": { "text": { "$template": "Couldn't load RSVPs: ${/_errors/myconnect-community-admin.list_rsvps_in_range}" }, "tone": "destructive" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.list_rsvps_in_range" },
+            { "$state": "/ui/range/from" }
+          ]
+        }
+      },
+      "rsvpLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "rsvpLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "rsvpLoading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rsvpLoading1", "rsvpLoading2"],
+        "visible": { "$state": "/_loading/myconnect-community-admin.list_rsvps_in_range" }
+      },
+      "rsvpPrompt": {
+        "type": "Empty",
+        "props": { "message": "Pick a date range above to see RSVPs." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_rsvps_in_range", "not": true },
+            { "$state": "/ui/rsvpRows/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_rsvps_in_range", "not": true },
+            { "$state": "/ui/range/from", "not": true }
+          ]
+        }
+      },
+      "rsvpEmpty": {
+        "type": "Empty",
+        "props": { "message": "No RSVPs in this date range." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_rsvps_in_range", "not": true },
+            { "$state": "/ui/rsvpRows/0", "not": true },
+            { "$state": "/_errors/myconnect-community-admin.list_rsvps_in_range", "not": true },
+            { "$state": "/ui/range/from" }
+          ]
+        }
+      },
+      "rsvpTable": {
+        "type": "Table",
+        "props": {
+          "loading": { "$state": "/_loading/myconnect-community-admin.list_rsvps_in_range" },
+          "skeletonRows": 4,
+          "rows": { "$state": "/ui/rsvpRows" },
+          "columns": [
+            { "id": "member", "header": "Member", "field": "member", "priority": 1 },
+            { "id": "email", "header": "Email", "field": "email", "priority": 2 },
+            { "id": "event", "header": "Event", "field": "event", "priority": 2 },
+            { "id": "rsvp", "header": "RSVP", "field": "rsvp", "width": 100, "priority": 3 },
+            { "id": "rsvpDate", "header": "RSVP Date", "field": "rsvpDate", "width": 100, "priority": 2 },
+            { "id": "sessions", "header": "Sessions", "field": "sessions", "priority": 4 }
+          ]
+        },
+        "visible": { "$state": "/ui/rsvpRows/0" }
+      },
+      "rsvpMoreCaption": {
+        "type": "Caption",
+        "props": { "text": "Showing the first 100 RSVPs — narrow the date range to see more.", "tone": "muted" },
+        "visible": { "$state": "/myconnect-community-admin/list_rsvps_in_range/nextCursor" }
+      },
+      "rsvpPanel": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["rsvpErrorBanner", "rsvpLoading", "rsvpPrompt", "rsvpEmpty", "rsvpTable", "rsvpMoreCaption"],
+        "visible": { "$state": "/ui/activeTab", "eq": "rsvp" },
+        "watch": {
+          "/myconnect-community-admin/list_rsvps_in_range/items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/rsvpRows",
+                "value": { "$computed": "myconnect-community-admin_rsvps_rows", "args": { "items": { "$state": "/myconnect-community-admin/list_rsvps_in_range/items" } } }
+              }
+            }
+          ],
+          "/ui/selectedCommunity": [
+            {
+              "action": "myconnect-community-admin.list_rsvps_in_range",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "fromDate": { "$cond": { "$state": "/ui/range/from" }, "$then": { "$state": "/ui/range/from" }, "$else": { "$computed": "myconnect-community-admin_today" } }, "toDate": { "$cond": { "$state": "/ui/range/to" }, "$then": { "$state": "/ui/range/to" }, "$else": { "$computed": "myconnect-community-admin_today" } }, "limit": 100 }
+            }
+          ],
+          "/ui/range": [
+            {
+              "action": "myconnect-community-admin.list_rsvps_in_range",
+              "params": { "community": { "$state": "/ui/selectedCommunity" }, "fromDate": { "$state": "/ui/range/from" }, "toDate": { "$state": "/ui/range/to" }, "limit": 100 }
+            }
+          ]
+        }
+      },
+
+      "body": { "type": "Body", "props": {}, "children": ["signupsPanel", "activeMembersPanel", "postsCommentsPanel", "rsvpPanel"] }
+    }
+  }
+}
