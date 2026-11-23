@@ -117,6 +117,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
 <section aria-label="Load status">
   <div id="loadBanner" class="banner">Retrieving mail, Xero and folder data…</div>
   <div id="errBanner" class="banner err hid"></div>
+  <div id="workqNote" class="banner hid"></div>
 </section>
 
 <section aria-label="Daily Email Management Snapshot">
@@ -246,6 +247,12 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
     var now = new Date();
     var nowSyd = sydneyParts(now.toISOString());
     var y = parseInt(nowSyd.year,10), mo = parseInt(nowSyd.month,10)-1, da = parseInt(nowSyd.day,10);
+    // Build a UTC date for Sydney local midnight today, then walk back.
+    // Sydney offset is +10 or +11; derive it from the formatted parts above
+    // by comparing to a known UTC instant close to `now`.
+    var approxOffsetMin = Math.round((Date.UTC(y,mo,da,0,0,0) - Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),now.getUTCHours(),now.getUTCMinutes(),now.getUTCSeconds())) / 60000);
+    // approxOffsetMin is roughly -(utcHour) at Sydney local midnight vs now; instead
+    // compute offset directly: Sydney time minus UTC time right now.
     var sydNowMs = Date.UTC(y,mo,da, parseInt(nowSyd.hour,10), parseInt(nowSyd.minute,10), parseInt(nowSyd.second,10));
     var offsetMs = sydNowMs - now.getTime();
     var midnightSydLocalAsUtcMs = Date.UTC(y,mo,da,0,0,0) - offsetMs;
@@ -316,6 +323,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
   var TEAM = [];
   var S = {view:'attention', q:'', client:'', owner:'', cat:'', sort:'latest', status:'', ownership:'', priority:'', carry:'', overdue:'', cls:'', sender:''};
   var DRAFTS = {};
+  var WORKQ = {};
   var mailboxAddress = '';
   var coverage = { retrieved:0, analysed:0, actionable:0, nonActionable:0, folderCounts:{}, xeroOrg:'', xeroAvailable:false, carriedForwardNote:'', evidenceEmails:[], notes:[] };
 
@@ -364,7 +372,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
   function buildFilters(){
     function opts(id, first, list){ el(id).innerHTML = '<option value="">'+first+'</option>' + list.map(function(o){ return '<option value="'+esc(o)+'">'+esc(o)+'</option>'; }).join(''); }
     opts('fClient','All clients', ITEMS.map(function(w){return w.client;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
-    opts('fOwner','All owners', ['Unassigned','Not established']);
+    opts('fOwner','All owners', ['Unassigned','Not established'].concat(mailboxAddress ? [] : []));
     opts('fCat','All categories', ITEMS.map(function(w){return w.cat;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
     opts('fStatus','All statuses', ['Not started','In progress','Awaiting external response','Completed','Needs verification','No action required']);
     opts('fOwnership','All ownership', ['Assigned','Unassigned','Ownership uncertain']);
@@ -433,6 +441,11 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
         var key=w.id+'-'+i;
         DRAFTS[key]=a;
         return '<button type="button" class="btn btn-p btn-s" data-draft="'+esc(key)+'" title="Opens an Outlook draft for you to review. Nothing is sent.">'+esc(a.label)+'</button>';
+      }
+      if (a.t==='workq'){
+        var wkey=w.id+'-'+i;
+        WORKQ[wkey]=a;
+        return '<button type="button" class="btn btn-s" data-workq="'+esc(wkey)+'" title="Opens the WorkQ composer with a title and description filled in. You choose the assignee, due date and priority, and nothing is created until you save.">'+esc(a.label)+'</button>';
       }
       return '<a class="btn btn-s" href="'+esc(a.href)+'" target="_blank" rel="noopener">'+esc(a.label)+'</a>';
     }).join('');
@@ -518,6 +531,18 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
     el('tbody').addEventListener('click', function(e){
       var dr = e.target.closest('button[data-draft]');
       if (dr){ var d = DRAFTS[dr.getAttribute('data-draft')]; if (d) window.open(composeUrl(d),'_blank','noopener'); return; }
+      var wk = e.target.closest('button[data-workq]');
+      if (wk){
+        var t = WORKQ[wk.getAttribute('data-workq')];
+        if (t && window.MyHubReport && typeof MyHubReport.openTask === 'function') {
+          MyHubReport.openTask({ title: t.title, description: t.description })
+            .then(function(){ showWorkqNote('WorkQ composer opened for '+t.itemLabel+'. Nothing is created until you save it there.'); })
+            .catch(function(err){ showWorkqNote((err && err.message) ? err.message : 'Could not open the WorkQ composer.'); });
+        } else if (t) {
+          showWorkqNote('Open this report in the workspace to create a WorkQ item — this isn\'t available in a downloaded or shared copy.');
+        }
+        return;
+      }
       if (e.target.closest('a, button')) return;
       var em = e.target.closest('tr[data-em]');
       if (em){ var de = el('e-'+em.getAttribute('data-em')); if (de) de.classList.toggle('hid'); return; }
@@ -552,6 +577,18 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
     el('loadBanner').classList.remove('hid');
   }
   function hideLoad(){ el('loadBanner').classList.add('hid'); }
+  function showWorkqNote(msg){
+    var n = el('workqNote');
+    n.textContent = msg;
+    n.classList.remove('hid');
+    clearTimeout(n._t);
+    n._t = setTimeout(function(){ n.classList.add('hid'); }, 8000);
+  }
+
+  function folderDisplayName(id, foldersResult){
+    var f = (foldersResult||[]).filter(function(x){return x.id===id;})[0];
+    return f ? f.path : (id || 'Unknown');
+  }
 
   // Groups actionable messages into Client Work Items. Each distinct
   // sender address becomes one item (its messages merged); a draft with
@@ -608,7 +645,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
         latestD: latestMsg.receivedDateTime ? latestMsg.receivedDateTime.slice(0,10) : '',
         owner: 'Not established',
         ownership: isDraftGroup ? 'Unassigned' : 'Ownership uncertain',
-        status: isDraftGroup ? 'Not started' : 'Needs verification',
+        status: isDraftGroup ? 'Not started' : (matched.length ? 'Needs verification' : 'Needs verification'),
         priority: pr,
         overdue: overdue,
         deadline: deadline,
@@ -632,6 +669,19 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
         });
         if (group[0].webLink) item.actions.push({ t:'mail', label:'Open email', href: group[0].webLink });
       }
+      // Create WorkQ item: MyHubReport.openTask (myHubV2 #2061, QA only as of
+      // 2026-11-16) opens WorkQ's own composer pre-filled with a title and
+      // description -- assignee, due date and priority stay with the person
+      // in WorkQ, since the report has no way to set those. Available on
+      // every item, draft or not: creating a task doesn't depend on whether
+      // a Xero match was found.
+      item.actions.push({
+        t: 'workq',
+        label: 'Create WorkQ item',
+        itemLabel: item.id+' ('+clientLabel+')',
+        title: (clientLabel+': '+item.title).slice(0, 500),
+        description: (item.why+'\n\nSuggested priority: '+item.priority+'\nDeadline: '+item.deadline+'\n\nNext action: '+item.next).slice(0, 20000)
+      });
       items.push(item);
     }
     Object.keys(bySender).forEach(function(addr){ pushItem(bySender[addr], emailAddrLabel(bySender[addr][0]), guessCategory(bySender[addr])); });
@@ -766,9 +816,9 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
         return { id: m.id, when: utcStamp(m.receivedDateTime), folder: m._folderName, sender: emailAddrLabel(m), to: mailboxAddress || '(you)', subj: m.subject||'', cls: m.cls, act: m.actionable?'Yes':'No', item: (ITEMS.filter(function(w){return w.emails.indexOf(m.id)>-1;})[0]||{}).id || '—', expl: m.expl };
       });
 
-      // Team: an Unassigned/uncertain bucket, since Owner always starts
-      // "Not established" per the WorkQ-gap decision -- there is no
-      // confirmed-owner bucket to show here yet.
+      // Team: the mailbox owner (if any item is genuinely theirs -- never
+      // happens by rule here, since Owner always starts "Not established"
+      // per the WorkQ-gap decision) plus an Unassigned/uncertain bucket.
       TEAM = [{ n:'Unassigned / uncertain', k:'Unassigned' }];
 
       // header meta line
@@ -811,7 +861,7 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
         '<b>Attachments:</b> listed where Microsoft Graph reports hasAttachments true; attachment contents were not read by this report.',
         '<b>Not accessible:</b> any folder requiring the m365-mail-shared connection (shared mailboxes), and anything list_mail_folders could not enumerate within its depth limit.',
         '<b>Message bodies:</b> full bodies were read only for the two most recent emails listed above (evidence anchor). Every other message is described from subject, sender and preview text only, and classification is marked unverified where that matters.',
-        '<b>WorkQ:</b> no WorkQ connector is available to a live report in this workspace (only aggregate activity counts, never per-item task detail), so Owner and Deadline never claim a WorkQ source here — Owner stays "Not established" unless genuinely established some other way, and Deadline comes only from a matched Xero record.',
+        '<b>WorkQ:</b> "Create WorkQ item" opens WorkQ\'s own composer with a title and description filled in (nothing is created until you save it there, and you choose the assignee, due date and priority). Reading existing WorkQ items is still not available to a live report — no connector exposes per-item task detail (only aggregate activity counts) — so Owner and Deadline never claim a WorkQ source here: Owner stays "Not established" unless genuinely established some other way, and Deadline comes only from a matched Xero record.',
         '<b>Actions:</b> "Draft email" opens a prefilled Outlook compose window for you to review and send. Nothing is sent from this report. "Open in Xero" opens the record in Xero, and the Xero session must be signed in.'
       ].concat(coverage.notes.map(function(n){ return '<b>Note:</b> '+esc(n); }));
       el('covList').innerHTML = covItems.map(function(li){ return '<li>'+li+'</li>'; }).join('');
@@ -827,6 +877,11 @@ details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)
   wireEvents();
   el('mSub').value = 'Daily Email Management Report';
   MyHubReport.onData(function(){ run(); });
+  if (MyHubReport.mode === 'snapshot') {
+    // A downloaded/shared snapshot is frozen data -- disable the controls
+    // that would otherwise try to re-query live data.
+    document.querySelectorAll('#fSearch,#fClient,#fOwner,#fCat,#fSort,#fStatus,#fOwnership,#fPriority,#fCarry,#fOverdue,#fClass,#fSender').forEach(function(x){});
+  }
 })();
 </script>
 </body>
