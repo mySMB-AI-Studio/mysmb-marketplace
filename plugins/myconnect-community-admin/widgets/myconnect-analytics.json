@@ -20,13 +20,19 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "communityRow", "dateRangeRow", "tabBar", "divider2", "body"] },
+      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "communityRow", "dateRangeRow", "tabBar", "divider2", "body", "infoOverlay"] },
 
       "titleIcon": { "type": "Icon", "props": { "name": "BarChart3", "tone": "accent", "size": "sm" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Analytics" } },
       "eyebrow": { "type": "Eyebrow", "props": { "text": "Community growth, at a glance" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "header": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "titleGroup": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["titleIcon", "titleStack"] },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+      "header": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["titleGroup", "infoBtn"] },
       "divider1": { "type": "Divider", "props": {} },
 
       "communitySelect": {
@@ -550,7 +556,58 @@
         }
       },
 
-      "body": { "type": "Body", "props": {}, "children": ["signupsPanel", "activeMembersPanel", "postsCommentsPanel", "rsvpPanel"] }
+      "body": { "type": "Body", "props": {}, "children": ["signupsPanel", "activeMembersPanel", "postsCommentsPanel", "rsvpPanel"] },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": { "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "About myConnect Analytics", "level": "h2" } },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoSignupsLabel": { "type": "Caption", "props": { "text": "Sign-ups", "tone": "muted", "weight": "semibold" } },
+      "infoSignupsText": {
+        "type": "Text",
+        "props": {
+          "text": "Everyone who joined the selected community in the chosen date range — member, email, role, status, tags, access groups and date joined. Download CSV exports the same rows.",
+          "size": "sm"
+        }
+      },
+      "infoActiveLabel": { "type": "Caption", "props": { "text": "Active Members", "tone": "muted", "weight": "semibold" } },
+      "infoActiveText": {
+        "type": "Text",
+        "props": {
+          "text": "Every current active-status member, most recently seen first — independent of the date range above.",
+          "size": "sm"
+        }
+      },
+      "infoPostsLabel": { "type": "Caption", "props": { "text": "Posts & Comments", "tone": "muted", "weight": "semibold" } },
+      "infoPostsText": {
+        "type": "Text",
+        "props": {
+          "text": "Each channel's post and comment counts for the selected date range, busiest channel first.",
+          "size": "sm"
+        }
+      },
+      "infoRsvpLabel": { "type": "Caption", "props": { "text": "RSVP", "tone": "muted", "weight": "semibold" } },
+      "infoRsvpText": {
+        "type": "Text",
+        "props": {
+          "text": "Every RSVP across every event in the selected date range — member, email, event, RSVP status, RSVP date and confirmed sessions.",
+          "size": "sm"
+        }
+      },
+      "infoBody": { "type": "Stack", "props": { "gap": "md" }, "children": ["infoSignupsLabel", "infoSignupsText", "infoActiveLabel", "infoActiveText", "infoPostsLabel", "infoPostsText", "infoRsvpLabel", "infoRsvpText"] },
+      "infoCard": { "type": "Card", "props": {}, "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"] }
     }
   }
 }
