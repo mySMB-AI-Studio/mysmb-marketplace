@@ -23,6 +23,23 @@ import type {
 //   { "$computed": "myconnect-community-admin_today" }
 const today: ComputedFunction = () => new Date().toISOString().slice(0, 10);
 
+// ── days_ago ─────────────────────────────────────────────────────────
+// YYYY-MM-DD for `days` days before today, UTC. days_ago(0) is today,
+// days_ago(6) paired with today() gives a 7-day window inclusive of
+// today, matching the "7 days" / "30 days" quick-range pills.
+//
+// Args: { days: number }
+//
+// Spec example:
+//   { "$computed": "myconnect-community-admin_days_ago", "args": { "days": 6 } }
+const days_ago: ComputedFunction = (args) => {
+  const n = Number(args.days);
+  const days = Number.isFinite(n) ? n : 0;
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+};
+
 // ── is_after ─────────────────────────────────────────────────────────
 // True when YYYY-MM-DD string `a` is chronologically after `b` (plain
 // string compare -- safe because the format is fixed-width). json-render's
@@ -39,6 +56,13 @@ const is_after: ComputedFunction = (args) => {
   if (!a || !b) return false;
   return a > b;
 };
+
+// ── year_start ───────────────────────────────────────────────────────
+// YYYY-01-01 for the current UTC year -- the Custom date range's default
+// "From", so switching to Custom starts at the first day of this year
+// rather than whatever preset was last applied.
+// No args.
+const year_start: ComputedFunction = () => `${new Date().getUTCFullYear()}-01-01`;
 
 function eventDatePart(value: unknown, timezone: unknown, part: Intl.DateTimeFormatOptions): string {
   if (value == null) return '';
@@ -178,6 +202,32 @@ export function signupsCsv(members: ReportMember[]): string {
   }
   return csv;
 }
+
+// ── signups_rows ────────────────────────────────────────────────────
+// Flattens list_members items into Table rows for the Sign-ups tab of
+// the myConnect Analytics tile: Member, Email, Role, Status, Tags,
+// Access Groups, Date joined. Same field source and display rules
+// (titleCase role/status, formatDate join date) as signupsCsv, kept in
+// sync with it deliberately -- the table and the CSV describe the same
+// sign-ups in the same selected range.
+//
+// Args: { items: ReportMember[] }
+const signups_rows: ComputedFunction = (args) => {
+  const items = Array.isArray(args.items) ? (args.items as ReportMember[]) : [];
+  return items.map((m) => ({
+    id: m.id ?? '',
+    member: text(m.displayName) || '—',
+    email: text(m.email) || '—',
+    role: m.role ? titleCase(text(m.role)) : '—',
+    status: m.status ? titleCase(text(m.status)) : '—',
+    tags: text(m.tagsText) || '—',
+    accessGroups:
+      (Array.isArray(m.accessGroups)
+        ? m.accessGroups.map((g) => text(g?.name)).filter(Boolean).join(', ')
+        : '') || '—',
+    dateJoined: formatDate(m.createdAt),
+  }));
+};
 
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -526,6 +576,43 @@ const export_signups_csv: PluginWidgetAction = {
   },
 };
 
+// ── active_members_rows ─────────────────────────────────────────────
+// Flattens list_members items into Table rows for the Active Members
+// tab: Member, Email, Role, Last Seen Date, most-recently-seen first.
+// A plain $computed mapper (not an action) -- same shape as
+// signups_rows -- fed by the Active Members tab's own
+// list_members(status: "active") watch, same pattern Sign-ups already
+// uses for its own list_members(fromDate/toDate) watch.
+//
+// Args: { items: ActiveMemberRow[] }
+interface ActiveMemberRow {
+  id?: string | null;
+  displayName?: string | null;
+  email?: string | null;
+  role?: string | null;
+  lastSeenAt?: string | null;
+}
+
+function lastSeenMillis(v: unknown): number {
+  if (typeof v !== 'string' || !v) return -1;
+  const t = Date.parse(v);
+  return Number.isNaN(t) ? -1 : t;
+}
+
+const active_members_rows: ComputedFunction = (args) => {
+  const items = Array.isArray(args.items) ? (args.items as ActiveMemberRow[]) : [];
+  return items
+    .slice()
+    .sort((a, b) => lastSeenMillis(b.lastSeenAt) - lastSeenMillis(a.lastSeenAt))
+    .map((m) => ({
+      id: text(m.id),
+      member: text(m.displayName) || '—',
+      email: text(m.email) || '—',
+      role: m.role ? titleCase(text(m.role)) : '—',
+      lastSeen: m.lastSeenAt ? formatDate(m.lastSeenAt) : 'Never',
+    }));
+};
+
 interface ReportRsvp {
   displayName?: string;
   email?: string;
@@ -545,6 +632,35 @@ const RSVP_STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   yes: { bg: '#dcfce7', fg: '#15803d' },
   waitlist: { bg: '#fef3c7', fg: '#b45309' },
   no: { bg: '#e5e7eb', fg: '#374151' },
+};
+
+// ── rsvps_rows ───────────────────────────────────────────────────────
+// Flattens list_rsvps_in_range items into Table rows for the RSVP tab:
+// Member, Email, Event, RSVP, RSVP Date, Sessions. Same friendly status
+// label as the printable RSVP report (Going/Waitlisted/Not going).
+//
+// Args: { items: RsvpRangeRow[] }
+interface RsvpRangeRow {
+  id?: string | null;
+  eventTitle?: string | null;
+  displayName?: string | null;
+  email?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  sessionsText?: string | null;
+}
+
+const rsvps_rows: ComputedFunction = (args) => {
+  const items = Array.isArray(args.items) ? (args.items as RsvpRangeRow[]) : [];
+  return items.map((r) => ({
+    id: text(r.id),
+    member: text(r.displayName) || '—',
+    email: text(r.email) || '—',
+    event: text(r.eventTitle) || '—',
+    rsvp: (r.status && RSVP_STATUS_LABELS[r.status]) || '—',
+    rsvpDate: formatDate(r.createdAt),
+    sessions: text(r.sessionsText) || '—',
+  }));
 };
 
 function rsvpStatusPill(status: unknown): string {
@@ -663,7 +779,7 @@ const print_rsvp_report: PluginWidgetAction = {
 
 const elements: PluginElementsModule = {
   slug: 'myconnect-community-admin',
-  functions: { today, is_after, event_card_day, event_card_month, event_card_weekday_time },
+  functions: { today, days_ago, year_start, is_after, signups_rows, active_members_rows, rsvps_rows, event_card_day, event_card_month, event_card_weekday_time },
   actions: { export_signups_csv, print_rsvp_report },
 };
 export default elements;

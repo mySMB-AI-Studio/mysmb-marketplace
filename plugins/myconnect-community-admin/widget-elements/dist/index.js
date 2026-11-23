@@ -13,6 +13,22 @@
 // Spec example:
 //   { "$computed": "myconnect-community-admin_today" }
 const today = () => new Date().toISOString().slice(0, 10);
+// ── days_ago ─────────────────────────────────────────────────────────
+// YYYY-MM-DD for `days` days before today, UTC. days_ago(0) is today,
+// days_ago(6) paired with today() gives a 7-day window inclusive of
+// today, matching the "7 days" / "30 days" quick-range pills.
+//
+// Args: { days: number }
+//
+// Spec example:
+//   { "$computed": "myconnect-community-admin_days_ago", "args": { "days": 6 } }
+const days_ago = (args) => {
+    const n = Number(args.days);
+    const days = Number.isFinite(n) ? n : 0;
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString().slice(0, 10);
+};
 // ── is_after ─────────────────────────────────────────────────────────
 // True when YYYY-MM-DD string `a` is chronologically after `b` (plain
 // string compare -- safe because the format is fixed-width). json-render's
@@ -30,6 +46,12 @@ const is_after = (args) => {
         return false;
     return a > b;
 };
+// ── year_start ───────────────────────────────────────────────────────
+// YYYY-01-01 for the current UTC year -- the Custom date range's default
+// "From", so switching to Custom starts at the first day of this year
+// rather than whatever preset was last applied.
+// No args.
+const year_start = () => `${new Date().getUTCFullYear()}-01-01`;
 function eventDatePart(value, timezone, part) {
     if (value == null)
         return '';
@@ -140,6 +162,30 @@ export function signupsCsv(members) {
     }
     return csv;
 }
+// ── signups_rows ────────────────────────────────────────────────────
+// Flattens list_members items into Table rows for the Sign-ups tab of
+// the myConnect Analytics tile: Member, Email, Role, Status, Tags,
+// Access Groups, Date joined. Same field source and display rules
+// (titleCase role/status, formatDate join date) as signupsCsv, kept in
+// sync with it deliberately -- the table and the CSV describe the same
+// sign-ups in the same selected range.
+//
+// Args: { items: ReportMember[] }
+const signups_rows = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items.map((m) => ({
+        id: m.id ?? '',
+        member: text(m.displayName) || '—',
+        email: text(m.email) || '—',
+        role: m.role ? titleCase(text(m.role)) : '—',
+        status: m.status ? titleCase(text(m.status)) : '—',
+        tags: text(m.tagsText) || '—',
+        accessGroups: (Array.isArray(m.accessGroups)
+            ? m.accessGroups.map((g) => text(g?.name)).filter(Boolean).join(', ')
+            : '') || '—',
+        dateJoined: formatDate(m.createdAt),
+    }));
+};
 function downloadCsv(filename, csv) {
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -453,6 +499,25 @@ const export_signups_csv = {
         }
     },
 };
+function lastSeenMillis(v) {
+    if (typeof v !== 'string' || !v)
+        return -1;
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? -1 : t;
+}
+const active_members_rows = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items
+        .slice()
+        .sort((a, b) => lastSeenMillis(b.lastSeenAt) - lastSeenMillis(a.lastSeenAt))
+        .map((m) => ({
+        id: text(m.id),
+        member: text(m.displayName) || '—',
+        email: text(m.email) || '—',
+        role: m.role ? titleCase(text(m.role)) : '—',
+        lastSeen: m.lastSeenAt ? formatDate(m.lastSeenAt) : 'Never',
+    }));
+};
 const RSVP_STATUS_LABELS = {
     yes: 'Going',
     waitlist: 'Waitlisted',
@@ -462,6 +527,18 @@ const RSVP_STATUS_COLORS = {
     yes: { bg: '#dcfce7', fg: '#15803d' },
     waitlist: { bg: '#fef3c7', fg: '#b45309' },
     no: { bg: '#e5e7eb', fg: '#374151' },
+};
+const rsvps_rows = (args) => {
+    const items = Array.isArray(args.items) ? args.items : [];
+    return items.map((r) => ({
+        id: text(r.id),
+        member: text(r.displayName) || '—',
+        email: text(r.email) || '—',
+        event: text(r.eventTitle) || '—',
+        rsvp: (r.status && RSVP_STATUS_LABELS[r.status]) || '—',
+        rsvpDate: formatDate(r.createdAt),
+        sessions: text(r.sessionsText) || '—',
+    }));
 };
 function rsvpStatusPill(status) {
     const s = typeof status === 'string' ? status : '';
@@ -567,7 +644,7 @@ const print_rsvp_report = {
 };
 const elements = {
     slug: 'myconnect-community-admin',
-    functions: { today, is_after, event_card_day, event_card_month, event_card_weekday_time },
+    functions: { today, days_ago, year_start, is_after, signups_rows, active_members_rows, rsvps_rows, event_card_day, event_card_month, event_card_weekday_time },
     actions: { export_signups_csv, print_rsvp_report },
 };
 export default elements;
