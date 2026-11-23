@@ -1,15 +1,15 @@
 {
   "id": "salesforce-support-tickets",
   "title": "Support Tickets",
-  "description": "Open Salesforce Cases in a list — subject, status, and colour-coded priority badge. Click a ticket to expand and see the case number and created date. Uses the standard Case object, no custom setup required.",
+  "description": "Open Salesforce Cases with a priority breakdown across the top — Open, High, Medium and Low — then the queue itself, highest priority first. Each row shows the subject, a status pill and a colour-coded priority badge; click a row to reveal the case number and created date. Uses the standard Case object, no custom setup required.",
   "category": "support",
   "tags": ["salesforce", "crm", "cases", "support", "helpdesk", "tickets"],
   "keywords": ["tickets", "support", "cases", "helpdesk", "open tickets", "priority", "queue"],
   "connectorsUsed": ["salesforce"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
-    "min": { "colSpan": 3, "rowSpan": 4 },
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min": { "colSpan": 4, "rowSpan": 5 },
     "max": { "colSpan": 12, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -25,8 +25,29 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": ["header", "body", "footerDivider", "footer"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/caseRows",
+                "value": {
+                  "$computed": "sort_by_priority",
+                  "args": {
+                    "value": { "$state": "/salesforce/soql_query/records" },
+                    "by": [
+                      { "field": "Priority", "order": ["High", "Medium", "Low"] },
+                      { "field": "CreatedDate", "direction": "desc" }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
+
       "header": {
         "type": "Header",
         "props": {},
@@ -39,7 +60,7 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "LifeBuoy", "tone": "accent", "size": "sm" }
+        "props": { "name": "LifeBuoy", "tone": "warning", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -65,21 +86,25 @@
           }
         }
       },
+
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "ticketList"]
+        "children": ["loading", "empty", "statGrid", "statDivider", "ticketList"]
       },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "children": ["skStats", "sk1", "sk2", "sk3", "sk4"],
         "visible": { "$state": "/_loading/salesforce.soql_query" }
       },
+      "skStats": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
       "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
       "empty": {
         "type": "Empty",
         "props": { "message": "No open cases found in Salesforce." },
@@ -90,18 +115,146 @@
           ]
         }
       },
+
+      "statGrid": {
+        "type": "Grid",
+        "props": { "cols": 4, "gap": "sm" },
+        "children": ["statOpen", "statHigh", "statMedium", "statLow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0" }
+          ]
+        }
+      },
+
+      "statOpen": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statOpenLabel", "statOpenValue"]
+      },
+      "statOpenLabel": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statOpenDot", "statOpenText"]
+      },
+      "statOpenDot": { "type": "Dot", "props": { "tone": "accent", "size": "sm" } },
+      "statOpenText": { "type": "Eyebrow", "props": { "text": "Open" } },
+      "statOpenValue": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$computed": "count",
+            "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+          }
+        }
+      },
+
+      "statHigh": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statHighLabel", "statHighValue"]
+      },
+      "statHighLabel": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statHighDot", "statHighText"]
+      },
+      "statHighDot": { "type": "Dot", "props": { "tone": "destructive", "size": "sm" } },
+      "statHighText": { "type": "Eyebrow", "props": { "text": "High" } },
+      "statHighValue": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": { "$state": "/salesforce/soql_query/records" },
+              "whereField": "Priority",
+              "equals": "High"
+            }
+          }
+        }
+      },
+
+      "statMedium": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statMediumLabel", "statMediumValue"]
+      },
+      "statMediumLabel": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statMediumDot", "statMediumText"]
+      },
+      "statMediumDot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "statMediumText": { "type": "Eyebrow", "props": { "text": "Medium" } },
+      "statMediumValue": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": { "$state": "/salesforce/soql_query/records" },
+              "whereField": "Priority",
+              "equals": "Medium"
+            }
+          }
+        }
+      },
+
+      "statLow": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["statLowLabel", "statLowValue"]
+      },
+      "statLowLabel": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statLowDot", "statLowText"]
+      },
+      "statLowDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "statLowText": { "type": "Eyebrow", "props": { "text": "Low" } },
+      "statLowValue": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$computed": "count_where",
+            "args": {
+              "value": { "$state": "/salesforce/soql_query/records" },
+              "whereField": "Priority",
+              "equals": "Low"
+            }
+          }
+        }
+      },
+
+      "statDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/salesforce/soql_query/records/0" }
+          ]
+        }
+      },
+
       "ticketList": {
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["ticketRow"],
         "repeat": {
-          "statePath": "/salesforce/soql_query/records",
+          "statePath": "/ui/caseRows",
           "key": "Id"
         },
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0" }
+            { "$state": "/ui/caseRows/0" }
           ]
         }
       },
@@ -112,8 +265,8 @@
       },
       "ticketTopRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between", "hover": true, "clickable": true },
-        "children": ["ticketLeft", "priorityBadge"],
+        "props": { "gap": "sm", "align": "start", "justify": "between", "hover": true, "clickable": true },
+        "children": ["ticketDot", "ticketLeft", "priorityBadge"],
         "on": {
           "click": {
             "action": "setState",
@@ -128,23 +281,45 @@
           }
         }
       },
+      "ticketDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$computed": "salesforce_case_priority_tone",
+            "args": { "value": { "$item": "Priority" } }
+          }
+        }
+      },
       "ticketLeft": {
         "type": "Stack",
-        "props": { "gap": "none", "grow": true },
-        "children": ["ticketSubject", "ticketMeta"]
+        "props": { "gap": "xs", "grow": true },
+        "children": ["ticketSubject", "ticketStatusRow"]
       },
       "ticketSubject": {
         "type": "Text",
         "props": {
-          "text": { "$item": "Subject" },
+          "text": {
+            "$computed": "salesforce_case_subject",
+            "args": { "value": { "$item": "Subject" } }
+          },
           "size": "sm",
           "weight": "medium",
           "truncate": true
         }
       },
-      "ticketMeta": {
-        "type": "Caption",
-        "props": { "text": { "$item": "Status" }, "tone": "muted" }
+      "ticketStatusRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "start" },
+        "children": ["ticketStatusBadge"]
+      },
+      "ticketStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "Status" },
+          "tone": "info",
+          "variant": "soft"
+        }
       },
       "priorityBadge": {
         "type": "Badge",
@@ -159,9 +334,9 @@
       },
       "ticketDetail": {
         "type": "Section",
-        "props": { "variant": "muted" },
+        "props": { "variant": "muted", "inset": true },
         "visible": { "$item": "Id", "eq": { "$state": "/ui/selectedCaseId" } },
-        "children": ["ticketDetailId", "ticketDetailStatus", "ticketDetailCreated"]
+        "children": ["ticketDetailId", "ticketDetailCreated"]
       },
       "ticketDetailId": {
         "type": "Caption",
@@ -169,15 +344,6 @@
           "text": {
             "$computed": "fmt",
             "args": { "pattern": "Case #: {num}", "num": { "$item": "CaseNumber" } }
-          }
-        }
-      },
-      "ticketDetailStatus": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": { "pattern": "Status: {status}", "status": { "$item": "Status" } }
           }
         }
       },
@@ -191,6 +357,27 @@
               "date": { "$computed": "salesforce_format_date", "args": { "value": { "$item": "CreatedDate" } } }
             }
           }
+        }
+      },
+
+      "footerDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/caseRows/0" }
+          ]
+        }
+      },
+      "footer": {
+        "type": "Caption",
+        "props": { "text": "Open cases, highest priority first.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/caseRows/0" }
+          ]
         }
       }
     }

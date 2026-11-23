@@ -409,6 +409,21 @@ const case_priority_tone: ComputedFunction = (args) => {
   return 'muted';
 };
 
+/**
+ * Case Subject with a readable fallback. Salesforce allows Subject to be blank,
+ * which would otherwise render a title-less row.
+ *
+ * Args: { value: string | null }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_case_subject", "args": { "value": { "$item": "Subject" } } }
+ */
+const case_subject: ComputedFunction = (args) => {
+  const v = args.value;
+  if (v === null || v === undefined || String(v).trim() === '') return '(No Subject)';
+  return String(v);
+};
+
 const STATE_ABBR_MAP: Record<string, string> = {
   'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
   'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
@@ -454,7 +469,7 @@ const format_date: ComputedFunction = (args) => {
 
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, format_date, state_abbr },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr },
 };
 
 export default elements;
