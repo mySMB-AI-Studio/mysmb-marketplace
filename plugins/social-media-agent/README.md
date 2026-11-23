@@ -26,7 +26,7 @@ The agent works with three kinds of record (under **Records**):
 
 **Every week.** On Mondays you get a "Publishing this week" WorkQ item listing what's due and what still needs review, and the agent suggests campaigns 3 to 6 weeks ahead of Australian occasions ("Seasonal idea: ..."). Close a suggestion you don't want.
 
-**It learns from your changes.** Every time you choose **Ask for changes**, your note is saved to the agent's **Files > Brand Kit > reviewer-notes.md** (newest first, the last 20), and every new draft applies those notes as standing preferences. Edit or delete lines in that file to change what it applies.
+**It learns from your changes.** When you choose **Ask for changes** with a general preference (tone, length, style, words to use or avoid), the note is saved to the agent's **Files > Brand Kit > reviewer-notes.md** (newest first, the last 20) and applied to future drafts where it fits. A note about one piece only (a product detail, a fact, an offer) is used for that redraft and not saved. To change the saved notes, download the file, edit it, delete the old one and upload it to Files > Brand Kit with the same name (keep its "Brand Kit:" line).
 
 **Keep a steady rhythm (optional).** Set **Posts per week** in the agent's Preferences (Agents > Social Media Agent > Setup). Every Monday the agent adds social posts to next week until it has that many, each built around one of your Brand Kit's key messages; each is drafted and reviewed as usual. Leave it empty to plan everything yourself.
 
