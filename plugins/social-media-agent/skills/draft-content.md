@@ -21,7 +21,7 @@ The earlier `context` step's outputs:
 
 If this is a new attempt after the reviewer asked for changes, the revision note is part of your input. Apply it, keep everything else that was fine, and say what you changed in `summary`.
 
-**Standing preferences.** `steps.context.piece.reviewer_preferences` lists changes the reviewer asked for on earlier pieces (newest first). Apply them to this draft from the start when they fit this content type, unless the brief or the Brand Kit says otherwise; newer notes win over older ones. Say in `summary` which ones you applied.
+**Standing preferences.** `steps.context.piece.reviewer_preferences` lists changes the reviewer asked for on earlier pieces (newest first). Apply them to this draft from the start when they fit this content type and this piece (skip a note about a different product, offer or topic), unless the brief or the Brand Kit says otherwise; newer notes win over older ones. Say in `summary` which ones you applied.
 
 ## House rules (never break these)
 
