@@ -1,7 +1,7 @@
 {
   "id": "xero-action-queue",
   "title": "Action Queue",
-  "description": "Everything needing attention in Xero — invoices to collect, bills to pay, unreconciled bank transactions and expense claims awaiting approval, in one scannable list. The unreconciled figure counts Xero-side bank transactions across every bank account; it is not Xero's 'Reconcile N items', which counts unmatched bank statement lines and is not exposed by the Accounting API. Each row deep-links to the matching Xero screen.",
+  "description": "Everything needing attention in one Xero organisation — invoices to collect, bills to pay, unreconciled transactions and expense claims awaiting approval, in one scannable list. Counts are for the organisation picked in the dashboard's Xero switcher, named in the header; nothing is added up across organisations. Unreconciled transactions are the bank transactions and payments entered in Xero against a bank account that are not yet matched to a bank statement line (a batch payment counts once). That is not Xero's 'Reconcile N items', which counts the bank's own statement lines and is not exposed by Xero's API. Each row, and Open in Xero, opens the matching Xero screen for the same organisation.",
   "category": "finance",
   "tags": [
     "xero",
@@ -65,12 +65,6 @@
               "where": "Status==\"AUTHORISED\"&&IsReconciled==false",
               "order": "Date DESC"
             }
-          },
-          "/xero-accounting/list_bank_transactions": {
-            "action": "xero-accounting.list_expense_claims",
-            "params": {
-              "where": "Status==\"SUBMITTED\""
-            }
           }
         }
       },
@@ -78,7 +72,13 @@
         "type": "Header",
         "children": [
           "headStack"
-        ]
+        ],
+        "watch": {
+          "/xero-accounting/list_invoices": {
+            "action": "xero-accounting.get_organisation",
+            "params": {}
+          }
+        }
       },
       "headStack": {
         "type": "Stack",
@@ -88,13 +88,29 @@
         "children": [
           "title",
           "headSub"
-        ]
+        ],
+        "watch": {
+          "/xero-accounting/list_invoices": {
+            "action": "xero-accounting.list_expense_claims",
+            "params": {
+              "where": "Status==\"SUBMITTED\""
+            }
+          }
+        }
       },
       "title": {
         "type": "Heading",
         "props": {
           "text": "Action Queue",
           "level": "h1"
+        },
+        "watch": {
+          "/xero-accounting/list_bank_transactions": {
+            "action": "xero-accounting.list_payments",
+            "params": {
+              "where": "Status==\"AUTHORISED\"&&IsReconciled==false"
+            }
+          }
         }
       },
       "headSub": {
@@ -102,66 +118,294 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_invoices/Invoices"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "fmt",
-              "args": {
-                "pattern": "{n} items need your attention",
-                "n": {
-                  "$computed": "add_number",
-                  "args": {
-                    "a": {
-                      "$computed": "add_number",
-                      "args": {
-                        "a": {
-                          "$computed": "count_where",
-                          "args": {
-                            "value": {
-                              "$state": "/xero-accounting/list_invoices/Invoices"
-                            },
-                            "whereField": "Type",
-                            "equals": "ACCREC"
-                          }
-                        },
-                        "b": {
-                          "$computed": "count_where",
-                          "args": {
-                            "value": {
-                              "$state": "/xero-accounting/list_invoices/Invoices"
-                            },
-                            "whereField": "Type",
-                            "equals": "ACCPAY"
-                          }
-                        }
-                      }
-                    },
-                    "b": {
-                      "$computed": "add_number",
-                      "args": {
-                        "a": {
-                          "$computed": "count",
-                          "args": {
-                            "value": {
-                              "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
-                            }
-                          }
-                        },
-                        "b": {
-                          "$computed": "count",
-                          "args": {
-                            "value": {
-                              "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
-                            }
-                          }
-                        }
-                      }
-                    }
+              "$state": "/ui/aq/headline"
+            },
+            "$else": "Waiting for Xero…"
+          }
+        },
+        "watch": {
+          "/xero-accounting/list_invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
                   }
                 }
               }
-            },
-            "$else": "Waiting for Xero…"
+            }
+          },
+          "/xero-accounting/list_bank_transactions": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/list_payments": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/list_accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/list_expense_claims": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/get_organisation": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/_errors/xero-accounting.list_payments": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
+          },
+          "/_errors/xero-accounting.list_accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/aq",
+              "value": {
+                "$computed": "xero-accounting_action_queue_view",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  },
+                  "bankTransactions": {
+                    "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+                  },
+                  "payments": {
+                    "$state": "/xero-accounting/list_payments/Payments"
+                  },
+                  "bankAccounts": {
+                    "$state": "/xero-accounting/list_accounts/Accounts"
+                  },
+                  "expenseClaims": {
+                    "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+                  },
+                  "organisation": {
+                    "$state": "/xero-accounting/get_organisation/Organisations/0"
+                  },
+                  "paymentsError": {
+                    "$state": "/_errors/xero-accounting.list_payments"
+                  },
+                  "bankAccountsError": {
+                    "$state": "/_errors/xero-accounting.list_accounts"
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -171,7 +415,15 @@
           "loading",
           "rows",
           "footer"
-        ]
+        ],
+        "watch": {
+          "/xero-accounting/list_bank_transactions": {
+            "action": "xero-accounting.list_accounts",
+            "params": {
+              "where": "Type==\"BANK\""
+            }
+          }
+        }
       },
       "loading": {
         "type": "Skeleton",
@@ -217,7 +469,15 @@
           "click": {
             "action": "open_url",
             "params": {
-              "url": "https://go.xero.com/AccountsReceivable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED",
+              "url": {
+                "$cond": {
+                  "$state": "/ui/aq/rows/inv/url"
+                },
+                "$then": {
+                  "$state": "/ui/aq/rows/inv/url"
+                },
+                "$else": "https://go.xero.com/AccountsReceivable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED"
+              },
               "target": "_blank"
             }
           }
@@ -255,23 +515,10 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_invoices/Invoices"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "fmt",
-              "args": {
-                "pattern": "{n} outstanding",
-                "n": {
-                  "$computed": "count_where",
-                  "args": {
-                    "value": {
-                      "$state": "/xero-accounting/list_invoices/Invoices"
-                    },
-                    "whereField": "Type",
-                    "equals": "ACCREC"
-                  }
-                }
-              }
+              "$state": "/ui/aq/rows/inv/sub"
             },
             "$else": "—"
           }
@@ -293,31 +540,33 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_invoices/Invoices"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "count_where",
-              "args": {
-                "value": {
-                  "$state": "/xero-accounting/list_invoices/Invoices"
-                },
-                "whereField": "Type",
-                "equals": "ACCREC"
-              }
+              "$state": "/ui/aq/rows/inv/count"
             },
             "$else": "—"
           },
           "size": "lg",
           "weight": "medium",
-          "tone": "destructive"
+          "tone": {
+            "$state": "/ui/aq/rows/inv/countTone"
+          }
         }
       },
       "invBadge": {
         "type": "Badge",
         "props": {
-          "text": "Chase Up",
-          "tone": "destructive",
+          "text": {
+            "$state": "/ui/aq/rows/inv/pill"
+          },
+          "tone": {
+            "$state": "/ui/aq/rows/inv/pillTone"
+          },
           "variant": "soft"
+        },
+        "visible": {
+          "$state": "/ui/aq/rows/inv/pill"
         }
       },
       "invChevron": {
@@ -346,7 +595,15 @@
           "click": {
             "action": "open_url",
             "params": {
-              "url": "https://go.xero.com/AccountsPayable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED",
+              "url": {
+                "$cond": {
+                  "$state": "/ui/aq/rows/bill/url"
+                },
+                "$then": {
+                  "$state": "/ui/aq/rows/bill/url"
+                },
+                "$else": "https://go.xero.com/AccountsPayable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED"
+              },
               "target": "_blank"
             }
           }
@@ -384,23 +641,10 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_invoices/Invoices"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "fmt",
-              "args": {
-                "pattern": "{n} outstanding",
-                "n": {
-                  "$computed": "count_where",
-                  "args": {
-                    "value": {
-                      "$state": "/xero-accounting/list_invoices/Invoices"
-                    },
-                    "whereField": "Type",
-                    "equals": "ACCPAY"
-                  }
-                }
-              }
+              "$state": "/ui/aq/rows/bill/sub"
             },
             "$else": "—"
           }
@@ -422,31 +666,33 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_invoices/Invoices"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "count_where",
-              "args": {
-                "value": {
-                  "$state": "/xero-accounting/list_invoices/Invoices"
-                },
-                "whereField": "Type",
-                "equals": "ACCPAY"
-              }
+              "$state": "/ui/aq/rows/bill/count"
             },
             "$else": "—"
           },
           "size": "lg",
           "weight": "medium",
-          "tone": "warning"
+          "tone": {
+            "$state": "/ui/aq/rows/bill/countTone"
+          }
         }
       },
       "billBadge": {
         "type": "Badge",
         "props": {
-          "text": "Due Soon",
-          "tone": "warning",
+          "text": {
+            "$state": "/ui/aq/rows/bill/pill"
+          },
+          "tone": {
+            "$state": "/ui/aq/rows/bill/pillTone"
+          },
           "variant": "soft"
+        },
+        "visible": {
+          "$state": "/ui/aq/rows/bill/pill"
         }
       },
       "billChevron": {
@@ -475,7 +721,15 @@
           "click": {
             "action": "open_url",
             "params": {
-              "url": "https://go.xero.com/Bank/BankAccounts.aspx",
+              "url": {
+                "$cond": {
+                  "$state": "/ui/aq/rows/rec/url"
+                },
+                "$then": {
+                  "$state": "/ui/aq/rows/rec/url"
+                },
+                "$else": "https://go.xero.com/Bank/BankAccounts.aspx"
+              },
               "target": "_blank"
             }
           }
@@ -497,7 +751,8 @@
         },
         "children": [
           "recLabel",
-          "recSub"
+          "recSub",
+          "recOpen"
         ]
       },
       "recLabel": {
@@ -511,7 +766,41 @@
       "recSub": {
         "type": "Caption",
         "props": {
-          "text": "All Bank Accounts"
+          "text": {
+            "$cond": {
+              "$state": "/ui/aq/ready"
+            },
+            "$then": {
+              "$state": "/ui/aq/rows/rec/sub"
+            },
+            "$else": "—"
+          }
+        }
+      },
+      "recOpen": {
+        "type": "Button",
+        "props": {
+          "label": "Open in Xero",
+          "variant": "ghost",
+          "size": "sm",
+          "leadingIcon": "ExternalLink"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": {
+                "$cond": {
+                  "$state": "/ui/aq/rows/rec/url"
+                },
+                "$then": {
+                  "$state": "/ui/aq/rows/rec/url"
+                },
+                "$else": "https://go.xero.com/Bank/BankAccounts.aspx"
+              },
+              "target": "_blank"
+            }
+          }
         }
       },
       "recRight": {
@@ -530,29 +819,33 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "count",
-              "args": {
-                "value": {
-                  "$state": "/xero-accounting/list_bank_transactions/BankTransactions"
-                }
-              }
+              "$state": "/ui/aq/rows/rec/count"
             },
             "$else": "—"
           },
           "size": "lg",
           "weight": "medium",
-          "tone": "warning"
+          "tone": {
+            "$state": "/ui/aq/rows/rec/countTone"
+          }
         }
       },
       "recBadge": {
         "type": "Badge",
         "props": {
-          "text": "To Review",
-          "tone": "warning",
+          "text": {
+            "$state": "/ui/aq/rows/rec/pill"
+          },
+          "tone": {
+            "$state": "/ui/aq/rows/rec/pillTone"
+          },
           "variant": "soft"
+        },
+        "visible": {
+          "$state": "/ui/aq/rows/rec/pill"
         }
       },
       "recChevron": {
@@ -581,7 +874,15 @@
           "click": {
             "action": "open_url",
             "params": {
-              "url": "https://go.xero.com/ExpenseClaims/?status=SUBMITTED",
+              "url": {
+                "$cond": {
+                  "$state": "/ui/aq/rows/exp/url"
+                },
+                "$then": {
+                  "$state": "/ui/aq/rows/exp/url"
+                },
+                "$else": "https://go.xero.com/ExpenseClaims/?status=SUBMITTED"
+              },
               "target": "_blank"
             }
           }
@@ -617,7 +918,15 @@
       "expSub": {
         "type": "Caption",
         "props": {
-          "text": "Awaiting Approval"
+          "text": {
+            "$cond": {
+              "$state": "/ui/aq/ready"
+            },
+            "$then": {
+              "$state": "/ui/aq/rows/exp/sub"
+            },
+            "$else": "—"
+          }
         }
       },
       "expRight": {
@@ -636,29 +945,33 @@
         "props": {
           "text": {
             "$cond": {
-              "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
+              "$state": "/ui/aq/ready"
             },
             "$then": {
-              "$computed": "count",
-              "args": {
-                "value": {
-                  "$state": "/xero-accounting/list_expense_claims/ExpenseClaims"
-                }
-              }
+              "$state": "/ui/aq/rows/exp/count"
             },
             "$else": "—"
           },
           "size": "lg",
           "weight": "medium",
-          "tone": "success"
+          "tone": {
+            "$state": "/ui/aq/rows/exp/countTone"
+          }
         }
       },
       "expBadge": {
         "type": "Badge",
         "props": {
-          "text": "All Clear",
-          "tone": "success",
+          "text": {
+            "$state": "/ui/aq/rows/exp/pill"
+          },
+          "tone": {
+            "$state": "/ui/aq/rows/exp/pillTone"
+          },
           "variant": "soft"
+        },
+        "visible": {
+          "$state": "/ui/aq/rows/exp/pill"
         }
       },
       "expChevron": {
@@ -694,7 +1007,7 @@
       "footerBtn": {
         "type": "Button",
         "props": {
-          "label": "Open Xero",
+          "label": "Open in Xero",
           "variant": "ghost",
           "size": "sm",
           "leadingIcon": "ExternalLink"
@@ -703,7 +1016,15 @@
           "click": {
             "action": "open_url",
             "params": {
-              "url": "https://go.xero.com/",
+              "url": {
+                "$cond": {
+                  "$state": "/ui/aq/homeUrl"
+                },
+                "$then": {
+                  "$state": "/ui/aq/homeUrl"
+                },
+                "$else": "https://go.xero.com/"
+              },
               "target": "_blank"
             }
           }

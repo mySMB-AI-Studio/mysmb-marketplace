@@ -199,6 +199,160 @@ const reconciliation_breakdown: ComputedFunction = (args) => {
   };
 };
 
+// ── action_queue_view ────────────────────────────────────────────────
+// The whole derived view for the Action Queue tile in one call: the four
+// row counts, their status pills, the header line, and Xero links that
+// open the organisation the counts came from.
+//
+// Every count is for ONE organisation: the one picked in the dashboard's
+// Xero organisation switcher (the user's first connected org until they
+// pick one). Nothing is added up across organisations.
+//
+// Unreconciled = entries recorded in Xero against a bank account that are
+// not yet matched to a bank statement line:
+//   - AUTHORISED bank transactions (spend and receive money, overpayment
+//     and prepayment receipts, and each leg of a transfer), plus
+//   - AUTHORISED payments on invoices, bills and credit notes made from or
+//     into a BANK account. A batch payment is one line on Xero's reconcile
+//     screen, so its payments count once. A payment to a non-bank account
+//     (such as a contra clearing account) can never be reconciled and is
+//     left out.
+// It is the same rule get_xero_bank_balance_difference uses for
+// `unreconciled`, except that tool counts each payment in a batch.
+//
+// It is NOT Xero's "Reconcile N items" figure. That counts the bank's own
+// statement lines that are still unmatched, and Xero does not expose
+// statement lines through its API, so no tile can show that number.
+//
+// If the payments or accounts read fails, the count falls back to bank
+// transactions alone and the subtitle says so, rather than blanking the
+// row or silently showing a smaller number.
+//
+// Links use Xero's organisationlogin deep link with the organisation's
+// ShortCode, so they open the organisation the tile is showing rather than
+// whichever organisation the user last had open in Xero. Until
+// get_organisation answers they fall back to the plain go.xero.com page.
+//
+// Args: { invoices, bankTransactions, payments, bankAccounts, expenseClaims,
+//         organisation, paymentsError, bankAccountsError }
+// Returns: { ready, orgName, headline, homeUrl,
+//            rows: { inv, bill, rec, exp } } where each row is
+//            { count: number | '—', sub, pill, pillTone, countTone, url }
+type QueueRow = {
+  count: number | '—';
+  sub: string;
+  pill: string;
+  pillTone: string;
+  countTone: string;
+  url: string;
+};
+
+const AQ_PATHS = {
+  inv: '/AccountsReceivable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED',
+  bill: '/AccountsPayable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED',
+  rec: '/Bank/BankAccounts.aspx',
+  exp: '/ExpenseClaims/?status=SUBMITTED',
+  home: '/Dashboard/',
+};
+
+const aqXeroLink = (shortCode: string, path: string): string =>
+  shortCode
+    ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(path)}`
+    : `https://go.xero.com${path}`;
+
+const aqNotReconciled = (v: unknown) => v === false || v === 'false';
+const aqAuthorised = (v: unknown) => v === undefined || v === 'AUTHORISED';
+const aqFailed = (v: unknown) => typeof v === 'string' && v.length > 0;
+
+const aqRow = (
+  count: number | '—',
+  sub: string,
+  activePill: string,
+  activeTone: string,
+  url: string,
+): QueueRow => {
+  if (count === '—') return { count, sub, pill: '', pillTone: 'muted', countTone: 'muted', url };
+  const active = count > 0;
+  return {
+    count,
+    sub,
+    pill: active ? activePill : 'All Clear',
+    pillTone: active ? activeTone : 'success',
+    countTone: active ? activeTone : 'muted',
+    url,
+  };
+};
+
+const action_queue_view: ComputedFunction = (args) => {
+  const list = (v: unknown) => (Array.isArray(v) ? (v as Record<string, unknown>[]) : null);
+  const invoices = list(args.invoices);
+  const bankTransactions = list(args.bankTransactions);
+  const payments = list(args.payments);
+  const bankAccounts = list(args.bankAccounts);
+  const expenseClaims = list(args.expenseClaims);
+  const org = (args.organisation ?? {}) as Record<string, unknown>;
+  const orgName = String(org.Name ?? '').trim();
+  const shortCode = String(org.ShortCode ?? '').trim();
+  const link = (path: string) => aqXeroLink(shortCode, path);
+
+  const invCount = invoices ? invoices.filter((i) => i.Type === 'ACCREC').length : '—';
+  const billCount = invoices ? invoices.filter((i) => i.Type === 'ACCPAY').length : '—';
+
+  let recCount: number | '—' = '—';
+  let recSub = 'Entered in Xero, not yet reconciled';
+  if (bankTransactions) {
+    const unmatchedTx = bankTransactions.filter(
+      (t) => aqNotReconciled(t.IsReconciled) && aqAuthorised(t.Status),
+    ).length;
+    if (payments && bankAccounts) {
+      const bankIds = new Set(
+        bankAccounts
+          .filter((a) => a.Type === undefined || a.Type === 'BANK')
+          .map((a) => String(a.AccountID ?? ''))
+          .filter(Boolean),
+      );
+      let single = 0;
+      const batches = new Set<string>();
+      for (const p of payments) {
+        if (!aqNotReconciled(p.IsReconciled) || !aqAuthorised(p.Status)) continue;
+        const accountId = String((p.Account as Record<string, unknown> | undefined)?.AccountID ?? '');
+        if (!bankIds.has(accountId)) continue;
+        const batchId = String(
+          p.BatchPaymentID ?? (p.BatchPayment as Record<string, unknown> | undefined)?.BatchPaymentID ?? '',
+        );
+        if (batchId) batches.add(batchId);
+        else single += 1;
+      }
+      recCount = unmatchedTx + single + batches.size;
+    } else if (aqFailed(args.paymentsError) || aqFailed(args.bankAccountsError)) {
+      recCount = unmatchedTx;
+      recSub = 'Bank transactions only: Xero did not return payments';
+    }
+  }
+
+  const expCount = expenseClaims ? expenseClaims.length : '—';
+
+  const rows = {
+    inv: aqRow(invCount, invCount === '—' ? '—' : `${invCount} outstanding`, 'Chase Up', 'destructive', link(AQ_PATHS.inv)),
+    bill: aqRow(billCount, billCount === '—' ? '—' : `${billCount} outstanding`, 'Due Soon', 'warning', link(AQ_PATHS.bill)),
+    rec: aqRow(recCount, recSub, 'To Review', 'warning', link(AQ_PATHS.rec)),
+    exp: aqRow(expCount, 'Awaiting Approval', 'To Approve', 'warning', link(AQ_PATHS.exp)),
+  };
+
+  const ready = invoices !== null;
+  const total = Object.values(rows).reduce((n, r) => n + (typeof r.count === 'number' ? r.count : 0), 0);
+  const attention =
+    total === 0 ? 'Nothing needs your attention' : `${total} ${total === 1 ? 'item needs' : 'items need'} your attention`;
+
+  return {
+    ready,
+    orgName,
+    headline: ready ? (orgName ? `${orgName} · ${attention}` : attention) : 'Waiting for Xero…',
+    homeUrl: shortCode ? link(AQ_PATHS.home) : 'https://go.xero.com/',
+    rows,
+  };
+};
+
 // Supplier is a portal-defined, open-ended label with no inherent
 // good/bad meaning — a categorical (non-status) case per
 // TILE-DISPLAY-STANDARDS.md §7, so it gets the `chart-1..5` palette.
@@ -3161,6 +3315,7 @@ const elements: PluginElementsModule = {
     bank_tx_label,
     reconciliation_breakdown,
     reconciliation_rows,
+    action_queue_view,
     remittance_rows,
     remittance_breakdown,
     reimbursement_draft_rows,

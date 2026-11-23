@@ -199,6 +199,93 @@ const reconciliation_breakdown = (args) => {
         template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
     };
 };
+const AQ_PATHS = {
+    inv: '/AccountsReceivable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED',
+    bill: '/AccountsPayable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED',
+    rec: '/Bank/BankAccounts.aspx',
+    exp: '/ExpenseClaims/?status=SUBMITTED',
+    home: '/Dashboard/',
+};
+const aqXeroLink = (shortCode, path) => shortCode
+    ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(path)}`
+    : `https://go.xero.com${path}`;
+const aqNotReconciled = (v) => v === false || v === 'false';
+const aqAuthorised = (v) => v === undefined || v === 'AUTHORISED';
+const aqFailed = (v) => typeof v === 'string' && v.length > 0;
+const aqRow = (count, sub, activePill, activeTone, url) => {
+    if (count === '—')
+        return { count, sub, pill: '', pillTone: 'muted', countTone: 'muted', url };
+    const active = count > 0;
+    return {
+        count,
+        sub,
+        pill: active ? activePill : 'All Clear',
+        pillTone: active ? activeTone : 'success',
+        countTone: active ? activeTone : 'muted',
+        url,
+    };
+};
+const action_queue_view = (args) => {
+    const list = (v) => (Array.isArray(v) ? v : null);
+    const invoices = list(args.invoices);
+    const bankTransactions = list(args.bankTransactions);
+    const payments = list(args.payments);
+    const bankAccounts = list(args.bankAccounts);
+    const expenseClaims = list(args.expenseClaims);
+    const org = (args.organisation ?? {});
+    const orgName = String(org.Name ?? '').trim();
+    const shortCode = String(org.ShortCode ?? '').trim();
+    const link = (path) => aqXeroLink(shortCode, path);
+    const invCount = invoices ? invoices.filter((i) => i.Type === 'ACCREC').length : '—';
+    const billCount = invoices ? invoices.filter((i) => i.Type === 'ACCPAY').length : '—';
+    let recCount = '—';
+    let recSub = 'Entered in Xero, not yet reconciled';
+    if (bankTransactions) {
+        const unmatchedTx = bankTransactions.filter((t) => aqNotReconciled(t.IsReconciled) && aqAuthorised(t.Status)).length;
+        if (payments && bankAccounts) {
+            const bankIds = new Set(bankAccounts
+                .filter((a) => a.Type === undefined || a.Type === 'BANK')
+                .map((a) => String(a.AccountID ?? ''))
+                .filter(Boolean));
+            let single = 0;
+            const batches = new Set();
+            for (const p of payments) {
+                if (!aqNotReconciled(p.IsReconciled) || !aqAuthorised(p.Status))
+                    continue;
+                const accountId = String(p.Account?.AccountID ?? '');
+                if (!bankIds.has(accountId))
+                    continue;
+                const batchId = String(p.BatchPaymentID ?? p.BatchPayment?.BatchPaymentID ?? '');
+                if (batchId)
+                    batches.add(batchId);
+                else
+                    single += 1;
+            }
+            recCount = unmatchedTx + single + batches.size;
+        }
+        else if (aqFailed(args.paymentsError) || aqFailed(args.bankAccountsError)) {
+            recCount = unmatchedTx;
+            recSub = 'Bank transactions only: Xero did not return payments';
+        }
+    }
+    const expCount = expenseClaims ? expenseClaims.length : '—';
+    const rows = {
+        inv: aqRow(invCount, invCount === '—' ? '—' : `${invCount} outstanding`, 'Chase Up', 'destructive', link(AQ_PATHS.inv)),
+        bill: aqRow(billCount, billCount === '—' ? '—' : `${billCount} outstanding`, 'Due Soon', 'warning', link(AQ_PATHS.bill)),
+        rec: aqRow(recCount, recSub, 'To Review', 'warning', link(AQ_PATHS.rec)),
+        exp: aqRow(expCount, 'Awaiting Approval', 'To Approve', 'warning', link(AQ_PATHS.exp)),
+    };
+    const ready = invoices !== null;
+    const total = Object.values(rows).reduce((n, r) => n + (typeof r.count === 'number' ? r.count : 0), 0);
+    const attention = total === 0 ? 'Nothing needs your attention' : `${total} ${total === 1 ? 'item needs' : 'items need'} your attention`;
+    return {
+        ready,
+        orgName,
+        headline: ready ? (orgName ? `${orgName} · ${attention}` : attention) : 'Waiting for Xero…',
+        homeUrl: shortCode ? link(AQ_PATHS.home) : 'https://go.xero.com/',
+        rows,
+    };
+};
 // Supplier is a portal-defined, open-ended label with no inherent
 // good/bad meaning — a categorical (non-status) case per
 // TILE-DISPLAY-STANDARDS.md §7, so it gets the `chart-1..5` palette.
@@ -3030,6 +3117,7 @@ const elements = {
         bank_tx_label,
         reconciliation_breakdown,
         reconciliation_rows,
+        action_queue_view,
         remittance_rows,
         remittance_breakdown,
         reimbursement_draft_rows,
