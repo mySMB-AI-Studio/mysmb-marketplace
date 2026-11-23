@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Email Management</title>
+<style>
+/* mySMB palette: Brand Mint #34DFBA, Light Mint #B2EDE3, Brand Blue/Teal #22669C */
+:root{--bg:#f3fbf9;--card:#ffffff;--text:#16324a;--muted:#4e6878;--border:#cfe6e0;--head:#B2EDE3;--brand:#22669C;--brand-text:#ffffff;--barbg:#22669C;--bartext:#ffffff;--accent:#34DFBA;--ok:#14715a;--info:#22669C;--warn:#8a5300;--bad:#b3261e;--check:#3d5fa8;--ok-bg:rgba(52,223,186,.22);--info-bg:rgba(34,102,156,.10);--warn-bg:rgba(178,106,0,.14);--bad-bg:rgba(179,38,30,.08);--check-bg:rgba(61,95,168,.10);--grey-bg:rgba(78,104,120,.12);--mask:rgba(22,50,74,.45);--mintsoft:#e6f9f5}
+:root[data-myhub-theme='dark']{--bg:#0b1c26;--card:#12293a;--text:#e5f4f1;--muted:#9fbcc8;--border:#24495c;--head:#1a4256;--brand:#34DFBA;--brand-text:#0b1c26;--barbg:#12293a;--bartext:#34DFBA;--accent:#34DFBA;--ok:#34DFBA;--info:#8fd3f0;--warn:#ffc266;--bad:#ff8f87;--check:#b9c9ff;--ok-bg:rgba(52,223,186,.16);--info-bg:rgba(143,211,240,.14);--warn-bg:rgba(255,194,102,.14);--bad-bg:rgba(255,143,135,.12);--check-bg:rgba(185,201,255,.14);--grey-bg:rgba(159,188,200,.14);--mask:rgba(0,0,0,.6);--mintsoft:#16384a}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;font-size:14px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 18px 50px}
+.brandbar{background:var(--barbg);color:var(--bartext);margin:0 -18px 18px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:4px solid var(--accent)}
+.wordmark{font-weight:800;font-size:17px;letter-spacing:.02em;color:#ffffff}
+:root[data-myhub-theme='dark'] .wordmark{color:#e5f4f1}
+.wordmark span{color:var(--accent)}
+.brandbar .tag{font-size:12px;opacity:.92}
+header.top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
+h1{font-size:26px;margin:0;color:var(--brand)}
+:root[data-myhub-theme='dark'] h1{color:var(--text)}
+h2{font-size:15px;margin:0 0 10px;color:var(--brand)}
+.sub{font-size:14px;color:var(--muted);margin:2px 0 6px}
+.meta{font-size:12.5px;color:var(--muted)}
+section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin:14px 0}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:inherit;font-size:13px;font-weight:700;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
+.btn:hover{background:var(--head)}
+.btn-p{background:var(--brand);border-color:var(--brand);color:var(--brand-text)}
+.btn-p:hover{filter:brightness(1.06);background:var(--brand)}
+.btn-s{font-size:12px;padding:5px 9px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.kpi{border:1px solid var(--border);background:var(--mintsoft);border-radius:12px;padding:11px 12px;cursor:pointer;text-align:left;color:var(--text);font:inherit;border-top:3px solid var(--accent)}
+.kpi:hover{box-shadow:0 2px 8px rgba(34,102,156,.12)}
+.kpi .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.kpi .num{font-size:24px;font-weight:800;line-height:1.1}
+.kpi .pct{font-size:11.5px;color:var(--muted)}
+.c-bad .num{color:var(--bad)} .c-info .num{color:var(--info)} .c-ok .num{color:var(--ok)} .c-check .num{color:var(--check)} .c-warn .num{color:var(--warn)}
+.summary{font-size:14.5px;margin:12px 0 10px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.tab{font:inherit;font-size:13px;font-weight:700;padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:var(--head);color:var(--text);cursor:pointer}
+.tab.on{background:var(--brand);border-color:var(--brand);color:var(--brand-text)}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:6px 0 8px}
+.filters label{font-size:10.5px;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;flex-direction:column;gap:3px}
+input[type=text],input[type=email],textarea,select{font:inherit;font-size:13px;padding:6px 8px;border-radius:7px;border:1px solid var(--border);background:var(--card);color:var(--text)}
+textarea{width:100%;min-height:60px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--head);font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text)}
+tr.row{cursor:pointer}
+tr.row:hover td{background:var(--mintsoft)}
+td.act,th.act{text-align:right;white-space:nowrap}
+.act-cell{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.p1{background:var(--bad-bg);color:var(--bad)} .p2{background:var(--warn-bg);color:var(--warn)} .p3{background:var(--info-bg);color:var(--info)} .p4{background:var(--grey-bg);color:var(--muted)}
+.st-ns{background:var(--bad-bg);color:var(--bad)} .st-ip{background:var(--info-bg);color:var(--info)} .st-ver{background:var(--check-bg);color:var(--check)} .st-done{background:var(--ok-bg);color:var(--ok)} .st-none{background:var(--grey-bg);color:var(--muted)}
+.ow-a{background:var(--ok-bg);color:var(--ok)} .ow-u{background:var(--bad-bg);color:var(--bad)} .ow-x{background:var(--warn-bg);color:var(--warn)}
+.tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;letter-spacing:.03em;margin-right:4px}
+.t-cf{background:var(--warn-bg);color:var(--warn)}
+.t-c{background:var(--ok-bg);color:var(--ok)} .t-i{background:var(--check-bg);color:var(--check)} .t-v{background:var(--bad-bg);color:var(--bad)}
+.detail td{background:var(--mintsoft);padding:14px 16px}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 20px;font-size:13px}
+.dg b{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:2px}
+.dg ul{margin:4px 0 0 16px;padding:0}
+.count{font-size:12.5px;color:var(--muted);margin:4px 0 8px}
+.hid{display:none !important}
+.note{font-size:12px;color:var(--muted)}
+.panel{border:1px solid var(--border);background:var(--mintsoft);border-radius:10px;padding:14px;margin-top:10px}
+.panel .r{margin-bottom:10px}
+.panel label.l{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700;display:block;margin-bottom:3px}
+.panel input[type=text],.panel input[type=email]{width:100%}
+.banner{border-left:4px solid var(--accent);background:var(--mintsoft);padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px}
+.banner.err{border-left-color:var(--bad)}
+a{color:var(--brand)}
+details>summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--brand)}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.box{border:1px solid var(--border);background:var(--mintsoft);border-radius:10px;padding:9px 11px;border-top:3px solid var(--accent)}
+.box .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.box .num{font-size:20px;font-weight:800}
+.skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--border),var(--mintsoft),var(--border));background-size:200% 100%;animation:sh 1.3s infinite}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="brandbar">
+  <div class="wordmark">my<span>SMB</span>.com</div>
+  <div class="tag">Daily Email Management · Client correspondence and work</div>
+</div>
+
+<header class="top">
+  <div>
+    <h1>Daily Email Management</h1>
+    <div class="sub">Client correspondence, ownership and carried-forward work</div>
+    <div class="meta" id="metaLine">Loading…</div>
+  </div>
+  <div class="btns">
+    <button class="btn" id="dlBtn">Download HTML</button>
+    <button class="btn btn-p" id="mailBtn">Email report</button>
+  </div>
+</header>
+
+<section id="mailPanel" class="hid" aria-label="Share report">
+  <h2>Share this report</h2>
+  <p class="note">This opens an Outlook draft that you review and send. Nothing is sent automatically. Draft links cannot attach files, so download the HTML first and attach it in Outlook.</p>
+  <div class="panel">
+    <div class="r"><label class="l" for="mTo">Recipients (comma-separated)</label><input type="email" id="mTo" placeholder="name@example.com"></div>
+    <div class="r"><label class="l" for="mSub">Subject</label><input type="text" id="mSub"></div>
+    <div class="r"><label class="l" for="mMsg">Message</label><textarea id="mMsg"></textarea></div>
+    <div class="r"><label><input type="checkbox" id="mConfirm"> I have checked the recipients. This report contains sensitive client information.</label></div>
+    <button class="btn btn-p" id="mOpen" disabled>Open draft in Outlook</button>
+  </div>
+</section>
+
+<section aria-label="Load status">
+  <div id="loadBanner" class="banner">Retrieving mail, Xero and folder data…</div>
+  <div id="errBanner" class="banner err hid"></div>
+</section>
+
+<section aria-label="Daily Email Management Snapshot">
+  <h2>Daily Email Management Snapshot</h2>
+  <div class="kpis" id="kpis"></div>
+  <p class="note" id="kpiNote" style="margin-top:8px"></p>
+</section>
+
+<section aria-label="Today's Summary">
+  <h2>Today's Summary</h2>
+  <p class="summary" id="summary">Loading…</p>
+  <div><button class="btn btn-p" id="attnBtn">View items needing attention</button></div>
+</section>
+
+<section aria-label="Team Activity &amp; Ownership">
+  <h2>Team Activity &amp; Ownership</h2>
+  <table>
+    <thead><tr><th>Team member</th><th>Assigned open</th><th>High priority</th><th>In progress</th><th>Completed</th><th>Needs attention</th><th>Overdue</th></tr></thead>
+    <tbody id="teamBody"></tbody>
+  </table>
+  <p class="note">Only people with evidence in this mailbox appear. A sender is never shown as an owner unless they are also the mailbox owner. Click a row to filter the register.</p>
+</section>
+
+<section id="register" aria-label="Client Work Register">
+  <h2>Client Work Register</h2>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-v="attention">Needs Attention</button>
+    <button class="tab" data-v="items">All Client Work Items</button>
+    <button class="tab" data-v="emails">All Emails</button>
+  </div>
+  <div class="filters">
+    <label>Search<input type="text" id="fSearch" placeholder="Client, item, evidence, next action"></label>
+    <label>Client<select id="fClient"></select></label>
+    <label>Owner<select id="fOwner"></select></label>
+    <label>Work category<select id="fCat"></select></label>
+    <label>Sort<select id="fSort"></select></label>
+    <button class="btn" id="resetBtn">Reset filters</button>
+  </div>
+  <details>
+    <summary>Advanced filters</summary>
+    <div class="filters" style="margin-top:10px">
+      <label>Work status<select id="fStatus"></select></label>
+      <label>Ownership<select id="fOwnership"></select></label>
+      <label>Priority<select id="fPriority"></select></label>
+      <label>Carried forward<select id="fCarry"><option value="">All</option><option value="Carried forward only">Carried forward only</option><option value="In window only">In window only</option></select></label>
+      <label>Overdue<select id="fOverdue"><option value="">All</option><option value="Yes">Yes</option><option value="No">No</option></select></label>
+      <label>Email classification<select id="fClass"></select></label>
+      <label>Sender<select id="fSender"></select></label>
+    </div>
+  </details>
+  <div class="count" id="count">Loading…</div>
+  <div style="overflow-x:auto"><table><thead id="thead"></thead><tbody id="tbody"><tr><td colspan="8" class="note">Loading…</td></tr></tbody></table></div>
+</section>
+
+<section aria-label="Deadlines and carried-forward work">
+  <h2>Deadlines and carried-forward work</h2>
+  <p style="margin:0;font-size:14px" id="deadlinesPara">Loading…</p>
+</section>
+
+<section aria-label="Coverage &amp; Limitations">
+  <details>
+    <summary>Coverage &amp; Limitations and evidence check</summary>
+    <div style="font-size:13px;margin-top:10px">
+      <div class="strip" style="margin-bottom:10px" id="covStrip"></div>
+      <ul style="margin:0 0 0 18px" id="covList"></ul>
+    </div>
+  </details>
+</section>
+
+</div>
+<script>
+(function(){
+  // ───────────────────────────────────────────────────────────────────
+  // Daily Email Management — live report
+  //
+  // Data comes from three connectors, via MyHubReport's declared
+  // bindings: m365-mail-read (folders, every-folder messages, keyword
+  // search, two full-body reads), xero-accounting (org + invoice/bill
+  // lookups by number). WorkQ has no connector a report can bind to —
+  // only aggregate counts exist (workq_activity), never per-item task
+  // detail — so Owner/Deadline never claim a WorkQ source here: they
+  // stay "Not established" / "None stated" unless Xero supplies a
+  // deadline, per the standing decision on this report.
+  //
+  // Classification and client-work-item grouping are plain, documented
+  // rules below (regex/keyword matching), not AI judgment — a report
+  // has no LLM call at render time. They are intentionally simple and
+  // conservative: anything not clearly automated/marketing is treated
+  // as actionable and surfaced for a person to judge, never silently
+  // dropped.
+  // ───────────────────────────────────────────────────────────────────
+
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ── time helpers ──────────────────────────────────────────────────
+  var SYDNEY_TZ = 'Australia/Sydney';
+  function sydneyParts(utcIso){
+    var d = new Date(utcIso);
+    var fmt = new Intl.DateTimeFormat('en-AU', { timeZone: SYDNEY_TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZoneName:'short' });
+    var parts = {}; fmt.formatToParts(d).forEach(function(p){ parts[p.type]=p.value; });
+    return parts;
+  }
+  function ddmmyyyy(utcIso){
+    if (!utcIso) return '';
+    var p = sydneyParts(utcIso);
+    return p.day+'/'+p.month+'/'+p.year;
+  }
+  function sydneyOffsetLabel(utcIso){
+    var p = sydneyParts(utcIso);
+    return p.timeZoneName || 'AEDT';
+  }
+  function utcStamp(utcIso){
+    if (!utcIso) return '';
+    var d = new Date(utcIso);
+    function pad(n){ return (n<10?'0':'')+n; }
+    return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())+' '+pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds());
+  }
+  function utcLabel(utcIso){
+    return utcIso ? (utcStamp(utcIso)+' UTC') : '';
+  }
+  // Sydney midnight `daysAgo` calendar days back (inclusive window start),
+  // expressed as the equivalent UTC instant, so the window is "last 10
+  // calendar days including today, 00:00 to 23:59 Sydney time" regardless
+  // of whether Sydney is on AEDT or AEST when the report runs.
+  function sydneyMidnightUtc(daysAgo){
+    var now = new Date();
+    var nowSyd = sydneyParts(now.toISOString());
+    var y = parseInt(nowSyd.year,10), mo = parseInt(nowSyd.month,10)-1, da = parseInt(nowSyd.day,10);
+    var sydNowMs = Date.UTC(y,mo,da, parseInt(nowSyd.hour,10), parseInt(nowSyd.minute,10), parseInt(nowSyd.second,10));
+    var offsetMs = sydNowMs - now.getTime();
+    var midnightSydLocalAsUtcMs = Date.UTC(y,mo,da,0,0,0) - offsetMs;
+    return new Date(midnightSydLocalAsUtcMs - daysAgo*86400000);
+  }
+
+  // ── classification rules (deterministic, documented) ───────────────
+  var SIGNIN_RX = /sign[\s-]?in|verify your|one[-\s]?time (code|passcode)|confirm your (email|account)|security code/i;
+  var MARKETING_RX = /newsletter|what'?s new|special offer|unsubscribe|% off|webinar invite/i;
+  var NOTIFY_SENDER_RX = /no-?reply@|noreply@|notifications?@|notification@/i;
+
+  function classifyEmail(m){
+    var subj = m.subject || '';
+    var senderAddr = (m.from && m.from.emailAddress && m.from.emailAddress.address) || '';
+    var isDraft = m._folderName === 'Drafts';
+    if (!isDraft && NOTIFY_SENDER_RX.test(senderAddr) && SIGNIN_RX.test(subj)) {
+      return { cls:'Automated notification', actionable:false, expl:'Automated sign-in / verification link. No action required.' };
+    }
+    if (MARKETING_RX.test(subj)) {
+      return { cls:'Marketing or promotional', actionable:false, expl:'Marketing or newsletter content. No action.' };
+    }
+    if (isDraft) {
+      return { cls:'Other operational (unsent draft, actionable)', actionable:true, expl:'Unsent draft. Review before sending, if at all.' };
+    }
+    return { cls:'Correspondence (actionable)', actionable:true, expl:'Correspondence that does not match an automated-notification or marketing pattern. Treated as needing a person\'s review.' };
+  }
+
+  // Candidate "client name" tokens for the carried-forward keyword search:
+  // capitalised multi-word phrases from actionable subjects, e.g. "Sunnybank
+  // Property Group" from "Tax invoice SPG-10-2026 from Sunnybank Property
+  // Group". Conservative on purpose -- a missed name just means that
+  // client's older correspondence isn't picked up as carried-forward, not a
+  // wrong answer.
+  function candidateNames(actionableEmails){
+    var found = {};
+    actionableEmails.forEach(function(m){
+      var subj = m.subject || '';
+      var re = /\b([A-Z][a-zA-Z&]+(?:\s+[A-Z][a-zA-Z&]+){1,3})\b/g, mm;
+      while ((mm = re.exec(subj))) {
+        var name = mm[1];
+        if (/^(Tax Invoice|Action Needed|Missing Information|Re |Fwd )/i.test(name)) continue;
+        found[name] = true;
+      }
+    });
+    return Object.keys(found).slice(0, 6); // keep the search query short
+  }
+
+  // Invoice/bill-number-looking tokens in a subject or preview, for the
+  // Xero cross-check. Matches patterns like INV-0031, SPG-10-2026, IJ-2045.
+  function invoiceNumbers(text){
+    var re = /\b[A-Z]{2,6}-?\d{2,6}(?:-\d{2,4})?\b/g;
+    var out = {}, mm;
+    while ((mm = re.exec(text || ''))) out[mm[0]] = true;
+    return Object.keys(out);
+  }
+
+  function emailAddrLabel(m){
+    var a = m.from && m.from.emailAddress;
+    if (!a) return '(draft, no sender)';
+    return (a.name ? a.name+' (' : '') + a.address + (a.name ? ')' : '');
+  }
+
+  // ── state (same shape and semantics as the reference report) ───────
+  var ITEMS = [], EMAILS = [];
+  var STATUS = {'Not started':'st-ns','In progress':'st-ip','Awaiting external response':'st-ip','Completed':'st-done','Needs verification':'st-ver','No action required':'st-none'};
+  var OWN = {'Assigned':'ow-a','Unassigned':'ow-u','Ownership uncertain':'ow-x'};
+  var PRI = {P1:1,P2:2,P3:3,P4:4};
+  var TEAM = [];
+  var S = {view:'attention', q:'', client:'', owner:'', cat:'', sort:'latest', status:'', ownership:'', priority:'', carry:'', overdue:'', cls:'', sender:''};
+  var DRAFTS = {};
+  var mailboxAddress = '';
+  var coverage = { retrieved:0, analysed:0, actionable:0, nonActionable:0, folderCounts:{}, xeroOrg:'', xeroAvailable:false, carriedForwardNote:'', evidenceEmails:[], notes:[] };
+
+  function needs(w){ return w.priority==='P1'||w.priority==='P2'||w.ownership!=='Assigned'||w.overdue||w.status==='Needs verification'||w.carry; }
+  function cnt(fn){ return ITEMS.filter(fn).length; }
+  function pct(n){ return ITEMS.length ? Math.round(100*n/ITEMS.length)+'%' : '0%'; }
+
+  // ── render functions (same behaviour as the reference's own) ───────
+  function renderKpis(){
+    var KPI = [
+      {k:'all', lbl:'Client work items', n:ITEMS.length, sub:'100% (total)', cls:'c-info', f:{view:'items'}},
+      {k:'attn', lbl:'Needs attention', n:cnt(needs), sub:pct(cnt(needs))+' of items', cls:'c-bad', f:{view:'attention'}},
+      {k:'assigned', lbl:'Assigned', n:cnt(function(w){return w.ownership==='Assigned';}), sub:pct(cnt(function(w){return w.ownership==='Assigned';}))+' of items', cls:'c-ok', f:{view:'items',ownership:'Assigned'}},
+      {k:'unassigned', lbl:'Unassigned', n:cnt(function(w){return w.ownership==='Unassigned';}), sub:pct(cnt(function(w){return w.ownership==='Unassigned';}))+' of items', cls:'c-bad', f:{view:'items',ownership:'Unassigned'}},
+      {k:'prog', lbl:'In progress', n:cnt(function(w){return w.status==='In progress';}), sub:pct(cnt(function(w){return w.status==='In progress';}))+' of items', cls:'c-info', f:{view:'items',status:'In progress'}},
+      {k:'done', lbl:'Completed', n:cnt(function(w){return w.status==='Completed';}), sub:pct(cnt(function(w){return w.status==='Completed';}))+' of items', cls:'c-ok', f:{view:'items',status:'Completed'}},
+      {k:'check', lbl:'Needs checking', n:cnt(function(w){return w.status==='Needs verification';}), sub:pct(cnt(function(w){return w.status==='Needs verification';}))+' of items', cls:'c-check', f:{view:'items',status:'Needs verification'}},
+      {k:'over', lbl:'Overdue', n:cnt(function(w){return w.overdue;}), sub:pct(cnt(function(w){return w.overdue;}))+' of items (due date passed)', cls:'c-warn', f:{view:'items',overdue:'Yes'}}
+    ];
+    window.__KPI = KPI;
+    el('kpis').innerHTML = KPI.map(function(k){ return '<button class="kpi '+k.cls+'" data-k="'+k.k+'"><div class="lbl">'+esc(k.lbl)+'</div><div class="num">'+k.n+'</div><div class="pct">'+esc(k.sub)+'</div></button>'; }).join('');
+    el('kpiNote').textContent = 'Percentages use '+ITEMS.length+' Client Work Items as the denominator. Email counts are not work counts.';
+  }
+  function renderSummary(){
+    var done = cnt(function(w){return w.status==='Completed';});
+    var open = ITEMS.length - done;
+    var assigned = cnt(function(w){return w.ownership==='Assigned' && w.status!=='Completed';});
+    var unassigned = cnt(function(w){return w.ownership==='Unassigned';});
+    var unc = cnt(function(w){return w.ownership==='Ownership uncertain';});
+    var carry = cnt(function(w){return w.carry;});
+    var attn = cnt(needs);
+    el('summary').innerHTML = 'Of <b>'+ITEMS.length+' client work items</b>, <b>'+done+' are completed</b> and <b>'+open+' are open</b>. Of the open items, <b>'+assigned+' has a confirmed owner</b>, <b>'+unassigned+' are unassigned</b> and <b>'+unc+' has uncertain ownership</b>. <b>'+carry+' are carried forward</b> from earlier correspondence. <b>'+attn+' need attention today.</b>';
+  }
+  function renderTeam(){
+    el('teamBody').innerHTML = TEAM.map(function(t){
+      var m = ITEMS.filter(function(w){ return (t.k==='Unassigned') ? (w.ownership!=='Assigned') : (w.owner.indexOf(t.k)===0); });
+      var open = m.filter(function(w){return w.ownership==='Assigned' && w.status!=='Completed';}).length;
+      var high = m.filter(function(w){return (w.priority==='P1'||w.priority==='P2') && w.status!=='Completed';}).length;
+      var prog = m.filter(function(w){return w.status==='In progress';}).length;
+      var comp = m.filter(function(w){return w.status==='Completed';}).length;
+      var att = m.filter(needs).length;
+      var od = m.filter(function(w){return w.overdue;}).length;
+      return '<tr class="row" data-team="'+esc(t.k)+'"><td>'+esc(t.n)+'</td><td>'+open+'</td><td>'+high+'</td><td>'+prog+'</td><td>'+comp+'</td><td>'+att+'</td><td>'+od+'</td></tr>';
+    }).join('');
+  }
+  function buildFilters(){
+    function opts(id, first, list){ el(id).innerHTML = '<option value="">'+first+'</option>' + list.map(function(o){ return '<option value="'+esc(o)+'">'+esc(o)+'</option>'; }).join(''); }
+    opts('fClient','All clients', ITEMS.map(function(w){return w.client;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
+    opts('fOwner','All owners', ['Unassigned','Not established']);
+    opts('fCat','All categories', ITEMS.map(function(w){return w.cat;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
+    opts('fStatus','All statuses', ['Not started','In progress','Awaiting external response','Completed','Needs verification','No action required']);
+    opts('fOwnership','All ownership', ['Assigned','Unassigned','Ownership uncertain']);
+    opts('fPriority','All priorities', ['P1','P2','P3','P4']);
+    opts('fClass','All classifications', EMAILS.map(function(e){return e.cls;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
+    opts('fSender','All senders', EMAILS.map(function(e){return e.sender;}).filter(function(v,i,a){return a.indexOf(v)===i;}));
+    el('fSort').innerHTML = [['latest','Latest activity, newest'],['oldest','Latest activity, oldest'],['priority','Priority'],['client','Client A to Z'],['status','Work status'],['owner','Owner']].map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join('');
+  }
+  function readFilters(){
+    S.q = el('fSearch').value.trim().toLowerCase();
+    S.client = el('fClient').value; S.owner = el('fOwner').value; S.cat = el('fCat').value; S.sort = el('fSort').value;
+    S.status = el('fStatus').value; S.ownership = el('fOwnership').value; S.priority = el('fPriority').value;
+    S.carry = el('fCarry').value; S.overdue = el('fOverdue').value; S.cls = el('fClass').value; S.sender = el('fSender').value;
+  }
+  function itemPass(w){
+    if (S.view==='attention' && !needs(w)) return false;
+    if (S.q && (w.client+' '+w.title+' '+w.next+' '+w.why+' '+w.ev.map(function(e){return e[1];}).join(' ')).toLowerCase().indexOf(S.q)===-1) return false;
+    if (S.client && w.client!==S.client) return false;
+    if (S.owner){ if (S.owner==='Unassigned' && w.ownership==='Assigned') return false; if (S.owner==='Not established' && w.owner!=='Not established') return false; }
+    if (S.cat && w.cat!==S.cat) return false;
+    if (S.status && w.status!==S.status) return false;
+    if (S.ownership && w.ownership!==S.ownership) return false;
+    if (S.priority && w.priority!==S.priority) return false;
+    if (S.carry==='Carried forward only' && !w.carry) return false;
+    if (S.carry==='In window only' && w.carry) return false;
+    if (S.overdue==='Yes' && !w.overdue) return false;
+    if (S.overdue==='No' && w.overdue) return false;
+    return true;
+  }
+  function sortItems(a){
+    return a.slice().sort(function(x,y){
+      if (S.sort==='latest') return x.latestD<y.latestD?1:(x.latestD>y.latestD?-1:0);
+      if (S.sort==='oldest') return x.latestD>y.latestD?1:(x.latestD<y.latestD?-1:0);
+      if (S.sort==='priority') return PRI[x.priority]-PRI[y.priority];
+      if (S.sort==='client') return x.client<y.client?-1:(x.client>y.client?1:0);
+      if (S.sort==='status') return x.status<y.status?-1:(x.status>y.status?1:0);
+      if (S.sort==='owner') return x.owner<y.owner?-1:(x.owner>y.owner?1:0);
+      return 0;
+    });
+  }
+  function emailPass(e){
+    var w = e.item!=='—' ? ITEMS.filter(function(x){return x.id===e.item;})[0] : null;
+    if (S.q && (e.subj+' '+e.sender+' '+e.to+' '+e.expl+' '+e.cls).toLowerCase().indexOf(S.q)===-1) return false;
+    if (S.cls && e.cls!==S.cls) return false;
+    if (S.sender && e.sender!==S.sender) return false;
+    if (S.client && (!w || w.client!==S.client)) return false;
+    if (S.carry==='Carried forward only' && (!w || !w.carry)) return false;
+    if (S.carry==='In window only' && (w && w.carry)) return false;
+    if (S.status && (!w || w.status!==S.status)) return false;
+    if (S.ownership && (!w || w.ownership!==S.ownership)) return false;
+    if (S.priority && (!w || w.priority!==S.priority)) return false;
+    if (S.view==='attention' && (!w || !needs(w))) return false;
+    return true;
+  }
+  function flags(w){
+    var f='';
+    if (w.carry) f+='<span class="tag t-cf">CARRIED FORWARD</span>';
+    if (w.overdue) f+='<span class="tag t-v">PAST DUE</span>';
+    if (w.ownership!=='Assigned') f+='<span class="tag t-v">'+(w.ownership==='Unassigned'?'UNASSIGNED':'OWNER UNCERTAIN')+'</span>';
+    if (w.status==='Needs verification') f+='<span class="tag t-i">NEEDS CHECKING</span>';
+    return f;
+  }
+  function actionButtons(w){
+    return (w.actions||[]).map(function(a,i){
+      if (a.t==='draft'){
+        var key=w.id+'-'+i;
+        DRAFTS[key]=a;
+        return '<button type="button" class="btn btn-p btn-s" data-draft="'+esc(key)+'" title="Opens an Outlook draft for you to review. Nothing is sent.">'+esc(a.label)+'</button>';
+      }
+      return '<a class="btn btn-s" href="'+esc(a.href)+'" target="_blank" rel="noopener">'+esc(a.label)+'</a>';
+    }).join('');
+  }
+  function composeUrl(d){
+    var p=[];
+    if(d.to) p.push('to='+encodeURIComponent(d.to));
+    p.push('subject='+encodeURIComponent(d.subj));
+    p.push('body='+encodeURIComponent(d.body));
+    return 'https://outlook.office.com/mail/deeplink/compose?'+p.join('&');
+  }
+  function itemDetail(w){
+    var ev = w.ev.map(function(e){ var c = e[0]==='c'?'t-c':(e[0]==='i'?'t-i':'t-v'); var l = e[0]==='c'?'CONFIRMED':(e[0]==='i'?'INFERRED':'UNVERIFIED'); return '<li><span class="tag '+c+'">'+l+'</span>'+esc(e[1])+'</li>'; }).join('');
+    var em = w.emails.length ? '<ul>'+w.emails.map(function(id){ var e=EMAILS.filter(function(x){return x.id===id;})[0]; return e?'<li>'+esc(e.when)+' UTC · '+esc(e.subj)+' · '+esc(e.folder)+'</li>':''; }).join('')+'</ul>' : '<span class="note">See source below.</span>';
+    var src = w.link ? '<a href="'+w.link+'" target="_blank" rel="noopener">Open original email in Outlook</a><div class="note">'+esc(w.srcText)+'</div>' : '<span class="note">'+esc(w.srcText)+'</span>';
+    return '<div class="dg">'+
+      '<div><b>Client and parties</b>'+esc(w.client)+'<br><span class="note">'+esc(w.participants)+'</span></div>'+
+      '<div><b>Origin and timeline</b>Original: '+esc(w.origin)+'<br>Latest: '+esc(w.latest)+'</div>'+
+      '<div><b>Owner, ownership and status</b>'+esc(w.owner)+'<br><span class="pill '+OWN[w.ownership]+'">'+esc(w.ownership)+'</span> <span class="pill '+STATUS[w.status]+'">'+esc(w.status)+'</span></div>'+
+      '<div><b>Priority and reason</b>'+esc(w.priority)+': '+esc(w.why)+'</div>'+
+      '<div><b>Deadline</b>'+esc(w.deadline)+'</div>'+
+      '<div><b>Recommended next action</b>'+esc(w.next)+'</div>'+
+      '<div style="grid-column:1/-1"><b>Evidence (checked '+esc(ddmmyyyy(new Date().toISOString()))+')</b><ul>'+ev+'</ul></div>'+
+      '<div><b>Related emails</b>'+em+'</div>'+
+      '<div><b>Source</b>'+src+'</div>'+
+    '</div>';
+  }
+  function render(){
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('on', t.getAttribute('data-v')===S.view); });
+    if (S.view==='emails'){
+      var rows = EMAILS.filter(emailPass).sort(function(a,b){return a.when<b.when?1:(a.when>b.when?-1:0);});
+      el('thead').innerHTML = '<tr><th>Date/time (UTC)</th><th>Sender</th><th>Subject</th><th>Folder</th><th>Classification</th><th>Actionable</th><th>Linked item</th></tr>';
+      el('tbody').innerHTML = rows.length ? rows.map(function(e){
+        return '<tr class="row" data-em="'+e.id+'"><td>'+esc(e.when)+'</td><td>'+esc(e.sender)+'</td><td>'+esc(e.subj)+'</td><td>'+esc(e.folder)+'</td><td>'+esc(e.cls)+'</td><td>'+esc(e.act)+'</td><td>'+esc(e.item)+'</td></tr>'+
+        '<tr class="detail hid" id="e-'+e.id+'"><td colspan="7"><div class="dg"><div><b>Explanation</b>'+esc(e.expl)+'</div><div><b>Recipient</b>'+esc(e.to)+'</div></div></td></tr>';
+      }).join('') : '<tr><td colspan="7" class="note">No emails match these filters.</td></tr>';
+      el('count').textContent = 'Showing '+rows.length+' of '+EMAILS.length+' analysed emails.';
+    } else {
+      var items = sortItems(ITEMS.filter(itemPass));
+      el('thead').innerHTML = '<tr><th>Priority</th><th>Client / work item</th><th>Latest activity</th><th>Owner</th><th>Work status</th><th>Deadline</th><th>Next action</th><th class="act">Action</th></tr>';
+      el('tbody').innerHTML = items.length ? items.map(function(w){
+        return '<tr class="row" data-id="'+w.id+'"><td><span class="pill p'+w.priority.slice(1)+'">'+w.priority+'</span></td>'+
+          '<td><b>'+esc(w.client)+'</b><div class="note">'+esc(w.title)+'</div><div>'+flags(w)+'</div></td>'+
+          '<td>'+esc(w.latest)+'</td><td><span class="pill '+OWN[w.ownership]+'">'+esc(w.owner)+'</span></td>'+
+          '<td><span class="pill '+STATUS[w.status]+'">'+esc(w.status)+'</span></td><td>'+esc(w.deadline)+'</td><td>'+esc(w.next)+'</td>'+
+          '<td class="act"><div class="act-cell">'+actionButtons(w)+'</div></td></tr>'+
+          '<tr class="detail hid" id="d-'+w.id+'"><td colspan="8">'+itemDetail(w)+'</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="note">No items match these filters. Use Reset filters.</td></tr>';
+      el('count').textContent = 'Showing '+items.length+' of '+ITEMS.length+' client work items. Test and automated messages are not work items.';
+    }
+  }
+  function goReg(){ el('register').scrollIntoView({behavior:'smooth',block:'start'}); }
+  function resetAll(){
+    ['fSearch','fClient','fOwner','fCat','fStatus','fOwnership','fPriority','fCarry','fOverdue','fClass','fSender'].forEach(function(id){ el(id).value=''; });
+    el('fSort').value='latest'; readFilters();
+  }
+
+  // ── event wiring (same behaviour as the reference) ─────────────────
+  function wireEvents(){
+    el('kpis').addEventListener('click', function(e){
+      var b = e.target.closest('[data-k]'); if (!b) return;
+      var k = window.__KPI.filter(function(x){return x.k===b.getAttribute('data-k');})[0];
+      var f = k.f;
+      resetAll();
+      S.view = f.view||'items';
+      el('fOwnership').value = f.ownership||''; el('fStatus').value = f.status||''; el('fOverdue').value = f.overdue||'';
+      readFilters(); render(); goReg();
+    });
+    el('attnBtn').addEventListener('click', function(){ resetAll(); S.view='attention'; render(); goReg(); });
+    el('teamBody').addEventListener('click', function(e){
+      var r = e.target.closest('tr[data-team]'); if (!r) return;
+      var k = r.getAttribute('data-team');
+      resetAll(); S.view='items';
+      if (k==='Unassigned') el('fOwnership').value='Unassigned'; else el('fOwner').value = '';
+      readFilters(); render(); goReg();
+    });
+    document.querySelectorAll('.tab').forEach(function(t){ t.addEventListener('click', function(){ S.view=t.getAttribute('data-v'); render(); }); });
+    ['fSearch','fClient','fOwner','fCat','fStatus','fOwnership','fPriority','fCarry','fOverdue','fClass','fSender','fSort'].forEach(function(id){
+      el(id).addEventListener('input', function(){ readFilters(); render(); });
+      el(id).addEventListener('change', function(){ readFilters(); render(); });
+    });
+    el('resetBtn').addEventListener('click', function(){ resetAll(); render(); });
+    el('tbody').addEventListener('click', function(e){
+      var dr = e.target.closest('button[data-draft]');
+      if (dr){ var d = DRAFTS[dr.getAttribute('data-draft')]; if (d) window.open(composeUrl(d),'_blank','noopener'); return; }
+      if (e.target.closest('a, button')) return;
+      var em = e.target.closest('tr[data-em]');
+      if (em){ var de = el('e-'+em.getAttribute('data-em')); if (de) de.classList.toggle('hid'); return; }
+      var r = e.target.closest('tr[data-id]');
+      if (r){ var d2 = el('d-'+r.getAttribute('data-id')); if (d2) d2.classList.toggle('hid'); }
+    });
+    el('dlBtn').addEventListener('click', function(){
+      var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      var blob = new Blob([html], {type:'text/html'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = 'Daily-Email-Management-'+(new Date().toISOString().slice(0,10))+'.html';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    });
+    el('mailBtn').addEventListener('click', function(){ el('mailPanel').classList.toggle('hid'); });
+    function mailReady(){ el('mOpen').disabled = !(el('mTo').value.trim() && el('mConfirm').checked); }
+    el('mTo').addEventListener('input', mailReady); el('mConfirm').addEventListener('change', mailReady);
+    el('mOpen').addEventListener('click', function(){
+      var to = el('mTo').value.split(',').map(function(s){return s.trim();}).filter(Boolean).join(';');
+      var url = 'https://outlook.office.com/mail/deeplink/compose?to='+encodeURIComponent(to)+'&subject='+encodeURIComponent(el('mSub').value)+'&body='+encodeURIComponent(el('mMsg').value);
+      window.open(url, '_blank', 'noopener');
+    });
+  }
+
+  // ── live data pipeline ──────────────────────────────────────────────
+  function showError(msg){
+    el('errBanner').textContent = msg;
+    el('errBanner').classList.remove('hid');
+  }
+  function showLoad(msg){
+    el('loadBanner').textContent = msg;
+    el('loadBanner').classList.remove('hid');
+  }
+  function hideLoad(){ el('loadBanner').classList.add('hid'); }
+
+  // Groups actionable messages into Client Work Items. Each distinct
+  // sender address becomes one item (its messages merged); a draft with
+  // no sender becomes its own item per distinct subject-prefix cluster,
+  // since drafts in this mailbox have no recipient to group by.
+  function buildItems(actionable, foldersResult, invoiceMatches){
+    var bySender = {};
+    var draftGroups = {};
+    actionable.forEach(function(m){
+      if (m._folderName === 'Drafts') {
+        var key = (m.subject||'').replace(/\s*\([^)]*\)\s*$/,'').replace(/^(Action needed: |Missing information needed for )/i,'').trim() || 'Drafts';
+        draftGroups[key] = draftGroups[key] || [];
+        draftGroups[key].push(m);
+      } else {
+        var addr = (m.from && m.from.emailAddress && m.from.emailAddress.address) || 'unknown-sender';
+        bySender[addr] = bySender[addr] || [];
+        bySender[addr].push(m);
+      }
+    });
+
+    var items = [];
+    var seq = 1;
+    function pushItem(group, clientLabel, catGuess){
+      group.sort(function(a,b){ return a.receivedDateTime < b.receivedDateTime ? 1 : -1; });
+      var latestMsg = group[0], originMsg = group[group.length-1];
+      var nums = [];
+      group.forEach(function(m){ nums = nums.concat(invoiceNumbers((m.subject||'')+' '+(m.bodyPreview||''))); });
+      nums = nums.filter(function(v,i,a){return a.indexOf(v)===i;});
+      var matched = nums.map(function(n){ return invoiceMatches[n]; }).filter(Boolean);
+      var overdue = matched.some(function(inv){ return inv.dueDate && inv.dueDate < todayDateStr() && inv.amountDue > 0; });
+      var deadline = matched.length
+        ? matched.map(function(inv){ return 'Xero '+(inv.type==='ACCPAY'?'bill':'invoice')+' '+inv.number+' due '+ddmmyyyy(inv.dueDate)+(inv.dueDate && inv.dueDate < todayDateStr() ? ' (passed)' : '')+', status '+inv.status; }).join('. ')
+        : 'None stated';
+      var titleBits = matched.length
+        ? matched.map(function(inv){ return inv.number+' ($'+inv.amount.toFixed(2)+', Xero '+inv.status+')'; }).join(' and ')
+        : (group.length>1 ? group.length+' related messages' : '');
+      var pr = overdue ? 'P2' : (matched.length ? 'P2' : 'P3');
+      var evid = group.slice(0,6).map(function(m){
+        return ['c', 'Email from '+emailAddrLabel(m)+', '+utcLabel(m.receivedDateTime)+', subject "'+(m.subject||'')+'". '+(m.isRead?'Read.':'Unread.')+(m.hasAttachments?' Has attachment(s).':'')];
+      });
+      matched.forEach(function(inv){
+        evid.push(['c','Xero: '+(inv.type==='ACCPAY'?'bill':'invoice')+' '+inv.number+', status '+inv.status+', total $'+inv.amount.toFixed(2)+', due '+ddmmyyyy(inv.dueDate)+'.']);
+      });
+      evid.push(['v','Classification and grouping are rule-based (sender / subject pattern matching), not reviewed line by line against the message body.']);
+      var isDraftGroup = group[0]._folderName === 'Drafts';
+      var item = {
+        id: 'W-'+String(seq++).padStart(3,'0'),
+        client: clientLabel,
+        title: titleBits || (isDraftGroup ? 'Unsent draft(s), no recipient' : 'Correspondence'),
+        cat: catGuess,
+        carry: group.some(function(m){ return !!m._carried; }),
+        origin: utcLabel(originMsg.receivedDateTime),
+        latest: utcLabel(latestMsg.receivedDateTime),
+        latestD: latestMsg.receivedDateTime ? latestMsg.receivedDateTime.slice(0,10) : '',
+        owner: 'Not established',
+        ownership: isDraftGroup ? 'Unassigned' : 'Ownership uncertain',
+        status: isDraftGroup ? 'Not started' : 'Needs verification',
+        priority: pr,
+        overdue: overdue,
+        deadline: deadline,
+        next: isDraftGroup
+          ? 'Do not send. Confirm who created the draft(s). Correct or delete each one.'
+          : (matched.length ? 'Check the matched Xero record against this correspondence, then approve, reject or reply as appropriate. Nothing has been changed in Xero.' : 'Review this correspondence and decide the next action. No Xero or WorkQ match was found.'),
+        why: isDraftGroup ? 'Unsent draft(s) with no recipient found in the mailbox.' : (matched.length ? 'Matches a Xero record by number; status needs a person\'s check.' : 'Correspondence that does not match an automated or marketing pattern.'),
+        participants: emailAddrLabel(group[0]),
+        ev: evid,
+        link: group[0].webLink || '',
+        srcText: 'Outlook: "'+(group[0].subject||'')+'", '+emailAddrLabel(group[0])+', '+utcLabel(group[0].receivedDateTime)+'.' + (matched.length ? ' Xero: '+matched.map(function(i){return i.number;}).join(', ')+'.' : ''),
+        emails: group.map(function(m){ return m.id; }),
+        actions: []
+      };
+      if (isDraftGroup) {
+        item.actions.push({ t:'mail', label:'Find drafts in Outlook', href:'https://outlook.office.com/mail/search?q='+encodeURIComponent(group[0].subject||'') });
+      } else {
+        item.actions.push({ t:'draft', label:'Draft email', to: (group[0].from && group[0].from.emailAddress && group[0].from.emailAddress.address) || '', subj: 'Re: '+(group[0].subject||''), body: 'Hi,\n\nFollowing up on "'+(group[0].subject||'')+'".\n\nThanks.' });
+        matched.forEach(function(inv){
+          if (inv.onlineUrl) item.actions.push({ t:'xero', label:'Open '+inv.number+' in Xero', href: inv.onlineUrl });
+        });
+        if (group[0].webLink) item.actions.push({ t:'mail', label:'Open email', href: group[0].webLink });
+      }
+      items.push(item);
+    }
+    Object.keys(bySender).forEach(function(addr){ pushItem(bySender[addr], emailAddrLabel(bySender[addr][0]), guessCategory(bySender[addr])); });
+    Object.keys(draftGroups).forEach(function(key){ pushItem(draftGroups[key], 'Unsent draft: '+key, 'Client information requests'); });
+    return items;
+  }
+  function guessCategory(group){
+    var text = group.map(function(m){return (m.subject||'')+' '+(m.bodyPreview||'');}).join(' ').toLowerCase();
+    if (/\bbill\b|payable|supplier/.test(text)) return 'Accounts payable and supplier bills';
+    if (/invoice|receivable/.test(text)) return 'Accounts receivable and invoicing';
+    return 'Client information requests';
+  }
+  function todayDateStr(){
+    var p = sydneyParts(new Date().toISOString());
+    return p.year+'-'+p.month+'-'+p.day;
+  }
+
+  async function run(){
+    try {
+      showLoad('Retrieving mailbox folders…');
+      var windowStart = sydneyMidnightUtc(9); // today + 9 days back = 10 calendar days inclusive
+      var windowStartIso = windowStart.toISOString();
+      var nowIso = new Date().toISOString();
+
+      var folders = await MyHubReport.getData('folders', {});
+      var mailboxProbe = await MyHubReport.getData('mailbox_probe', {});
+      mailboxAddress = (mailboxProbe && mailboxProbe[0] && mailboxProbe[0].from && mailboxProbe[0].from.emailAddress && mailboxProbe[0].from.emailAddress.address) || '';
+
+      showLoad('Retrieving emails from every folder…');
+      var emailsRaw = await MyHubReport.getData('emails', { received_after: windowStartIso });
+
+      // Tag each message with its folder's display name (for per-folder
+      // counts and the Register's Folder column).
+      var byId = {}; (folders||[]).forEach(function(f){ byId[f.id]=f; });
+      emailsRaw.forEach(function(m){ m._folderName = m.parentFolderId && byId[m.parentFolderId] ? byId[m.parentFolderId].path : 'Unknown'; });
+
+      var folderCounts = {};
+      emailsRaw.forEach(function(m){ folderCounts[m._folderName] = (folderCounts[m._folderName]||0)+1; });
+      coverage.folderCounts = folderCounts;
+      coverage.retrieved = emailsRaw.length;
+
+      var classified = emailsRaw.map(function(m){
+        var c = classifyEmail(m);
+        return Object.assign({}, m, c);
+      });
+      var actionableNow = classified.filter(function(m){ return m.actionable; });
+      var names = candidateNames(actionableNow);
+
+      var carried = [];
+      if (names.length) {
+        showLoad('Searching for carried-forward client correspondence…');
+        try {
+          var query = names.slice(0,4).join(' OR ');
+          var found = await MyHubReport.getData('carried_forward_search', { query: query });
+          var seenIds = {}; emailsRaw.forEach(function(m){ seenIds[m.id]=true; });
+          (found||[]).forEach(function(m){
+            if (seenIds[m.id]) return;
+            if (m.receivedDateTime >= windowStartIso) return; // already in-window, not "carried forward"
+            m._folderName = m.parentFolderId && byId[m.parentFolderId] ? byId[m.parentFolderId].path : 'Unknown';
+            m._carried = true;
+            var c = classifyEmail(m);
+            if (c.actionable) carried.push(Object.assign({}, m, c));
+          });
+          coverage.carriedForwardNote = 'Keyword search for '+names.slice(0,4).join(', ')+' covered every folder; '+carried.length+' older actionable message(s) found outside the window.';
+        } catch (err) {
+          coverage.notes.push('Carried-forward keyword search failed: '+(err && err.message ? err.message : err)+'.');
+        }
+      } else {
+        coverage.carriedForwardNote = 'No candidate client names were found in this window\'s correspondence, so no carried-forward search was run.';
+      }
+
+      var allActionable = actionableNow.concat(carried);
+      coverage.analysed = emailsRaw.length + carried.length;
+      coverage.actionable = allActionable.length;
+      coverage.nonActionable = coverage.analysed - coverage.actionable;
+
+      // Two most recent emails overall, read in full, for the Coverage
+      // evidence bullet (matches the original report's own convention).
+      var byRecency = classified.slice().sort(function(a,b){ return a.receivedDateTime < b.receivedDateTime ? 1 : -1; });
+      for (var i=0; i<Math.min(2, byRecency.length); i++) {
+        try {
+          var full = await MyHubReport.getData('evidence_email', { id: byRecency[i].id });
+          coverage.evidenceEmails.push({ subj: byRecency[i].subject, sender: emailAddrLabel(byRecency[i]), when: utcLabel(byRecency[i].receivedDateTime), bodyPreview: (full && full.body && full.body.content) ? full.body.content.replace(/<[^>]+>/g,' ').trim().slice(0,160) : (byRecency[i].bodyPreview||'(empty)') });
+        } catch (err) {
+          coverage.evidenceEmails.push({ subj: byRecency[i].subject, sender: emailAddrLabel(byRecency[i]), when: utcLabel(byRecency[i].receivedDateTime), bodyPreview: '(full body could not be read: '+(err && err.message ? err.message : err)+')' });
+        }
+      }
+
+      // Xero cross-check: one connection assumed (list_connections' first
+      // result), matching this report's single-organisation scope.
+      var invoiceMatches = {};
+      try {
+        showLoad('Checking Xero for matching invoices and bills…');
+        var connections = await MyHubReport.getData('xero_connections', {});
+        if (connections && connections.length) {
+          var tenantId = connections[0].tenantId;
+          var org = await MyHubReport.getData('xero_organisation', { org: tenantId });
+          coverage.xeroOrg = (org && org.Organisations && org.Organisations[0] && org.Organisations[0].Name) || tenantId;
+          coverage.xeroAvailable = true;
+          var allNums = {};
+          allActionable.forEach(function(m){ invoiceNumbers((m.subject||'')+' '+(m.bodyPreview||'')).forEach(function(n){ allNums[n]=true; }); });
+          var numList = Object.keys(allNums).slice(0, 10); // bounded: avoid an unbounded run of sequential calls
+          if (Object.keys(allNums).length > numList.length) {
+            coverage.notes.push('Only the first '+numList.length+' invoice/bill-like numbers found in correspondence were checked against Xero in this run.');
+          }
+          for (var ni=0; ni<numList.length; ni++) {
+            var num = numList[ni];
+            try {
+              var res = await MyHubReport.getData('xero_invoice_lookup', { org: tenantId, where: 'InvoiceNumber=="'+num+'"' });
+              var inv = res && res.Invoices && res.Invoices[0];
+              if (inv) {
+                invoiceMatches[num] = {
+                  number: inv.InvoiceNumber, type: inv.Type, status: inv.Status,
+                  amount: inv.Total, amountDue: inv.AmountDue,
+                  dueDate: inv.DueDateString ? inv.DueDateString.slice(0,10) : (inv.DueDate || ''),
+                  onlineUrl: inv.Type==='ACCPAY'
+                    ? 'https://go.xero.com/AccountsPayable/View.aspx?InvoiceID='+inv.InvoiceID
+                    : 'https://go.xero.com/AccountsReceivable/View.aspx?InvoiceID='+inv.InvoiceID
+                };
+              }
+            } catch (err) { /* one missing number shouldn't stop the run */ }
+          }
+        } else {
+          coverage.notes.push('No Xero connection is available, so invoice and bill numbers in correspondence were not cross-checked.');
+        }
+      } catch (err) {
+        coverage.notes.push('Xero check failed: '+(err && err.message ? err.message : err)+'.');
+      }
+
+      ITEMS = buildItems(allActionable, folders, invoiceMatches);
+      EMAILS = emailsRaw.concat(carried).map(function(m){
+        return { id: m.id, when: utcStamp(m.receivedDateTime), folder: m._folderName, sender: emailAddrLabel(m), to: mailboxAddress || '(you)', subj: m.subject||'', cls: m.cls, act: m.actionable?'Yes':'No', item: (ITEMS.filter(function(w){return w.emails.indexOf(m.id)>-1;})[0]||{}).id || '—', expl: m.expl };
+      });
+
+      // Team: an Unassigned/uncertain bucket, since Owner always starts
+      // "Not established" per the WorkQ-gap decision -- there is no
+      // confirmed-owner bucket to show here yet.
+      TEAM = [{ n:'Unassigned / uncertain', k:'Unassigned' }];
+
+      // header meta line
+      var toLabelDate = ddmmyyyy(nowIso), fromLabelDate = ddmmyyyy(windowStartIso);
+      var tz = sydneyOffsetLabel(nowIso);
+      el('metaLine').innerHTML = '<b>Reporting period:</b> '+fromLabelDate+' 00:00 to '+toLabelDate+' 23:59 (Sydney, '+tz+'), last 10 calendar days including today · '
+        +'<b>Last refreshed:</b> '+toLabelDate+' (fresh retrieval and evidence check this run) · '
+        +'<b>Mailbox:</b> '+esc(mailboxAddress || 'connected mailbox (address not discoverable this run)')+' · '
+        +'<b>Emails retrieved:</b> '+coverage.retrieved+' · <b>Emails analysed:</b> '+coverage.analysed;
+
+      // deadlines paragraph
+      var next7 = new Date(Date.now()+7*86400000).toISOString();
+      var upcoming = Object.values(invoiceMatches).filter(function(i){ return i.dueDate && i.dueDate >= todayDateStr() && i.dueDate <= next7.slice(0,10); });
+      var pastDue = Object.values(invoiceMatches).filter(function(i){ return i.dueDate && i.dueDate < todayDateStr(); });
+      var deadlinesTxt = upcoming.length
+        ? upcoming.length+' deadline(s) fall between now and '+ddmmyyyy(next7)+'. '
+        : 'No deadline falling in the next 7 days was found among the matched Xero records. ';
+      deadlinesTxt += pastDue.length
+        ? '<b>Past due dates, checked in Xero this run:</b> '+pastDue.map(function(i){return i.number+' (due '+ddmmyyyy(i.dueDate)+', '+i.status+')';}).join(', ')+'. '
+        : '';
+      deadlinesTxt += (ITEMS.some(function(w){return w.carry;}) ? 'Carried-forward items are tagged <span class="tag t-cf">CARRIED FORWARD</span> in the register. ' : '');
+      deadlinesTxt += '<a href="#" id="odLink">Show overdue items</a>';
+      el('deadlinesPara').innerHTML = deadlinesTxt;
+      el('odLink').addEventListener('click', function(e){ e.preventDefault(); resetAll(); S.view='items'; el('fOverdue').value='Yes'; readFilters(); render(); goReg(); });
+
+      // coverage strip + list
+      el('covStrip').innerHTML = [
+        ['Retrieved', coverage.retrieved], ['Analysed', coverage.analysed], ['Actionable', coverage.actionable],
+        ['Non-actionable', coverage.nonActionable], ['Unclassified', 0], ['Not analysed', 0]
+      ].map(function(b){ return '<div class="box"><div class="lbl">'+b[0]+'</div><div class="num">'+b[1]+'</div></div>'; }).join('');
+
+      var folderLines = Object.keys(coverage.folderCounts).map(function(k){ return k+' returned '+coverage.folderCounts[k]; }).join(', ');
+      var covItems = [
+        '<b>Coverage status:</b> complete for the accessible scope of one mailbox'+(mailboxAddress ? ', '+esc(mailboxAddress) : '')+'. Shared mailboxes are not connected. This is not an organisation-wide claim.',
+        '<b>Retrieval:</b> the all-folder query returned '+coverage.retrieved+' messages ('+(folderLines||'no folders with mail in this window')+'). '+coverage.carriedForwardNote,
+        '<b>Reconciliation:</b> '+coverage.actionable+' actionable + '+coverage.nonActionable+' non-actionable = '+coverage.analysed+' analysed.',
+        '<b>Reporting window:</b> '+fromLabelDate+' 00:00 to '+toLabelDate+' 23:59 '+tz+', queried from '+esc(windowStartIso)+'.',
+        '<b>Two most recent emails:</b> '+(coverage.evidenceEmails.map(function(e){ return '"'+esc(e.subj)+'" from '+esc(e.sender)+', '+esc(e.when)+'. Preview: '+esc(e.bodyPreview||'(empty)')+'.'; }).join(' ') || 'Not available.'),
+        '<b>Xero:</b> '+(coverage.xeroAvailable ? ('read in this run from the '+esc(coverage.xeroOrg)+' organisation (invoice/bill lookup by number).') : 'no Xero connection was available in this run, so no invoice or bill numbers were cross-checked.'),
+        '<b>Attachments:</b> listed where Microsoft Graph reports hasAttachments true; attachment contents were not read by this report.',
+        '<b>Not accessible:</b> any folder requiring the m365-mail-shared connection (shared mailboxes), and anything list_mail_folders could not enumerate within its depth limit.',
+        '<b>Message bodies:</b> full bodies were read only for the two most recent emails listed above (evidence anchor). Every other message is described from subject, sender and preview text only, and classification is marked unverified where that matters.',
+        '<b>WorkQ:</b> no WorkQ connector is available to a live report in this workspace (only aggregate activity counts, never per-item task detail), so Owner and Deadline never claim a WorkQ source here — Owner stays "Not established" unless genuinely established some other way, and Deadline comes only from a matched Xero record.',
+        '<b>Actions:</b> "Draft email" opens a prefilled Outlook compose window for you to review and send. Nothing is sent from this report. "Open in Xero" opens the record in Xero, and the Xero session must be signed in.'
+      ].concat(coverage.notes.map(function(n){ return '<b>Note:</b> '+esc(n); }));
+      el('covList').innerHTML = covItems.map(function(li){ return '<li>'+li+'</li>'; }).join('');
+
+      renderKpis(); renderSummary(); renderTeam(); buildFilters(); readFilters(); render();
+      hideLoad();
+    } catch (err) {
+      hideLoad();
+      showError('Could not build this report: '+(err && err.message ? err.message : err)+'. Nothing below reflects live data.');
+    }
+  }
+
+  wireEvents();
+  el('mSub').value = 'Daily Email Management Report';
+  MyHubReport.onData(function(){ run(); });
+})();
+</script>
+</body>
+</html>

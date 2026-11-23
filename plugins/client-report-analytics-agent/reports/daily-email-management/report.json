@@ -1,0 +1,163 @@
+{
+  "dataBindings": {
+    "bindings": [
+      {
+        "id": "folders",
+        "params": {
+          "maxDepth": {
+            "kind": "static",
+            "value": 1
+          }
+        },
+        "tool": {
+          "mcp": "m365-mail-read",
+          "name": "list_mail_folders"
+        }
+      },
+      {
+        "id": "mailbox_probe",
+        "params": {
+          "folder": {
+            "kind": "static",
+            "value": "sentitems"
+          },
+          "limit": {
+            "kind": "static",
+            "value": 1
+          }
+        },
+        "tool": {
+          "mcp": "m365-mail-read",
+          "name": "list_emails"
+        }
+      },
+      {
+        "id": "emails",
+        "params": {
+          "limit": {
+            "kind": "static",
+            "value": 50
+          },
+          "receivedAfter": {
+            "input": "received_after",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "m365-mail-read",
+          "name": "list_emails"
+        }
+      },
+      {
+        "id": "carried_forward_search",
+        "params": {
+          "limit": {
+            "kind": "static",
+            "value": 50
+          },
+          "query": {
+            "input": "query",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "m365-mail-read",
+          "name": "search_emails"
+        }
+      },
+      {
+        "id": "evidence_email",
+        "params": {
+          "id": {
+            "input": "id",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "m365-mail-read",
+          "name": "get_email"
+        }
+      },
+      {
+        "id": "xero_connections",
+        "params": {},
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_connections"
+        }
+      },
+      {
+        "id": "xero_organisation",
+        "params": {
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "get_organisation"
+        }
+      },
+      {
+        "id": "xero_invoice_lookup",
+        "params": {
+          "where": {
+            "input": "where",
+            "kind": "input"
+          },
+          "xero_tenant_id": {
+            "input": "org",
+            "kind": "input"
+          }
+        },
+        "tool": {
+          "mcp": "xero-accounting",
+          "name": "list_invoices"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "default": "",
+        "maxLength": 200,
+        "name": "received_after",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "maxLength": 200,
+        "name": "query",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "maxLength": 200,
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "maxLength": 200,
+        "name": "org",
+        "type": "string"
+      },
+      {
+        "default": "",
+        "maxLength": 200,
+        "name": "where",
+        "type": "string"
+      }
+    ]
+  },
+  "description": "Client correspondence, ownership and carried-forward work from the signed-in user's own Outlook mailbox, cross-checked against Xero invoices and bills. Rebuilt from the original Workspace HTML report (v11) to run fresh from live data every time it's opened, matching its layout, KPI snapshot, Team Activity table, Client Work Register (with filters, tabs and per-item actions), Deadlines section and Coverage &amp; Limitations evidence check. WorkQ has no connector a report can bind to here, so Owner and Deadline never claim a WorkQ source -- Owner stays \"Not established\" unless genuinely established, and Deadline comes only from a matched Xero record.",
+  "tags": [
+    "email",
+    "outlook",
+    "xero",
+    "client-work",
+    "daily",
+    "mailbox"
+  ],
+  "title": "Daily Email Management"
+}
