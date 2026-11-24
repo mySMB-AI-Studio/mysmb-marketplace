@@ -1,15 +1,15 @@
 {
   "id": "salesforce-membership-by-category",
   "title": "Membership by Category",
-  "description": "Total membership count with a breakdown by membership type/category (e.g. Full/Accredited, Student, Associate, Retired/Honorary), computed from Salesforce Contacts using the `Membership_Type__c` custom field. Assumes the connected org has a `Membership_Type__c` field on the Contact object — if the field doesn't exist the SOQL query will error; if it exists but is unpopulated, the tile shows an empty state. Categories are color-coded by rank (highest count first), not by matching specific category names, since membership-type labels vary across orgs. Best suited for association-management customers who track member type on the Contact record.",
+  "description": "Total membership with a breakdown by membership type/category (e.g. Full/Accredited, Student, Associate, Retired/Honorary), computed from Salesforce Contacts using the `Membership_Type__c` custom field. A headline total sits above a two-column grid of category cards, each showing its count, its share of the total and a bar scaled against the largest category. Assumes the connected org has a `Membership_Type__c` field on the Contact object — if the field doesn't exist the SOQL query will error; if it exists but is unpopulated, the tile shows an empty state. Categories are colour-coded by rank (highest count first), not by matching specific category names, since membership-type labels vary across orgs. Best suited for association-management customers who track member type on the Contact record.",
   "category": "crm",
   "tags": ["salesforce", "membership", "contacts", "category", "association"],
   "keywords": ["members by category", "membership breakdown", "membership type", "membership tier", "association", "statistics"],
   "connectorsUsed": ["salesforce"],
   "popularity": 35,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 3 },
-    "min": { "colSpan": 3, "rowSpan": 3 },
+    "preferred": { "colSpan": 4, "rowSpan": 4 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
     "max": { "colSpan": 8, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -25,25 +25,23 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"],
+        "children": ["header", "body", "footerDivider", "footer"],
         "watch": {
           "/salesforce/soql_query/records": [
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/categoryRows",
+                "statePath": "/ui/mc",
                 "value": {
-                  "$computed": "salesforce_flatten_by_state",
-                  "args": {
-                    "value": { "$state": "/salesforce/soql_query/records" },
-                    "stateField": "Membership_Type__c"
-                  }
+                  "$computed": "salesforce_category_breakdown",
+                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
                 }
               }
             }
           ]
         }
       },
+
       "header": {
         "type": "Header",
         "props": {},
@@ -74,33 +72,28 @@
             "$computed": "fmt",
             "args": {
               "pattern": "{total} Active Members Across {n} Categories",
-              "total": {
-                "$computed": "sum",
-                "args": { "value": { "$state": "/salesforce/soql_query/records" }, "field": "cnt" }
-              },
-              "n": {
-                "$computed": "count",
-                "args": { "value": { "$state": "/ui/categoryRows" } }
-              }
+              "total": { "$state": "/ui/mc/total" },
+              "n": { "$state": "/ui/mc/categoryCount" }
             }
           }
         }
       },
+
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "totalStack", "categoryDivider", "categoryList"]
+        "children": ["loading", "empty", "hero", "categoryGrid"]
       },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "children": ["skHero", "skGrid"],
         "visible": { "$state": "/_loading/salesforce.soql_query" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "skHero": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "skGrid": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "md" } },
+
       "empty": {
         "type": "Empty",
         "props": {
@@ -109,97 +102,102 @@
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/ui/categoryRows/0", "not": true }
+            { "$state": "/ui/mc/total", "not": true }
           ]
         }
       },
-      "totalStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["totalValue", "totalCaption"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/ui/categoryRows/0" }
-          ]
-        }
-      },
-      "totalValue": {
-        "type": "Stat",
-        "props": {
-          "value": {
-            "$computed": "sum",
-            "args": { "value": { "$state": "/salesforce/soql_query/records" }, "field": "cnt" }
-          },
-          "size": "lg"
-        }
-      },
-      "totalCaption": {
-        "type": "Caption",
-        "props": { "text": "Active Members" }
-      },
-      "categoryDivider": {
-        "type": "Divider",
-        "props": {},
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/ui/categoryRows/0" }
-          ]
-        }
-      },
-      "categoryList": {
-        "type": "Stack",
-        "props": { "gap": "sm" },
-        "children": ["categoryRow"],
-        "repeat": {
-          "statePath": "/ui/categoryRows",
-          "key": "id"
-        },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/ui/categoryRows/0" }
-          ]
-        }
-      },
-      "categoryRow": {
+
+      "hero": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "justify": "between" },
-        "children": ["categoryLeft", "categoryCount"]
+        "props": { "gap": "sm", "align": "baseline" },
+        "children": ["heroValue", "heroCaption"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/mc/total" }
+          ]
+        }
       },
-      "categoryLeft": {
+      "heroValue": {
+        "type": "Stat",
+        "props": { "value": { "$state": "/ui/mc/total" }, "size": "lg" }
+      },
+      "heroCaption": {
+        "type": "Caption",
+        "props": { "text": "Active Members", "tone": "muted" }
+      },
+
+      "categoryGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["categoryCell"],
+        "repeat": { "statePath": "/ui/mc/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/mc/total" }
+          ]
+        }
+      },
+      "categoryCell": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["categoryLabelRow", "categoryFigures", "categoryBarRow"]
+      },
+      "categoryLabelRow": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
         "children": ["categoryDot", "categoryLabel"]
       },
       "categoryDot": {
         "type": "Dot",
-        "props": {
-          "tone": {
-            "$computed": "salesforce_category_rank_tone",
-            "args": {
-              "counts": { "$state": "/ui/categoryRows" },
-              "value": { "$item": "value" }
-            }
-          },
-          "size": "sm"
-        }
+        "props": { "tone": { "$item": "tone" }, "size": "sm" }
       },
       "categoryLabel": {
         "type": "Text",
-        "props": {
-          "text": { "$item": "value" },
-          "size": "sm",
-          "truncate": true
-        }
+        "props": { "text": { "$item": "value" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "categoryFigures": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "baseline" },
+        "children": ["categoryCount", "categoryPct"]
       },
       "categoryCount": {
-        "type": "Text",
-        "props": {
-          "text": { "$item": "count" },
-          "size": "sm",
-          "weight": "semibold"
+        "type": "Stat",
+        "props": { "value": { "$item": "count" }, "size": "sm" }
+      },
+      "categoryPct": {
+        "type": "Caption",
+        "props": { "text": { "$item": "pct" }, "tone": "muted" }
+      },
+      "categoryBarRow": {
+        "type": "Row",
+        "props": {},
+        "children": ["categoryBar"]
+      },
+      "categoryBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "bar" }, "tone": { "$item": "tone" } }
+      },
+
+      "footerDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/mc/total" }
+          ]
+        }
+      },
+      "footer": {
+        "type": "Caption",
+        "props": { "text": "Synced from Salesforce", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/mc/total" }
+          ]
         }
       }
     }

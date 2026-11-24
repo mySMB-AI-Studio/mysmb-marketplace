@@ -590,8 +590,57 @@ const membership_map = (args) => {
         insight,
     };
 };
+/**
+ * Shape an aggregate "count by category" SOQL result into the figures the
+ * Membership by Category tile draws: the headline total and one row per
+ * category carrying its count, its share of the total, a bar scaled against
+ * the LARGEST category, and a tone.
+ *
+ * Categories are toned by rank rather than by matching their labels, because
+ * membership-type names vary too much between orgs to map by name. The cycle
+ * deliberately skips "accent": it resolves to the theme's menu-hover colour,
+ * which leaves the busiest category's dot and full-length bar near-invisible.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ Membership_Type__c: "Student", cnt: 2 }, ...]
+ *   field      — field name holding the category (default "Membership_Type__c")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, categoryCount, rows: Array<{ id, value, count, pct, bar, tone }> }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_category_breakdown", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const CATEGORY_TONE_CYCLE = ['info', 'success', 'warning', 'destructive', 'muted'];
+const category_breakdown = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    const field = String(args.field ?? 'Membership_Type__c');
+    const countField = String(args.countField ?? 'cnt');
+    const entries = records
+        .map((r) => ({ value: String(r[field] ?? '').trim(), count: Number(r[countField] ?? 0) }))
+        .filter((e) => e.value !== '')
+        .sort((a, b) => b.count - a.count);
+    if (entries.length === 0)
+        return { total: 0, categoryCount: 0, rows: [] };
+    const total = entries.reduce((s, e) => s + e.count, 0);
+    const max = entries[0].count;
+    return {
+        total,
+        categoryCount: entries.length,
+        rows: entries.map((e, i) => ({
+            id: e.value || String(i),
+            value: e.value,
+            count: e.count,
+            pct: total > 0 ? `${Math.round((e.count / total) * 100)}%` : '0%',
+            // Bar length is share of the LARGEST category, so the leader fills its
+            // bar and the rest read as a proportion of it.
+            bar: max > 0 ? Math.round((e.count / max) * 100) : 0,
+            tone: CATEGORY_TONE_CYCLE[i % CATEGORY_TONE_CYCLE.length],
+        })),
+    };
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown },
 };
 export default elements;
