@@ -597,9 +597,146 @@ const membership_map: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Shape an aggregate "count by category" SOQL result into the figures the
+ * Membership by Category tile draws: the headline total and one row per
+ * category carrying its count, its share of the total, a bar scaled against
+ * the LARGEST category, and a tone.
+ *
+ * Categories are toned by rank rather than by matching their labels, because
+ * membership-type names vary too much between orgs to map by name. The cycle
+ * deliberately skips "accent": it resolves to the theme's menu-hover colour,
+ * which leaves the busiest category's dot and full-length bar near-invisible.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ Membership_Type__c: "Student", cnt: 2 }, ...]
+ *   field      — field name holding the category (default "Membership_Type__c")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, categoryCount, rows: Array<{ id, value, count, pct, bar, tone }> }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_category_breakdown", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const CATEGORY_TONE_CYCLE = ['info', 'success', 'warning', 'destructive', 'muted'];
+
+const category_breakdown: ComputedFunction = (args) => {
+  const records = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const field = String(args.field ?? 'Membership_Type__c');
+  const countField = String(args.countField ?? 'cnt');
+
+  const entries = records
+    .map((r) => ({ value: String(r[field] ?? '').trim(), count: Number(r[countField] ?? 0) }))
+    .filter((e) => e.value !== '')
+    .sort((a, b) => b.count - a.count);
+
+  if (entries.length === 0) return { total: 0, categoryCount: 0, rows: [] };
+
+  const total = entries.reduce((s, e) => s + e.count, 0);
+  const max = entries[0].count;
+
+  return {
+    total,
+    categoryCount: entries.length,
+    rows: entries.map((e, i) => ({
+      id: e.value || String(i),
+      value: e.value,
+      count: e.count,
+      pct: total > 0 ? `${Math.round((e.count / total) * 100)}%` : '0%',
+      // Bar length is share of the LARGEST category, so the leader fills its
+      // bar and the rest read as a proportion of it.
+      bar: max > 0 ? Math.round((e.count / max) * 100) : 0,
+      tone: CATEGORY_TONE_CYCLE[i % CATEGORY_TONE_CYCLE.length],
+    })),
+  };
+};
+
+/**
+ * Fixed engagement tiers, in the order the tile reads them. Anything the org
+ * has outside this list is appended afterwards rather than dropped.
+ */
+const ENGAGEMENT_TIERS: Array<{ label: string; tone: string }> = [
+  { label: 'Engaged', tone: 'success' },
+  { label: 'Less Engaged', tone: 'warning' },
+  { label: 'Does Not Engage', tone: 'muted' },
+];
+
+/**
+ * Shape an aggregate "count by engagement level" SOQL result into the figures
+ * the Member Engagement tile draws: the headline engaged share, a plain-English
+ * summary, and the donut segments.
+ *
+ * Segments come back in a fixed order (Engaged, Less Engaged, Does Not Engage)
+ * because SOQL GROUP BY does not guarantee one. A tier with no members is left
+ * out so it contributes neither a zero-length arc nor a "0 / 0%" legend row.
+ * Unrecognised levels, including records with the field blank, become their own
+ * segment rather than being silently dropped.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ Engagement_Level__c: "Engaged", cnt: 5 }, ...]
+ *   field      — field name holding the engagement level (default "Engagement_Level__c")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, engagedCount, engagedPct, summary, segments: Array<{ label, value, tone }> }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_engagement_breakdown", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const engagement_breakdown: ComputedFunction = (args) => {
+  const records = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const field = String(args.field ?? 'Engagement_Level__c');
+  const countField = String(args.countField ?? 'cnt');
+
+  const counts = new Map<string, number>();
+  for (const r of records) {
+    const raw = r[field];
+    const label = raw === null || raw === undefined || String(raw).trim() === '' ? 'Not Set' : String(raw).trim();
+    counts.set(label, (counts.get(label) ?? 0) + Number(r[countField] ?? 0));
+  }
+
+  const total = [...counts.values()].reduce((s, n) => s + n, 0);
+  if (total === 0) {
+    return { total: 0, engagedCount: 0, engagedPct: '0%', summary: '', segments: [] };
+  }
+
+  const pctOf = (n: number): number => Math.round((n / total) * 100);
+
+  const known = ENGAGEMENT_TIERS.map((t) => ({ label: t.label, tone: t.tone, count: counts.get(t.label) ?? 0 }));
+  const extra = [...counts.entries()]
+    .filter(([label]) => !ENGAGEMENT_TIERS.some((t) => t.label === label))
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count]) => ({ label, tone: 'info', count }));
+  const ordered = [...known, ...extra];
+
+  const engagedCount = counts.get('Engaged') ?? 0;
+  const lessCount = counts.get('Less Engaged') ?? 0;
+  const noneCount = counts.get('Does Not Engage') ?? 0;
+
+  let summary = `${engagedCount} of ${total} members are engaged.`;
+  if (lessCount > 0 && noneCount > 0) {
+    summary += ` ${lessCount} could be nudged, ${noneCount} don't engage at all.`;
+  } else if (lessCount > 0) {
+    summary += ` ${lessCount} could be nudged.`;
+  } else if (noneCount > 0) {
+    summary += ` ${noneCount} don't engage at all.`;
+  }
+
+  return {
+    total,
+    engagedCount,
+    engagedPct: `${pctOf(engagedCount)}%`,
+    summary,
+    // Donut arcs: only tiers that actually have members, so an unused tier
+    // does not contribute a zero-length arc.
+    segments: ordered
+      .filter((t) => t.count > 0)
+      .map((t) => ({ label: t.label, value: t.count, tone: t.tone })),
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown, engagement_breakdown },
 };
 
 export default elements;
