@@ -467,9 +467,139 @@ const format_date: ComputedFunction = (args) => {
   return `${day}-${month}-${year}`;
 };
 
+/**
+ * Australian tile-map layout: a 4-column, 4-row cartogram of the states and
+ * territories, written out in reading order so a 4-column Grid reproduces the
+ * geography. An empty string is a spacer slot that keeps the shape.
+ */
+const AU_TILE_SLOTS: string[] = [
+  '',    'NT', 'QLD', '',
+  'WA',  'SA', 'NSW', 'ACT',
+  '',    '',   'VIC',  '',
+  '',    '',   'TAS',  '',
+];
+
+/**
+ * Build everything the Membership by State tile renders from one aggregate
+ * SOQL result: the headline figures, the Australian tile-map cells, a ranked
+ * fallback list for non-Australian orgs, and the insight sentence.
+ *
+ * Every cell carries the same panel background. Rank is read from the bar
+ * (length = share of the busiest state) and from the badge, which is "solid"
+ * for the top two states and "outline" for the rest.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ MailingState: "Victoria", cnt: 8 }, ...]
+ *   stateField — field name holding the state/region (default "MailingState")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, stateCount, topCode, topPct, top2Pct, isAu, cells, rows, otherText, insight }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_membership_map", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const membership_map: ComputedFunction = (args) => {
+  const records = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const stateField = String(args.stateField ?? 'MailingState');
+  const countField = String(args.countField ?? 'cnt');
+
+  if (records.length === 0) {
+    return {
+      total: 0, stateCount: 0, topCode: '', topPct: '', top2Pct: '',
+      isAu: false, cells: [], rows: [], otherText: '', insight: '',
+    };
+  }
+
+  // Normalise to { name, code, count }, busiest first.
+  const entries = records
+    .map((r) => {
+      const name = String(r[stateField] ?? '').trim();
+      const count = Number(r[countField] ?? 0);
+      return { name, code: String(state_abbr({ value: name })), count };
+    })
+    .filter((e) => e.name !== '')
+    .sort((a, b) => b.count - a.count);
+
+  const total = entries.reduce((s, e) => s + e.count, 0);
+  const pctOf = (n: number): number => (total > 0 ? Math.round((n / total) * 100) : 0);
+  const max = entries.length > 0 ? entries[0].count : 0;
+
+  // The two busiest states get a filled badge; everyone else an outline one.
+  const leaders = new Set(entries.slice(0, 2).map((e) => e.code));
+
+  // Tile-map cells, one per slot, in reading order.
+  const byCode = new Map(entries.map((e) => [e.code, e]));
+  const placed = new Set<string>();
+  const cells = AU_TILE_SLOTS.map((code, i) => {
+    const hit = code ? byCode.get(code) : undefined;
+    if (hit) placed.add(code);
+    return {
+      id: `slot-${i}`,
+      code,
+      count: hit ? hit.count : 0,
+      pct: hit ? `${pctOf(hit.count)}%` : '',
+      // Bar length is share of the BUSIEST state, not of the total, so the
+      // leader fills its bar and the rest read as a proportion of it.
+      bar: hit && max > 0 ? Math.round((hit.count / max) * 100) : 0,
+      label: hit ? hit.name : '',
+      filled: Boolean(hit),
+      badgeVariant: hit && leaders.has(hit.code) ? 'solid' : 'outline',
+    };
+  });
+
+  // Orgs outside Australia get the ranked list instead of the cartogram.
+  const isAu = placed.size >= 2;
+
+  const rows = entries.map((e, i) => ({
+    id: e.code || String(i),
+    code: e.code,
+    value: e.name,
+    count: e.count,
+    percentage: pctOf(e.count),
+  }));
+
+  const leftOver = entries.filter((e) => !placed.has(e.code));
+  const otherText =
+    isAu && leftOver.length > 0
+      ? `Also outside the map: ${leftOver.map((e) => `${e.name} (${e.count})`).join(', ')}.`
+      : '';
+
+  const top1 = entries[0];
+  const top2 = entries[1];
+  const top2Pct = top2 ? pctOf(top1.count + top2.count) : pctOf(top1.count);
+
+  let insight: string;
+  if (top2) {
+    insight =
+      `${top1.code} and ${top2.code} hold the largest share of membership ` +
+      `(${top2Pct}% combined), the strongest candidates for a flagship annual event.`;
+    const rest = entries.slice(2, 5);
+    if (rest.length >= 2) {
+      insight +=
+        ` Smaller but steady states (${rest.map((e) => e.code).join(', ')})` +
+        ` may suit a regional chapter meetup.`;
+    }
+  } else {
+    insight = `${top1.code} accounts for all ${total} active members — no regional spread to work with yet.`;
+  }
+
+  return {
+    total,
+    stateCount: entries.length,
+    topCode: top1.code,
+    topPct: `${pctOf(top1.count)}%`,
+    top2Pct: `${top2Pct}%`,
+    isAu,
+    cells,
+    rows,
+    otherText,
+    insight,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map },
 };
 
 export default elements;
