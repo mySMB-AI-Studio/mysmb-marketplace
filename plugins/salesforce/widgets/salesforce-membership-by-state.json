@@ -1,15 +1,15 @@
 {
   "id": "salesforce-membership-by-state",
   "title": "Membership by State",
-  "description": "Active contacts by state as an Australian tile-map — each state sits where it belongs on the map, with its member count and share of the total, shaded by how busy it is. Headline figures across the top cover total members, the leading state and the top-two share, and an insight line below calls out where to run a flagship event versus a regional meetup. Orgs outside Australia get a ranked list instead.",
+  "description": "Active contacts by state as an Australian tile-map — each state sits where it belongs on the map, showing its member count, its share of the total and a bar scaled against the busiest state. Headline figures across the top cover total members, the leading state and the top-two share, and an insight line below calls out where to run a flagship event versus a regional meetup. Orgs outside Australia get a ranked list instead.",
   "category": "sales",
   "tags": ["salesforce", "crm", "contacts", "state", "membership", "distribution"],
   "keywords": ["membership", "state", "territory", "contacts", "distribution", "breakdown", "map", "NSW", "VIC", "QLD"],
   "connectorsUsed": ["salesforce"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 6 },
-    "min":       { "colSpan": 3, "rowSpan": 5 },
+    "preferred": { "colSpan": 4, "rowSpan": 7 },
+    "min":       { "colSpan": 4, "rowSpan": 6 },
     "max":       { "colSpan": 8, "rowSpan": 10 }
   },
   "dataProvider": {
@@ -176,28 +176,37 @@
         "type": "Section",
         "props": { "variant": "muted" },
         "visible": { "$item": "filled" },
-        "children": ["mapCellCode", "mapCellFigures"]
+        "children": ["mapCellTop", "mapCellCount", "mapCellBar"]
+      },
+      "mapCellTop": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "between" },
+        "children": ["mapCellCode", "mapCellPct"]
       },
       "mapCellCode": {
-        "type": "Text",
-        "props": { "text": { "$item": "code" }, "size": "sm", "weight": "medium", "truncate": true }
-      },
-      "mapCellFigures": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "baseline", "justify": "between" },
-        "children": ["mapCellCount", "mapCellPct"]
-      },
-      "mapCellCount": {
-        "type": "Stat",
-        "props": { "size": "sm", "value": { "$item": "count" } }
+        "type": "Eyebrow",
+        "props": { "text": { "$item": "code" } }
       },
       "mapCellPct": {
         "type": "Badge",
         "props": {
           "text": { "$item": "pct" },
           "tone": "success",
-          "variant": { "$item": "heat" }
+          "variant": { "$item": "badgeVariant" }
         }
+      },
+      "mapCellCount": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$item": "count" } }
+      },
+      "mapCellBar": {
+        "type": "Row",
+        "props": {},
+        "children": ["mapCellBarFill"]
+      },
+      "mapCellBarFill": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "bar" }, "tone": "success" }
       },
 
       "rankList": {

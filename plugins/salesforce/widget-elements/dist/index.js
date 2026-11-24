@@ -488,9 +488,9 @@ const AU_TILE_SLOTS = [
  * SOQL result: the headline figures, the Australian tile-map cells, a ranked
  * fallback list for non-Australian orgs, and the insight sentence.
  *
- * Heat is expressed with Badge variants rather than a colour ramp, because
- * widget-elements may only use the token palette: the busiest states get
- * "solid", the middle band "soft", the quietest "outline".
+ * Every cell carries the same panel background. Rank is read from the bar
+ * (length = share of the busiest state) and from the badge, which is "solid"
+ * for the top two states and "outline" for the rest.
  *
  * Args:
  *   value      — aggregate records array, e.g. [{ MailingState: "Victoria", cnt: 8 }, ...]
@@ -524,16 +524,8 @@ const membership_map = (args) => {
     const total = entries.reduce((s, e) => s + e.count, 0);
     const pctOf = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
     const max = entries.length > 0 ? entries[0].count : 0;
-    const heatOf = (n) => {
-        if (max <= 0)
-            return 'outline';
-        const i = n / max;
-        if (i >= 0.7)
-            return 'solid';
-        if (i >= 0.35)
-            return 'soft';
-        return 'outline';
-    };
+    // The two busiest states get a filled badge; everyone else an outline one.
+    const leaders = new Set(entries.slice(0, 2).map((e) => e.code));
     // Tile-map cells, one per slot, in reading order.
     const byCode = new Map(entries.map((e) => [e.code, e]));
     const placed = new Set();
@@ -546,9 +538,12 @@ const membership_map = (args) => {
             code,
             count: hit ? hit.count : 0,
             pct: hit ? `${pctOf(hit.count)}%` : '',
+            // Bar length is share of the BUSIEST state, not of the total, so the
+            // leader fills its bar and the rest read as a proportion of it.
+            bar: hit && max > 0 ? Math.round((hit.count / max) * 100) : 0,
             label: hit ? hit.name : '',
             filled: Boolean(hit),
-            heat: hit ? heatOf(hit.count) : 'outline',
+            badgeVariant: hit && leaders.has(hit.code) ? 'solid' : 'outline',
         };
     });
     // Orgs outside Australia get the ranked list instead of the cartogram.
@@ -571,7 +566,7 @@ const membership_map = (args) => {
     if (top2) {
         insight =
             `${top1.code} and ${top2.code} hold the largest share of membership ` +
-                `(${top2Pct}% combined) — the strongest candidates for a flagship annual event.`;
+                `(${top2Pct}% combined), the strongest candidates for a flagship annual event.`;
         const rest = entries.slice(2, 5);
         if (rest.length >= 2) {
             insight +=
