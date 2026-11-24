@@ -734,9 +734,133 @@ const engagement_breakdown: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Badge tone per Opportunity stage. Only five token tones read clearly
+ * (muted / info / success / warning / destructive), so the standard Salesforce
+ * stages are mapped so that neighbouring stages never share one, and the last
+ * stage before close draws the eye. Custom stage names fall back to keyword
+ * matching, since orgs rename freely.
+ */
+const STAGE_TONES: Record<string, string> = {
+  'Prospecting': 'muted',
+  'Qualification': 'info',
+  'Needs Analysis': 'success',
+  'Value Proposition': 'warning',
+  'Id. Decision Makers': 'info',
+  'Perception Analysis': 'success',
+  'Proposal/Price Quote': 'warning',
+  'Negotiation/Review': 'destructive',
+  'Closed Won': 'success',
+  'Closed Lost': 'destructive',
+};
+
+/** Compact money for headline figures: A$2.13M, A$675K, A$900. */
+const shortMoney = (n: number): string => {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `A$${(n / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M`;
+  if (abs >= 1_000) return `A$${Math.round(n / 1_000)}K`;
+  return `A$${Math.round(n)}`;
+};
+
+/** Full money for row amounts, matching the tile standard: A$15,000.00. */
+const fullMoney = (n: number): string =>
+  `A$${n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * Shape open Opportunity records into everything the Deals Pipeline tile
+ * draws: the three headline figures and one row per deal with its stage tone,
+ * close date, how far that date is from today, and its amount.
+ *
+ * Args:
+ *   value — Opportunity records from a non-aggregate soql_query
+ *   today — ISO date to measure against; defaults to the current date. Present
+ *           so the relative wording can be tested deterministically.
+ *
+ * Returns: {
+ *   count, totalShort, overdueCount, overdueShort,
+ *   rows: Array<{ id, name, stage, stageTone, meta, relTone, amount }>
+ * }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_pipeline_summary", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const pipeline_summary: ComputedFunction = (args) => {
+  const records = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (records.length === 0) {
+    return { count: 0, totalShort: '', overdueCount: 0, overdueShort: '', rows: [] };
+  }
+
+  const today = args.today ? new Date(String(args.today)) : new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const toneFor = (stage: string): string => {
+    if (STAGE_TONES[stage]) return STAGE_TONES[stage];
+    const s = stage.toLowerCase();
+    if (s.includes('won')) return 'success';
+    if (s.includes('lost')) return 'destructive';
+    if (s.includes('negotiat')) return 'destructive';
+    if (s.includes('proposal') || s.includes('quote')) return 'warning';
+    if (s.includes('qualif')) return 'info';
+    return 'muted';
+  };
+
+  let total = 0;
+  let overdueCount = 0;
+  let overdueTotal = 0;
+
+  const rows = records.map((r, i) => {
+    const amount = Number(r.Amount ?? 0) || 0;
+    total += amount;
+
+    const stage = String(r.StageName ?? '').trim();
+    const closeRaw = r.CloseDate;
+    const dateLabel = String(format_date({ value: closeRaw }));
+
+    let relLabel = '';
+    let relTone = 'muted';
+    const ms = closeRaw ? Date.parse(String(closeRaw)) : NaN;
+    if (!Number.isNaN(ms)) {
+      const d = new Date(ms);
+      const closeUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      const days = Math.round((closeUtc - todayUtc) / 86_400_000);
+      if (days < 0) {
+        const late = -days;
+        relLabel = late > 60 ? `${Math.round(late / 30)} mo overdue` : `${late}d overdue`;
+        relTone = 'destructive';
+        overdueCount += 1;
+        overdueTotal += amount;
+      } else if (days === 0) {
+        relLabel = 'due today';
+        relTone = 'warning';
+      } else {
+        relLabel = `in ${days}d`;
+        relTone = days <= 14 ? 'warning' : 'success';
+      }
+    }
+
+    return {
+      id: String(r.Id ?? i),
+      name: String(r.Name ?? '').trim() || '(No Name)',
+      stage,
+      stageTone: toneFor(stage),
+      meta: relLabel ? `${dateLabel} · ${relLabel}` : dateLabel,
+      relTone,
+      amount: fullMoney(amount),
+    };
+  });
+
+  return {
+    count: records.length,
+    totalShort: shortMoney(total),
+    overdueCount,
+    overdueShort: shortMoney(overdueTotal),
+    rows,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown, engagement_breakdown },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown, engagement_breakdown, pipeline_summary },
 };
 
 export default elements;
