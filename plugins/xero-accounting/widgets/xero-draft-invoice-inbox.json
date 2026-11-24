@@ -1,15 +1,19 @@
 {
-  "id": "xero-draft-invoice-inbox",
-  "title": "Draft Invoice Inbox",
-  "description": "Draft invoices inbox — invoices not yet sent.",
   "category": "finance",
-  "tags": [
-    "xero",
-    "invoices",
-    "draft",
-    "inbox",
-    "finance"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "UpdatedDateUTC DESC",
+      "statuses": "DRAFT"
+    },
+    "tool": "list_invoices"
+  },
+  "description": "Draft invoices inbox — invoices not yet sent.",
+  "id": "xero-draft-invoice-inbox",
   "keywords": [
     "draft",
     "invoice",
@@ -18,91 +22,76 @@
     "inbox",
     "pending"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
   "popularity": 0,
   "sizing": {
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 4
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
     },
     "min": {
       "colSpan": 4,
       "rowSpan": 4
     },
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 12
-    }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "list_invoices",
-    "params": {
-      "statuses": "DRAFT",
-      "order": "UpdatedDateUTC DESC"
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 4
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "age": {
+        "props": {
+          "text": {
+            "$computed": "relative_time",
+            "args": {
+              "value": {
+                "$item": "UpdatedDateUTC"
+              }
+            }
+          },
+          "tone": "muted",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "CurrencyCode"
+              },
+              "value": {
+                "$item": "Total"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ],
+        "type": "Body"
+      },
       "card": {
-        "type": "Card",
         "children": [
           "header",
           "body"
-        ]
-      },
-      "header": {
-        "type": "Header",
-        "children": [
-          "titleGroup"
-        ]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Inbox",
-          "tone": "accent",
-          "size": "sm"
-        }
-      },
-      "titleStack": {
-        "type": "Stack",
-        "props": {
-          "gap": "none"
-        },
-        "children": [
-          "title",
-          "count"
-        ]
-      },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Draft Invoices",
-          "level": "h2"
-        }
+        ],
+        "type": "Card"
       },
       "count": {
-        "type": "Eyebrow",
         "props": {
           "text": {
             "$computed": "fmt",
             "args": {
-              "pattern": "{n} Drafts",
               "n": {
                 "$computed": "count",
                 "args": {
@@ -110,67 +99,18 @@
                     "$state": "/xero-accounting/list_invoices/Invoices"
                   }
                 }
-              }
+              },
+              "pattern": "{n} Drafts"
             }
           }
-        }
-      },
-      "body": {
-        "type": "Body",
-        "children": [
-          "loading",
-          "empty",
-          "list"
-        ]
-      },
-      "loading": {
-        "type": "Stack",
-        "props": {
-          "gap": "sm"
         },
-        "children": [
-          "skel1",
-          "skel2",
-          "skel3",
-          "skel4"
-        ],
-        "visible": {
-          "$state": "/_loading/xero-accounting.list_invoices"
-        }
-      },
-      "skel1": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.25rem",
-          "rounded": "md"
-        }
-      },
-      "skel2": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.25rem",
-          "rounded": "md"
-        }
-      },
-      "skel3": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.25rem",
-          "rounded": "md"
-        }
-      },
-      "skel4": {
-        "type": "Skeleton",
-        "props": {
-          "height": "2.25rem",
-          "rounded": "md"
-        }
+        "type": "Eyebrow"
       },
       "empty": {
-        "type": "Empty",
         "props": {
           "message": "Inbox zero. No drafts waiting."
         },
+        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -184,32 +124,81 @@
           ]
         }
       },
-      "list": {
-        "type": "Stack",
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "idBottom": {
+        "props": {
+          "text": {
+            "$item": "InvoiceNumber"
+          }
+        },
+        "type": "Caption"
+      },
+      "idTop": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "identity": {
+        "children": [
+          "idTop",
+          "idBottom"
+        ],
         "props": {
           "gap": "xs"
         },
+        "type": "Stack"
+      },
+      "list": {
         "children": [
           "row"
         ],
-        "repeat": {
-          "statePath": "/xero-accounting/list_invoices/Invoices",
-          "key": "InvoiceID"
+        "props": {
+          "gap": "xs"
         },
+        "repeat": {
+          "key": "InvoiceID",
+          "statePath": "/xero-accounting/list_invoices/Invoices"
+        },
+        "type": "Stack",
         "visible": {
           "$state": "/_loading/xero-accounting.list_invoices",
           "not": true
         }
       },
-      "row": {
-        "type": "Row",
+      "loading": {
+        "children": [
+          "skel1",
+          "skel2",
+          "skel3",
+          "skel4"
+        ],
         "props": {
-          "gap": "sm",
-          "align": "center",
-          "hover": true,
-          "clickable": true,
-          "template": "auto minmax(0, 1fr) 6rem 7rem"
+          "gap": "sm"
         },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_invoices"
+        }
+      },
+      "priority": {
+        "props": {
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Dot"
+      },
+      "row": {
         "children": [
           "priority",
           "identity",
@@ -220,6 +209,7 @@
           "click": {
             "action": "open_invoice_modal",
             "params": {
+              "connector": "xero-accounting",
               "invoiceId": {
                 "$computed": "identity",
                 "args": {
@@ -227,81 +217,92 @@
                     "$item": "InvoiceID"
                   }
                 }
-              },
-              "connector": "xero-accounting"
+              }
             }
           }
-        }
-      },
-      "priority": {
-        "type": "Dot",
-        "props": {
-          "tone": "accent",
-          "size": "sm"
-        }
-      },
-      "identity": {
-        "type": "Stack",
-        "props": {
-          "gap": "xs"
         },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "template": "auto minmax(0, 1fr) 6rem 7rem"
+        },
+        "type": "Row"
+      },
+      "skel1": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "skel2": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "skel3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "skel4": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Draft Invoices"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
         "children": [
-          "idTop",
-          "idBottom"
-        ]
-      },
-      "idTop": {
-        "type": "Text",
+          "titleIcon",
+          "titleStack"
+        ],
         "props": {
-          "text": {
-            "$item": "Contact/Name"
-          },
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Inbox",
           "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
+          "tone": "accent"
+        },
+        "type": "Icon"
       },
-      "idBottom": {
-        "type": "Caption",
+      "titleStack": {
+        "children": [
+          "title",
+          "count"
+        ],
         "props": {
-          "text": {
-            "$item": "InvoiceNumber"
-          }
-        }
-      },
-      "amount": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": {
-              "value": {
-                "$item": "Total"
-              },
-              "currency": {
-                "$item": "CurrencyCode"
-              }
-            }
-          },
-          "weight": "semibold",
-          "size": "sm"
-        }
-      },
-      "age": {
-        "type": "Badge",
-        "props": {
-          "text": {
-            "$computed": "relative_time",
-            "args": {
-              "value": {
-                "$item": "UpdatedDateUTC"
-              }
-            }
-          },
-          "tone": "muted",
-          "variant": "soft"
-        }
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "invoices",
+    "draft",
+    "inbox",
+    "finance"
+  ],
+  "title": "Draft Invoice Inbox"
 }

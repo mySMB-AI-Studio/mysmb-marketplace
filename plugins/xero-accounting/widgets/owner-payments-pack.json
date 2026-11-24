@@ -1,0 +1,521 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {},
+    "tool": "get_xero_owner_payments_pack"
+  },
+  "description": "For owners paid outside the pay run: the latest owner super bill, drawings and PAYG instalment set-aside from Xero, copied forward as this cycle's amounts, with anything that changed, a changed payee or a double payment flagged before it goes to the client. Can copy the owner super bill as a draft. No money moves from the tile.",
+  "id": "xero-owner-payments-pack",
+  "keywords": [
+    "owner payments",
+    "owner super",
+    "drawings",
+    "payg instalment",
+    "director",
+    "pay run",
+    "authorise",
+    "commbiz"
+  ],
+  "pluginIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 10
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "content"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card"
+      },
+      "check": {
+        "props": {
+          "iconName": {
+            "$item": "icon"
+          },
+          "subtitle": {
+            "$item": "detail"
+          },
+          "title": {
+            "$item": "title"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "ActivityItem"
+      },
+      "checks": {
+        "children": [
+          "check"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/xero-accounting/get_xero_owner_payments_pack/checks"
+        },
+        "type": "Stack"
+      },
+      "checksHead": {
+        "children": [
+          "checksHeadLabel",
+          "checksHeadCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "checksHeadCaption": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/flagText"
+          }
+        },
+        "type": "Caption"
+      },
+      "checksHeadLabel": {
+        "props": {
+          "text": "Changes to check"
+        },
+        "type": "Eyebrow"
+      },
+      "content": {
+        "children": [
+          "pack",
+          "divider1",
+          "itemsHead",
+          "items",
+          "divider2",
+          "checksHead",
+          "checks",
+          "divider3",
+          "footer",
+          "draftResult"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_owner_payments_pack",
+          "not": true
+        }
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "divider2": {
+        "type": "Divider"
+      },
+      "divider3": {
+        "type": "Divider"
+      },
+      "draftButton": {
+        "on": {
+          "click": {
+            "action": "xero-accounting.draft_xero_owner_super_bill",
+            "params": {
+              "bill_id": {
+                "$state": "/xero-accounting/get_xero_owner_payments_pack/superBill/id"
+              },
+              "date": {
+                "$state": "/xero-accounting/get_xero_owner_payments_pack/superBill/copyDate"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Draft owner super bill",
+          "leadingIcon": "FilePlus",
+          "size": "sm",
+          "variant": "secondary"
+        },
+        "type": "Button",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/xero-accounting/get_xero_owner_payments_pack/superBill/id"
+            },
+            {
+              "$state": "/xero-accounting/draft_xero_owner_super_bill/invoiceId",
+              "not": true
+            }
+          ]
+        }
+      },
+      "draftMessage": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/draft_xero_owner_super_bill/message"
+          }
+        },
+        "type": "Caption"
+      },
+      "draftOpen": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/xero-accounting/draft_xero_owner_super_bill/url"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Review draft",
+          "leadingIcon": "ArrowRight",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "draftResult": {
+        "children": [
+          "draftRow"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/xero-accounting/draft_xero_owner_super_bill/invoiceId"
+        }
+      },
+      "draftRow": {
+        "children": [
+          "draftMessage",
+          "draftOpen"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/eyebrow"
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "footer": {
+        "children": [
+          "footerText",
+          "footerButtons"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "footerButtons": {
+        "children": [
+          "draftButton",
+          "openButton"
+        ],
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "footerText": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/footerText"
+          }
+        },
+        "type": "Caption"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "item": {
+        "props": {
+          "subtitle": {
+            "$item": "detail"
+          },
+          "title": {
+            "$item": "name"
+          },
+          "value": {
+            "$item": "amountText"
+          },
+          "valueHint": {
+            "$item": "hintText"
+          }
+        },
+        "type": "ListItem"
+      },
+      "itemRow": {
+        "children": [
+          "item"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "url"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "clickable": true,
+          "hover": true,
+          "template": "1fr"
+        },
+        "type": "Row"
+      },
+      "items": {
+        "children": [
+          "itemRow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "repeat": {
+          "key": "key",
+          "statePath": "/xero-accounting/get_xero_owner_payments_pack/items"
+        },
+        "type": "Stack"
+      },
+      "itemsHead": {
+        "children": [
+          "itemsHeadLabel",
+          "itemsHeadCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "itemsHeadCaption": {
+        "props": {
+          "text": "vs the cycle before"
+        },
+        "type": "Caption"
+      },
+      "itemsHeadLabel": {
+        "props": {
+          "text": "In this pack"
+        },
+        "type": "Eyebrow"
+      },
+      "loading": {
+        "children": [
+          "sk0",
+          "sk1",
+          "sk2"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_owner_payments_pack"
+        }
+      },
+      "openButton": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://go.xero.com/AccountsPayable/"
+            }
+          }
+        },
+        "props": {
+          "label": "Open bills in Xero",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "info",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "pack": {
+        "children": [
+          "packRow"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "packBadge": {
+        "props": {
+          "text": "Draft",
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "packCompare": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/compareText"
+          },
+          "tone": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/compareTone"
+          }
+        },
+        "type": "Caption"
+      },
+      "packLabel": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/packLabel"
+          }
+        },
+        "type": "Caption"
+      },
+      "packRow": {
+        "children": [
+          "packStack",
+          "packBadge"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "packStack": {
+        "children": [
+          "packLabel",
+          "packTotal",
+          "packCompare"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "packTotal": {
+        "props": {
+          "value": {
+            "$state": "/xero-accounting/get_xero_owner_payments_pack/summary/totalText"
+          }
+        },
+        "type": "Stat"
+      },
+      "sk0": {
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk1": {
+        "props": {
+          "height": "9rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Owner Payments Pack"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "HandCoins",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "payroll",
+    "owner",
+    "super",
+    "drawings",
+    "payg"
+  ],
+  "title": "Owner Payments Pack"
+}

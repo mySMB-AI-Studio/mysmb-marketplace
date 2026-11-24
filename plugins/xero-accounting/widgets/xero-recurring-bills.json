@@ -1,0 +1,431 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "where": "Type==\"ACCPAY\""
+    },
+    "tool": "list_repeating_invoices"
+  },
+  "description": "Repeating bill templates (Type==ACCPAY repeating invoices) — who they're billed to, the amount, when the next one fires, and the template's own status. Switch organisation from the tile itself if more than one Xero org is connected.",
+  "id": "xero-recurring-bills",
+  "keywords": [
+    "recurring bill",
+    "repeating invoice",
+    "repeating bill",
+    "subscription",
+    "schedule",
+    "accounts payable"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 4
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 6
+    }
+  },
+  "spec": {
+    "elements": {
+      "amount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "currency": {
+                "$item": "CurrencyCode"
+              },
+              "value": {
+                "$item": "Total"
+              }
+            }
+          },
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "list"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "orgRow",
+          "body",
+          "footer"
+        ],
+        "type": "Card",
+        "watch": {
+          "/ui/selectedTenantId": [
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "list_repeating_invoices"
+              }
+            },
+            {
+              "action": "xero-accounting.list_repeating_invoices",
+              "params": {
+                "where": "Type==\"ACCPAY\"",
+                "xero_tenant_id": {
+                  "$state": "/ui/selectedTenantId"
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "get_organisation"
+              }
+            },
+            {
+              "action": "xero-accounting.get_organisation",
+              "params": {
+                "xero_tenant_id": {
+                  "$state": "/ui/selectedTenantId"
+                }
+              }
+            }
+          ],
+          "/xero-accounting/list_connections/activeTenantId": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedTenantId",
+                "value": {
+                  "$state": "/xero-accounting/list_connections/activeTenantId"
+                }
+              }
+            }
+          ],
+          "/xero-accounting/list_repeating_invoices/RepeatingInvoices": [
+            {
+              "action": "xero-accounting.list_connections",
+              "params": {}
+            }
+          ]
+        }
+      },
+      "count": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices"
+                  }
+                }
+              },
+              "pattern": "{n} templates"
+            }
+          }
+        },
+        "type": "Eyebrow"
+      },
+      "empty": {
+        "props": {
+          "message": "No recurring bills set up in Xero."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_repeating_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_repeating_invoices/RepeatingInvoices/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "footer": {
+        "children": [
+          "openXeroBtn"
+        ],
+        "props": {
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "idBottom": {
+        "props": {
+          "text": {
+            "$cond": {
+              "$item": "Reference"
+            },
+            "$else": "—",
+            "$then": {
+              "$item": "Reference"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "idTop": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "Contact/Name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "identity": {
+        "children": [
+          "idTop",
+          "idBottom"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "list": {
+        "children": [
+          "row"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "RepeatingInvoiceID",
+          "statePath": "/xero-accounting/list_repeating_invoices/RepeatingInvoices"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_repeating_invoices",
+          "not": true
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.list_repeating_invoices"
+        }
+      },
+      "next": {
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_format_date",
+            "args": {
+              "format": "medium",
+              "value": {
+                "$item": "Schedule/NextScheduledDate"
+              }
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "openXeroBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$cond": {
+                  "$state": "/xero-accounting/get_organisation/Organisations/0/ShortCode"
+                },
+                "$else": "https://go.xero.com/",
+                "$then": {
+                  "$computed": "fmt",
+                  "args": {
+                    "pattern": "https://go.xero.com/app/{shortCode}/bills/list/repeating",
+                    "shortCode": {
+                      "$state": "/xero-accounting/get_organisation/Organisations/0/ShortCode"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "label": "Open Repeating Bills in Xero",
+          "leadingIcon": "ExternalLink",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "orgRow": {
+        "children": [
+          "orgSelect"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/xero-accounting/list_connections/tenants/1"
+        }
+      },
+      "orgSelect": {
+        "props": {
+          "ariaLabel": "Switch Xero organisation",
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "labelField": "tenantName",
+              "value": {
+                "$state": "/xero-accounting/list_connections/tenants"
+              },
+              "valueField": "tenantId"
+            }
+          },
+          "size": "sm",
+          "value": {
+            "$bindState": "/ui/selectedTenantId"
+          }
+        },
+        "type": "Select"
+      },
+      "row": {
+        "children": [
+          "identity",
+          "amount",
+          "next",
+          "status"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "template": "minmax(0, 1fr) 6rem 6.5rem 5.5rem"
+        },
+        "type": "Row"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.25rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "status": {
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_status_label",
+            "args": {
+              "value": {
+                "$item": "Status"
+              }
+            }
+          },
+          "tone": {
+            "$computed": "xero-accounting_status_tone",
+            "args": {
+              "value": {
+                "$item": "Status"
+              }
+            }
+          }
+        },
+        "type": "Badge"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Recurring Bills"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Repeat",
+          "size": "sm",
+          "tone": "info"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "count"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "bills",
+    "recurring",
+    "repeating",
+    "finance"
+  ],
+  "title": "Xero — Recurring Bills"
+}

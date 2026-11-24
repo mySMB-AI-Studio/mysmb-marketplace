@@ -6,16 +6,7 @@ Full-coverage access to the Xero Accounting API via the myHub-hosted OAuth MCP g
 
 ## Configuration
 
-No environment variables required. On first use, the browser redirects to `login.xero.com/identity` — sign in, pick a Xero org, and MyHub remembers the selection for the rest of the session. Reconnect to switch orgs.
-
-Scopes requested:
-
-```
-offline_access openid profile email
-accounting.transactions accounting.contacts accounting.settings accounting.reports.read
-```
-
-> Xero split the broad `accounting.transactions` and `accounting.reports.read` scopes into granular per-entity scopes for apps created on or after 2026-03-02. Legacy Xero apps continue to accept the broad scopes above. Newly-created Xero apps must instead enable the granular scopes (`accounting.invoices`, `accounting.payments`, `accounting.banktransactions`, `accounting.manualjournals`, `accounting.reports.profitandloss.read`, etc.) — the gateway will need to be reconfigured to match.
+No configuration variables are required.
 
 ## Tool categories
 

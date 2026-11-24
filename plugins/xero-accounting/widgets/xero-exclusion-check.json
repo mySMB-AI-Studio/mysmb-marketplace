@@ -1,0 +1,658 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "order": "Date DESC",
+      "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864"
+    },
+    "tool": "list_invoices"
+  },
+  "description": "Flags Xero invoices and bills that are Voided, Deleted, or stuck in Draft for more than 30 days — all of which sit outside standard P&L reporting. Live-wired to xero-accounting: list_invoices fires on mount, and analyze_excluded_documents computes the hero total + total value, a 3-way exact-count split bar (Voided / Deleted / Stale draft), and a most-recent-first detail list. Unlike the prior 5-check Exclusion Check design, all three signals here are real Status/Date fields available at Xero's list-endpoint level — no per-line LineItems limitation applies to this check.",
+  "id": "xero-exclusion-check",
+  "keywords": [
+    "excluded",
+    "voided",
+    "deleted",
+    "draft",
+    "stale",
+    "reports",
+    "P&L",
+    "xero"
+  ],
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 12
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 7
+    },
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 8
+    }
+  },
+  "spec": {
+    "elements": {
+      "barDeleted": {
+        "props": {
+          "tone": "muted",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "barStale": {
+        "props": {
+          "tone": "warning",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "barVoided": {
+        "props": {
+          "tone": "destructive",
+          "value": 100
+        },
+        "type": "ProgressBar"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "content"
+        ],
+        "props": {
+          "padding": "md"
+        },
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "headerRow",
+          "div0",
+          "body"
+        ],
+        "props": {},
+        "type": "Card",
+        "watch": {
+          "/xero-accounting/list_invoices/Invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/exc",
+              "value": {
+                "$computed": "xero-accounting_analyze_excluded_documents",
+                "args": {
+                  "invoices": {
+                    "$state": "/xero-accounting/list_invoices/Invoices"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "content": {
+        "children": [
+          "heroStack",
+          "valueRow",
+          "heroBar",
+          "legendRow",
+          "div1",
+          "row1",
+          "row2",
+          "div2",
+          "footerRow",
+          "detailSection"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices"
+            },
+            {
+              "$state": "/ui/exc/totalCount"
+            }
+          ]
+        }
+      },
+      "deletedCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/exc/deletedCount"
+              },
+              "pattern": "Deleted {n}"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "deletedDot": {
+        "props": {
+          "size": "xs",
+          "tone": "muted"
+        },
+        "type": "Dot"
+      },
+      "deletedLegend": {
+        "children": [
+          "deletedDot",
+          "deletedCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "detailCloseBtn": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/exc/showAll",
+              "value": false
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close",
+          "icon": "X",
+          "size": "sm",
+          "tone": "muted"
+        },
+        "type": "IconButton"
+      },
+      "detailHeaderRow": {
+        "children": [
+          "detailHeading",
+          "detailCloseBtn"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "detailHeading": {
+        "props": {
+          "size": "sm",
+          "text": "All excluded / voided documents",
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "detailSection": {
+        "children": [
+          "detailHeaderRow",
+          "detailTable"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/exc/showAll"
+        }
+      },
+      "detailTable": {
+        "props": {
+          "columns": [
+            {
+              "field": "label",
+              "header": "Record",
+              "id": "label",
+              "priority": 1
+            },
+            {
+              "field": "badgeText",
+              "header": "Status",
+              "id": "badgeText",
+              "priority": 1,
+              "width": 110
+            }
+          ],
+          "rows": {
+            "$state": "/ui/exc/detailRows"
+          }
+        },
+        "type": "Table"
+      },
+      "div0": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div1": {
+        "props": {},
+        "type": "Divider"
+      },
+      "div2": {
+        "props": {},
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No excluded, voided, or stale draft documents."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices"
+            },
+            {
+              "$state": "/ui/exc/totalCount",
+              "not": true
+            }
+          ]
+        }
+      },
+      "footerLeft": {
+        "props": {
+          "text": "Invoices · Bills",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "footerRight": {
+        "children": [
+          "footerRightLabel",
+          "footerRightIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/exc/showAll",
+              "value": true
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "footerRightIcon": {
+        "props": {
+          "name": "ArrowRight",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "footerRightLabel": {
+        "props": {
+          "size": "sm",
+          "text": "View all",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "footerRow": {
+        "children": [
+          "footerLeft",
+          "footerRight"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "headerRow": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "heroBar": {
+        "children": [
+          "barVoided",
+          "barDeleted",
+          "barStale"
+        ],
+        "props": {
+          "gap": "none",
+          "template": {
+            "$computed": "fmt",
+            "args": {
+              "d": {
+                "$state": "/ui/exc/deletedCount"
+              },
+              "pattern": "{v}fr {d}fr {s}fr",
+              "s": {
+                "$state": "/ui/exc/staleCount"
+              },
+              "v": {
+                "$state": "/ui/exc/voidedCount"
+              }
+            }
+          }
+        },
+        "type": "Row"
+      },
+      "heroLabel": {
+        "props": {
+          "size": "lg",
+          "text": "documents excluded from reports",
+          "tone": "muted"
+        },
+        "type": "Text"
+      },
+      "heroStack": {
+        "children": [
+          "heroValue",
+          "heroLabel"
+        ],
+        "props": {
+          "align": "baseline",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "heroValue": {
+        "props": {
+          "value": {
+            "$state": "/ui/exc/totalCount"
+          }
+        },
+        "type": "Stat"
+      },
+      "legendRow": {
+        "children": [
+          "voidedLegend",
+          "deletedLegend",
+          "staleLegend"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$or": [
+            {
+              "$state": "/_loading/xero-accounting.list_invoices"
+            },
+            {
+              "$state": "/xero-accounting/list_invoices/Invoices",
+              "not": true
+            }
+          ]
+        }
+      },
+      "row1": {
+        "children": [
+          "row1Label",
+          "row1Badge"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/exc/detailRowCount",
+          "gt": 0
+        }
+      },
+      "row1Badge": {
+        "props": {
+          "text": {
+            "$state": "/ui/exc/detailRows/0/badgeText"
+          },
+          "tone": {
+            "$state": "/ui/exc/detailRows/0/badgeTone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "row1Label": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/exc/detailRows/0/label"
+          }
+        },
+        "type": "Text"
+      },
+      "row2": {
+        "children": [
+          "row2Label",
+          "row2Badge"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/exc/detailRowCount",
+          "gt": 1
+        }
+      },
+      "row2Badge": {
+        "props": {
+          "text": {
+            "$state": "/ui/exc/detailRows/1/badgeText"
+          },
+          "tone": {
+            "$state": "/ui/exc/detailRows/1/badgeTone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "row2Label": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/exc/detailRows/1/label"
+          }
+        },
+        "type": "Text"
+      },
+      "sk1": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "2.5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "staleCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/exc/staleCount"
+              },
+              "pattern": "Stale draft >30d {n}"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "staleDot": {
+        "props": {
+          "size": "xs",
+          "tone": "warning"
+        },
+        "type": "Dot"
+      },
+      "staleLegend": {
+        "children": [
+          "staleDot",
+          "staleCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "subtitle": {
+        "props": {
+          "text": "Xero"
+        },
+        "type": "Eyebrow"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Exclusion Check"
+        },
+        "type": "Heading"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Ban",
+          "size": "sm",
+          "tone": "destructive"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "valueAmount": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$state": "/ui/exc/totalValue"
+              }
+            }
+          },
+          "weight": "bold"
+        },
+        "type": "Text"
+      },
+      "valueLabel": {
+        "props": {
+          "text": "total value not in P&L",
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "valueRow": {
+        "children": [
+          "valueAmount",
+          "valueLabel"
+        ],
+        "props": {
+          "align": "baseline",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "voidedCaption": {
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$state": "/ui/exc/voidedCount"
+              },
+              "pattern": "Voided {n}"
+            }
+          }
+        },
+        "type": "Caption"
+      },
+      "voidedDot": {
+        "props": {
+          "size": "xs",
+          "tone": "destructive"
+        },
+        "type": "Dot"
+      },
+      "voidedLegend": {
+        "children": [
+          "voidedDot",
+          "voidedCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "exclusions",
+    "voided",
+    "deleted",
+    "drafts",
+    "compliance",
+    "data-quality"
+  ],
+  "title": "Excluded / Voided Documents"
+}

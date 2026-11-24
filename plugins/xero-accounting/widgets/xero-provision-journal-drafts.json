@@ -1,0 +1,434 @@
+{
+  "id": "xero-provision-journal-drafts",
+  "title": "Provision Journal Drafts",
+  "description": "Drafts the monthly leave and RDO provision journal, so the ledger matches payroll after each cycle and at month-end. Totals every active employee's leave balances (every type Xero returns — Annual, Personal/Sick, RDO, or anything else configured; RDO gets no special treatment, it's just another leave type) and approximates a dollar value using each employee's rate from their most recent payslip — this is an approximation, not an actuarially precise figure, since Xero never returns a dollar value for leave balances. Compares that target against the current balance in a liability account you nominate, and drafts a real DRAFT manual journal for the difference. Nothing is authorised automatically; someone still reviews the draft in Xero.",
+  "category": "finance",
+  "tags": ["xero", "accounting", "payroll", "leave", "provision", "rdo", "manual-journal"],
+  "keywords": ["leave provision", "RDO provision", "provision journal", "month end", "manual journal", "ledger reconciliation", "xero"],
+  "connectorsUsed": ["xero-accounting", "xero-payroll-au"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 6, "rowSpan": 11 },
+    "min": { "colSpan": 5, "rowSpan": 9 },
+    "max": { "colSpan": 10, "rowSpan": 14 }
+  },
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-payroll-au",
+    "tool": "get_leave_provision_summary",
+    "params": {}
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "body", "divider2", "footer", "infoOverlay"],
+        "watch": {
+          "/xero-payroll-au/get_leave_provision_summary": [
+            { "action": "xero-accounting.list_accounts", "params": { "where": "Status==\"ACTIVE\"" } }
+          ],
+          "/xero-accounting/list_accounts/Accounts": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/expenseAccountOptions",
+                "value": {
+                  "$computed": "xero-accounting_account_options_by_type",
+                  "args": { "accounts": { "$state": "/xero-accounting/list_accounts/Accounts" }, "types": ["EXPENSE", "DIRECTCOSTS"] }
+                }
+              }
+            }
+          ],
+          "/ui/expenseAccountOptions": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/provisionAccountOptions",
+                "value": {
+                  "$computed": "xero-accounting_account_options_by_type",
+                  "args": { "accounts": { "$state": "/xero-accounting/list_accounts/Accounts" }, "types": ["CURRLIAB", "NONCURRENT"] }
+                }
+              }
+            }
+          ],
+          "/ui/form/provisionAccountCode": [
+            { "action": "xero-accounting.get_account_movement", "params": { "accountCode": { "$state": "/ui/form/provisionAccountCode" } } }
+          ],
+          "/xero-accounting/create_manual_journal/ManualJournals": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/lastCreatedJournalId", "value": { "$state": "/xero-accounting/create_manual_journal/ManualJournals/0/ManualJournalID" } }
+            }
+          ]
+        }
+      },
+
+      "header": { "type": "Header", "props": {}, "children": ["titleRow"] },
+      "titleRow": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["titleGroup", "infoBtn"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Scale", "tone": "accent", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Provision Journal Drafts", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero · leave & RDO provision" } },
+      "infoBtn": {
+        "type": "IconButton",
+        "props": { "icon": "Info", "size": "sm", "tone": "muted", "ariaLabel": "About this tile" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": true } } }
+      },
+
+      "divider1": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["loading", "errorBanner", "summarySection", "divider3", "successBanner", "formStack"] },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/xero-payroll-au.get_leave_provision_summary" },
+        "children": ["sk1", "sk2", "sk3"]
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.25rem", "rounded": "md" } },
+
+      "errorBanner": {
+        "type": "Caption",
+        "props": {
+          "text": { "$template": "Couldn't load leave balances: ${/_errors/xero-payroll-au.get_leave_provision_summary}" },
+          "tone": "destructive"
+        },
+        "visible": { "$state": "/_errors/xero-payroll-au.get_leave_provision_summary" }
+      },
+
+      "summarySection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "visible": { "$state": "/_loading/xero-payroll-au.get_leave_provision_summary", "not": true },
+        "children": ["targetRow", "noRateCaption", "byTypeList"]
+      },
+      "targetRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["targetLabel", "targetValue"]
+      },
+      "targetLabel": { "type": "Caption", "props": { "text": "Payroll-computed provision target", "tone": "muted" } },
+      "targetValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/xero-payroll-au/get_leave_provision_summary/totalValue" }, "currency": "AUD" } },
+          "weight": "semibold",
+          "size": "lg"
+        }
+      },
+      "noRateCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{n} employee(s) excluded — no recent payslip to source a rate from",
+              "n": { "$state": "/xero-payroll-au/get_leave_provision_summary/employeesWithoutRate" }
+            }
+          },
+          "tone": "warning"
+        },
+        "visible": { "$state": "/xero-payroll-au/get_leave_provision_summary/employeesWithoutRate" }
+      },
+      "byTypeList": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["byTypeRow"],
+        "repeat": { "statePath": "/xero-payroll-au/get_leave_provision_summary/byLeaveType", "key": "leaveName" }
+      },
+      "byTypeRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["byTypeName", "byTypeAmount"]
+      },
+      "byTypeName": { "type": "Caption", "props": { "text": { "$item": "leaveName" }, "tone": "muted" } },
+      "byTypeAmount": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{units}h · {value}",
+              "units": { "$item": "totalUnits" },
+              "value": { "$computed": "format_currency", "args": { "value": { "$item": "totalValue" }, "currency": "AUD" } }
+            }
+          }
+        }
+      },
+
+      "divider3": { "type": "Divider", "props": {} },
+
+      "successBanner": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["successIcon", "successText", "successLink"],
+        "visible": { "$state": "/ui/lastCreatedJournalId" }
+      },
+      "successIcon": { "type": "Icon", "props": { "name": "CheckCircle2", "tone": "success", "size": "sm" } },
+      "successText": { "type": "Caption", "props": { "text": "Draft journal created.", "tone": "success" } },
+      "successLink": {
+        "type": "Button",
+        "props": { "label": "View in Xero", "size": "sm", "variant": "ghost", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": { "$template": "https://go.xero.com/Journal/View.aspx?invoiceID=${/ui/lastCreatedJournalId}" },
+              "target": "_blank"
+            }
+          }
+        }
+      },
+
+      "formStack": { "type": "Stack", "props": { "gap": "sm" }, "children": ["provisionAccountRow", "expenseAccountRow", "ledgerRow", "adjustmentRow", "dateRow", "validationRow", "submitRow"] },
+
+      "provisionAccountRow": {
+        "type": "FormRow",
+        "props": { "label": "Provision account", "hint": "The liability account carrying the leave/RDO provision" },
+        "children": ["provisionAccountSelect"]
+      },
+      "provisionAccountSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/form/provisionAccountCode" },
+          "options": { "$state": "/ui/provisionAccountOptions" },
+          "placeholder": "Select account…",
+          "size": "sm"
+        }
+      },
+
+      "expenseAccountRow": {
+        "type": "FormRow",
+        "props": { "label": "Expense account" },
+        "children": ["expenseAccountSelect"]
+      },
+      "expenseAccountSelect": {
+        "type": "Select",
+        "props": {
+          "value": { "$bindState": "/ui/form/expenseAccountCode" },
+          "options": { "$state": "/ui/expenseAccountOptions" },
+          "placeholder": "Select account…",
+          "size": "sm"
+        }
+      },
+
+      "ledgerRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["ledgerLabel", "ledgerValue"],
+        "visible": { "$state": "/ui/form/provisionAccountCode" }
+      },
+      "ledgerLabel": { "type": "Caption", "props": { "text": "Current ledger balance", "tone": "muted" } },
+      "ledgerValue": {
+        "type": "Text",
+        "props": {
+          "text": { "$computed": "format_currency", "args": { "value": { "$state": "/xero-accounting/get_account_movement/current/balance" }, "currency": "AUD" } },
+          "size": "sm"
+        }
+      },
+
+      "adjustmentRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center" },
+        "children": ["adjustmentLabel", "adjustmentValue"],
+        "visible": { "$state": "/ui/form/provisionAccountCode" }
+      },
+      "adjustmentLabel": { "type": "Caption", "props": { "text": "Suggested journal amount", "tone": "muted" } },
+      "adjustmentValue": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "format_currency",
+            "args": {
+              "value": {
+                "$computed": "xero-accounting_leave_provision_adjustment",
+                "args": {
+                  "targetValue": { "$state": "/xero-payroll-au/get_leave_provision_summary/totalValue" },
+                  "currentBalance": { "$state": "/xero-accounting/get_account_movement/current/balance" }
+                }
+              },
+              "currency": "AUD"
+            }
+          },
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+
+      "dateRow": {
+        "type": "FormRow",
+        "props": { "label": "Journal date" },
+        "children": ["dateInput"]
+      },
+      "dateInput": {
+        "type": "DateInput",
+        "props": { "value": { "$bindState": "/ui/form/date" }, "size": "sm" }
+      },
+
+      "validationRow": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "xero-accounting_leave_provision_validation_message",
+            "args": {
+              "provisionAccountCode": { "$state": "/ui/form/provisionAccountCode" },
+              "expenseAccountCode": { "$state": "/ui/form/expenseAccountCode" },
+              "date": { "$state": "/ui/form/date" },
+              "adjustment": {
+                "$computed": "xero-accounting_leave_provision_adjustment",
+                "args": {
+                  "targetValue": { "$state": "/xero-payroll-au/get_leave_provision_summary/totalValue" },
+                  "currentBalance": { "$state": "/xero-accounting/get_account_movement/current/balance" }
+                }
+              }
+            }
+          },
+          "tone": "warning"
+        },
+        "visible": {
+          "$computed": "xero-accounting_leave_provision_is_invalid",
+          "args": {
+            "provisionAccountCode": { "$state": "/ui/form/provisionAccountCode" },
+            "expenseAccountCode": { "$state": "/ui/form/expenseAccountCode" },
+            "date": { "$state": "/ui/form/date" },
+            "adjustment": {
+              "$computed": "xero-accounting_leave_provision_adjustment",
+              "args": {
+                "targetValue": { "$state": "/xero-payroll-au/get_leave_provision_summary/totalValue" },
+                "currentBalance": { "$state": "/xero-accounting/get_account_movement/current/balance" }
+              }
+            }
+          }
+        }
+      },
+
+      "submitRow": { "type": "Row", "props": { "justify": "end" }, "children": ["submitBtn"] },
+      "submitBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Draft Journal",
+          "leadingIcon": "Scale",
+          "tone": "brand",
+          "variant": "primary",
+          "disabled": {
+            "$computed": "xero-accounting_leave_provision_is_invalid",
+            "args": {
+              "provisionAccountCode": { "$state": "/ui/form/provisionAccountCode" },
+              "expenseAccountCode": { "$state": "/ui/form/expenseAccountCode" },
+              "date": { "$state": "/ui/form/date" },
+              "adjustment": {
+                "$computed": "xero-accounting_leave_provision_adjustment",
+                "args": {
+                  "targetValue": { "$state": "/xero-payroll-au/get_leave_provision_summary/totalValue" },
+                  "currentBalance": { "$state": "/xero-accounting/get_account_movement/current/balance" }
+                }
+              }
+            }
+          }
+        },
+        "on": {
+          "click": {
+            "action": "xero-accounting.create_manual_journal",
+            "params": {
+              "manualJournal": {
+                "$computed": "xero-accounting_leave_provision_build_journal",
+                "args": {
+                  "provisionAccountCode": { "$state": "/ui/form/provisionAccountCode" },
+                  "expenseAccountCode": { "$state": "/ui/form/expenseAccountCode" },
+                  "date": { "$state": "/ui/form/date" },
+                  "adjustment": {
+                    "$computed": "xero-accounting_leave_provision_adjustment",
+                    "args": {
+                      "targetValue": { "$state": "/xero-payroll-au/get_leave_provision_summary/totalValue" },
+                      "currentBalance": { "$state": "/xero-accounting/get_account_movement/current/balance" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "divider2": { "type": "Divider", "props": {} },
+      "footer": {
+        "type": "Row",
+        "props": { "justify": "end", "gap": "xs" },
+        "children": ["viewJournalsBtn", "openXeroBtn"]
+      },
+      "viewJournalsBtn": {
+        "type": "Button",
+        "props": { "label": "View Journals", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://go.xero.com/Journal/", "target": "_blank" } }
+        }
+      },
+      "openXeroBtn": {
+        "type": "Button",
+        "props": { "label": "Open Xero", "tone": "brand", "variant": "ghost", "size": "sm", "leadingIcon": "ExternalLink" },
+        "on": {
+          "click": { "action": "open_url", "params": { "url": "https://go.xero.com/", "target": "_blank" } }
+        }
+      },
+
+      "infoOverlay": {
+        "type": "Overlay",
+        "props": { "maxWidth": "28rem" },
+        "children": ["infoCard"],
+        "visible": { "$state": "/ui/showInfo" },
+        "on": {
+          "backdropClick": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } }
+        }
+      },
+      "infoCard": {
+        "type": "Card",
+        "props": {},
+        "children": ["infoCloseBtn", "infoTitleRow", "infoDivider", "infoBody"]
+      },
+      "infoCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "size": "sm", "tone": "muted", "ariaLabel": "Close", "floating": true },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showInfo", "value": false } } }
+      },
+      "infoTitleRow": { "type": "Row", "props": { "align": "center", "gap": "sm" }, "children": ["infoTitleIcon", "infoTitleText"] },
+      "infoTitleIcon": { "type": "Icon", "props": { "name": "Info", "size": "sm", "tone": "info" } },
+      "infoTitleText": { "type": "Heading", "props": { "text": "How this tile works", "level": "h2" } },
+      "infoDivider": { "type": "Divider", "props": {} },
+      "infoBody": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["infoWhatLabel", "infoWhatText", "infoApproxLabel", "infoApproxText", "infoHowLabel", "infoHowText"]
+      },
+      "infoWhatLabel": { "type": "Caption", "props": { "text": "What this is", "tone": "muted", "weight": "semibold" } },
+      "infoWhatText": {
+        "type": "Text",
+        "props": {
+          "text": "Totals every active employee's leave balances — Annual, Personal/Sick, RDO, or any other type configured in Xero — into one target dollar figure, so the ledger's provision account can be adjusted to match payroll's actual liability.",
+          "size": "sm"
+        }
+      },
+      "infoApproxLabel": { "type": "Caption", "props": { "text": "This is an approximation", "tone": "muted", "weight": "semibold" } },
+      "infoApproxText": {
+        "type": "Text",
+        "props": {
+          "text": "Xero never returns a dollar value for leave balances, only hours. This tile approximates each employee's rate from their most recent payslip — the same shortcut a bookkeeper commonly takes, not an actuarially precise calculation. Employees with no recent payslip to source a rate from are excluded from the target and flagged above.",
+          "size": "sm"
+        }
+      },
+      "infoHowLabel": { "type": "Caption", "props": { "text": "How it works", "tone": "muted", "weight": "semibold" } },
+      "infoHowText": {
+        "type": "Text",
+        "props": {
+          "text": "Pick the provision (liability) account and the expense account, then the suggested journal amount is the difference between the payroll target and what's already in the ledger. \"Draft Journal\" creates a real DRAFT manual journal in Xero — nothing is authorised or posted automatically.",
+          "size": "sm"
+        }
+      }
+    }
+  },
+  "status": "published"
+}

@@ -1,15 +1,19 @@
 {
-  "id": "xero-cash-at-bank",
-  "title": "Cash at Bank",
-  "description": "Bank account tiles — one card per bank account in Xero showing the current closing balance.",
   "category": "finance",
-  "tags": [
-    "xero",
-    "bank",
-    "accounts",
-    "cash",
-    "finance"
+  "connectorsUsed": [
+    "xero-accounting"
   ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "fromDate": "$month_start_date",
+      "toDate": "$today_date"
+    },
+    "tool": "get_bank_summary"
+  },
+  "description": "Bank account tiles — one card per bank account in Xero showing the current closing balance.",
+  "id": "xero-cash-at-bank",
   "keywords": [
     "bank",
     "cash",
@@ -18,41 +22,37 @@
     "tiles",
     "liquidity"
   ],
-  "connectorsUsed": [
-    "xero-accounting"
-  ],
   "popularity": 0,
   "sizing": {
-    "preferred": {
-      "colSpan": 6,
-      "rowSpan": 2
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 8
     },
     "min": {
       "colSpan": 6,
       "rowSpan": 2
     },
-    "max": {
-      "colSpan": 12,
-      "rowSpan": 8
-    }
-  },
-  "dataProvider": {
-    "mcp": "xero-accounting",
-    "tool": "get_bank_summary",
-    "params": {
-      "fromDate": "$month_start_date",
-      "toDate": "$today_date"
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 2
     }
   },
   "spec": {
-    "root": "card",
     "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "empty",
+          "tiles"
+        ],
+        "type": "Body"
+      },
       "card": {
-        "type": "Card",
         "children": [
           "header",
           "body"
         ],
+        "type": "Card",
         "watch": {
           "/xero-accounting/get_bank_summary/Reports": {
             "action": "setState",
@@ -61,6 +61,8 @@
               "value": {
                 "$computed": "filter_by",
                 "args": {
+                  "equals": "Row",
+                  "field": "rowType",
                   "value": {
                     "$computed": "xero-accounting_flatten_report_rows",
                     "args": {
@@ -68,59 +70,6 @@
                         "$state": "/xero-accounting/get_bank_summary/Reports/0"
                       }
                     }
-                  },
-                  "field": "rowType",
-                  "equals": "Row"
-                }
-              }
-            }
-          }
-        }
-      },
-      "header": {
-        "type": "Header",
-        "children": [
-          "titleGroup"
-        ]
-      },
-      "titleGroup": {
-        "type": "Row",
-        "props": {
-          "gap": "sm",
-          "align": "start"
-        },
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ]
-      },
-      "titleIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Landmark",
-          "tone": "accent",
-          "size": "sm"
-        }
-      },
-      "title": {
-        "type": "Heading",
-        "props": {
-          "text": "Cash at Bank",
-          "level": "h2"
-        }
-      },
-      "count": {
-        "type": "Eyebrow",
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "pattern": "{n} Accounts",
-              "n": {
-                "$computed": "count",
-                "args": {
-                  "value": {
-                    "$state": "/ui/cash/bankAccounts"
                   }
                 }
               }
@@ -128,47 +77,30 @@
           }
         }
       },
-      "body": {
-        "type": "Body",
-        "children": [
-          "loading",
-          "empty",
-          "tiles"
-        ]
-      },
-      "loading": {
-        "type": "Grid",
+      "count": {
         "props": {
-          "cols": 2,
-          "gap": "md"
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "n": {
+                "$computed": "count",
+                "args": {
+                  "value": {
+                    "$state": "/ui/cash/bankAccounts"
+                  }
+                }
+              },
+              "pattern": "{n} Accounts"
+            }
+          }
         },
-        "children": [
-          "s1",
-          "s2"
-        ],
-        "visible": {
-          "$state": "/_loading/xero-accounting.get_bank_summary"
-        }
-      },
-      "s1": {
-        "type": "Skeleton",
-        "props": {
-          "height": "5rem",
-          "rounded": "md"
-        }
-      },
-      "s2": {
-        "type": "Skeleton",
-        "props": {
-          "height": "5rem",
-          "rounded": "md"
-        }
+        "type": "Eyebrow"
       },
       "empty": {
-        "type": "Empty",
         "props": {
           "message": "No bank accounts configured in Xero."
         },
+        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -182,76 +114,51 @@
           ]
         }
       },
-      "tiles": {
-        "type": "Grid",
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "s1",
+          "s2"
+        ],
         "props": {
           "cols": 2,
           "gap": "md"
         },
-        "children": [
-          "tile"
-        ],
-        "repeat": {
-          "statePath": "/ui/cash/bankAccounts",
-          "key": "title"
-        },
+        "type": "Grid",
         "visible": {
-          "$state": "/_loading/xero-accounting.get_bank_summary",
-          "not": true
+          "$state": "/_loading/xero-accounting.get_bank_summary"
         }
       },
-      "tile": {
-        "type": "Section",
+      "s1": {
         "props": {
-          "variant": "bordered"
+          "height": "5rem",
+          "rounded": "md"
         },
+        "type": "Skeleton"
+      },
+      "s2": {
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "tile": {
         "children": [
           "tileHeader",
           "tileBalanceWrap"
-        ]
-      },
-      "tileHeader": {
-        "type": "Row",
+        ],
         "props": {
-          "gap": "sm",
-          "align": "center"
+          "variant": "bordered"
         },
-        "children": [
-          "tileIcon",
-          "tileName"
-        ]
-      },
-      "tileBalanceWrap": {
-        "type": "Stack",
-        "props": {
-          "gap": "none",
-          "align": "center"
-        },
-        "children": [
-          "tileBalance"
-        ]
-      },
-      "tileIcon": {
-        "type": "Icon",
-        "props": {
-          "name": "Banknote",
-          "tone": "success",
-          "size": "sm"
-        }
-      },
-      "tileName": {
-        "type": "Text",
-        "props": {
-          "text": {
-            "$item": "title"
-          },
-          "size": "md",
-          "weight": "semibold",
-          "truncate": true
-        }
+        "type": "Section"
       },
       "tileBalance": {
-        "type": "Stat",
         "props": {
           "size": "sm",
           "value": {
@@ -262,18 +169,112 @@
               }
             }
           }
-        }
+        },
+        "type": "Stat"
       },
-      "titleStack": {
-        "type": "Stack",
+      "tileBalanceWrap": {
+        "children": [
+          "tileBalance"
+        ],
         "props": {
+          "align": "center",
           "gap": "none"
         },
+        "type": "Stack"
+      },
+      "tileHeader": {
+        "children": [
+          "tileIcon",
+          "tileName"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "tileIcon": {
+        "props": {
+          "name": "Banknote",
+          "size": "sm",
+          "tone": "success"
+        },
+        "type": "Icon"
+      },
+      "tileName": {
+        "props": {
+          "size": "md",
+          "text": {
+            "$item": "title"
+          },
+          "truncate": true,
+          "weight": "semibold"
+        },
+        "type": "Text"
+      },
+      "tiles": {
+        "children": [
+          "tile"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "md"
+        },
+        "repeat": {
+          "key": "title",
+          "statePath": "/ui/cash/bankAccounts"
+        },
+        "type": "Grid",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_bank_summary",
+          "not": true
+        }
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Cash at Bank"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Landmark",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
         "children": [
           "title",
           "count"
-        ]
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
       }
-    }
-  }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "bank",
+    "accounts",
+    "cash",
+    "finance"
+  ],
+  "title": "Cash at Bank"
 }
