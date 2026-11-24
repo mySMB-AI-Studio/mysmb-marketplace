@@ -1,16 +1,16 @@
 {
   "id": "salesforce-deals-pipeline",
   "title": "Deals Pipeline",
-  "description": "Open Salesforce Opportunities in a table layout — deal name, stage (colour-coded badge), close date, and amount. Excludes closed-won/closed-lost deals. Uses the standard Opportunity object, no custom setup required.",
+  "description": "Open Salesforce Opportunities with three headline figures across the top — the total open pipeline, how many deals make it up, and how many have slipped past their close date with the value at risk. Below that, one row per deal showing its name, close date and how far that date is from today (`12d overdue`, `due today`, `in 7d`), a colour-coded stage badge and the amount. Soonest close date first, so anything already late sits at the top. Uses the standard Opportunity object, no custom setup required.",
   "category": "crm",
   "tags": ["salesforce", "crm", "opportunities", "pipeline", "sales"],
-  "keywords": ["deals", "pipeline", "stage", "forecast", "revenue", "opportunities"],
+  "keywords": ["deals", "pipeline", "stage", "forecast", "revenue", "opportunities", "overdue", "close date"],
   "connectorsUsed": ["salesforce"],
   "popularity": 72,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 3 },
-    "min": { "colSpan": 3, "rowSpan": 3 },
-    "max": { "colSpan": 10, "rowSpan": 10 }
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 5, "rowSpan": 5 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "salesforce",
@@ -25,8 +25,23 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"]
+        "children": ["header", "body", "footerDivider", "footer"],
+        "watch": {
+          "/salesforce/soql_query/records": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/dp",
+                "value": {
+                  "$computed": "salesforce_pipeline_summary",
+                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+                }
+              }
+            }
+          ]
+        }
       },
+
       "header": {
         "type": "Header",
         "props": {},
@@ -39,7 +54,7 @@
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" }
+        "props": { "name": "TrendingUp", "tone": "success", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
@@ -57,83 +72,179 @@
             "$computed": "fmt",
             "args": {
               "pattern": "{n} Open Deals",
-              "n": {
-                "$computed": "count",
-                "args": { "value": { "$state": "/salesforce/soql_query/records" } }
-              }
+              "n": { "$state": "/ui/dp/count" }
             }
           }
         }
       },
+
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["loading", "empty", "tableHeaderRow", "dealList"]
+        "children": ["loading", "empty", "summary", "columnHeader", "dealList"]
       },
+
       "loading": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4", "sk5"],
+        "children": ["skSummary", "sk1", "sk2", "sk3", "sk4"],
         "visible": { "$state": "/_loading/salesforce.soql_query" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
-      "sk5": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "skSummary": { "type": "Skeleton", "props": { "height": "5rem",   "rounded": "md" } },
+      "sk1":       { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2":       { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3":       { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk4":       { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
       "empty": {
         "type": "Empty",
         "props": { "message": "No open opportunities found in Salesforce." },
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0", "not": true }
+            { "$state": "/ui/dp/count", "not": true }
           ]
         }
       },
-      "tableHeaderRow": {
-        "type": "Row",
-        "props": { "template": "minmax(0, 1fr) 150px 85px 85px", "gap": "sm", "padded": true },
-        "children": ["headerDeal", "headerStage", "headerCloseDate", "headerAmount"],
+
+      "summary": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["summaryGrid"],
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0" }
+            { "$state": "/ui/dp/count" }
           ]
         }
       },
-      "headerDeal":      { "type": "Caption", "props": { "text": "Deal",       "weight": "semibold" } },
-      "headerStage":     { "type": "Caption", "props": { "text": "Stage",      "weight": "semibold", "align": "center" } },
-      "headerCloseDate": { "type": "Caption", "props": { "text": "Close Date", "weight": "semibold" } },
-      "headerAmount":    { "type": "Caption", "props": { "text": "Amount",     "weight": "semibold", "align": "right" } },
+      "summaryGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["sumPipeline", "sumDeals", "sumOverdue"]
+      },
+
+      "sumPipeline": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["sumPipelineLabel", "sumPipelineValue", "sumPipelineCaption"]
+      },
+      "sumPipelineLabel": { "type": "Eyebrow", "props": { "text": "Open Pipeline" } },
+      "sumPipelineValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/ui/dp/totalShort" } }
+      },
+      "sumPipelineCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "across {n} deals", "n": { "$state": "/ui/dp/count" } }
+          }
+        }
+      },
+
+      "sumDeals": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["sumDealsLabel", "sumDealsValue", "sumDealsCaption"]
+      },
+      "sumDealsLabel": { "type": "Eyebrow", "props": { "text": "Deals" } },
+      "sumDealsValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/ui/dp/count" } }
+      },
+      "sumDealsCaption": {
+        "type": "Caption",
+        "props": { "text": "open opportunities", "tone": "muted" }
+      },
+
+      "sumOverdue": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["sumOverdueLabel", "sumOverdueValue", "sumOverdueCaption"]
+      },
+      "sumOverdueLabel": { "type": "Eyebrow", "props": { "text": "Past Close Date" } },
+      "sumOverdueValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/ui/dp/overdueCount" } }
+      },
+      "sumOverdueCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "destructive",
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{v} at risk", "v": { "$state": "/ui/dp/overdueShort" } }
+          }
+        },
+        "visible": { "$state": "/ui/dp/overdueCount" }
+      },
+
+      "columnHeader": {
+        "type": "Row",
+        "props": { "template": "minmax(0, 1fr) 140px 110px", "gap": "sm", "align": "center" },
+        "children": ["colDeal", "colStageCell", "colAmountCell"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/dp/count" }
+          ]
+        }
+      },
+      "colDeal": { "type": "Eyebrow", "props": { "text": "Deal / Close Date" } },
+      "colStageCell": {
+        "type": "Row",
+        "props": { "justify": "center" },
+        "children": ["colStage"]
+      },
+      "colStage": { "type": "Eyebrow", "props": { "text": "Stage" } },
+      "colAmountCell": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["colAmount"]
+      },
+      "colAmount": { "type": "Eyebrow", "props": { "text": "Amount" } },
+
       "dealList": {
         "type": "Stack",
         "props": { "gap": "xs" },
         "children": ["dealRow"],
-        "repeat": {
-          "statePath": "/salesforce/soql_query/records",
-          "key": "Id"
-        },
+        "repeat": { "statePath": "/ui/dp/rows", "key": "id" },
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0" }
+            { "$state": "/ui/dp/count" }
           ]
         }
       },
       "dealRow": {
         "type": "Row",
-        "props": { "template": "minmax(0, 1fr) 150px 85px 85px", "gap": "sm", "align": "center", "hover": true },
-        "children": ["dealName", "dealStageCell", "dealCloseDate", "dealAmount"]
+        "props": { "template": "minmax(0, 1fr) 140px 110px", "gap": "sm", "align": "center", "hover": true },
+        "children": ["dealMain", "dealStageCell", "dealAmountCell"]
+      },
+      "dealMain": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["dealName", "dealMetaRow"]
       },
       "dealName": {
         "type": "Text",
-        "props": {
-          "text": { "$item": "Name" },
-          "size": "sm",
-          "weight": "medium",
-          "truncate": true
-        }
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "dealMetaRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["dealDot", "dealMeta"]
+      },
+      "dealDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "relTone" }, "size": "sm" }
+      },
+      "dealMeta": {
+        "type": "Caption",
+        "props": { "text": { "$item": "meta" }, "tone": "muted" }
       },
       "dealStageCell": {
         "type": "Row",
@@ -143,33 +254,39 @@
       "dealStage": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "StageName" },
-          "tone": {
-            "$computed": "salesforce_deal_stage_tone",
-            "args": { "value": { "$item": "StageName" } }
-          },
+          "text": { "$item": "stage" },
+          "tone": { "$item": "stageTone" },
           "variant": "soft"
         }
       },
-      "dealCloseDate": {
-        "type": "Caption",
-        "props": {
-          "text": {
-            "$computed": "salesforce_format_date",
-            "args": { "value": { "$item": "CloseDate" } }
-          }
-        }
+      "dealAmountCell": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["dealAmount"]
       },
       "dealAmount": {
         "type": "Text",
-        "props": {
-          "text": {
-            "$computed": "format_currency",
-            "args": { "value": { "$item": "Amount" } }
-          },
-          "size": "sm",
-          "weight": "semibold",
-          "align": "right"
+        "props": { "text": { "$item": "amount" }, "size": "sm", "weight": "medium" }
+      },
+
+      "footerDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/dp/count" }
+          ]
+        }
+      },
+      "footer": {
+        "type": "Caption",
+        "props": { "text": "Open opportunities, soonest close date first. Up to 50 deals.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/dp/count" }
+          ]
         }
       }
     }

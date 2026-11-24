@@ -369,25 +369,64 @@ const deal_stage_tone = (args) => {
         return 'info';
     return 'muted';
 };
+/**
+ * Return the value as a string, or an em-dash if null / undefined / empty.
+ * Use this instead of hiding cells with `visible` when you want "–" for missing data.
+ *
+ * Args: { value: unknown }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_or_dash", "args": { "value": { "$item": "Phone" } } }
+ */
 const or_dash = (args) => {
     const v = args.value;
     if (v === null || v === undefined || v === '')
         return '–';
     return String(v);
 };
+/**
+ * Build a Salesforce Lightning list-view URL for a given object.
+ * Requires the connected org's instance URL passed as `instanceUrl`.
+ * Returns null if instanceUrl is not provided (button becomes a no-op).
+ *
+ * Args: { object: string, instanceUrl?: string }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_list_url", "args": { "object": "Campaign" } }
+ */
 const list_url = (args) => {
     const object = String(args.object ?? '');
     const instanceUrl = args.instanceUrl ? String(args.instanceUrl).replace(/\/$/, '') : null;
-    if (!object) return null;
-    if (!instanceUrl) return null;
+    if (!object)
+        return null;
+    if (!instanceUrl)
+        return null;
     return `${instanceUrl}/lightning/o/${object}/list?filterName=Recent`;
 };
 const case_priority_tone = (args) => {
     const v = String(args.value ?? '').toLowerCase();
-    if (v === 'high') return 'destructive';
-    if (v === 'medium') return 'warning';
-    if (v === 'low') return 'success';
+    if (v === 'high')
+        return 'destructive';
+    if (v === 'medium')
+        return 'warning';
+    if (v === 'low')
+        return 'success';
     return 'muted';
+};
+/**
+ * Case Subject with a readable fallback. Salesforce allows Subject to be blank,
+ * which would otherwise render a title-less row.
+ *
+ * Args: { value: string | null }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_case_subject", "args": { "value": { "$item": "Subject" } } }
+ */
+const case_subject = (args) => {
+    const v = args.value;
+    if (v === null || v === undefined || String(v).trim() === '')
+        return '(No Subject)';
+    return String(v);
 };
 const STATE_ABBR_MAP = {
     'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
@@ -411,25 +450,462 @@ const STATE_ABBR_MAP = {
 };
 const state_abbr = (args) => {
     const raw = String(args.value ?? '').trim();
-    if (!raw) return raw;
-    if (STATE_ABBR_MAP[raw]) return STATE_ABBR_MAP[raw];
-    if (raw.length <= 3) return raw.toUpperCase();
+    if (!raw)
+        return raw;
+    if (STATE_ABBR_MAP[raw])
+        return STATE_ABBR_MAP[raw];
+    if (raw.length <= 3)
+        return raw.toUpperCase();
     return raw;
 };
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const format_date = (args) => {
     const raw = args.value;
-    if (!raw) return '';
+    if (!raw)
+        return '';
     const ms = Date.parse(String(raw));
-    if (Number.isNaN(ms)) return '';
+    if (Number.isNaN(ms))
+        return '';
     const d = new Date(ms);
     const day = String(d.getDate()).padStart(2, '0');
     const month = MONTH_ABBR[d.getMonth()];
     const year = String(d.getFullYear()).slice(-2);
     return `${day}-${month}-${year}`;
 };
+/**
+ * Australian tile-map layout: a 4-column, 4-row cartogram of the states and
+ * territories, written out in reading order so a 4-column Grid reproduces the
+ * geography. An empty string is a spacer slot that keeps the shape.
+ */
+const AU_TILE_SLOTS = [
+    '', 'NT', 'QLD', '',
+    'WA', 'SA', 'NSW', 'ACT',
+    '', '', 'VIC', '',
+    '', '', 'TAS', '',
+];
+/**
+ * Build everything the Membership by State tile renders from one aggregate
+ * SOQL result: the headline figures, the Australian tile-map cells, a ranked
+ * fallback list for non-Australian orgs, and the insight sentence.
+ *
+ * Every cell carries the same panel background. Rank is read from the bar
+ * (length = share of the busiest state) and from the badge, which is "solid"
+ * for the top two states and "outline" for the rest.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ MailingState: "Victoria", cnt: 8 }, ...]
+ *   stateField — field name holding the state/region (default "MailingState")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, stateCount, topCode, topPct, top2Pct, isAu, cells, rows, otherText, insight }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_membership_map", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const membership_map = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    const stateField = String(args.stateField ?? 'MailingState');
+    const countField = String(args.countField ?? 'cnt');
+    if (records.length === 0) {
+        return {
+            total: 0, stateCount: 0, topCode: '', topPct: '', top2Pct: '',
+            isAu: false, cells: [], rows: [], otherText: '', insight: '',
+        };
+    }
+    // Normalise to { name, code, count }, busiest first.
+    const entries = records
+        .map((r) => {
+        const name = String(r[stateField] ?? '').trim();
+        const count = Number(r[countField] ?? 0);
+        return { name, code: String(state_abbr({ value: name })), count };
+    })
+        .filter((e) => e.name !== '')
+        .sort((a, b) => b.count - a.count);
+    const total = entries.reduce((s, e) => s + e.count, 0);
+    const pctOf = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
+    const max = entries.length > 0 ? entries[0].count : 0;
+    // The two busiest states get a filled badge; everyone else an outline one.
+    const leaders = new Set(entries.slice(0, 2).map((e) => e.code));
+    // Tile-map cells, one per slot, in reading order.
+    const byCode = new Map(entries.map((e) => [e.code, e]));
+    const placed = new Set();
+    const cells = AU_TILE_SLOTS.map((code, i) => {
+        const hit = code ? byCode.get(code) : undefined;
+        if (hit)
+            placed.add(code);
+        return {
+            id: `slot-${i}`,
+            code,
+            count: hit ? hit.count : 0,
+            pct: hit ? `${pctOf(hit.count)}%` : '',
+            // Bar length is share of the BUSIEST state, not of the total, so the
+            // leader fills its bar and the rest read as a proportion of it.
+            bar: hit && max > 0 ? Math.round((hit.count / max) * 100) : 0,
+            label: hit ? hit.name : '',
+            filled: Boolean(hit),
+            badgeVariant: hit && leaders.has(hit.code) ? 'solid' : 'outline',
+        };
+    });
+    // Orgs outside Australia get the ranked list instead of the cartogram.
+    const isAu = placed.size >= 2;
+    const rows = entries.map((e, i) => ({
+        id: e.code || String(i),
+        code: e.code,
+        value: e.name,
+        count: e.count,
+        percentage: pctOf(e.count),
+    }));
+    const leftOver = entries.filter((e) => !placed.has(e.code));
+    const otherText = isAu && leftOver.length > 0
+        ? `Also outside the map: ${leftOver.map((e) => `${e.name} (${e.count})`).join(', ')}.`
+        : '';
+    const top1 = entries[0];
+    const top2 = entries[1];
+    const top2Pct = top2 ? pctOf(top1.count + top2.count) : pctOf(top1.count);
+    let insight;
+    if (top2) {
+        insight =
+            `${top1.code} and ${top2.code} hold the largest share of membership ` +
+                `(${top2Pct}% combined), the strongest candidates for a flagship annual event.`;
+        const rest = entries.slice(2, 5);
+        if (rest.length >= 2) {
+            insight +=
+                ` Smaller but steady states (${rest.map((e) => e.code).join(', ')})` +
+                    ` may suit a regional chapter meetup.`;
+        }
+    }
+    else {
+        insight = `${top1.code} accounts for all ${total} active members — no regional spread to work with yet.`;
+    }
+    return {
+        total,
+        stateCount: entries.length,
+        topCode: top1.code,
+        topPct: `${pctOf(top1.count)}%`,
+        top2Pct: `${top2Pct}%`,
+        isAu,
+        cells,
+        rows,
+        otherText,
+        insight,
+    };
+};
+/**
+ * Shape an aggregate "count by category" SOQL result into the figures the
+ * Membership by Category tile draws: the headline total and one row per
+ * category carrying its count, its share of the total, a bar scaled against
+ * the LARGEST category, and a tone.
+ *
+ * Categories are toned by rank rather than by matching their labels, because
+ * membership-type names vary too much between orgs to map by name. The cycle
+ * deliberately skips "accent": it resolves to the theme's menu-hover colour,
+ * which leaves the busiest category's dot and full-length bar near-invisible.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ Membership_Type__c: "Student", cnt: 2 }, ...]
+ *   field      — field name holding the category (default "Membership_Type__c")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, categoryCount, rows: Array<{ id, value, count, pct, bar, tone }> }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_category_breakdown", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const CATEGORY_TONE_CYCLE = ['info', 'success', 'warning', 'destructive', 'muted'];
+const category_breakdown = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    const field = String(args.field ?? 'Membership_Type__c');
+    const countField = String(args.countField ?? 'cnt');
+    const entries = records
+        .map((r) => ({ value: String(r[field] ?? '').trim(), count: Number(r[countField] ?? 0) }))
+        .filter((e) => e.value !== '')
+        .sort((a, b) => b.count - a.count);
+    if (entries.length === 0)
+        return { total: 0, categoryCount: 0, rows: [] };
+    const total = entries.reduce((s, e) => s + e.count, 0);
+    const max = entries[0].count;
+    return {
+        total,
+        categoryCount: entries.length,
+        rows: entries.map((e, i) => ({
+            id: e.value || String(i),
+            value: e.value,
+            count: e.count,
+            pct: total > 0 ? `${Math.round((e.count / total) * 100)}%` : '0%',
+            // Bar length is share of the LARGEST category, so the leader fills its
+            // bar and the rest read as a proportion of it.
+            bar: max > 0 ? Math.round((e.count / max) * 100) : 0,
+            tone: CATEGORY_TONE_CYCLE[i % CATEGORY_TONE_CYCLE.length],
+        })),
+    };
+};
+/**
+ * Fixed engagement tiers, in the order the tile reads them. Anything the org
+ * has outside this list is appended afterwards rather than dropped.
+ */
+const ENGAGEMENT_TIERS = [
+    { label: 'Engaged', tone: 'success' },
+    { label: 'Less Engaged', tone: 'warning' },
+    { label: 'Does Not Engage', tone: 'muted' },
+];
+/**
+ * Shape an aggregate "count by engagement level" SOQL result into the figures
+ * the Member Engagement tile draws: the headline engaged share, a plain-English
+ * summary, and the donut segments.
+ *
+ * Segments come back in a fixed order (Engaged, Less Engaged, Does Not Engage)
+ * because SOQL GROUP BY does not guarantee one. A tier with no members is left
+ * out so it contributes neither a zero-length arc nor a "0 / 0%" legend row.
+ * Unrecognised levels, including records with the field blank, become their own
+ * segment rather than being silently dropped.
+ *
+ * Args:
+ *   value      — aggregate records array, e.g. [{ Engagement_Level__c: "Engaged", cnt: 5 }, ...]
+ *   field      — field name holding the engagement level (default "Engagement_Level__c")
+ *   countField — field name holding the count alias (default "cnt")
+ *
+ * Returns: { total, engagedCount, engagedPct, summary, segments: Array<{ label, value, tone }> }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_engagement_breakdown", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const engagement_breakdown = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    const field = String(args.field ?? 'Engagement_Level__c');
+    const countField = String(args.countField ?? 'cnt');
+    const counts = new Map();
+    for (const r of records) {
+        const raw = r[field];
+        const label = raw === null || raw === undefined || String(raw).trim() === '' ? 'Not Set' : String(raw).trim();
+        counts.set(label, (counts.get(label) ?? 0) + Number(r[countField] ?? 0));
+    }
+    const total = [...counts.values()].reduce((s, n) => s + n, 0);
+    if (total === 0) {
+        return { total: 0, engagedCount: 0, engagedPct: '0%', summary: '', segments: [] };
+    }
+    const pctOf = (n) => Math.round((n / total) * 100);
+    const known = ENGAGEMENT_TIERS.map((t) => ({ label: t.label, tone: t.tone, count: counts.get(t.label) ?? 0 }));
+    const extra = [...counts.entries()]
+        .filter(([label]) => !ENGAGEMENT_TIERS.some((t) => t.label === label))
+        .sort((a, b) => b[1] - a[1])
+        .map(([label, count]) => ({ label, tone: 'info', count }));
+    const ordered = [...known, ...extra];
+    const engagedCount = counts.get('Engaged') ?? 0;
+    const lessCount = counts.get('Less Engaged') ?? 0;
+    const noneCount = counts.get('Does Not Engage') ?? 0;
+    let summary = `${engagedCount} of ${total} members are engaged.`;
+    if (lessCount > 0 && noneCount > 0) {
+        summary += ` ${lessCount} could be nudged, ${noneCount} don't engage at all.`;
+    }
+    else if (lessCount > 0) {
+        summary += ` ${lessCount} could be nudged.`;
+    }
+    else if (noneCount > 0) {
+        summary += ` ${noneCount} don't engage at all.`;
+    }
+    return {
+        total,
+        engagedCount,
+        engagedPct: `${pctOf(engagedCount)}%`,
+        summary,
+        // Donut arcs: only tiers that actually have members, so an unused tier
+        // does not contribute a zero-length arc.
+        segments: ordered
+            .filter((t) => t.count > 0)
+            .map((t) => ({ label: t.label, value: t.count, tone: t.tone })),
+    };
+};
+/**
+ * Badge tone per Opportunity stage. Only five token tones read clearly
+ * (muted / info / success / warning / destructive), so the standard Salesforce
+ * stages are mapped so that neighbouring stages never share one, and the last
+ * stage before close draws the eye. Custom stage names fall back to keyword
+ * matching, since orgs rename freely.
+ */
+const STAGE_TONES = {
+    'Prospecting': 'muted',
+    'Qualification': 'info',
+    'Needs Analysis': 'success',
+    'Value Proposition': 'warning',
+    'Id. Decision Makers': 'info',
+    'Perception Analysis': 'success',
+    'Proposal/Price Quote': 'warning',
+    'Negotiation/Review': 'destructive',
+    'Closed Won': 'success',
+    'Closed Lost': 'destructive',
+};
+/** Compact money for headline figures: A$2.13M, A$675K, A$900. */
+const shortMoney = (n) => {
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000)
+        return `A$${(n / 1_000_000).toFixed(2).replace(/\.?0+$/, '')}M`;
+    if (abs >= 1_000)
+        return `A$${Math.round(n / 1_000)}K`;
+    return `A$${Math.round(n)}`;
+};
+/** Full money for row amounts, matching the tile standard: A$15,000.00. */
+const fullMoney = (n) => `A$${n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/**
+ * Shape open Opportunity records into everything the Deals Pipeline tile
+ * draws: the three headline figures and one row per deal with its stage tone,
+ * close date, how far that date is from today, and its amount.
+ *
+ * Args:
+ *   value — Opportunity records from a non-aggregate soql_query
+ *   today — ISO date to measure against; defaults to the current date. Present
+ *           so the relative wording can be tested deterministically.
+ *
+ * Returns: {
+ *   count, totalShort, overdueCount, overdueShort,
+ *   rows: Array<{ id, name, stage, stageTone, meta, relTone, amount }>
+ * }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_pipeline_summary", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const pipeline_summary = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    if (records.length === 0) {
+        return { count: 0, totalShort: '', overdueCount: 0, overdueShort: '', rows: [] };
+    }
+    const today = args.today ? new Date(String(args.today)) : new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const toneFor = (stage) => {
+        if (STAGE_TONES[stage])
+            return STAGE_TONES[stage];
+        const s = stage.toLowerCase();
+        if (s.includes('won'))
+            return 'success';
+        if (s.includes('lost'))
+            return 'destructive';
+        if (s.includes('negotiat'))
+            return 'destructive';
+        if (s.includes('proposal') || s.includes('quote'))
+            return 'warning';
+        if (s.includes('qualif'))
+            return 'info';
+        return 'muted';
+    };
+    let total = 0;
+    let overdueCount = 0;
+    let overdueTotal = 0;
+    const rows = records.map((r, i) => {
+        const amount = Number(r.Amount ?? 0) || 0;
+        total += amount;
+        const stage = String(r.StageName ?? '').trim();
+        const closeRaw = r.CloseDate;
+        const dateLabel = String(format_date({ value: closeRaw }));
+        let relLabel = '';
+        let relTone = 'muted';
+        const ms = closeRaw ? Date.parse(String(closeRaw)) : NaN;
+        if (!Number.isNaN(ms)) {
+            const d = new Date(ms);
+            const closeUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            const days = Math.round((closeUtc - todayUtc) / 86_400_000);
+            if (days < 0) {
+                const late = -days;
+                relLabel = late > 60 ? `${Math.round(late / 30)} mo overdue` : `${late}d overdue`;
+                relTone = 'destructive';
+                overdueCount += 1;
+                overdueTotal += amount;
+            }
+            else if (days === 0) {
+                relLabel = 'due today';
+                relTone = 'warning';
+            }
+            else {
+                relLabel = `in ${days}d`;
+                relTone = days <= 14 ? 'warning' : 'success';
+            }
+        }
+        return {
+            id: String(r.Id ?? i),
+            name: String(r.Name ?? '').trim() || '(No Name)',
+            stage,
+            stageTone: toneFor(stage),
+            meta: relLabel ? `${dateLabel} · ${relLabel}` : dateLabel,
+            relTone,
+            amount: fullMoney(amount),
+        };
+    });
+    return {
+        count: records.length,
+        totalShort: shortMoney(total),
+        overdueCount,
+        overdueShort: shortMoney(overdueTotal),
+        rows,
+    };
+};
+/** Rank tones for the at-risk ladder: worst first. */
+const RISK_RANK_TONES = ['destructive', 'warning', 'info'];
+/**
+ * Shape upcoming Campaign events into the "at risk" ladder: one row per
+ * event, worst-attended first, each carrying its rank label and tone, the
+ * event type, a formatted start date with how far away it is, and a tone for
+ * that proximity (two weeks out is urgent, a month is a warning).
+ *
+ * Args:
+ *   value — Campaign records from a non-aggregate soql_query, already
+ *           ordered by NumberOfContacts ascending by the tile's query
+ *   today — ISO date to measure against; defaults to the current date.
+ *           Present so the relative wording can be tested deterministically.
+ *
+ * Returns: {
+ *   count,
+ *   rows: Array<{ id, rank, rankTone, name, type, meta, dotTone, attendees }>
+ * }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_events_at_risk", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const events_at_risk = (args) => {
+    const records = Array.isArray(args.value) ? args.value : [];
+    if (records.length === 0)
+        return { count: 0, rows: [] };
+    const today = args.today ? new Date(String(args.today)) : new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const rows = records.map((r, i) => {
+        const dateLabel = String(format_date({ value: r.StartDate }));
+        let relLabel = '';
+        let dotTone = 'muted';
+        const ms = r.StartDate ? Date.parse(String(r.StartDate)) : NaN;
+        if (!Number.isNaN(ms)) {
+            const d = new Date(ms);
+            const startUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            const days = Math.round((startUtc - todayUtc) / 86_400_000);
+            if (days < 0) {
+                relLabel = 'already started';
+                dotTone = 'muted';
+            }
+            else if (days === 0) {
+                relLabel = 'today';
+                dotTone = 'destructive';
+            }
+            else if (days === 1) {
+                relLabel = 'tomorrow';
+                dotTone = 'destructive';
+            }
+            else {
+                relLabel = `in ${days} days`;
+                dotTone = days <= 14 ? 'destructive' : days <= 30 ? 'warning' : 'success';
+            }
+        }
+        const type = String(r.Type ?? '').trim();
+        return {
+            id: String(r.Id ?? i),
+            rank: `#${i + 1} At Risk`,
+            rankTone: RISK_RANK_TONES[i] ?? 'muted',
+            name: String(r.Name ?? '').trim() || '(No Name)',
+            type: type || '—',
+            meta: relLabel ? `${dateLabel} · ${relLabel}` : dateLabel,
+            dotTone,
+            attendees: Number(r.NumberOfContacts ?? 0) || 0,
+        };
+    });
+    return { count: records.length, rows };
+};
 const elements = {
     slug: 'salesforce',
-    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, format_date, state_abbr },
+    functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown, engagement_breakdown, pipeline_summary, events_at_risk },
 };
 export default elements;
