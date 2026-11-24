@@ -1,15 +1,15 @@
 {
   "id": "salesforce-events-at-risk",
   "title": "Top 3 Events at Risk",
-  "description": "The 3 upcoming Salesforce Campaign events with the lowest registered attendance — surfaces which events need the most attention before they happen. Reads active/planned Campaigns of event types ordered by NumberOfContacts ascending.",
+  "description": "The 3 upcoming Salesforce Campaign events with the lowest registered attendance, ranked worst first. Each row pairs the event with how soon it starts — a dot turns amber inside a month and red inside a fortnight — so a thinly-booked event that is nearly here stands apart from one that still has time to fill. Reads active/planned Campaigns of event types ordered by NumberOfContacts ascending.",
   "category": "crm",
   "tags": ["salesforce", "crm", "events", "campaigns", "attendance", "at-risk"],
-  "keywords": ["events", "at risk", "attendance", "campaigns", "low attendance", "engagement", "event management"],
+  "keywords": ["events", "at risk", "attendance", "campaigns", "low attendance", "engagement", "event management", "registrations"],
   "connectorsUsed": ["salesforce"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 7, "rowSpan": 4 },
-    "min": { "colSpan": 5, "rowSpan": 3 },
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 5, "rowSpan": 4 },
     "max": { "colSpan": 10, "rowSpan": 8 }
   },
   "dataProvider": {
@@ -25,259 +25,169 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "headerDivider", "body"],
+        "children": ["header", "headerDivider", "body", "footerDivider", "footer"],
         "watch": {
           "/salesforce/soql_query/records": [
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/r1",
-                "value": { "$computed": "identity", "args": { "value": { "$state": "/salesforce/soql_query/records/0" } } }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/r2",
-                "value": { "$computed": "identity", "args": { "value": { "$state": "/salesforce/soql_query/records/1" } } }
-              }
-            },
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/r3",
-                "value": { "$computed": "identity", "args": { "value": { "$state": "/salesforce/soql_query/records/2" } } }
+                "statePath": "/ui/ev",
+                "value": {
+                  "$computed": "salesforce_events_at_risk",
+                  "args": { "value": { "$state": "/salesforce/soql_query/records" } }
+                }
               }
             }
           ]
         }
       },
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
+        "props": { "gap": "sm", "align": "start" },
         "children": ["titleIcon", "titleStack"]
       },
-      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "warning", "variant": "soft", "size": "sm" } },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "AlertTriangle", "tone": "warning", "size": "sm" }
+      },
       "titleStack": {
         "type": "Stack",
         "props": { "gap": "none" },
         "children": ["title", "subtitle"]
       },
-      "title": { "type": "Heading", "props": { "text": "Top 3 Events at Risk", "level": "h2" } },
-      "subtitle": { "type": "Eyebrow", "props": { "text": "Lowest Registered Attendance" } },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Top 3 Events at Risk", "level": "h2" }
+      },
+      "subtitle": {
+        "type": "Eyebrow",
+        "props": { "text": "Lowest Registered Attendance" }
+      },
       "headerDivider": { "type": "Divider", "props": {} },
+
       "body": {
         "type": "Body",
-        "props": { "padding": "md" },
-        "children": ["loading", "empty", "boxRow"]
+        "props": {},
+        "children": ["loading", "empty", "eventList"]
       },
+
       "loading": {
-        "type": "Row",
-        "props": { "template": "1fr 1fr 1fr", "gap": "md" },
-        "children": ["skBox1", "skBox2", "skBox3"],
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
         "visible": { "$state": "/_loading/salesforce.soql_query" }
       },
-      "skBox1": { "type": "Skeleton", "props": { "height": "11rem", "rounded": "lg" } },
-      "skBox2": { "type": "Skeleton", "props": { "height": "11rem", "rounded": "lg" } },
-      "skBox3": { "type": "Skeleton", "props": { "height": "11rem", "rounded": "lg" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "lg" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "lg" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "lg" } },
+
       "empty": {
         "type": "Empty",
-        "props": { "message": "No upcoming events found in Salesforce." },
+        "props": { "message": "No upcoming events found in Salesforce. This tile reads Campaigns of an event type that are Active or Planned and start today or later." },
         "visible": {
           "$and": [
             { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0", "not": true }
-          ]
-        }
-      },
-      "boxRow": {
-        "type": "Row",
-        "props": { "template": "1fr 1fr 1fr", "gap": "md", "align": "stretch" },
-        "children": ["box1", "box2", "box3"],
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/salesforce.soql_query", "not": true },
-            { "$state": "/salesforce/soql_query/records/0" }
+            { "$state": "/ui/ev/count", "not": true }
           ]
         }
       },
 
-      "box1": {
+      "eventList": {
         "type": "Stack",
-        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "destructive", "variant": "soft" },
-        "children": ["rank1Badge", "event1Name", "event1MetaRow", "event1DateRow", "event1Divider", "event1AttendeeStack"]
+        "props": { "gap": "sm" },
+        "children": ["eventCard"],
+        "repeat": { "statePath": "/ui/ev/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/ev/count" }
+          ]
+        }
       },
-      "rank1Badge": { "type": "Badge", "props": { "text": "#1 At Risk", "tone": "destructive", "variant": "solid" } },
-      "event1Name": {
-        "type": "Text",
-        "props": { "text": { "$state": "/ui/r1/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      "eventCard": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["eventRow"]
       },
-      "event1MetaRow": {
+      "eventRow": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event1TypeBadge", "event1StatusCaption"]
+        "props": { "template": "auto minmax(0, 1fr) auto", "gap": "md", "align": "center" },
+        "children": ["rankBadge", "eventMain", "attendeeCell"]
       },
-      "event1TypeBadge": {
+      "rankBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r1/Type" } } },
-          "variant": "outline",
-          "size": "sm"
+          "text": { "$item": "rank" },
+          "tone": { "$item": "rankTone" },
+          "variant": "soft"
         }
       },
-      "event1StatusCaption": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r1/Status" } } }, "tone": "muted" }
+      "eventMain": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["eventName", "eventMetaRow"]
       },
-      "event1DateRow": {
+      "eventName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "eventMetaRow": {
         "type": "Row",
         "props": { "gap": "xs", "align": "center" },
-        "children": ["event1DateIcon", "event1Date"]
+        "children": ["eventTypeBadge", "eventDot", "eventMeta"]
       },
-      "event1DateIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "xs", "tone": "muted" } },
-      "event1Date": {
+      "eventTypeBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "type" }, "variant": "outline" }
+      },
+      "eventDot": {
+        "type": "Dot",
+        "props": { "tone": { "$item": "dotTone" }, "size": "sm" }
+      },
+      "eventMeta": {
         "type": "Caption",
-        "props": {
-          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/r1/StartDate" } } },
-          "tone": "muted"
-        }
+        "props": { "text": { "$item": "meta" }, "tone": "muted" }
       },
-      "event1Divider": { "type": "Divider", "props": {} },
-      "event1AttendeeStack": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["event1AttendeeIcon", "event1AttendeeTextStack"]
-      },
-      "event1AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "destructive" } },
-      "event1AttendeeTextStack": {
+      "attendeeCell": {
         "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["event1AttendeeCount", "event1AttendeeLabel"]
+        "props": { "gap": "none", "align": "end" },
+        "children": ["attendeeCount", "attendeeLabel"]
       },
-      "event1AttendeeCount": {
+      "attendeeCount": {
         "type": "Stat",
-        "props": { "value": { "$state": "/ui/r1/NumberOfContacts" }, "size": "md", "tone": "destructive" }
+        "props": { "value": { "$item": "attendees" }, "size": "sm" }
       },
-      "event1AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
+      "attendeeLabel": {
+        "type": "Caption",
+        "props": { "text": "registered", "tone": "muted" }
+      },
 
-      "box2": {
-        "type": "Stack",
-        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "warning", "variant": "soft" },
-        "children": ["rank2Badge", "event2Name", "event2MetaRow", "event2DateRow", "event2Divider", "event2AttendeeStack"],
-        "visible": { "$state": "/ui/r2" }
-      },
-      "rank2Badge": { "type": "Badge", "props": { "text": "#2 At Risk", "tone": "warning", "variant": "solid" } },
-      "event2Name": {
-        "type": "Text",
-        "props": { "text": { "$state": "/ui/r2/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "event2MetaRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event2TypeBadge", "event2StatusCaption"]
-      },
-      "event2TypeBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r2/Type" } } },
-          "variant": "outline",
-          "size": "sm"
+      "footerDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/ev/count" }
+          ]
         }
       },
-      "event2StatusCaption": {
+      "footer": {
         "type": "Caption",
-        "props": { "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r2/Status" } } }, "tone": "muted" }
-      },
-      "event2DateRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event2DateIcon", "event2Date"]
-      },
-      "event2DateIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "xs", "tone": "muted" } },
-      "event2Date": {
-        "type": "Caption",
-        "props": {
-          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/r2/StartDate" } } },
-          "tone": "muted"
+        "props": { "text": "Upcoming events with the fewest registrations. Starts today or later.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/salesforce.soql_query", "not": true },
+            { "$state": "/ui/ev/count" }
+          ]
         }
-      },
-      "event2Divider": { "type": "Divider", "props": {} },
-      "event2AttendeeStack": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["event2AttendeeIcon", "event2AttendeeTextStack"]
-      },
-      "event2AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "warning" } },
-      "event2AttendeeTextStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["event2AttendeeCount", "event2AttendeeLabel"]
-      },
-      "event2AttendeeCount": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/r2/NumberOfContacts" }, "size": "md", "tone": "warning" }
-      },
-      "event2AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } },
-
-      "box3": {
-        "type": "Stack",
-        "props": { "gap": "sm", "padding": "md", "rounded": "lg", "tone": "accent", "variant": "soft" },
-        "children": ["rank3Badge", "event3Name", "event3MetaRow", "event3DateRow", "event3Divider", "event3AttendeeStack"],
-        "visible": { "$state": "/ui/r3" }
-      },
-      "rank3Badge": { "type": "Badge", "props": { "text": "#3 At Risk", "tone": "accent", "variant": "solid" } },
-      "event3Name": {
-        "type": "Text",
-        "props": { "text": { "$state": "/ui/r3/Name" }, "size": "sm", "weight": "semibold", "truncate": true }
-      },
-      "event3MetaRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event3TypeBadge", "event3StatusCaption"]
-      },
-      "event3TypeBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r3/Type" } } },
-          "variant": "outline",
-          "size": "sm"
-        }
-      },
-      "event3StatusCaption": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "salesforce_or_dash", "args": { "value": { "$state": "/ui/r3/Status" } } }, "tone": "muted" }
-      },
-      "event3DateRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["event3DateIcon", "event3Date"]
-      },
-      "event3DateIcon": { "type": "Icon", "props": { "name": "Calendar", "size": "xs", "tone": "muted" } },
-      "event3Date": {
-        "type": "Caption",
-        "props": {
-          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/r3/StartDate" } } },
-          "tone": "muted"
-        }
-      },
-      "event3Divider": { "type": "Divider", "props": {} },
-      "event3AttendeeStack": {
-        "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["event3AttendeeIcon", "event3AttendeeTextStack"]
-      },
-      "event3AttendeeIcon": { "type": "Icon", "props": { "name": "Users", "size": "sm", "tone": "accent" } },
-      "event3AttendeeTextStack": {
-        "type": "Stack",
-        "props": { "gap": "none" },
-        "children": ["event3AttendeeCount", "event3AttendeeLabel"]
-      },
-      "event3AttendeeCount": {
-        "type": "Stat",
-        "props": { "value": { "$state": "/ui/r3/NumberOfContacts" }, "size": "md", "tone": "accent" }
-      },
-      "event3AttendeeLabel": { "type": "Caption", "props": { "text": "attendees registered", "tone": "muted" } }
+      }
     }
   },
   "status": "published"

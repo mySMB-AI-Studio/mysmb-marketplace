@@ -858,9 +858,81 @@ const pipeline_summary: ComputedFunction = (args) => {
   };
 };
 
+/** Rank tones for the at-risk ladder: worst first. */
+const RISK_RANK_TONES = ['destructive', 'warning', 'info'];
+
+/**
+ * Shape upcoming Campaign events into the "at risk" ladder: one row per
+ * event, worst-attended first, each carrying its rank label and tone, the
+ * event type, a formatted start date with how far away it is, and a tone for
+ * that proximity (two weeks out is urgent, a month is a warning).
+ *
+ * Args:
+ *   value — Campaign records from a non-aggregate soql_query, already
+ *           ordered by NumberOfContacts ascending by the tile's query
+ *   today — ISO date to measure against; defaults to the current date.
+ *           Present so the relative wording can be tested deterministically.
+ *
+ * Returns: {
+ *   count,
+ *   rows: Array<{ id, rank, rankTone, name, type, meta, dotTone, attendees }>
+ * }
+ *
+ * Spec example:
+ *   { "$computed": "salesforce_events_at_risk", "args": { "value": { "$state": "/salesforce/soql_query/records" } } }
+ */
+const events_at_risk: ComputedFunction = (args) => {
+  const records = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  if (records.length === 0) return { count: 0, rows: [] };
+
+  const today = args.today ? new Date(String(args.today)) : new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const rows = records.map((r, i) => {
+    const dateLabel = String(format_date({ value: r.StartDate }));
+
+    let relLabel = '';
+    let dotTone = 'muted';
+    const ms = r.StartDate ? Date.parse(String(r.StartDate)) : NaN;
+    if (!Number.isNaN(ms)) {
+      const d = new Date(ms);
+      const startUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      const days = Math.round((startUtc - todayUtc) / 86_400_000);
+      if (days < 0) {
+        relLabel = 'already started';
+        dotTone = 'muted';
+      } else if (days === 0) {
+        relLabel = 'today';
+        dotTone = 'destructive';
+      } else if (days === 1) {
+        relLabel = 'tomorrow';
+        dotTone = 'destructive';
+      } else {
+        relLabel = `in ${days} days`;
+        dotTone = days <= 14 ? 'destructive' : days <= 30 ? 'warning' : 'success';
+      }
+    }
+
+    const type = String(r.Type ?? '').trim();
+
+    return {
+      id: String(r.Id ?? i),
+      rank: `#${i + 1} At Risk`,
+      rankTone: RISK_RANK_TONES[i] ?? 'muted',
+      name: String(r.Name ?? '').trim() || '(No Name)',
+      type: type || '—',
+      meta: relLabel ? `${dateLabel} · ${relLabel}` : dateLabel,
+      dotTone,
+      attendees: Number(r.NumberOfContacts ?? 0) || 0,
+    };
+  });
+
+  return { count: records.length, rows };
+};
+
 const elements: PluginElementsModule = {
   slug: 'salesforce',
-  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown, engagement_breakdown, pipeline_summary },
+  functions: { probability_tone, account_type_tone, pct_of_max, win_rate, sort_by_key, cycle_sort, flatten_quota_attainment, flatten_by_state, state_total, state_summary, membership_state_insight, membership_growth_insight, category_rank_tone, deal_stage_tone, or_dash, list_url, case_priority_tone, case_subject, format_date, state_abbr, membership_map, category_breakdown, engagement_breakdown, pipeline_summary, events_at_risk },
 };
 
 export default elements;
