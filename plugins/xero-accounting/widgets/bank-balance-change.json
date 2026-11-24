@@ -1,0 +1,3807 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {},
+    "tool": "get_xero_bank_balance_difference"
+  },
+  "description": "Each Xero bank account's balance against the close of the previous business day, or any week or month you pick, with the transactions behind the change. Choose which accounts to include, sort or page the transactions, and set a balance to flag accounts against.",
+  "id": "xero-bank-balance-difference",
+  "keywords": [
+    "bank",
+    "cash",
+    "balance",
+    "difference",
+    "change",
+    "movement",
+    "yesterday",
+    "previous day",
+    "daily",
+    "weekly",
+    "monthly",
+    "date range",
+    "transactions",
+    "accounts",
+    "account code",
+    "sort",
+    "filter",
+    "threshold",
+    "reconcile"
+  ],
+  "pluginIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 20
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 10
+    },
+    "preferred": {
+      "colSpan": 7,
+      "rowSpan": 14
+    }
+  },
+  "spec": {
+    "elements": {
+      "acctActions": {
+        "children": [
+          "acctActionsLeft",
+          "acctDone"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "acctActionsLeft": {
+        "children": [
+          "acctAll",
+          "acctNone2",
+          "acctPinOnly"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "acctAll": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Select all",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "acctBal": {
+        "props": {
+          "text": {
+            "$item": "balanceText"
+          }
+        },
+        "type": "Caption"
+      },
+      "acctBtn": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": "acct"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/q",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": {
+            "$state": "/ui/bbc/v/selectedLabel"
+          },
+          "leadingIcon": "Landmark",
+          "size": "sm",
+          "variant": "secondary"
+        },
+        "type": "Button"
+      },
+      "acctChk": {
+        "on": {
+          "toggle": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$bindItem": "nextSelected"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "ariaLabel": "Include this account",
+          "checked": {
+            "$item": "selected"
+          }
+        },
+        "type": "Checkbox"
+      },
+      "acctClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close the account picker"
+        },
+        "type": "OverlayClose"
+      },
+      "acctDone": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "label": "Done",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "acctHead": {
+        "children": [
+          "acctTitle",
+          "acctClose"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "acctHint": {
+        "props": {
+          "text": "Tick accounts to combine them · Clear to start from none"
+        },
+        "type": "Caption"
+      },
+      "acctLeft": {
+        "children": [
+          "acctChk",
+          "acctName"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$bindItem": "nextSelected"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "grow": true,
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "acctList": {
+        "children": [
+          "acctRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/ui/bbc/v/accountOptions"
+        },
+        "type": "Stack"
+      },
+      "acctName": {
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "acctNone": {
+        "props": {
+          "message": "No accounts match that search."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/bbc/v/noAccountMatches"
+        }
+      },
+      "acctNone2": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": "__none__"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Clear",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "acctOverlay": {
+        "children": [
+          "acctHead",
+          "acctSearch",
+          "acctActions",
+          "acctHint",
+          "acctList",
+          "acctNone"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "26rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/bbc/pop",
+          "eq": "acct"
+        }
+      },
+      "acctPin": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pins",
+              "value": {
+                "$bindItem": "nextPinned"
+              }
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$item": "pinIcon"
+          },
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "acctPinOnly": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$state": "/ui/bbc/v/pinnedSelection"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "★ Pinned",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/bbc/v/hasPins"
+        }
+      },
+      "acctRow": {
+        "children": [
+          "acctLeft",
+          "acctBal",
+          "acctPin"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "acctSearch": {
+        "props": {
+          "ariaLabel": "Search bank accounts",
+          "placeholder": "Search accounts",
+          "size": "sm",
+          "value": {
+            "$bindState": "/ui/bbc/q"
+          }
+        },
+        "type": "TextInput"
+      },
+      "acctTitle": {
+        "props": {
+          "level": "h3",
+          "text": "Accounts"
+        },
+        "type": "Heading"
+      },
+      "allBtn": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "All accounts",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/bbc/v/allSelected",
+          "not": true
+        }
+      },
+      "balances": {
+        "children": [
+          "openBox",
+          "closeBox"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "type": "Grid"
+      },
+      "body": {
+        "children": [
+          "loading",
+          "errorBox",
+          "empty",
+          "content",
+          "acctOverlay",
+          "thrOverlay",
+          "dateOverlay"
+        ],
+        "type": "Body"
+      },
+      "byAccount": {
+        "children": [
+          "byHeader",
+          "byList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/bbc/v/showByAccount"
+        }
+      },
+      "byBal": {
+        "props": {
+          "text": {
+            "$item": "balanceText"
+          }
+        },
+        "type": "Caption"
+      },
+      "byDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "dotTone"
+          }
+        },
+        "type": "Dot"
+      },
+      "byHeader": {
+        "children": [
+          "byTitle",
+          "byToggle"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "byLeft": {
+        "children": [
+          "byDot",
+          "byName"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "byList": {
+        "children": [
+          "byRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/ui/bbc/v/accountRows"
+        },
+        "type": "Stack"
+      },
+      "byName": {
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "byPill": {
+        "props": {
+          "text": {
+            "$item": "changeText"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "byRight": {
+        "children": [
+          "byBal",
+          "byPill"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "byRow": {
+        "children": [
+          "byLeft",
+          "byRight"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$bindItem": "accountId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "byTitle": {
+        "props": {
+          "text": "BY ACCOUNT · BIGGEST MOVEMENT FIRST"
+        },
+        "type": "Eyebrow"
+      },
+      "byToggle": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/showAll",
+              "value": {
+                "$computed": "not",
+                "args": {
+                  "value": {
+                    "$state": "/ui/bbc/showAll"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$state": "/ui/bbc/v/accountRowsToggleLabel"
+          },
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/bbc/v/accountRowsHasMore"
+        }
+      },
+      "cAcct": {
+        "children": [
+          "cAcctText"
+        ],
+        "props": {
+          "align": "center",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "cAcctText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "bankAccount"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "cAmount": {
+        "children": [
+          "cAmountText"
+        ],
+        "props": {
+          "align": "center",
+          "grow": true,
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "cAmountText": {
+        "props": {
+          "text": {
+            "$item": "amountDisplay"
+          },
+          "tone": {
+            "$item": "amountTone"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "cCode": {
+        "children": [
+          "cCodeText",
+          "cCodeName"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "cCodeName": {
+        "props": {
+          "text": {
+            "$item": "accountName"
+          }
+        },
+        "type": "Caption"
+      },
+      "cCodeText": {
+        "props": {
+          "text": {
+            "$item": "accountCode"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "cContact": {
+        "children": [
+          "cContactText",
+          "cDetail"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "cContactText": {
+        "props": {
+          "text": {
+            "$item": "contact"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "cDate": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$item": "dateText"
+          },
+          "tone": "muted"
+        },
+        "type": "Text",
+        "visible": {
+          "$state": "/ui/bbc/v/hasDates"
+        }
+      },
+      "cDetail": {
+        "props": {
+          "text": {
+            "$item": "detail"
+          }
+        },
+        "type": "Caption"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card",
+        "watch": {
+          "/ui/bbc/mode": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/pins": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/q": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/sel": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/showAll": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/shown": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/sortDir": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/sortField": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/thr": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/thrAcct": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/ui/bbc/thrOv": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          },
+          "/xero-accounting/get_xero_bank_balance_difference/accounts": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/v",
+              "value": {
+                "$computed": "xero-accounting_bank_balance_view",
+                "args": {
+                  "accounts": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts"
+                  },
+                  "mode": {
+                    "$state": "/ui/bbc/mode"
+                  },
+                  "overrideTarget": {
+                    "$state": "/ui/bbc/thrAcct"
+                  },
+                  "overrides": {
+                    "$state": "/ui/bbc/thrOv"
+                  },
+                  "pins": {
+                    "$state": "/ui/bbc/pins"
+                  },
+                  "query": {
+                    "$state": "/ui/bbc/q"
+                  },
+                  "selected": {
+                    "$state": "/ui/bbc/sel"
+                  },
+                  "showAllAccounts": {
+                    "$state": "/ui/bbc/showAll"
+                  },
+                  "shown": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "sortDir": {
+                    "$state": "/ui/bbc/sortDir"
+                  },
+                  "sortField": {
+                    "$state": "/ui/bbc/sortField"
+                  },
+                  "summary": {
+                    "$state": "/xero-accounting/get_xero_bank_balance_difference/summary"
+                  },
+                  "threshold": {
+                    "$state": "/ui/bbc/thr"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "check": {
+        "children": [
+          "checkIcon",
+          "checkText"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/bbc/v/hasTxns"
+        }
+      },
+      "checkIcon": {
+        "props": {
+          "name": {
+            "$state": "/ui/bbc/v/checkIcon"
+          },
+          "size": "sm",
+          "tone": {
+            "$state": "/ui/bbc/v/checkTone"
+          }
+        },
+        "type": "Icon"
+      },
+      "checkText": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/checkText"
+          },
+          "tone": {
+            "$state": "/ui/bbc/v/checkTone"
+          }
+        },
+        "type": "Caption"
+      },
+      "closeBox": {
+        "children": [
+          "closeBoxStack"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "closeBoxDate": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/closingDate"
+          }
+        },
+        "type": "Caption"
+      },
+      "closeBoxPill": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/closingLabel"
+          },
+          "tone": "info",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "closeBoxStack": {
+        "children": [
+          "closeBoxPill",
+          "closeBoxValue",
+          "closeBoxDate",
+          "thrBar"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "closeBoxValue": {
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/bbc/v/closingText"
+          }
+        },
+        "type": "Stat"
+      },
+      "colHeads": {
+        "children": [
+          "hAcct",
+          "hCode",
+          "hContact",
+          "hDate",
+          "hAmount"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "content": {
+        "children": [
+          "controls",
+          "period",
+          "balances",
+          "difference",
+          "unrec",
+          "byAccount",
+          "why",
+          "truncNote",
+          "check",
+          "footer"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0"
+            }
+          ]
+        }
+      },
+      "controls": {
+        "children": [
+          "acctBtn",
+          "allBtn",
+          "thrBtn"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "dFrom": {
+        "props": {
+          "ariaLabel": "First day to count",
+          "size": "sm",
+          "value": {
+            "$bindState": "/ui/bbc/from"
+          }
+        },
+        "type": "DateInput"
+      },
+      "dFromRow": {
+        "children": [
+          "dFrom"
+        ],
+        "props": {
+          "label": "From"
+        },
+        "type": "FormRow"
+      },
+      "dTo": {
+        "props": {
+          "ariaLabel": "Last day to count",
+          "size": "sm",
+          "value": {
+            "$bindState": "/ui/bbc/to"
+          }
+        },
+        "type": "DateInput"
+      },
+      "dToRow": {
+        "children": [
+          "dTo"
+        ],
+        "props": {
+          "label": "To"
+        },
+        "type": "FormRow"
+      },
+      "dateActions": {
+        "children": [
+          "dateClear",
+          "dateApply"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "dateApply": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/mode",
+                "value": "custom"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "get_xero_bank_balance_difference"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_bank_balance_difference",
+              "params": {
+                "fromDate": {
+                  "$state": "/ui/bbc/from"
+                },
+                "toDate": {
+                  "$state": "/ui/bbc/to"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Apply",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "dateClear": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/mode",
+                "value": "today"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/from",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "today"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/to",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "today"
+                  }
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "get_xero_bank_balance_difference"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_bank_balance_difference",
+              "params": {
+                "fromDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "today"
+                  }
+                },
+                "toDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "today"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Clear",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "dateClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close the date range picker"
+        },
+        "type": "OverlayClose"
+      },
+      "dateHead": {
+        "children": [
+          "dateTitle",
+          "dateClose"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "dateHint": {
+        "props": {
+          "text": "The opening balance is the close of the day before the first date."
+        },
+        "type": "Caption"
+      },
+      "dateOverlay": {
+        "children": [
+          "dateHead",
+          "dateHint",
+          "dFromRow",
+          "dToRow",
+          "dateActions"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "22rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/bbc/pop",
+          "eq": "date"
+        }
+      },
+      "dateTitle": {
+        "props": {
+          "level": "h3",
+          "text": "Date Range"
+        },
+        "type": "Heading"
+      },
+      "diffIcon": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/bbc/v/arrow"
+          },
+          "tone": {
+            "$state": "/ui/bbc/v/tone"
+          },
+          "weight": "medium"
+        },
+        "type": "Text",
+        "visible": {
+          "$state": "/ui/bbc/v/hasArrow"
+        }
+      },
+      "diffLabel": {
+        "props": {
+          "text": "DIFFERENCE",
+          "tone": {
+            "$state": "/ui/bbc/v/tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "diffRow": {
+        "children": [
+          "diffIcon",
+          "diffValue"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "center"
+        },
+        "type": "Row"
+      },
+      "diffStack": {
+        "children": [
+          "diffLabel",
+          "diffRow",
+          "pctBadge",
+          "flowCap"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "diffValue": {
+        "props": {
+          "value": {
+            "$state": "/ui/bbc/v/differenceText"
+          }
+        },
+        "type": "Stat"
+      },
+      "difference": {
+        "children": [
+          "diffStack"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "divider0": {
+        "type": "Divider"
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "empty": {
+        "props": {
+          "message": "No bank accounts came back from Xero."
+        },
+        "type": "Empty",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/xero-accounting/get_xero_bank_balance_difference/accounts/0",
+              "not": true
+            }
+          ]
+        }
+      },
+      "errHint": {
+        "props": {
+          "text": "Check the xero-accounting connection under Settings, then refresh the tile."
+        },
+        "type": "Caption"
+      },
+      "errIcon": {
+        "props": {
+          "name": "TriangleAlert",
+          "size": "sm",
+          "tone": "warning"
+        },
+        "type": "Icon"
+      },
+      "errMsg": {
+        "props": {
+          "text": {
+            "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference"
+          },
+          "tone": "warning"
+        },
+        "type": "Caption"
+      },
+      "errTitle": {
+        "props": {
+          "text": "Xero could not be read",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "errorBox": {
+        "children": [
+          "errIcon",
+          "errTitle",
+          "errMsg",
+          "errHint"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference",
+              "not": true
+            },
+            {
+              "$state": "/_errors/xero-accounting.get_xero_bank_balance_difference"
+            }
+          ]
+        }
+      },
+      "flowCap": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/flowText"
+          }
+        },
+        "type": "Caption"
+      },
+      "footer": {
+        "children": [
+          "footerText",
+          "footerOpen"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "footerOpen": {
+        "children": [
+          "footerOpenText",
+          "footerOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/bbc/v/xeroUrl"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "footerOpenIcon": {
+        "props": {
+          "name": "ArrowUpRight",
+          "size": "xs",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "footerOpenText": {
+        "props": {
+          "size": "xs",
+          "text": "Open in Xero",
+          "tone": "accent"
+        },
+        "type": "Text"
+      },
+      "footerText": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/updatedText"
+          }
+        },
+        "type": "Caption"
+      },
+      "hAcct": {
+        "children": [
+          "hAcctSort",
+          "hAcctFilter"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "hAcctFilter": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": "acct"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/q",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "ariaLabel": "Filter by bank account",
+          "icon": "Filter",
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbc/v/allSelected",
+              "not": true
+            },
+            "$else": "muted",
+            "$then": "info"
+          },
+          "variant": "ghost"
+        },
+        "type": "IconButton"
+      },
+      "hAcctSort": {
+        "children": [
+          "hAcctSortText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbc/sortField",
+                    "eq": "bankAccount"
+                  },
+                  "$else": "asc",
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbc/sortDir",
+                      "eq": "asc"
+                    },
+                    "$else": "asc",
+                    "$then": "desc"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortField",
+                "value": "bankAccount"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "hAcctSortText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbc/sortField",
+              "eq": "bankAccount"
+            },
+            "$else": "XERO ACCOUNT ↕",
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbc/sortDir",
+                "eq": "desc"
+              },
+              "$else": "XERO ACCOUNT ↑ A–Z",
+              "$then": "XERO ACCOUNT ↓ Z–A"
+            }
+          },
+          "tone": "muted",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "hAmount": {
+        "children": [
+          "hAmountText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbc/sortField",
+                    "eq": "amount"
+                  },
+                  "$else": "asc",
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbc/sortDir",
+                      "eq": "asc"
+                    },
+                    "$else": "asc",
+                    "$then": "desc"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortField",
+                "value": "amount"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "grow": true,
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "hAmountText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbc/sortField",
+              "eq": "amount"
+            },
+            "$else": "AMOUNT ↕",
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbc/sortDir",
+                "eq": "desc"
+              },
+              "$else": "AMOUNT ↑ LOW",
+              "$then": "AMOUNT ↓ HIGH"
+            }
+          },
+          "tone": "muted",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "hCode": {
+        "children": [
+          "hCodeText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbc/sortField",
+                    "eq": "code"
+                  },
+                  "$else": "asc",
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbc/sortDir",
+                      "eq": "asc"
+                    },
+                    "$else": "asc",
+                    "$then": "desc"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortField",
+                "value": "code"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "hCodeText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbc/sortField",
+              "eq": "code"
+            },
+            "$else": "ACC CODE ↕",
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbc/sortDir",
+                "eq": "desc"
+              },
+              "$else": "ACC CODE ↑ A–Z",
+              "$then": "ACC CODE ↓ Z–A"
+            }
+          },
+          "tone": "muted",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "hContact": {
+        "children": [
+          "hContactText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbc/sortField",
+                    "eq": "contact"
+                  },
+                  "$else": "asc",
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbc/sortDir",
+                      "eq": "asc"
+                    },
+                    "$else": "asc",
+                    "$then": "desc"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortField",
+                "value": "contact"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "grow": true
+        },
+        "type": "Row"
+      },
+      "hContactText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbc/sortField",
+              "eq": "contact"
+            },
+            "$else": "CONTACT ↕",
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbc/sortDir",
+                "eq": "desc"
+              },
+              "$else": "CONTACT ↑ A–Z",
+              "$then": "CONTACT ↓ Z–A"
+            }
+          },
+          "tone": "muted",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "hDate": {
+        "children": [
+          "hDateSort",
+          "hDateFilter"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/bbc/v/hasDates"
+        }
+      },
+      "hDateFilter": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": "date"
+              }
+            }
+          ]
+        },
+        "props": {
+          "ariaLabel": "Filter by date range",
+          "icon": "Filter",
+          "size": "sm",
+          "tone": {
+            "$cond": {
+              "$state": "/ui/bbc/v/isCustom"
+            },
+            "$else": "muted",
+            "$then": "info"
+          },
+          "variant": "ghost"
+        },
+        "type": "IconButton"
+      },
+      "hDateSort": {
+        "children": [
+          "hDateSortText"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortDir",
+                "value": {
+                  "$cond": {
+                    "$state": "/ui/bbc/sortField",
+                    "eq": "date"
+                  },
+                  "$else": "asc",
+                  "$then": {
+                    "$cond": {
+                      "$state": "/ui/bbc/sortDir",
+                      "eq": "asc"
+                    },
+                    "$else": "asc",
+                    "$then": "desc"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sortField",
+                "value": "date"
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "hDateSortText": {
+        "props": {
+          "size": "xs",
+          "text": {
+            "$cond": {
+              "$state": "/ui/bbc/sortField",
+              "eq": "date"
+            },
+            "$else": "DATE ↕",
+            "$then": {
+              "$cond": {
+                "$state": "/ui/bbc/sortDir",
+                "eq": "desc"
+              },
+              "$else": "DATE ↑ OLD",
+              "$then": "DATE ↓ NEW"
+            }
+          },
+          "tone": "muted",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "hiddenCap": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/hiddenText"
+          },
+          "tone": "warning"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/bbc/v/hasHidden"
+        }
+      },
+      "loading": {
+        "children": [
+          "sk1",
+          "sk2",
+          "sk3"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_bank_balance_difference"
+        }
+      },
+      "moreBtn": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/shown",
+              "value": {
+                "$computed": "add_number",
+                "args": {
+                  "a": {
+                    "$state": "/ui/bbc/shown"
+                  },
+                  "b": 10
+                }
+              }
+            }
+          }
+        },
+        "props": {
+          "label": {
+            "$state": "/ui/bbc/v/moreLabel"
+          },
+          "size": "sm",
+          "variant": "secondary"
+        },
+        "type": "Button",
+        "visible": {
+          "$state": "/ui/bbc/v/remaining"
+        }
+      },
+      "openBox": {
+        "children": [
+          "openBoxStack"
+        ],
+        "props": {
+          "variant": "muted"
+        },
+        "type": "Section"
+      },
+      "openBoxDate": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/openingDate"
+          }
+        },
+        "type": "Caption"
+      },
+      "openBoxPill": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/openingLabel"
+          },
+          "tone": "warning",
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "openBoxStack": {
+        "children": [
+          "openBoxPill",
+          "openBoxValue",
+          "openBoxDate"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "openBoxValue": {
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/bbc/v/openingText"
+          }
+        },
+        "type": "Stat"
+      },
+      "pDates": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": "date"
+            }
+          }
+        },
+        "props": {
+          "label": "Dates",
+          "leadingIcon": "Calendar",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/bbc/v/isCustom"
+            },
+            "$else": "ghost",
+            "$then": "secondary"
+          }
+        },
+        "type": "Button"
+      },
+      "pMonth": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/mode",
+                "value": "month"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/from",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "month"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/to",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "month"
+                  }
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "get_xero_bank_balance_difference"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_bank_balance_difference",
+              "params": {
+                "fromDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "month"
+                  }
+                },
+                "toDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "month"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "This month",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/bbc/v/isMonth"
+            },
+            "$else": "ghost",
+            "$then": "secondary"
+          }
+        },
+        "type": "Button"
+      },
+      "pToday": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/mode",
+                "value": "today"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/from",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "today"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/to",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "today"
+                  }
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "get_xero_bank_balance_difference"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_bank_balance_difference",
+              "params": {
+                "fromDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "today"
+                  }
+                },
+                "toDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "today"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Today",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/bbc/v/isToday"
+            },
+            "$else": "ghost",
+            "$then": "secondary"
+          }
+        },
+        "type": "Button"
+      },
+      "pWeek": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/mode",
+                "value": "week"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/from",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "week"
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/to",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "week"
+                  }
+                }
+              }
+            },
+            {
+              "action": "bust_tool_cache",
+              "params": {
+                "mcp": "xero-accounting",
+                "tool": "get_xero_bank_balance_difference"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_bank_balance_difference",
+              "params": {
+                "fromDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "from",
+                    "preset": "week"
+                  }
+                },
+                "toDate": {
+                  "$computed": "xero-accounting_bank_balance_range",
+                  "args": {
+                    "part": "to",
+                    "preset": "week"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Last 7 days",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/ui/bbc/v/isWeek"
+            },
+            "$else": "ghost",
+            "$then": "secondary"
+          }
+        },
+        "type": "Button"
+      },
+      "pctBadge": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/pctLabel"
+          },
+          "tone": {
+            "$state": "/ui/bbc/v/tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge",
+        "visible": {
+          "$state": "/ui/bbc/v/pctText"
+        }
+      },
+      "period": {
+        "children": [
+          "pToday",
+          "pWeek",
+          "pMonth",
+          "pDates"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row"
+      },
+      "sk1": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "5rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk3": {
+        "props": {
+          "height": "9rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "subtitle": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/subtitle"
+          }
+        },
+        "type": "Caption"
+      },
+      "thrActions": {
+        "children": [
+          "thrClear",
+          "thrSave"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "thrBar": {
+        "children": [
+          "thrProgress",
+          "thrText"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/bbc/v/hasThreshold"
+        }
+      },
+      "thrBtn": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": "thr"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrDraft",
+                "value": {
+                  "$state": "/ui/bbc/thr"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrAcct",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": {
+            "$state": "/ui/bbc/v/thresholdChipText"
+          },
+          "leadingIcon": "Filter",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "thrClear": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thr",
+                "value": 0
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrDraft",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrOv",
+                "value": ""
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Clear",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "thrClose": {
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Close the threshold settings"
+        },
+        "type": "OverlayClose"
+      },
+      "thrHead": {
+        "children": [
+          "thrTitle",
+          "thrClose"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "thrHint": {
+        "props": {
+          "text": "Only transactions this size or larger are listed — by amount, so money out counts the same as money in. Set 0 to show everything. The minimum lasts for this visit only; reloading the page returns it to the default."
+        },
+        "type": "Caption"
+      },
+      "thrInput": {
+        "props": {
+          "ariaLabel": "Smallest transaction to list, in dollars",
+          "min": 0,
+          "placeholder": "No minimum",
+          "size": "sm",
+          "step": 1000,
+          "value": {
+            "$bindState": "/ui/bbc/thrDraft"
+          }
+        },
+        "type": "NumberInput"
+      },
+      "thrOvActions": {
+        "children": [
+          "thrOvRemove",
+          "thrOvSet"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "thrOvBlock": {
+        "children": [
+          "thrOvTitle",
+          "thrOvList",
+          "thrOvEdit"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "thrOvEdit": {
+        "children": [
+          "thrOvField",
+          "thrOvActions"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/bbc/v/hasOverrideTarget"
+        }
+      },
+      "thrOvField": {
+        "children": [
+          "thrOvInput"
+        ],
+        "props": {
+          "label": {
+            "$state": "/ui/bbc/v/overrideTargetName"
+          }
+        },
+        "type": "FormRow"
+      },
+      "thrOvInput": {
+        "props": {
+          "ariaLabel": "Smallest transaction to list for the selected account",
+          "min": 0,
+          "placeholder": "Use the default",
+          "size": "sm",
+          "step": 1000,
+          "value": {
+            "$bindState": "/ui/bbc/ovDraft"
+          }
+        },
+        "type": "NumberInput"
+      },
+      "thrOvList": {
+        "children": [
+          "thrOvRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/ui/bbc/v/overrideRows"
+        },
+        "type": "Stack"
+      },
+      "thrOvName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        },
+        "type": "Text"
+      },
+      "thrOvRemove": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrOv",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_set_override",
+                  "args": {
+                    "accountId": {
+                      "$state": "/ui/bbc/thrAcct"
+                    },
+                    "overrides": {
+                      "$state": "/ui/bbc/thrOv"
+                    },
+                    "value": 0
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrAcct",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Remove",
+          "size": "sm",
+          "variant": "ghost"
+        },
+        "type": "Button"
+      },
+      "thrOvRow": {
+        "children": [
+          "thrOvName",
+          "thrOvValue"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrAcct",
+                "value": {
+                  "$bindItem": "accountId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/ovDraft",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "thrOvSet": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrOv",
+                "value": {
+                  "$computed": "xero-accounting_bank_balance_set_override",
+                  "args": {
+                    "accountId": {
+                      "$state": "/ui/bbc/thrAcct"
+                    },
+                    "overrides": {
+                      "$state": "/ui/bbc/thrOv"
+                    },
+                    "value": {
+                      "$state": "/ui/bbc/ovDraft"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thrAcct",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Set",
+          "size": "sm",
+          "variant": "secondary"
+        },
+        "type": "Button"
+      },
+      "thrOvTitle": {
+        "props": {
+          "text": "Per account"
+        },
+        "type": "Eyebrow"
+      },
+      "thrOvValue": {
+        "props": {
+          "text": {
+            "$item": "thresholdText"
+          }
+        },
+        "type": "Caption"
+      },
+      "thrOverlay": {
+        "children": [
+          "thrHead",
+          "thrHint",
+          "thrRow",
+          "thrOvBlock",
+          "thrActions"
+        ],
+        "on": {
+          "backdropClick": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/bbc/pop",
+              "value": ""
+            }
+          }
+        },
+        "props": {
+          "maxWidth": "22rem"
+        },
+        "type": "Overlay",
+        "visible": {
+          "$state": "/ui/bbc/pop",
+          "eq": "thr"
+        }
+      },
+      "thrProgress": {
+        "props": {
+          "tone": {
+            "$state": "/ui/bbc/v/thresholdTone"
+          },
+          "value": {
+            "$state": "/ui/bbc/v/thresholdValue"
+          }
+        },
+        "type": "ProgressBar"
+      },
+      "thrRow": {
+        "children": [
+          "thrInput"
+        ],
+        "props": {
+          "label": "List from"
+        },
+        "type": "FormRow"
+      },
+      "thrSave": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/thr",
+                "value": {
+                  "$state": "/ui/bbc/thrDraft"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/pop",
+                "value": ""
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Save",
+          "size": "sm",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "thrText": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/thresholdText"
+          },
+          "tone": {
+            "$state": "/ui/bbc/v/thresholdTone"
+          }
+        },
+        "type": "Caption"
+      },
+      "thrTitle": {
+        "props": {
+          "level": "h3",
+          "text": "Transaction Minimum"
+        },
+        "type": "Heading"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Bank Balance Change"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Landmark",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "subtitle"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "totalLabel": {
+        "props": {
+          "text": "Total",
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "totalRow": {
+        "children": [
+          "totalLabel",
+          "totalValue"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "totalValue": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/totalText"
+          },
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "truncNote": {
+        "props": {
+          "text": "Xero has more transactions in this window than the tile lists, so the rows below do not account for the whole change.",
+          "tone": "warning"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/ui/bbc/v/truncated"
+        }
+      },
+      "txnEmpty": {
+        "props": {
+          "message": "No transactions for this selection."
+        },
+        "type": "Empty",
+        "visible": {
+          "$state": "/ui/bbc/v/hasTxns",
+          "not": true
+        }
+      },
+      "txnList": {
+        "children": [
+          "txnRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/bbc/v/txnRows"
+        },
+        "type": "Stack"
+      },
+      "txnRow": {
+        "children": [
+          "cAcct",
+          "cCode",
+          "cContact",
+          "cDate",
+          "cAmount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$bindItem": "url"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true
+        },
+        "type": "Row"
+      },
+      "txnTable": {
+        "children": [
+          "colHeads",
+          "divider0",
+          "txnList",
+          "divider1",
+          "totalRow",
+          "hiddenCap",
+          "moreBtn"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/bbc/v/hasTxns"
+        }
+      },
+      "unrec": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "unrecStack"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShow"
+        }
+      },
+      "unrecCountStat": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/bbc/v/unrecCountText"
+          }
+        }
+      },
+      "unrecHeader": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "children": [
+          "unrecTitle",
+          "unrecOpen"
+        ]
+      },
+      "unrecHero": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "md"
+        },
+        "children": [
+          "unrecCountStat",
+          "unrecHeroText"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecHeroText": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "children": [
+          "unrecLabel",
+          "unrecSub"
+        ]
+      },
+      "unrecInPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecInText"
+          },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+      "unrecLabel": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecCountLabel"
+          },
+          "weight": "medium"
+        }
+      },
+      "unrecList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "unrecRow"
+        ],
+        "repeat": {
+          "key": "accountId",
+          "statePath": "/ui/bbc/v/unrecRows"
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecShowRows"
+        }
+      },
+      "unrecMore": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecMoreText"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasMore"
+        }
+      },
+      "unrecNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecOk": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecOkIcon",
+          "unrecOkText"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecAllMatched"
+        }
+      },
+      "unrecOkIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CircleCheck",
+          "size": "sm",
+          "tone": "success"
+        }
+      },
+      "unrecOkNote": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecAllMatchedNote"
+          }
+        },
+        "visible": {
+          "$state": "/ui/bbc/v/unrecAllMatched"
+        }
+      },
+      "unrecOkText": {
+        "type": "Text",
+        "props": {
+          "text": "Everything in Xero is matched to the bank",
+          "weight": "medium"
+        }
+      },
+      "unrecOpen": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "xs"
+        },
+        "children": [
+          "unrecOpenText",
+          "unrecOpenIcon"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/bbc/v/xeroUrl"
+              }
+            }
+          }
+        }
+      },
+      "unrecOpenIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "ArrowUpRight",
+          "size": "xs",
+          "tone": "accent"
+        }
+      },
+      "unrecOpenText": {
+        "type": "Text",
+        "props": {
+          "size": "xs",
+          "text": "Reconcile in Xero",
+          "tone": "accent"
+        }
+      },
+      "unrecOutPill": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecOutText"
+          },
+          "tone": "destructive",
+          "variant": "soft"
+        }
+      },
+      "unrecPills": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "children": [
+          "unrecInPill",
+          "unrecOutPill"
+        ],
+        "visible": {
+          "$state": "/ui/bbc/v/unrecHasAny"
+        }
+      },
+      "unrecRow": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "clickable": true,
+          "gap": "sm",
+          "hover": true,
+          "justify": "between"
+        },
+        "children": [
+          "unrecRowLeft",
+          "unrecRowRight"
+        ],
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/sel",
+                "value": {
+                  "$bindItem": "accountId"
+                }
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/bbc/shown",
+                "value": 10
+              }
+            }
+          ]
+        }
+      },
+      "unrecRowCount": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "countOnly"
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+      "unrecRowDot": {
+        "type": "Dot",
+        "props": {
+          "size": "sm",
+          "tone": "warning"
+        }
+      },
+      "unrecRowLeft": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "xs",
+          "grow": true
+        },
+        "children": [
+          "unrecRowDot",
+          "unrecRowName"
+        ]
+      },
+      "unrecRowName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true
+        }
+      },
+      "unrecRowNet": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$item": "netText"
+          }
+        }
+      },
+      "unrecRowRight": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "unrecRowNet",
+          "unrecRowCount"
+        ]
+      },
+      "unrecStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "unrecHeader",
+          "unrecHero",
+          "unrecPills",
+          "unrecList",
+          "unrecMore",
+          "unrecNote",
+          "unrecOk",
+          "unrecOkNote"
+        ]
+      },
+      "unrecSub": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/unrecSubText"
+          }
+        }
+      },
+      "unrecTitle": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "NOT YET RECONCILED IN XERO"
+        }
+      },
+      "why": {
+        "children": [
+          "whyHeader",
+          "txnEmpty",
+          "txnTable"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "whyCount": {
+        "props": {
+          "text": {
+            "$state": "/ui/bbc/v/txnCountText"
+          }
+        },
+        "type": "Caption"
+      },
+      "whyHeader": {
+        "children": [
+          "whyTitle",
+          "whyCount"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "whyTitle": {
+        "props": {
+          "text": "Why It Changed"
+        },
+        "type": "Eyebrow"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "bank",
+    "accounts",
+    "cash",
+    "finance"
+  ],
+  "title": "Bank Balance Change"
+}

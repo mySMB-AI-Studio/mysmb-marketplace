@@ -1,0 +1,976 @@
+{
+  "category": "finance",
+  "connectorsUsed": [
+    "xero-accounting"
+  ],
+  "dataProvider": {
+    "kind": "tool",
+    "mcp": "xero-accounting",
+    "params": {
+      "template": "approval"
+    },
+    "tool": "get_xero_payroll_email_draft"
+  },
+  "description": "Fills the payroll client email templates (approval request, payment notice, confirmation, asking the owner for changes) with the pay period and owner payments total from Xero plus what you type in. Missing fields stay visible and are listed, and it only opens in Outlook once nothing is missing. Nothing is sent from the tile.",
+  "id": "xero-payroll-email-draft",
+  "keywords": [
+    "payroll email",
+    "approval request",
+    "payment notice",
+    "confirmation",
+    "client email",
+    "template",
+    "outlook",
+    "pay run approval"
+  ],
+  "pluginIcon": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAUVBMVEUTter///8AsukAsOk2vu2Q1/PN6/n3/f+D0vIduOtFwO3Z8vtqyvCL1vMvuetLxO7A6PjW7vpcyO/u+v6b2/Sl3vVzzvGv4fbn9/3I7Pm45ffIjQMeAAAB6UlEQVRYhe1X25KDIAyFgCBi1XWtrf3/D92TYEer3YfKy86O58HRSE5uRIzSjOnSBvURQltMoqpYvTL0mTqDTDUlgk4dUBcK1TFBPKadEEFQHbQvPlRaTSbHAzOpMsMBuFAqm6OvoP5h/bfIVD9x4sQfBNH2lhgr0fy0Fq/1C9fOYrp8VfzJHjvnhiRs3JXC7asmRU3hnLs0OwrjtU+LqdD6QdR/y7mDQ4MptQ53raOhwovUF1sGKiHlD7zBYm2px/V7wrmhIwnnDbelGVg5MsWw/ZgbMOCIYGMgamBoNMbQQ9wpmK43TOtZXMO9fueDqCZ9umIBmyDj2B8QeGTFRLEBWI94dnlk5TmQqO/BCmr2HAQXNohIiOpuFAv784DzoL3FyjBnMOHKBLy8QlzUQBIIvPWuEguBWhP4nkNongThV4JVCLSEYG2gJ8EqhGEfwksS8b6WJJGqUhmZ4CWJ940DUv+5jFbKWKKKpr3D6yeBlLFHGXmXja8E7zaSdxPnYiFQtGykx6aKr1v5tmxlj+Of3WqSnXkr62GXwWHdTC2uoUQzuau0DZrpuU6aaXjzV/NLO9Obt2/b+cSJE/8A2b/72QNH9siTPXRlj335g6d+HHegS8N3tMeGbxvn6R3z+2g/Hf/t6ET1B2OKEUfIJyqhAAAAAElFTkSuQmCC",
+  "popularity": 0,
+  "sizing": {
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 14
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 8
+    },
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 11
+    }
+  },
+  "spec": {
+    "elements": {
+      "body": {
+        "children": [
+          "loading",
+          "content"
+        ],
+        "type": "Body"
+      },
+      "card": {
+        "children": [
+          "header",
+          "body"
+        ],
+        "type": "Card",
+        "watch": {
+          "/xero-accounting/get_xero_payroll_email_draft/template": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/payrollEmail/template",
+              "value": {
+                "$state": "/xero-accounting/get_xero_payroll_email_draft/template"
+              }
+            }
+          }
+        }
+      },
+      "content": {
+        "children": [
+          "templates",
+          "mail",
+          "status",
+          "divider1",
+          "fillHead",
+          "fields",
+          "divider2",
+          "footer"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_payroll_email_draft",
+          "not": true
+        }
+      },
+      "copyButton": {
+        "on": {
+          "click": [
+            {
+              "action": "copy_to_clipboard",
+              "params": {
+                "text": {
+                  "$state": "/xero-accounting/get_xero_payroll_email_draft/copyText"
+                }
+              }
+            },
+            {
+              "action": "toast",
+              "params": {
+                "message": "Email copied"
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Copy",
+          "leadingIcon": "Copy",
+          "size": "sm",
+          "variant": "secondary"
+        },
+        "type": "Button"
+      },
+      "divider1": {
+        "type": "Divider"
+      },
+      "divider2": {
+        "type": "Divider"
+      },
+      "eyebrow": {
+        "props": {
+          "text": "Client emails · templated"
+        },
+        "type": "Eyebrow"
+      },
+      "fieldInput_client_name": {
+        "on": {
+          "change": {
+            "action": "xero-accounting.get_xero_payroll_email_draft",
+            "params": {
+              "client_name": {
+                "$state": "/ui/payrollEmail/client_name"
+              },
+              "payment_date": {
+                "$state": "/ui/payrollEmail/payment_date"
+              },
+              "reply_by": {
+                "$state": "/ui/payrollEmail/reply_by"
+              },
+              "sender_name": {
+                "$state": "/ui/payrollEmail/sender_name"
+              },
+              "template": {
+                "$state": "/ui/payrollEmail/template"
+              },
+              "to": {
+                "$state": "/ui/payrollEmail/to"
+              },
+              "total_to_pay": {
+                "$state": "/ui/payrollEmail/total_to_pay"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Client name",
+          "placeholder": "Jane",
+          "size": "sm",
+          "type": "text",
+          "value": {
+            "$bindState": "/ui/payrollEmail/client_name"
+          }
+        },
+        "type": "TextInput"
+      },
+      "fieldInput_payment_date": {
+        "on": {
+          "change": {
+            "action": "xero-accounting.get_xero_payroll_email_draft",
+            "params": {
+              "client_name": {
+                "$state": "/ui/payrollEmail/client_name"
+              },
+              "payment_date": {
+                "$state": "/ui/payrollEmail/payment_date"
+              },
+              "reply_by": {
+                "$state": "/ui/payrollEmail/reply_by"
+              },
+              "sender_name": {
+                "$state": "/ui/payrollEmail/sender_name"
+              },
+              "template": {
+                "$state": "/ui/payrollEmail/template"
+              },
+              "to": {
+                "$state": "/ui/payrollEmail/to"
+              },
+              "total_to_pay": {
+                "$state": "/ui/payrollEmail/total_to_pay"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Payment date",
+          "placeholder": "Thu 30-Oct-26",
+          "size": "sm",
+          "type": "text",
+          "value": {
+            "$bindState": "/ui/payrollEmail/payment_date"
+          }
+        },
+        "type": "TextInput"
+      },
+      "fieldInput_reply_by": {
+        "on": {
+          "change": {
+            "action": "xero-accounting.get_xero_payroll_email_draft",
+            "params": {
+              "client_name": {
+                "$state": "/ui/payrollEmail/client_name"
+              },
+              "payment_date": {
+                "$state": "/ui/payrollEmail/payment_date"
+              },
+              "reply_by": {
+                "$state": "/ui/payrollEmail/reply_by"
+              },
+              "sender_name": {
+                "$state": "/ui/payrollEmail/sender_name"
+              },
+              "template": {
+                "$state": "/ui/payrollEmail/template"
+              },
+              "to": {
+                "$state": "/ui/payrollEmail/to"
+              },
+              "total_to_pay": {
+                "$state": "/ui/payrollEmail/total_to_pay"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Reply by",
+          "placeholder": "Wed 29-Oct-26, 12 PM",
+          "size": "sm",
+          "type": "text",
+          "value": {
+            "$bindState": "/ui/payrollEmail/reply_by"
+          }
+        },
+        "type": "TextInput"
+      },
+      "fieldInput_sender_name": {
+        "on": {
+          "change": {
+            "action": "xero-accounting.get_xero_payroll_email_draft",
+            "params": {
+              "client_name": {
+                "$state": "/ui/payrollEmail/client_name"
+              },
+              "payment_date": {
+                "$state": "/ui/payrollEmail/payment_date"
+              },
+              "reply_by": {
+                "$state": "/ui/payrollEmail/reply_by"
+              },
+              "sender_name": {
+                "$state": "/ui/payrollEmail/sender_name"
+              },
+              "template": {
+                "$state": "/ui/payrollEmail/template"
+              },
+              "to": {
+                "$state": "/ui/payrollEmail/to"
+              },
+              "total_to_pay": {
+                "$state": "/ui/payrollEmail/total_to_pay"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Your name",
+          "placeholder": "Sarah",
+          "size": "sm",
+          "type": "text",
+          "value": {
+            "$bindState": "/ui/payrollEmail/sender_name"
+          }
+        },
+        "type": "TextInput"
+      },
+      "fieldInput_to": {
+        "on": {
+          "change": {
+            "action": "xero-accounting.get_xero_payroll_email_draft",
+            "params": {
+              "client_name": {
+                "$state": "/ui/payrollEmail/client_name"
+              },
+              "payment_date": {
+                "$state": "/ui/payrollEmail/payment_date"
+              },
+              "reply_by": {
+                "$state": "/ui/payrollEmail/reply_by"
+              },
+              "sender_name": {
+                "$state": "/ui/payrollEmail/sender_name"
+              },
+              "template": {
+                "$state": "/ui/payrollEmail/template"
+              },
+              "to": {
+                "$state": "/ui/payrollEmail/to"
+              },
+              "total_to_pay": {
+                "$state": "/ui/payrollEmail/total_to_pay"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Client email",
+          "placeholder": "jane@client.com.au",
+          "size": "sm",
+          "type": "email",
+          "value": {
+            "$bindState": "/ui/payrollEmail/to"
+          }
+        },
+        "type": "TextInput"
+      },
+      "fieldInput_total_to_pay": {
+        "on": {
+          "change": {
+            "action": "xero-accounting.get_xero_payroll_email_draft",
+            "params": {
+              "client_name": {
+                "$state": "/ui/payrollEmail/client_name"
+              },
+              "payment_date": {
+                "$state": "/ui/payrollEmail/payment_date"
+              },
+              "reply_by": {
+                "$state": "/ui/payrollEmail/reply_by"
+              },
+              "sender_name": {
+                "$state": "/ui/payrollEmail/sender_name"
+              },
+              "template": {
+                "$state": "/ui/payrollEmail/template"
+              },
+              "to": {
+                "$state": "/ui/payrollEmail/to"
+              },
+              "total_to_pay": {
+                "$state": "/ui/payrollEmail/total_to_pay"
+              }
+            }
+          }
+        },
+        "props": {
+          "ariaLabel": "Total to pay",
+          "placeholder": "A$18,420.35",
+          "size": "sm",
+          "type": "text",
+          "value": {
+            "$bindState": "/ui/payrollEmail/total_to_pay"
+          }
+        },
+        "type": "TextInput"
+      },
+      "fieldLabel_client_name": {
+        "props": {
+          "text": "Client name"
+        },
+        "type": "Caption"
+      },
+      "fieldLabel_payment_date": {
+        "props": {
+          "text": "Payment date"
+        },
+        "type": "Caption"
+      },
+      "fieldLabel_reply_by": {
+        "props": {
+          "text": "Reply by"
+        },
+        "type": "Caption"
+      },
+      "fieldLabel_sender_name": {
+        "props": {
+          "text": "Your name"
+        },
+        "type": "Caption"
+      },
+      "fieldLabel_to": {
+        "props": {
+          "text": "Client email"
+        },
+        "type": "Caption"
+      },
+      "fieldLabel_total_to_pay": {
+        "props": {
+          "text": "Total to pay"
+        },
+        "type": "Caption"
+      },
+      "field_client_name": {
+        "children": [
+          "fieldLabel_client_name",
+          "fieldInput_client_name"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/xero-accounting/get_xero_payroll_email_draft/show/client_name"
+        }
+      },
+      "field_payment_date": {
+        "children": [
+          "fieldLabel_payment_date",
+          "fieldInput_payment_date"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/xero-accounting/get_xero_payroll_email_draft/show/payment_date"
+        }
+      },
+      "field_reply_by": {
+        "children": [
+          "fieldLabel_reply_by",
+          "fieldInput_reply_by"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/xero-accounting/get_xero_payroll_email_draft/show/reply_by"
+        }
+      },
+      "field_sender_name": {
+        "children": [
+          "fieldLabel_sender_name",
+          "fieldInput_sender_name"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/xero-accounting/get_xero_payroll_email_draft/show/sender_name"
+        }
+      },
+      "field_to": {
+        "children": [
+          "fieldLabel_to",
+          "fieldInput_to"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/xero-accounting/get_xero_payroll_email_draft/show/to"
+        }
+      },
+      "field_total_to_pay": {
+        "children": [
+          "fieldLabel_total_to_pay",
+          "fieldInput_total_to_pay"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/xero-accounting/get_xero_payroll_email_draft/show/total_to_pay"
+        }
+      },
+      "fields": {
+        "children": [
+          "field_to",
+          "field_client_name",
+          "field_total_to_pay",
+          "field_payment_date",
+          "field_reply_by",
+          "field_sender_name"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "type": "Grid"
+      },
+      "fillHead": {
+        "children": [
+          "fillHeadLabel",
+          "fillHeadCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "fillHeadCaption": {
+        "props": {
+          "text": "Xero fills the period and owner payments"
+        },
+        "type": "Caption"
+      },
+      "fillHeadLabel": {
+        "props": {
+          "text": "Fill in"
+        },
+        "type": "Eyebrow"
+      },
+      "footer": {
+        "children": [
+          "footerText",
+          "footerButtons"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "footerButtons": {
+        "children": [
+          "copyButton",
+          "outlookButton"
+        ],
+        "props": {
+          "gap": "sm",
+          "justify": "end"
+        },
+        "type": "Row"
+      },
+      "footerText": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_payroll_email_draft/footerText"
+          }
+        },
+        "type": "Caption"
+      },
+      "header": {
+        "children": [
+          "titleGroup"
+        ],
+        "type": "Header"
+      },
+      "loading": {
+        "children": [
+          "sk0",
+          "sk1",
+          "sk2"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/xero-accounting.get_xero_payroll_email_draft"
+        }
+      },
+      "mail": {
+        "children": [
+          "mailStack"
+        ],
+        "props": {
+          "variant": "bordered"
+        },
+        "type": "Section"
+      },
+      "mailBody": {
+        "props": {
+          "preserveLines": true,
+          "text": {
+            "$state": "/xero-accounting/get_xero_payroll_email_draft/body"
+          }
+        },
+        "type": "Text"
+      },
+      "mailDivider": {
+        "type": "Divider"
+      },
+      "mailStack": {
+        "children": [
+          "mailTo",
+          "mailSubject",
+          "mailDivider",
+          "mailBody"
+        ],
+        "props": {
+          "gap": "sm"
+        },
+        "type": "Stack"
+      },
+      "mailSubject": {
+        "props": {
+          "label": "Subject",
+          "value": {
+            "$state": "/xero-accounting/get_xero_payroll_email_draft/subject"
+          }
+        },
+        "type": "KeyValue"
+      },
+      "mailTo": {
+        "props": {
+          "label": "To",
+          "value": {
+            "$state": "/xero-accounting/get_xero_payroll_email_draft/toText"
+          }
+        },
+        "type": "KeyValue"
+      },
+      "outlookButton": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/xero-accounting/get_xero_payroll_email_draft/outlookUrl"
+              }
+            }
+          }
+        },
+        "props": {
+          "disabled": {
+            "$cond": {
+              "$state": "/xero-accounting/get_xero_payroll_email_draft/ready",
+              "eq": true
+            },
+            "$else": true,
+            "$then": false
+          },
+          "label": "Open in Outlook",
+          "leadingIcon": "Send",
+          "size": "sm",
+          "tone": "info",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "sk0": {
+        "props": {
+          "height": "2rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk1": {
+        "props": {
+          "height": "10rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sk2": {
+        "props": {
+          "height": "6rem",
+          "rounded": "md"
+        },
+        "type": "Skeleton"
+      },
+      "sourceBadge": {
+        "props": {
+          "text": {
+            "$item": "text"
+          },
+          "tone": "muted",
+          "variant": "outline"
+        },
+        "type": "Badge"
+      },
+      "sourceList": {
+        "children": [
+          "sourceBadge"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/xero-accounting/get_xero_payroll_email_draft/sources"
+        },
+        "type": "Row"
+      },
+      "status": {
+        "children": [
+          "statusBadge",
+          "sourceList"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack"
+      },
+      "statusBadge": {
+        "props": {
+          "text": {
+            "$state": "/xero-accounting/get_xero_payroll_email_draft/statusText"
+          },
+          "tone": {
+            "$state": "/xero-accounting/get_xero_payroll_email_draft/statusTone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "templates": {
+        "children": [
+          "tpl_approval",
+          "tpl_notice",
+          "tpl_confirmation",
+          "tpl_adjustments"
+        ],
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "type": "Grid"
+      },
+      "title": {
+        "props": {
+          "level": "h2",
+          "text": "Payroll Email Draft"
+        },
+        "type": "Heading"
+      },
+      "titleGroup": {
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ],
+        "props": {
+          "align": "start",
+          "gap": "sm"
+        },
+        "type": "Row"
+      },
+      "titleIcon": {
+        "props": {
+          "name": "Mail",
+          "size": "sm",
+          "tone": "accent"
+        },
+        "type": "Icon"
+      },
+      "titleStack": {
+        "children": [
+          "title",
+          "eyebrow"
+        ],
+        "props": {
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "tpl_adjustments": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/payrollEmail/template",
+                "value": "adjustments"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_payroll_email_draft",
+              "params": {
+                "client_name": {
+                  "$state": "/ui/payrollEmail/client_name"
+                },
+                "payment_date": {
+                  "$state": "/ui/payrollEmail/payment_date"
+                },
+                "reply_by": {
+                  "$state": "/ui/payrollEmail/reply_by"
+                },
+                "sender_name": {
+                  "$state": "/ui/payrollEmail/sender_name"
+                },
+                "template": "adjustments",
+                "to": {
+                  "$state": "/ui/payrollEmail/to"
+                },
+                "total_to_pay": {
+                  "$state": "/ui/payrollEmail/total_to_pay"
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Ask for changes",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/xero-accounting/get_xero_payroll_email_draft/template",
+              "eq": "adjustments"
+            },
+            "$else": "ghost",
+            "$then": "primary"
+          }
+        },
+        "type": "Button"
+      },
+      "tpl_approval": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/payrollEmail/template",
+                "value": "approval"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_payroll_email_draft",
+              "params": {
+                "client_name": {
+                  "$state": "/ui/payrollEmail/client_name"
+                },
+                "payment_date": {
+                  "$state": "/ui/payrollEmail/payment_date"
+                },
+                "reply_by": {
+                  "$state": "/ui/payrollEmail/reply_by"
+                },
+                "sender_name": {
+                  "$state": "/ui/payrollEmail/sender_name"
+                },
+                "template": "approval",
+                "to": {
+                  "$state": "/ui/payrollEmail/to"
+                },
+                "total_to_pay": {
+                  "$state": "/ui/payrollEmail/total_to_pay"
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Approval request",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/xero-accounting/get_xero_payroll_email_draft/template",
+              "eq": "approval"
+            },
+            "$else": "ghost",
+            "$then": "primary"
+          }
+        },
+        "type": "Button"
+      },
+      "tpl_confirmation": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/payrollEmail/template",
+                "value": "confirmation"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_payroll_email_draft",
+              "params": {
+                "client_name": {
+                  "$state": "/ui/payrollEmail/client_name"
+                },
+                "payment_date": {
+                  "$state": "/ui/payrollEmail/payment_date"
+                },
+                "reply_by": {
+                  "$state": "/ui/payrollEmail/reply_by"
+                },
+                "sender_name": {
+                  "$state": "/ui/payrollEmail/sender_name"
+                },
+                "template": "confirmation",
+                "to": {
+                  "$state": "/ui/payrollEmail/to"
+                },
+                "total_to_pay": {
+                  "$state": "/ui/payrollEmail/total_to_pay"
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Confirmation",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/xero-accounting/get_xero_payroll_email_draft/template",
+              "eq": "confirmation"
+            },
+            "$else": "ghost",
+            "$then": "primary"
+          }
+        },
+        "type": "Button"
+      },
+      "tpl_notice": {
+        "on": {
+          "click": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/payrollEmail/template",
+                "value": "notice"
+              }
+            },
+            {
+              "action": "xero-accounting.get_xero_payroll_email_draft",
+              "params": {
+                "client_name": {
+                  "$state": "/ui/payrollEmail/client_name"
+                },
+                "payment_date": {
+                  "$state": "/ui/payrollEmail/payment_date"
+                },
+                "reply_by": {
+                  "$state": "/ui/payrollEmail/reply_by"
+                },
+                "sender_name": {
+                  "$state": "/ui/payrollEmail/sender_name"
+                },
+                "template": "notice",
+                "to": {
+                  "$state": "/ui/payrollEmail/to"
+                },
+                "total_to_pay": {
+                  "$state": "/ui/payrollEmail/total_to_pay"
+                }
+              }
+            }
+          ]
+        },
+        "props": {
+          "label": "Payment notice",
+          "size": "sm",
+          "variant": {
+            "$cond": {
+              "$state": "/xero-accounting/get_xero_payroll_email_draft/template",
+              "eq": "notice"
+            },
+            "$else": "ghost",
+            "$then": "primary"
+          }
+        },
+        "type": "Button"
+      }
+    },
+    "root": "card"
+  },
+  "tags": [
+    "xero",
+    "payroll",
+    "email",
+    "templates",
+    "approval"
+  ],
+  "title": "Payroll Email Draft"
+}

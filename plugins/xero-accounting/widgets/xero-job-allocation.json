@@ -1,0 +1,461 @@
+{
+  "id": "xero-job-allocation",
+  "title": "Job Allocation",
+  "description": "Job costing at a glance, built on a Xero Tracking Category (no Xero Projects module required). Live-wired to xero-accounting: list_tracking_categories fires on mount and fans out to list_purchase_orders, list_invoices (Type==ACCPAY, i.e. bills), list_budgets, and get_organisation — a combined xero-accounting_job_allocation_overview computation converges as each result arrives. Hero: total committed $ across active job options + count of active jobs. Conditional over-budget banner for the worst job vs its Xero Budget. 4 clickable rows: PO job-tagging rate, bills matched to PO (variance count), expected deliveries (overdue POs), and tracking-category option usage against Xero's 100-option-per-category limit. Clicking a row (or the banner) opens an in-tile detail table filtered to that category. Footer: last-synced timestamp + 'View in Xero' deep link (go.xero.com, via the org's shortCode) to Purchase Orders.",
+  "category": "finance",
+  "tags": ["xero", "jobs", "job-costing", "purchase-orders", "tracking-categories", "budgets", "construction", "trades"],
+  "keywords": ["job allocation", "job costing", "tracking category", "purchase order", "po", "budget", "variance", "delivery", "xero"],
+  "connectorsUsed": ["xero-accounting"],
+  "popularity": 0,
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 8 },
+    "min":       { "colSpan": 3, "rowSpan": 7 },
+    "max":       { "colSpan": 6, "rowSpan": 11 }
+  },
+  "dataProvider": {
+    "mcp": "xero-accounting",
+    "tool": "list_tracking_categories",
+    "params": { "includeArchived": false, "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+  },
+  "spec": {
+    "root": "card",
+    "elements": {
+
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "div0", "body"],
+        "watch": {
+          "/xero-accounting/list_tracking_categories/TrackingCategories": [
+            {
+              "action": "xero-accounting.list_purchase_orders",
+              "params": { "order": "Date DESC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/jobAlloc",
+                "value": {
+                  "$computed": "xero-accounting_job_allocation_overview",
+                  "args": {
+                    "trackingCategories": { "$state": "/xero-accounting/list_tracking_categories/TrackingCategories" },
+                    "purchaseOrders": { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+                    "bills": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                    "budgets": { "$state": "/xero-accounting/list_budgets/Budgets" },
+                    "organisation": { "$state": "/xero-accounting/get_organisation" },
+                    "jobTrackingCategoryName": "Job",
+                    "optionLimit": 100
+                  }
+                }
+              }
+            }
+          ],
+          "/xero-accounting/list_purchase_orders/PurchaseOrders": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobAlloc",
+              "value": {
+                "$computed": "xero-accounting_job_allocation_overview",
+                "args": {
+                  "trackingCategories": { "$state": "/xero-accounting/list_tracking_categories/TrackingCategories" },
+                  "purchaseOrders": { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+                  "bills": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "budgets": { "$state": "/xero-accounting/list_budgets/Budgets" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "jobTrackingCategoryName": "Job",
+                  "optionLimit": 100
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["headerRow"],
+        "watch": {
+          "/xero-accounting/list_tracking_categories/TrackingCategories": {
+            "action": "xero-accounting.list_invoices",
+            "params": { "where": "Type==\"ACCPAY\"", "order": "Date DESC", "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+          },
+          "/xero-accounting/list_invoices/Invoices": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobAlloc",
+              "value": {
+                "$computed": "xero-accounting_job_allocation_overview",
+                "args": {
+                  "trackingCategories": { "$state": "/xero-accounting/list_tracking_categories/TrackingCategories" },
+                  "purchaseOrders": { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+                  "bills": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "budgets": { "$state": "/xero-accounting/list_budgets/Budgets" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "jobTrackingCategoryName": "Job",
+                  "optionLimit": 100
+                }
+              }
+            }
+          }
+        }
+      },
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup", "moreBtn"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["jobIcon", "titleStack"] },
+      "jobIcon": { "type": "Icon", "props": { "name": "Briefcase", "tone": "info", "size": "md" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Job Allocation", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Xero" } },
+      "moreBtn": { "type": "IconButton", "props": { "name": "MoreVertical", "tone": "muted", "ariaLabel": "More options" } },
+
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "content"],
+        "watch": {
+          "/xero-accounting/list_tracking_categories/TrackingCategories": [
+            {
+              "action": "xero-accounting.list_budgets",
+              "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+            },
+            {
+              "action": "xero-accounting.get_organisation",
+              "params": { "xero_tenant_id": "fb48e700-fb7b-4bec-b82c-4a84d3daf864" }
+            }
+          ],
+          "/xero-accounting/list_budgets/Budgets": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobAlloc",
+              "value": {
+                "$computed": "xero-accounting_job_allocation_overview",
+                "args": {
+                  "trackingCategories": { "$state": "/xero-accounting/list_tracking_categories/TrackingCategories" },
+                  "purchaseOrders": { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+                  "bills": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "budgets": { "$state": "/xero-accounting/list_budgets/Budgets" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "jobTrackingCategoryName": "Job",
+                  "optionLimit": 100
+                }
+              }
+            }
+          },
+          "/xero-accounting/get_organisation": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/jobAlloc",
+              "value": {
+                "$computed": "xero-accounting_job_allocation_overview",
+                "args": {
+                  "trackingCategories": { "$state": "/xero-accounting/list_tracking_categories/TrackingCategories" },
+                  "purchaseOrders": { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+                  "bills": { "$state": "/xero-accounting/list_invoices/Invoices" },
+                  "budgets": { "$state": "/xero-accounting/list_budgets/Budgets" },
+                  "organisation": { "$state": "/xero-accounting/get_organisation" },
+                  "jobTrackingCategoryName": "Job",
+                  "optionLimit": 100
+                }
+              }
+            }
+          }
+        }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["sk1", "sk2", "sk3"],
+        "visible": {
+          "$or": [
+            { "$state": "/_loading/xero-accounting.list_tracking_categories" },
+            { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders", "not": true },
+            { "$state": "/xero-accounting/list_invoices/Invoices", "not": true },
+            { "$state": "/xero-accounting/list_budgets/Budgets", "not": true }
+          ]
+        }
+      },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+
+      "empty": {
+        "type": "Empty",
+        "props": { "message": "No active jobs found — add options to your Job tracking category to start allocating purchase orders and bills." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_tracking_categories", "not": true },
+            { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+            { "$state": "/xero-accounting/list_invoices/Invoices" },
+            { "$state": "/ui/jobAlloc/activeJobCount", "not": true }
+          ]
+        }
+      },
+
+      "content": {
+        "type": "Stack",
+        "props": { "gap": "md" },
+        "children": ["heroRow", "heroCaption", "overBudgetBanner", "div1", "rowStack", "div2", "detailSection", "footerRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/xero-accounting.list_tracking_categories", "not": true },
+            { "$state": "/xero-accounting/list_purchase_orders/PurchaseOrders" },
+            { "$state": "/xero-accounting/list_invoices/Invoices" },
+            { "$state": "/ui/jobAlloc/activeJobCount" }
+          ]
+        }
+      },
+
+      "heroRow": {
+        "type": "Stat",
+        "props": {
+          "value": { "$state": "/ui/jobAlloc/totalCommittedDisplay" },
+          "size": "lg"
+        }
+      },
+      "heroCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "committed across {n} active jobs",
+              "n": { "$state": "/ui/jobAlloc/activeJobCount" }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+
+      "overBudgetBanner": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "clickable": true, "hover": true },
+        "children": ["overBudgetIcon", "overBudgetText"],
+        "visible": { "$state": "/ui/jobAlloc/overBudgetJob/name" },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Tracking Category" } },
+            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
+          ]
+        }
+      },
+      "overBudgetIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
+      "overBudgetText": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{job} is {pct}% over budget",
+              "job": { "$state": "/ui/jobAlloc/overBudgetJob/name" },
+              "pct": { "$state": "/ui/jobAlloc/overBudgetJob/pctOver" }
+            }
+          },
+          "tone": "destructive",
+          "weight": "semibold",
+          "size": "sm"
+        }
+      },
+
+      "div1": { "type": "Divider", "props": {} },
+
+      "rowStack": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["poTagRow", "billMatchRow", "deliveryRow", "trackingRow"]
+      },
+
+      "poTagRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "clickable": true, "selected": true },
+        "children": ["poTagLeft", "poTagRight"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "PO Tagging" } },
+            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
+          ]
+        }
+      },
+      "poTagLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["poTagIcon", "poTagLabel"] },
+      "poTagIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "info", "size": "sm" } },
+      "poTagLabel": { "type": "Text", "props": { "text": "PO job-tagging", "size": "md" } },
+      "poTagRight": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{pct}% · {n} to review",
+              "pct": { "$state": "/ui/jobAlloc/poTagging/pct" },
+              "n": { "$state": "/ui/jobAlloc/poTagging/toReviewCount" }
+            }
+          },
+          "tone": "info",
+          "variant": "soft"
+        }
+      },
+
+      "billMatchRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "clickable": true, "selected": true },
+        "children": ["billMatchLeft", "billMatchRight"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Bill Variance" } },
+            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
+          ]
+        }
+      },
+      "billMatchLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["billMatchIcon", "billMatchLabel"] },
+      "billMatchIcon": { "type": "Icon", "props": { "name": "FileCheck", "tone": "accent", "size": "sm" } },
+      "billMatchLabel": { "type": "Text", "props": { "text": "Bills matched to PO", "size": "md" } },
+      "billMatchRight": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} variances", "n": { "$state": "/ui/jobAlloc/billsMatched/varianceCount" } }
+          },
+          "tone": "accent",
+          "variant": "soft"
+        }
+      },
+
+      "deliveryRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "clickable": true, "selected": true },
+        "children": ["deliveryLeft", "deliveryRight"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Delivery" } },
+            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
+          ]
+        }
+      },
+      "deliveryLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["deliveryIcon", "deliveryLabel"] },
+      "deliveryIcon": { "type": "Icon", "props": { "name": "Truck", "tone": "warning", "size": "sm" } },
+      "deliveryLabel": { "type": "Text", "props": { "text": "Expected deliveries", "size": "md" } },
+      "deliveryRight": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} overdue", "n": { "$state": "/ui/jobAlloc/deliveries/overdueCount" } }
+          },
+          "tone": "warning",
+          "variant": "soft"
+        }
+      },
+
+      "trackingRow": {
+        "type": "Row",
+        "props": { "justify": "between", "align": "center", "clickable": true, "selected": true },
+        "children": ["trackingLeft", "trackingRight"],
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/selectedCategory", "value": "Tracking Category" } },
+            { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": true } }
+          ]
+        }
+      },
+      "trackingLeft": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["trackingIcon", "trackingLabel"] },
+      "trackingIcon": { "type": "Icon", "props": { "name": "Diamond", "tone": "success", "size": "sm" } },
+      "trackingLabel": { "type": "Text", "props": { "text": "Tracking categories", "size": "md" } },
+      "trackingRight": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{used} of {limit}",
+              "used": { "$state": "/ui/jobAlloc/trackingUsage/used" },
+              "limit": { "$state": "/ui/jobAlloc/trackingUsage/limit" }
+            }
+          },
+          "tone": "success",
+          "variant": "soft"
+        }
+      },
+
+      "div2": { "type": "Divider", "props": {} },
+
+      "detailSection": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["detailHeaderRow", "detailTable"],
+        "visible": { "$state": "/ui/showDetail" }
+      },
+      "detailHeaderRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["detailHeading", "detailCloseBtn"] },
+      "detailHeading": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "Reviewing: {c}", "c": { "$state": "/ui/selectedCategory" } }
+          },
+          "size": "sm",
+          "weight": "semibold"
+        }
+      },
+      "detailCloseBtn": {
+        "type": "IconButton",
+        "props": { "icon": "X", "tone": "muted", "size": "sm", "ariaLabel": "Close" },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/showDetail", "value": false } } }
+      },
+      "detailTable": {
+        "type": "Table",
+        "props": {
+          "rows": {
+            "$computed": "top_n",
+            "args": {
+              "value": {
+                "$computed": "filter_by",
+                "args": {
+                  "value": { "$state": "/ui/jobAlloc/detailRows" },
+                  "field": "category",
+                  "equals": { "$state": "/ui/selectedCategory" }
+                }
+              },
+              "limit": 20
+            }
+          },
+          "columns": [
+            { "id": "job", "header": "Job", "field": "job", "priority": 1 },
+            { "id": "label", "header": "Record", "field": "label", "priority": 1 },
+            { "id": "detail", "header": "Detail", "field": "detail", "priority": 2 },
+            { "id": "severity", "header": "Status", "field": "severity", "priority": 1, "width": 90 }
+          ]
+        }
+      },
+
+      "footerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["syncedCaption", "viewInXeroLink"] },
+      "syncedCaption": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "Synced {t}",
+              "t": { "$computed": "xero-accounting_time_ago", "args": { "value": { "$state": "/ui/jobAlloc/lastSyncedAt" } } }
+            }
+          },
+          "tone": "muted"
+        }
+      },
+      "viewInXeroLink": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "clickable": true },
+        "children": ["viewInXeroLabel", "viewInXeroIcon"],
+        "on": {
+          "click": { "action": "open_url", "params": { "url": { "$state": "/ui/jobAlloc/reviewUrl" }, "target": "_blank" } }
+        }
+      },
+      "viewInXeroLabel": { "type": "Text", "props": { "text": "View in Xero", "size": "sm", "tone": "accent", "weight": "medium" } },
+      "viewInXeroIcon": { "type": "Icon", "props": { "name": "ArrowUpRight", "tone": "accent", "size": "sm" } }
+
+    }
+  },
+  "status": "draft"
+}

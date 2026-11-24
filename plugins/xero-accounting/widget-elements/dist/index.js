@@ -75,6 +75,17 @@ const status_tone = (args) => {
         return 'destructive';
     return 'default';
 };
+// ── status_label ─────────────────────────────────────────────────────
+// TILE-DISPLAY-STANDARDS.md §3: never pass a raw connector enum straight
+// to a Badge — Title Case the Xero status string (e.g. "AUTHORISED" →
+// "Authorised") rather than showing the raw SCREAMING_CASE enum. Tone
+// alone (status_tone) only controls color, not casing.
+const status_label = (args) => {
+    const s = String(args.value ?? '');
+    if (!s)
+        return '';
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+};
 // ── bank_tx_icon ─────────────────────────────────────────────────────
 // Lucide icon name for a bank-transaction Type. RECEIVE* → down-arrow,
 // SPEND* → up-arrow, anything else → neutral receipt.
@@ -95,6 +106,322 @@ const bank_tx_tone = (args) => {
     if (t.startsWith('SPEND'))
         return 'destructive';
     return 'muted';
+};
+// ── bank_tx_label ────────────────────────────────────────────────────
+// TILE-DISPLAY-STANDARDS.md §3: never show a raw connector enum. Xero's
+// real Type values include suffixed variants (SPEND-OVERPAYMENT,
+// RECEIVE-TRANSFER, etc.) — this collapses all of them to the plain
+// direction word, same grouping bank_tx_icon/bank_tx_tone already use.
+const bank_tx_label = (args) => {
+    const t = String(args.value ?? '');
+    if (t.startsWith('RECEIVE'))
+        return 'Receive';
+    if (t.startsWith('SPEND'))
+        return 'Spend';
+    return t;
+};
+/**
+ * Flattens a `list_bank_transactions` response into rows for the system
+ * `Table` component. Switched from a hand-rolled Row/grid-template list
+ * (TILE-DISPLAY-STANDARDS note: avoid fixed-width CSS grid rows for
+ * tabular data) because that layout's fixed-width columns had no
+ * overflow handling at narrow tile sizes -- long contact/account names
+ * spilled visually into neighbouring columns instead of truncating or
+ * scrolling. Table renders a real `table-fixed` table with explicit
+ * column widths wrapped in an auto-scroll container, so columns keep
+ * their position at any tile size and the row scrolls horizontally
+ * instead of overlapping.
+ *
+ * Type/Status are returned as plain label strings (not badge tone
+ * values) -- Table's `variant: "badge"` tone only resolves through a
+ * pre-registered system `cellToneFormatters` entry, and neither
+ * Spend/Receive nor Reconciled/Unreconciled has one today. Colouring
+ * them would mean adding to that shared system registry (a myHubV2
+ * change, not a plugin-local one) rather than something this function
+ * can carry on its own -- left as plain text for now, confirmed
+ * acceptable with the requester rather than assumed.
+ *
+ * Table's default-variant cells are hardcoded single-line (`truncate
+ * whitespace-nowrap` in the system component) -- there's no cell style
+ * for stacking two lines of plain text the way the original hand-rolled
+ * row did (name on top, account below). Rather than a myHubV2 change to
+ * add one, Contact and Account are combined into a single "Contact ·
+ * Account" string column here and left to truncate like every other
+ * cell, confirmed acceptable with the requester rather than assumed.
+ *
+ * Args: { transactions: array }
+ * Returns: array of { id, typeLabel, contactAccount, amount,
+ *   statusLabel, date, detailUrl }
+ */
+const reconciliation_rows = (args) => {
+    const transactions = Array.isArray(args.transactions) ? args.transactions : [];
+    return transactions.map((t) => {
+        const id = String(t.BankTransactionID ?? '');
+        const contact = t.Contact;
+        const bankAccount = t.BankAccount;
+        const isReconciled = t.IsReconciled === true;
+        const contactName = contact?.Name || '';
+        const bankAccountName = bankAccount?.Name || '';
+        return {
+            id,
+            typeLabel: bank_tx_label({ value: t.Type }),
+            contactAccount: [contactName, bankAccountName].filter(Boolean).join(' · ') || '—',
+            amount: typeof t.Total === 'number' ? t.Total : Number(t.Total) || 0,
+            statusLabel: isReconciled ? 'Reconciled' : 'Unreconciled',
+            date: t.Date ?? null,
+            detailUrl: id
+                ? `https://go.xero.com/Bank/ViewTransaction.aspx?bankTransactionID=${id}`
+                : 'https://go.xero.com/',
+        };
+    });
+};
+// ── reconciliation_breakdown ─────────────────────────────────────────
+// Reconciled/unreconciled is a real binary status (TILE-DISPLAY-STANDARDS.md
+// §7's restraint model applies, not the categorical chart palette) —
+// "success" always means done/paid/completed, matching a reconciled
+// transaction; "warning" for unreconciled since it's a real pending
+// action item, not a no-news-is-good-news default.
+// Args: { transactions: array }
+// Returns: { total, reconciled, unreconciled, segments: [{ status, count, tone }], template }
+const reconciliation_breakdown = (args) => {
+    const transactions = Array.isArray(args.transactions) ? args.transactions : [];
+    const reconciled = transactions.filter((t) => t.IsReconciled === true).length;
+    const unreconciled = transactions.length - reconciled;
+    const segments = [
+        { status: 'Reconciled', count: reconciled, tone: 'success' },
+        { status: 'Unreconciled', count: unreconciled, tone: 'warning' },
+    ].filter((s) => s.count > 0);
+    return {
+        total: transactions.length,
+        reconciled,
+        unreconciled,
+        segments,
+        template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
+    };
+};
+const AQ_PATHS = {
+    inv: '/AccountsReceivable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED',
+    bill: '/AccountsPayable/Search.aspx?invoiceStatus=INVOICESTATUS/AUTHORISED',
+    rec: '/Bank/BankAccounts.aspx',
+    exp: '/ExpenseClaims/?status=SUBMITTED',
+    home: '/Dashboard/',
+};
+const aqXeroLink = (shortCode, path) => shortCode
+    ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(path)}`
+    : `https://go.xero.com${path}`;
+const aqNotReconciled = (v) => v === false || v === 'false';
+const aqAuthorised = (v) => v === undefined || v === 'AUTHORISED';
+const aqFailed = (v) => typeof v === 'string' && v.length > 0;
+const aqRow = (count, sub, activePill, activeTone, url) => {
+    if (count === '—')
+        return { count, sub, pill: '', pillTone: 'muted', countTone: 'muted', url };
+    const active = count > 0;
+    return {
+        count,
+        sub,
+        pill: active ? activePill : 'All Clear',
+        pillTone: active ? activeTone : 'success',
+        countTone: active ? activeTone : 'muted',
+        url,
+    };
+};
+const action_queue_view = (args) => {
+    const list = (v) => (Array.isArray(v) ? v : null);
+    const invoices = list(args.invoices);
+    const bankTransactions = list(args.bankTransactions);
+    const payments = list(args.payments);
+    const bankAccounts = list(args.bankAccounts);
+    const expenseClaims = list(args.expenseClaims);
+    const org = (args.organisation ?? {});
+    const orgName = String(org.Name ?? '').trim();
+    const shortCode = String(org.ShortCode ?? '').trim();
+    const link = (path) => aqXeroLink(shortCode, path);
+    const invCount = invoices ? invoices.filter((i) => i.Type === 'ACCREC').length : '—';
+    const billCount = invoices ? invoices.filter((i) => i.Type === 'ACCPAY').length : '—';
+    let recCount = '—';
+    let recSub = 'Entered in Xero, not yet reconciled';
+    if (bankTransactions) {
+        const unmatchedTx = bankTransactions.filter((t) => aqNotReconciled(t.IsReconciled) && aqAuthorised(t.Status)).length;
+        if (payments && bankAccounts) {
+            const bankIds = new Set(bankAccounts
+                .filter((a) => a.Type === undefined || a.Type === 'BANK')
+                .map((a) => String(a.AccountID ?? ''))
+                .filter(Boolean));
+            let single = 0;
+            const batches = new Set();
+            for (const p of payments) {
+                if (!aqNotReconciled(p.IsReconciled) || !aqAuthorised(p.Status))
+                    continue;
+                const accountId = String(p.Account?.AccountID ?? '');
+                if (!bankIds.has(accountId))
+                    continue;
+                const batchId = String(p.BatchPaymentID ?? p.BatchPayment?.BatchPaymentID ?? '');
+                if (batchId)
+                    batches.add(batchId);
+                else
+                    single += 1;
+            }
+            recCount = unmatchedTx + single + batches.size;
+        }
+        else if (aqFailed(args.paymentsError) || aqFailed(args.bankAccountsError)) {
+            recCount = unmatchedTx;
+            recSub = 'Bank transactions only: Xero did not return payments';
+        }
+    }
+    const expCount = expenseClaims ? expenseClaims.length : '—';
+    const rows = {
+        inv: aqRow(invCount, invCount === '—' ? '—' : `${invCount} outstanding`, 'Chase Up', 'destructive', link(AQ_PATHS.inv)),
+        bill: aqRow(billCount, billCount === '—' ? '—' : `${billCount} outstanding`, 'Due Soon', 'warning', link(AQ_PATHS.bill)),
+        rec: aqRow(recCount, recSub, 'To Review', 'warning', link(AQ_PATHS.rec)),
+        exp: aqRow(expCount, 'Awaiting Approval', 'To Approve', 'warning', link(AQ_PATHS.exp)),
+    };
+    const ready = invoices !== null;
+    const total = Object.values(rows).reduce((n, r) => n + (typeof r.count === 'number' ? r.count : 0), 0);
+    const attention = total === 0 ? 'Nothing needs your attention' : `${total} ${total === 1 ? 'item needs' : 'items need'} your attention`;
+    return {
+        ready,
+        orgName,
+        headline: ready ? (orgName ? `${orgName} · ${attention}` : attention) : 'Waiting for Xero…',
+        homeUrl: shortCode ? link(AQ_PATHS.home) : 'https://go.xero.com/',
+        rows,
+    };
+};
+// Supplier is a portal-defined, open-ended label with no inherent
+// good/bad meaning — a categorical (non-status) case per
+// TILE-DISPLAY-STANDARDS.md §7, so it gets the `chart-1..5` palette.
+// Only the top 5 suppliers by total amount paid get a distinct color;
+// everyone else falls back to `muted` rather than reusing a color,
+// which would falsely imply they're grouped with a top-5 supplier.
+const REMITTANCE_CHART_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+function rankSuppliersByTotalPaid(payments) {
+    const totals = new Map();
+    for (const payment of payments) {
+        const invoice = payment.Invoice;
+        const supplier = invoice?.Contact?.Name || 'Unknown supplier';
+        const amount = Number(payment.Amount) || 0;
+        totals.set(supplier, (totals.get(supplier) ?? 0) + amount);
+    }
+    const toneBySupplier = new Map();
+    [...totals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([supplier], i) => {
+        toneBySupplier.set(supplier, i < REMITTANCE_CHART_TONES.length ? REMITTANCE_CHART_TONES[i] : 'muted');
+    });
+    return toneBySupplier;
+}
+/**
+ * Flattens a `list_payments` response (already filtered to
+ * PaymentType=="ACCPAYPAYMENT") into rows for the Remittance tile — an
+ * approximation of Xero's own remittance advice document (which invoices
+ * were paid, to whom, how much, when), since Xero's public API has no
+ * dedicated remittance-advice resource of its own.
+ *
+ * Each row carries `supplierTone` (chart-1..5 for the top 5 suppliers by
+ * total amount paid, muted for the rest) so a row's supplier badge and
+ * `xero-accounting_remittance_breakdown`'s bar segment for that same
+ * supplier always share one color — the breakdown function reads this
+ * same field rather than re-ranking independently.
+ *
+ * Args: { payments: array }
+ * Returns: array of { id, supplier, supplierTone, invoiceId, invoiceNumber, amount, currencyCode, date }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "xero-accounting_remittance_rows",
+ *     "args": { "payments": { "$state": "/xero-accounting/list_payments/Payments" } }
+ *   }
+ */
+const remittance_rows = (args) => {
+    const payments = Array.isArray(args.payments) ? args.payments : [];
+    const toneBySupplier = rankSuppliersByTotalPaid(payments);
+    return payments.map((payment) => {
+        const invoice = payment.Invoice;
+        const account = payment.Account;
+        const supplier = invoice?.Contact?.Name || 'Unknown supplier';
+        return {
+            id: payment.PaymentID,
+            supplier,
+            supplierTone: toneBySupplier.get(supplier) ?? 'muted',
+            invoiceId: invoice?.InvoiceID ?? null,
+            invoiceNumber: invoice?.InvoiceNumber || '—',
+            amount: Number(payment.Amount) || 0,
+            currencyCode: account?.CurrencyCode || 'AUD',
+            date: payment.Date ?? null,
+        };
+    });
+};
+/**
+ * Groups Remittance rows (from `xero-accounting_remittance_rows`) into a
+ * top-5-suppliers-by-amount-paid breakdown, reading each row's
+ * already-assigned `supplierTone` rather than re-ranking, so the bar's
+ * segment colors always match the row badges for the same supplier.
+ * Segment width is proportional to amount paid (not row count), so the
+ * bar visually communicates "who got paid the most", not just "who has
+ * the most transactions".
+ *
+ * Args: { rows: array }
+ * Returns: { total, segments: [{ supplier, amount, tone }], template }
+ *
+ * Spec example:
+ *   {
+ *     "$computed": "xero-accounting_remittance_breakdown",
+ *     "args": { "rows": { "$state": "/ui/rows" } }
+ *   }
+ */
+const remittance_breakdown = (args) => {
+    const rows = Array.isArray(args.rows) ? args.rows : [];
+    const totals = new Map();
+    for (const row of rows) {
+        const supplier = typeof row.supplier === 'string' && row.supplier ? row.supplier : 'Unknown supplier';
+        const entry = totals.get(supplier) ?? { supplier, amount: 0, tone: row.supplierTone ?? 'muted' };
+        entry.amount += Number(row.amount) || 0;
+        totals.set(supplier, entry);
+    }
+    const segments = [...totals.values()]
+        .filter((s) => s.tone !== 'muted')
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+    return {
+        total: rows.length,
+        segments,
+        template: segments.length ? segments.map((s) => `${Math.max(1, Math.round(s.amount))}fr`).join(' ') : '1fr',
+    };
+};
+/**
+ * Flattens a `list_receipts` response (already filtered to Status=="DRAFT")
+ * into rows for the Reimbursement Drafts tile. A Receipt is the Xero
+ * object an employee fills in before it's grouped into an ExpenseClaim
+ * for approval — "DRAFT" only exists at this level (ExpenseClaim itself
+ * starts at SUBMITTED), so this is genuinely "things not yet submitted
+ * for reimbursement", not an approximation.
+ *
+ * `isEmpty` flags a receipt with no line items / zero total — i.e.
+ * someone started it in Xero and never finished — which is the real
+ * actionable signal for this tile (a stale, abandoned draft vs. one
+ * that's filled in and just needs submitting).
+ *
+ * Args: { receipts: array }
+ * Returns: array of { id, userName, payee, amount, currencyCode, lineItemCount, isEmpty, updatedDate }
+ */
+const reimbursement_draft_rows = (args) => {
+    const receipts = Array.isArray(args.receipts) ? args.receipts : [];
+    return receipts.map((receipt) => {
+        const user = receipt.User;
+        const contact = receipt.Contact;
+        const lineItems = Array.isArray(receipt.LineItems) ? receipt.LineItems : [];
+        const total = Number(receipt.Total) || 0;
+        const userName = [user?.FirstName, user?.LastName].filter(Boolean).join(' ') || 'Unknown';
+        return {
+            id: receipt.ReceiptID,
+            userName,
+            payee: contact?.Name || '—',
+            amount: total,
+            currencyCode: receipt.CurrencyCode || 'AUD',
+            lineItemCount: lineItems.length,
+            isEmpty: lineItems.length === 0 && total === 0,
+            updatedDate: receipt.UpdatedDateUTC ?? null,
+        };
+    });
 };
 const flatten_report_rows = (args) => {
     const include = Array.isArray(args.includeTypes)
@@ -274,6 +601,39 @@ const overdue_only = (args) => {
         return Number.isFinite(n) && n > 0;
     });
 };
+// ── awaiting_payment_breakdown ────────────────────────────────────────
+// Groups a list of AUTHORISED (not yet paid) invoices/bills by due-date
+// severity, using the exact same thresholds as `overdue_tone` so a
+// segment's color always matches what each row's own Dot/Badge already
+// shows — never a second, independently-derived color language for the
+// same underlying value.
+// Args: { invoices: array }
+// Returns: { total, segments: [{ status, count, tone }], template }
+const awaiting_payment_breakdown = (args) => {
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    let notYetDue = 0;
+    let overdue = 0;
+    let wellOverdue = 0;
+    for (const inv of invoices) {
+        const n = Number(days_overdue({ value: inv.DueDate }));
+        if (!Number.isFinite(n) || n <= 0)
+            notYetDue += 1;
+        else if (n <= 30)
+            overdue += 1;
+        else
+            wellOverdue += 1;
+    }
+    const segments = [
+        { status: 'Not yet due', count: notYetDue, tone: 'muted' },
+        { status: 'Overdue', count: overdue, tone: 'warning' },
+        { status: 'Well overdue', count: wellOverdue, tone: 'destructive' },
+    ].filter((s) => s.count > 0);
+    return {
+        total: invoices.length,
+        segments,
+        template: segments.length ? segments.map((s) => `${s.count}fr`).join(' ') : '1fr',
+    };
+};
 // ── age_buckets ──────────────────────────────────────────────────────
 // Aggregate a list of invoices into the 5 standard aging buckets.
 // Returns a fixed-order array — always 5 entries, even buckets with no
@@ -358,21 +718,2414 @@ const age_bucket_tone = (args) => {
         return 'warning';
     return 'destructive';
 };
+// ── analyze_duplicates ───────────────────────────────────────────────
+// Cross-checks Xero Contacts, Invoices (both ACCPAY bills and ACCREC
+// sales invoices), BankTransactions, and Payments for likely duplicates.
+// Each of the 4 raw arrays may still be undefined (its tool call hasn't
+// resolved yet) — treated as empty until it arrives, so the result
+// converges as each of the 4 chained tool calls lands.
+//
+// "Same Contact" below means the same CANONICAL contact — Contacts that are
+// themselves flagged as duplicates of each other (shared email/tax, or a
+// fuzzy name hit) are merged into one cluster first, so a bill/invoice/bank
+// line split across two duplicate contact records (e.g. "Acme" vs "Acme Pty
+// Ltd", both real records for the same vendor) still matches its counterpart
+// under the sibling record.
+//
+// Match rules, each tagged 'exact' or 'fuzzy' (see matchMode below):
+//   Contacts        — exact: same normalized EmailAddress OR TaxNumber (ABN).
+//                      fuzzy: similar Name (Levenshtein ratio >=0.82,
+//                      bucketed by first name-token).
+//   Supplier Bills   — Invoices where Type=="ACCPAY". exact: same Contact +
+//                      same non-blank InvoiceNumber (a blank number is never
+//                      matched — too common and not a real signal). fuzzy:
+//                      same Contact + same Total, whole-group date span <=1
+//                      day.
+//   Sales Invoices   — Invoices where Type=="ACCREC". list_invoices always
+//                      returns LineItems: [] (only the single-invoice
+//                      get_invoice call returns real line detail), so no
+//                      per-line signature is available. exact: same Contact
+//                      + same Total + same calendar day. fuzzy: same
+//                      Contact + same Total, within 1 day of an exact-tagged
+//                      match (catches a same-batch entry a day either side).
+//                      A recurring same-amount invoice spread weeks/months
+//                      apart matches neither tier.
+//   Spend/Receive    — BankTransactions: same BankAccount + same Contact +
+//                      same Total + same Type, whole-group date span <=1 day
+//                      to qualify at all (excludes recurring fixed-amount
+//                      transactions, whose adjacent gaps can be short even
+//                      though the whole series spans months). exact: members
+//                      sharing the same calendar day within that group.
+//                      fuzzy: the rest of the qualifying group.
+//   Payments         — exact only: a Payment whose Invoice has more than
+//                      one Payment against it ("paid twice"), or whose
+//                      Invoice's total Payments exceed the Invoice's own
+//                      Total (overpaid). Counts flagged payment records,
+//                      not invoices.
+//
+// valueAtRisk sums AmountDue across flagged, still-unpaid (Status ==
+// "AUTHORISED") Supplier Bills + Sales Invoices only — the only two
+// categories with a genuine "unpaid amount" concept.
+//
+// periodDays (default 90) drops records older than that many days before
+// matching runs, using each entity's own recency field (Contacts:
+// UpdatedDateUTC; Invoices/BankTransactions/Payments: Date) — a client-side
+// window over whatever's already been fetched, not a fresh server query
+// (Xero tool-call params can't read a live filter value).
+//
+// matchMode ('exact' | 'exact_fuzzy' | 'fuzzy', default 'exact_fuzzy')
+// selects which tagged tier(s) count toward each category's final total.
+//
+// statusMode ('open' | 'reviewed' | 'all', default 'open') — there's no
+// "mark as reviewed" feature, so 'reviewed' honestly returns zero
+// duplicates everywhere; 'open'/'all' both show everything currently
+// flagged. Doesn't affect recordsScanned.
+//
+// detailRows returns one row per flagged record surviving the period/match
+// filters — { category, label, detail, severity } — for a click-through
+// drill-down table. Severity per row reuses the fixed per-category
+// severity already shown on the category badges (Medium/High).
+//
+// Args: { contacts?: Contact[], invoices?: Invoice[],
+//         bankTransactions?: BankTransaction[], payments?: Payment[],
+//         periodDays?: number, matchMode?: string, statusMode?: string }
+const analyze_duplicates = (args) => {
+    const periodDays = Number(args.periodDays) > 0 ? Number(args.periodDays) : 90;
+    const matchMode = ['exact', 'fuzzy'].includes(String(args.matchMode)) ? String(args.matchMode) : 'exact_fuzzy';
+    const statusMode = ['reviewed', 'all'].includes(String(args.statusMode)) ? String(args.statusMode) : 'open';
+    const tierAllowed = (tier) => matchMode === 'exact_fuzzy' || matchMode === tier;
+    const now = Date.now();
+    const withinPeriod = (raw) => {
+        const ms = toEpochMs(raw);
+        if (ms == null)
+            return true; // no date on the record — don't exclude it
+        return (now - ms) / 86_400_000 <= periodDays;
+    };
+    const rawContacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const rawInvoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const rawBankTx = Array.isArray(args.bankTransactions) ? args.bankTransactions : [];
+    const rawPayments = Array.isArray(args.payments) ? args.payments : [];
+    // Xero's list endpoints return VOIDED/DELETED historical records alongside
+    // active ones (confirmed against real data: a genuinely voided bank
+    // transaction and a deleted payment were both being treated as live
+    // duplicates of their still-active counterpart). Invoices allow DRAFT/
+    // SUBMITTED/AUTHORISED/PAID as legitimately active — only VOIDED/DELETED
+    // are excluded. BankTransactions/Payments only have AUTHORISED/DELETED,
+    // so only AUTHORISED counts.
+    const isActiveInvoice = (inv) => !['VOIDED', 'DELETED'].includes(String(inv.Status ?? ''));
+    const contacts = rawContacts.filter((c) => withinPeriod(c.UpdatedDateUTC));
+    const invoices = rawInvoices.filter((inv) => isActiveInvoice(inv) && withinPeriod(inv.Date));
+    const bankTx = rawBankTx.filter((tx) => tx.Status === 'AUTHORISED' && withinPeriod(tx.Date));
+    const payments = rawPayments.filter((p) => p.Status === 'AUTHORISED' && withinPeriod(p.Date));
+    const normEmail = (s) => String(s ?? '').toLowerCase().trim();
+    const normTax = (s) => String(s ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const normName = (s) => String(s ?? '').toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+    const levenshteinRatio = (a, b) => {
+        if (a === b)
+            return 1;
+        if (!a.length || !b.length)
+            return 0;
+        const m = a.length, n = b.length;
+        const dp = new Array(n + 1);
+        for (let j = 0; j <= n; j++)
+            dp[j] = j;
+        for (let i = 1; i <= m; i++) {
+            let prev = dp[0];
+            dp[0] = i;
+            for (let j = 1; j <= n; j++) {
+                const tmp = dp[j];
+                dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+                prev = tmp;
+            }
+        }
+        return 1 - dp[n] / Math.max(m, n);
+    };
+    const daysBetween = (a, b) => {
+        const ma = toEpochMs(a);
+        const mb = toEpochMs(b);
+        if (ma == null || mb == null)
+            return Infinity;
+        return Math.abs(ma - mb) / 86_400_000;
+    };
+    const detailRows = [];
+    // ── Contacts ─────────────────────────────────────────────────────
+    // Union-Find over contact IDs: any two contacts linked by the SAME match
+    // rule used for contactTier below (shared email/tax, or a fuzzy name hit)
+    // are merged into one canonical cluster. Bills/Sales Invoices/Bank
+    // Transactions use `canonicalContact()` instead of the raw Contact ID when
+    // grouping, so an invoice split across two duplicate contact records (e.g.
+    // "Acme" and "Acme Pty Ltd" both real records for the same vendor) still
+    // gets matched against its counterpart under the sibling record — the
+    // single biggest source of missed cross-category duplicates confirmed
+    // against real data (a supplier's bills split across two near-duplicate
+    // contact records were otherwise invisible to each other).
+    const contactParent = new Map();
+    const findContactRoot = (id) => {
+        if (!contactParent.has(id))
+            contactParent.set(id, id);
+        let root = id;
+        while (contactParent.get(root) !== root)
+            root = contactParent.get(root);
+        let cur = id;
+        while (contactParent.get(cur) !== root) {
+            const next = contactParent.get(cur);
+            contactParent.set(cur, root);
+            cur = next;
+        }
+        return root;
+    };
+    const unionContacts = (a, b) => {
+        const ra = findContactRoot(a);
+        const rb = findContactRoot(b);
+        if (ra !== rb)
+            contactParent.set(ra, rb);
+    };
+    const canonicalContact = (id) => (contactParent.has(id) ? findContactRoot(id) : id);
+    const contactTier = new Map();
+    const contactById = new Map();
+    {
+        const recs = contacts.map((c, i) => {
+            const id = String(c.ContactID ?? i);
+            contactById.set(id, c);
+            return {
+                id,
+                name: normName(c.Name ?? `${c.FirstName ?? ''} ${c.LastName ?? ''}`),
+                email: normEmail(c.EmailAddress),
+                tax: normTax(c.TaxNumber),
+            };
+        });
+        const groupBy = (key, minLen = 1) => {
+            const map = new Map();
+            for (const r of recs) {
+                const k = key(r);
+                if (k.length < minLen)
+                    continue;
+                (map.get(k) ?? map.set(k, []).get(k)).push(r.id);
+            }
+            return map;
+        };
+        for (const [, ids] of groupBy((r) => r.email)) {
+            if (ids.length > 1) {
+                ids.forEach((id) => contactTier.set(id, 'exact'));
+                for (let i = 1; i < ids.length; i++)
+                    unionContacts(ids[0], ids[i]);
+            }
+        }
+        for (const [, ids] of groupBy((r) => r.tax)) {
+            if (ids.length > 1) {
+                ids.forEach((id) => contactTier.set(id, 'exact'));
+                for (let i = 1; i < ids.length; i++)
+                    unionContacts(ids[0], ids[i]);
+            }
+        }
+        // Bucket EVERY named contact by first name-token — including ones
+        // already tagged 'exact' — so an already-matched contact can still
+        // serve as the anchor that catches a third, fuzzy-only variant (e.g.
+        // two contacts share an exact email; a third, differently-spelled
+        // variant with a DIFFERENT email is only findable by comparing it
+        // against one of the first two). Only contacts not yet tagged get a
+        // NEW tier assigned here — an already-'exact' contact's tag is never
+        // downgraded, it just participates as a comparison target.
+        const byToken = new Map();
+        for (const r of recs) {
+            if (!r.name)
+                continue;
+            const token = r.name.split(' ')[0];
+            (byToken.get(token) ?? byToken.set(token, []).get(token)).push(r);
+        }
+        for (const [, bucket] of byToken) {
+            for (let i = 0; i < bucket.length; i++) {
+                for (let j = i + 1; j < bucket.length; j++) {
+                    if (bucket[i].name === bucket[j].name)
+                        continue;
+                    if (levenshteinRatio(bucket[i].name, bucket[j].name) >= 0.82) {
+                        if (!contactTier.has(bucket[i].id))
+                            contactTier.set(bucket[i].id, 'fuzzy');
+                        if (!contactTier.has(bucket[j].id))
+                            contactTier.set(bucket[j].id, 'fuzzy');
+                        unionContacts(bucket[i].id, bucket[j].id);
+                    }
+                }
+            }
+        }
+    }
+    const contactDup = new Set([...contactTier.entries()].filter(([, t]) => tierAllowed(t)).map(([id]) => id));
+    for (const id of contactDup) {
+        const c = contactById.get(id);
+        detailRows.push({
+            category: 'Contacts',
+            label: String(c?.Name ?? 'Unknown'),
+            detail: c?.EmailAddress ? String(c.EmailAddress) : 'Similar name',
+            severity: 'Medium',
+        });
+    }
+    // ── Invoices: split into Supplier Bills (ACCPAY) and Sales Invoices (ACCREC) ──
+    const bills = invoices.filter((inv) => inv.Type === 'ACCPAY');
+    const salesInv = invoices.filter((inv) => inv.Type === 'ACCREC');
+    const invoiceById = new Map();
+    for (const inv of invoices)
+        invoiceById.set(String(inv.InvoiceID ?? ''), inv);
+    const billTier = new Map();
+    {
+        const recs = bills.map((inv) => ({
+            id: String(inv.InvoiceID ?? ''),
+            contactId: String(inv.Contact?.ContactID ?? ''),
+            total: inv.Total,
+            // A blank InvoiceNumber is common (many bills are entered with no
+            // reference at all) — matching on it anyway collapsed every
+            // no-reference bill from the same supplier into one false "exact"
+            // group regardless of amount or date (confirmed against real data: two
+            // entirely unrelated bills, different totals months apart, were both
+            // blank-numbered and got flagged purely for that). Only a genuinely
+            // shared, non-blank number counts as an exact match.
+            num: String(inv.InvoiceNumber ?? '').trim(),
+            date: inv.Date,
+        }));
+        // Pass 1 — same RAW contact (no cross-contact inference yet).
+        const byContactNum = new Map();
+        const byContactTotal = new Map();
+        for (const r of recs) {
+            if (r.num) {
+                const numKey = `${r.contactId}|${r.num}`;
+                (byContactNum.get(numKey) ?? byContactNum.set(numKey, []).get(numKey)).push(r);
+            }
+            const totalKey = `${r.contactId}|${r.total ?? ''}`;
+            (byContactTotal.get(totalKey) ?? byContactTotal.set(totalKey, []).get(totalKey)).push(r);
+        }
+        for (const [, group] of byContactNum)
+            if (group.length > 1)
+                group.forEach((r) => billTier.set(r.id, 'exact'));
+        // Same contact + same Total + the SAME calendar day => fuzzy (this is
+        // the 'exact' tier's InvoiceNumber signal missing, so it never counts
+        // above fuzzy). A recurring fixed-amount bill (e.g. a weekly
+        // cleaning-service invoice, confirmed in real data landing exactly 7
+        // days apart every time) shares contact+total with many OTHER
+        // legitimate instances of itself — requiring the SAME day, not just
+        // "within N days", is what keeps that recurring series out (confirmed:
+        // every genuine fuzzy match in real data was same-day; a same-contact
+        // match landing even a day off the same total was confirmed, via the
+        // matching Sales Invoices case, to be a coincidence, not a duplicate).
+        for (const [, group] of byContactTotal) {
+            if (group.length < 2)
+                continue;
+            const byDay = new Map();
+            for (const r of group) {
+                const ms = toEpochMs(r.date);
+                if (ms == null)
+                    continue;
+                const dayKey = String(Math.floor(ms / 86_400_000));
+                (byDay.get(dayKey) ?? byDay.set(dayKey, []).get(dayKey)).push(r);
+            }
+            for (const [, ids] of byDay) {
+                if (ids.length > 1)
+                    ids.forEach((r) => { if (!billTier.has(r.id))
+                        billTier.set(r.id, 'fuzzy'); });
+            }
+        }
+        // Pass 2 — cross the contact boundary using canonicalContact, but ONLY
+        // for bills not already tagged above, and NEVER above 'fuzzy': a match
+        // that only exists because two Contact records are themselves flagged
+        // as duplicates is a two-hop inference, not a same-record fact, even
+        // when the invoice number or total+date line up exactly (confirmed
+        // against real data: a supplier's bill entered under its "Pty Ltd"
+        // duplicate contact record, same invoice number/total/date as the
+        // canonical exact pair — a real match, but one hop weaker than the
+        // pair itself).
+        const byCanonNum = new Map();
+        const byCanonTotal = new Map();
+        for (const r of recs) {
+            const canon = canonicalContact(r.contactId);
+            if (r.num) {
+                const numKey = `${canon}|${r.num}`;
+                (byCanonNum.get(numKey) ?? byCanonNum.set(numKey, []).get(numKey)).push(r);
+            }
+            const totalKey = `${canon}|${r.total ?? ''}`;
+            (byCanonTotal.get(totalKey) ?? byCanonTotal.set(totalKey, []).get(totalKey)).push(r);
+        }
+        for (const [, group] of byCanonNum) {
+            if (!group.some((r) => billTier.get(r.id) === 'exact'))
+                continue;
+            group.forEach((r) => { if (!billTier.has(r.id))
+                billTier.set(r.id, 'fuzzy'); });
+        }
+        for (const [, group] of byCanonTotal) {
+            const exactRecs = group.filter((r) => billTier.get(r.id) === 'exact');
+            if (exactRecs.length === 0)
+                continue;
+            for (const r of group) {
+                if (billTier.has(r.id))
+                    continue;
+                const rDay = toEpochMs(r.date);
+                if (rDay == null)
+                    continue;
+                const rDayKey = Math.floor(rDay / 86_400_000);
+                const crossContactSameDay = exactRecs.some((e) => {
+                    if (e.contactId === r.contactId)
+                        return false;
+                    const eDay = toEpochMs(e.date);
+                    return eDay != null && Math.floor(eDay / 86_400_000) === rDayKey;
+                });
+                if (crossContactSameDay)
+                    billTier.set(r.id, 'fuzzy');
+            }
+        }
+    }
+    const billDup = new Set([...billTier.entries()].filter(([, t]) => tierAllowed(t)).map(([id]) => id));
+    for (const id of billDup) {
+        const inv = invoiceById.get(id);
+        const contact = inv?.Contact;
+        detailRows.push({
+            category: 'Supplier Bills',
+            label: `${inv?.InvoiceNumber || id} — ${contact?.Name ?? 'Unknown'}`,
+            detail: `$${Number(inv?.Total ?? 0).toFixed(2)}`,
+            severity: 'High',
+        });
+    }
+    const salesInvTier = new Map();
+    {
+        const recs = salesInv.map((inv) => ({
+            id: String(inv.InvoiceID ?? ''),
+            contactId: String(inv.Contact?.ContactID ?? ''),
+            total: inv.Total,
+            date: inv.Date,
+        }));
+        const dayKeyOf = (date) => {
+            const ms = toEpochMs(date);
+            return ms == null ? null : String(Math.floor(ms / 86_400_000));
+        };
+        // Pass 1 — same RAW contact, same calendar day => exact. Nothing else.
+        const byContactTotal = new Map();
+        for (const r of recs) {
+            const key = `${r.contactId}|${r.total ?? ''}`;
+            (byContactTotal.get(key) ?? byContactTotal.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byContactTotal) {
+            if (group.length < 2)
+                continue;
+            const byDay = new Map();
+            for (const r of group) {
+                const dayKey = dayKeyOf(r.date);
+                if (dayKey == null)
+                    continue;
+                (byDay.get(dayKey) ?? byDay.set(dayKey, []).get(dayKey)).push(r);
+            }
+            for (const [, ids] of byDay)
+                if (ids.length > 1)
+                    ids.forEach((r) => salesInvTier.set(r.id, 'exact'));
+        }
+        // Pass 2 — cross the contact boundary via canonicalContact, but ONLY for
+        // an untagged invoice sharing the EXACT SAME calendar day (not "within N
+        // days") as an exact-tagged record under a DIFFERENT raw Contact, and
+        // NEVER tagged above 'fuzzy': a match that only exists because the two
+        // Contact records are themselves flagged as duplicates is one hop
+        // weaker than a same-record match (confirmed against real data — an
+        // invoice entered under a supplier's "Pty Ltd" duplicate contact record,
+        // same total/date as the canonical exact pair).
+        const byCanonTotal = new Map();
+        for (const r of recs) {
+            const key = `${canonicalContact(r.contactId)}|${r.total ?? ''}`;
+            (byCanonTotal.get(key) ?? byCanonTotal.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byCanonTotal) {
+            const exactRecs = group.filter((r) => salesInvTier.get(r.id) === 'exact');
+            if (exactRecs.length === 0)
+                continue;
+            for (const r of group) {
+                if (salesInvTier.has(r.id))
+                    continue;
+                const rDay = dayKeyOf(r.date);
+                if (rDay != null && exactRecs.some((e) => e.contactId !== r.contactId && dayKeyOf(e.date) === rDay)) {
+                    salesInvTier.set(r.id, 'fuzzy');
+                }
+            }
+        }
+    }
+    const salesInvDup = new Set([...salesInvTier.entries()].filter(([, t]) => tierAllowed(t)).map(([id]) => id));
+    for (const id of salesInvDup) {
+        const inv = invoiceById.get(id);
+        const contact = inv?.Contact;
+        detailRows.push({
+            category: 'Sales Invoices',
+            label: `${inv?.InvoiceNumber || id} — ${contact?.Name ?? 'Unknown'}`,
+            detail: `$${Number(inv?.Total ?? 0).toFixed(2)}`,
+            severity: 'Medium',
+        });
+    }
+    // ── Bank transactions ────────────────────────────────────────────
+    // Matches on the WHOLE GROUP's date span (max - min <= 1 day), not
+    // same-day-only pairwise matching. A recurring fixed-amount transaction
+    // (a weekly/fortnightly fee, a regular supplier payment) shares
+    // account+contact+total with many OTHER instances of itself, and its
+    // ADJACENT gaps can legitimately be as short as 1-2 days even though the
+    // whole series spans months (confirmed against real data: a recurring
+    // fee's own adjacent-day gaps were mostly 1-2 days across a 16-transaction,
+    // 25-day-spanning series) — so pairwise/adjacent-only day-window matching
+    // still chains a long recurring series together. A genuine duplicate
+    // cluster (the same line double- or triple-keyed) is instead tightly
+    // bunched as a WHOLE: every member falls within about a day of every
+    // other member, not just of its nearest neighbour. Confirmed against real
+    // data: a genuine 3-way duplicate (2 same-day + 1 exactly one day later)
+    // has a whole-group span of 1 day; every recurring series in this dataset
+    // spans 25-70+ days even though individual gaps are short.
+    // Also excludes transactions with no Contact set at all — Xero commonly
+    // leaves bank lines uncoded, and treating "blank" as a match value would
+    // wrongly group unrelated uncoded transactions that just share an amount.
+    const bankTxTier = new Map();
+    const bankTxById = new Map();
+    {
+        const recs = [];
+        for (const tx of bankTx) {
+            const id = String(tx.BankTransactionID ?? '');
+            bankTxById.set(id, tx);
+            const contactId = String(tx.Contact?.ContactID ?? '');
+            if (!contactId)
+                continue;
+            const accountId = String(tx.BankAccount?.AccountID ?? '');
+            recs.push({ id, contactId, accountId, total: tx.Total, type: String(tx.Type ?? ''), date: tx.Date });
+        }
+        // Within a tightly-bunched (whole-group span <=1 day) candidate group,
+        // members sharing the SAME calendar day are a genuine exact duplicate; a
+        // member landing up to a day off from an exact-tagged pair is the
+        // softer, still-likely case. Every member of a qualifying group is
+        // within 1 day of every other member by construction, so anyone not
+        // absorbed into a same-day exact pair still counts as fuzzy.
+        const tierSpanGroup = (group) => {
+            if (group.length < 2)
+                return;
+            const times = group.map((r) => toEpochMs(r.date)).filter((t) => t != null);
+            if (times.length < 2)
+                return;
+            const spanDays = (Math.max(...times) - Math.min(...times)) / 86_400_000;
+            if (spanDays > 1)
+                return;
+            const byDay = new Map();
+            for (const r of group) {
+                const ms = toEpochMs(r.date);
+                if (ms == null)
+                    continue;
+                const dayKey = String(Math.floor(ms / 86_400_000));
+                (byDay.get(dayKey) ?? byDay.set(dayKey, []).get(dayKey)).push(r);
+            }
+            for (const [, ids] of byDay)
+                if (ids.length > 1)
+                    ids.forEach((r) => bankTxTier.set(r.id, 'exact'));
+            for (const r of group)
+                if (!bankTxTier.has(r.id))
+                    bankTxTier.set(r.id, 'fuzzy');
+        };
+        // Pass 1 — same RAW contact.
+        // Include Type — a RECEIVE and a SPEND that happen to share the same
+        // amount are opposite-direction transactions, not duplicates of each
+        // other (confirmed against real data: a $39.50 RECEIVE and a $39.50
+        // SPEND were otherwise being matched purely on coincidental amount).
+        const byKey = new Map();
+        for (const r of recs) {
+            const key = `${r.accountId}|${r.contactId}|${r.total ?? ''}|${r.type}`;
+            (byKey.get(key) ?? byKey.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byKey)
+            tierSpanGroup(group);
+        // Pass 2 — cross the contact boundary via canonicalContact, but ONLY for
+        // transactions not already tagged, and NEVER above 'fuzzy' (same
+        // reasoning as the Bills/Sales Invoices pass 2 above).
+        const byCanonKey = new Map();
+        for (const r of recs) {
+            const key = `${r.accountId}|${canonicalContact(r.contactId)}|${r.total ?? ''}|${r.type}`;
+            (byCanonKey.get(key) ?? byCanonKey.set(key, []).get(key)).push(r);
+        }
+        for (const [, group] of byCanonKey) {
+            const exactRecs = group.filter((r) => bankTxTier.get(r.id) === 'exact');
+            if (exactRecs.length === 0)
+                continue;
+            for (const r of group) {
+                if (bankTxTier.has(r.id))
+                    continue;
+                if (exactRecs.some((e) => daysBetween(r.date, e.date) <= 1))
+                    bankTxTier.set(r.id, 'fuzzy');
+            }
+        }
+    }
+    const bankTxDup = new Set([...bankTxTier.entries()].filter(([, t]) => tierAllowed(t)).map(([id]) => id));
+    for (const id of bankTxDup) {
+        const tx = bankTxById.get(id);
+        const account = tx?.BankAccount;
+        detailRows.push({
+            category: 'Spend / Receive Money',
+            label: `${account?.Name ?? 'Bank'} — $${Number(tx?.Total ?? 0).toFixed(2)}`,
+            detail: String(tx?.Type ?? ''),
+            severity: 'Medium',
+        });
+    }
+    // ── Payments ─────────────────────────────────────────────────────
+    const paymentTier = new Map();
+    const paymentById = new Map();
+    {
+        const invoiceTotalById = new Map();
+        for (const inv of rawInvoices) {
+            if (!isActiveInvoice(inv))
+                continue;
+            invoiceTotalById.set(String(inv.InvoiceID ?? ''), Number(inv.Total) || 0);
+        }
+        const byInvoice = new Map();
+        for (const p of payments) {
+            const id = String(p.PaymentID ?? '');
+            paymentById.set(id, p);
+            const invoiceId = String(p.Invoice?.InvoiceID ?? '');
+            if (!invoiceId)
+                continue; // no shared invoice to group unrelated payments by
+            const amount = Number(p.Amount) || 0;
+            (byInvoice.get(invoiceId) ?? byInvoice.set(invoiceId, []).get(invoiceId)).push({ id, amount });
+        }
+        // Flag only genuine overpayment (sum of payments > invoice Total) — NOT
+        // "more than one payment against this invoice" alone, which also
+        // matches entirely legitimate split/installment payments (e.g. two
+        // differing-amount instalments that together equal the invoice Total).
+        // Confirmed against real data: every actual duplicate case here is two
+        // IDENTICAL-amount payments that together exceed the Total; the two
+        // false positives this replaces were differing-amount instalments that
+        // summed to exactly the Total.
+        for (const [invoiceId, group] of byInvoice) {
+            const total = invoiceTotalById.get(invoiceId) ?? 0;
+            const sum = group.reduce((s, p) => s + p.amount, 0);
+            if (total > 0 && sum > total) {
+                group.forEach((p) => paymentTier.set(p.id, 'exact'));
+            }
+        }
+    }
+    const paymentDup = new Set([...paymentTier.entries()].filter(([, t]) => tierAllowed(t)).map(([id]) => id));
+    for (const id of paymentDup) {
+        const p = paymentById.get(id);
+        detailRows.push({
+            category: 'Payments',
+            label: `${p?.Reference || 'Payment'} — $${Number(p?.Amount ?? 0).toFixed(2)}`,
+            detail: String(p?.PaymentType ?? ''),
+            severity: 'High',
+        });
+    }
+    const valueAtRisk = [...bills, ...salesInv]
+        .filter((inv) => billDup.has(String(inv.InvoiceID ?? '')) || salesInvDup.has(String(inv.InvoiceID ?? '')))
+        .filter((inv) => inv.Status === 'AUTHORISED')
+        .reduce((sum, inv) => sum + (Number(inv.AmountDue) || 0), 0);
+    // Exact vs likely split — a record's own tier is fixed, but only counted
+    // here if matchMode currently allows it (mirrors how contactDup/billDup/etc.
+    // are themselves built), so e.g. selecting "Exact only" correctly zeroes
+    // out every category's likelyCount rather than showing a stale split.
+    const tierCounts = (tier) => {
+        let exact = 0, likely = 0;
+        for (const t of tier.values()) {
+            if (t === 'exact' && tierAllowed('exact'))
+                exact++;
+            if (t === 'fuzzy' && tierAllowed('fuzzy'))
+                likely++;
+        }
+        return { exact, likely };
+    };
+    const contactTierCounts = tierCounts(contactTier);
+    const billTierCounts = tierCounts(billTier);
+    const salesInvTierCounts = tierCounts(salesInvTier);
+    const bankTxTierCounts = tierCounts(bankTxTier);
+    const paymentTierCounts = tierCounts(paymentTier);
+    const exactCount = contactTierCounts.exact + billTierCounts.exact + salesInvTierCounts.exact + bankTxTierCounts.exact + paymentTierCounts.exact;
+    const likelyCount = contactTierCounts.likely + billTierCounts.likely + salesInvTierCounts.likely + bankTxTierCounts.likely + paymentTierCounts.likely;
+    const totalDuplicates = contactDup.size + billDup.size + salesInvDup.size + bankTxDup.size + paymentDup.size;
+    const recordsScanned = rawContacts.length + rawInvoices.length + rawBankTx.length + rawPayments.length;
+    // Only stamped fresh when this recompute was triggered by an actual Xero
+    // fetch landing (mount, chained cascade, or a Rescan click re-firing the
+    // chain) — NOT by a filter dropdown change, which just re-filters data
+    // already in hand without querying Xero again. Filter-only callers pass
+    // the current `/ui/dup/lastScannedAt` through as `existingScannedAt` so
+    // "Last scanned" doesn't misleadingly jump to "just now" on a plain
+    // client-side re-filter.
+    const lastScannedAt = typeof args.existingScannedAt === 'string' && args.existingScannedAt
+        ? args.existingScannedAt
+        : new Date().toISOString();
+    if (statusMode === 'reviewed') {
+        return {
+            contacts: { count: 0, exactCount: 0, likelyCount: 0 },
+            supplierBills: { count: 0, exactCount: 0, likelyCount: 0 },
+            salesInvoices: { count: 0, exactCount: 0, likelyCount: 0 },
+            bankTx: { count: 0, exactCount: 0, likelyCount: 0 },
+            payments: { count: 0, exactCount: 0, likelyCount: 0 },
+            totalDuplicates: 0,
+            exactCount: 0,
+            likelyCount: 0,
+            valueAtRisk: 0,
+            recordsScanned,
+            detailRows: [],
+            lastScannedAt,
+        };
+    }
+    return {
+        contacts: { count: contactDup.size, exactCount: contactTierCounts.exact, likelyCount: contactTierCounts.likely },
+        supplierBills: { count: billDup.size, exactCount: billTierCounts.exact, likelyCount: billTierCounts.likely },
+        salesInvoices: { count: salesInvDup.size, exactCount: salesInvTierCounts.exact, likelyCount: salesInvTierCounts.likely },
+        bankTx: { count: bankTxDup.size, exactCount: bankTxTierCounts.exact, likelyCount: bankTxTierCounts.likely },
+        payments: { count: paymentDup.size, exactCount: paymentTierCounts.exact, likelyCount: paymentTierCounts.likely },
+        totalDuplicates,
+        exactCount,
+        likelyCount,
+        valueAtRisk,
+        recordsScanned,
+        detailRows,
+        lastScannedAt,
+    };
+};
+// ── analyze_excluded_documents ─────────────────────────────────────────
+// Flags Xero invoices/bills that sit outside standard P&L reporting:
+// Voided, Deleted, or a Draft older than `staleDraftDays` (default 30).
+// Unlike Sales Invoice/Bill duplicate matching elsewhere in this file, all
+// three signals here are real Status/Date fields on Xero's list-level
+// Invoice payload — no per-line LineItems limitation applies to this check.
+//
+// detailRows is sorted most-recent-Date-first; detailRowCount lets the
+// spec conditionally show/hide preview rows without a $computed inside a
+// `visible` condition (not supported — visible only reads a literal
+// $state value with eq/gt/etc modifiers).
+//
+// Args: { invoices?: Invoice[], staleDraftDays?: number }
+const analyze_excluded_documents = (args) => {
+    const staleDraftDays = Number(args.staleDraftDays) > 0 ? Number(args.staleDraftDays) : 30;
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const now = Date.now();
+    const ageDays = (raw) => {
+        const ms = toEpochMs(raw);
+        return ms == null ? 0 : (now - ms) / 86_400_000;
+    };
+    const voided = invoices.filter((inv) => inv.Status === 'VOIDED');
+    const deleted = invoices.filter((inv) => inv.Status === 'DELETED');
+    const staleDrafts = invoices.filter((inv) => inv.Status === 'DRAFT' && ageDays(inv.Date) > staleDraftDays);
+    const label = (inv) => {
+        const contact = inv.Contact;
+        const contactName = String(contact?.Name ?? 'Unknown');
+        const num = String(inv.InvoiceNumber ?? '').trim();
+        if (num)
+            return `${num} · ${contactName}`;
+        return `${inv.Type === 'ACCPAY' ? 'Bill' : 'Invoice'} · ${contactName}`;
+    };
+    const tagged = [
+        ...voided.map((inv) => ({ label: label(inv), badgeText: 'Voided', badgeTone: 'destructive', date: inv.Date })),
+        ...deleted.map((inv) => ({ label: label(inv), badgeText: 'Deleted', badgeTone: 'muted', date: inv.Date })),
+        ...staleDrafts.map((inv) => ({
+            label: label(inv),
+            badgeText: `Draft ${Math.round(ageDays(inv.Date))}d`,
+            badgeTone: 'warning',
+            date: inv.Date,
+        })),
+    ];
+    tagged.sort((a, b) => (toEpochMs(b.date) ?? 0) - (toEpochMs(a.date) ?? 0));
+    const totalValue = [...voided, ...deleted, ...staleDrafts].reduce((sum, inv) => sum + (Number(inv.Total) || 0), 0);
+    return {
+        voidedCount: voided.length,
+        deletedCount: deleted.length,
+        staleCount: staleDrafts.length,
+        totalCount: voided.length + deleted.length + staleDrafts.length,
+        totalValue,
+        detailRowCount: tagged.length,
+        detailRows: tagged.map(({ label: l, badgeText, badgeTone }) => ({ label: l, badgeText, badgeTone })),
+    };
+};
+// ── ready_to_pay_held ───────────────────────────────────────────────
+// Adds `pills` (one display label per failed check) to each held bill from
+// list_xero_ready_to_pay, so the tile can render one Badge per reason via
+// positional `$item: "pills/0"` … `"pills/2"` (repeat has no nested lists).
+// Returns one object for a single setState: { bills }.
+// Args: { value: ReadyToPayBill[] }
+const HELD_REASON_PILL = {
+    not_approved: '✕ not approved',
+    bank: '✕ bank',
+    rate: '✕ rate',
+};
+const ready_to_pay_held = (args) => {
+    const bills = Array.isArray(args.value) ? args.value : [];
+    return {
+        bills: bills.map((b) => ({
+            ...b,
+            pills: (Array.isArray(b.reasons) ? b.reasons : [])
+                .map((r) => HELD_REASON_PILL[String(r)] ?? `✕ ${String(r).replace(/_/g, ' ')}`),
+        })),
+    };
+};
+// ── rate_variance_rows ──────────────────────────────────────────────
+// Lays out list_xero_rate_variance lines as diverging bars around 0.
+// There's no diverging-bar primitive, so each half of a row's bar track is a
+// grid Row whose `template` (grid-template-columns) sizes three solid fills:
+//   left  half: [spacer | tolerance band | under bar]   (bar touches centre)
+//   right half: [over bar | tolerance band | spacer]
+// Units are "fr" out of 100 per half, where 100 = the axis limit (`scale`).
+// Returns one object for a single setState: { rows, axisMin, axisMax }.
+// Args: { value: RateVarianceLine[], tolerance?: number (default 5), limit?: number (default 8) }
+const rate_variance_rows = (args) => {
+    const lines = Array.isArray(args.value) ? args.value : [];
+    const tolerance = Math.max(0, Number(args.tolerance) || 5);
+    const limit = Math.max(1, Math.floor(Number(args.limit) || 8));
+    const shown = lines.slice(0, limit);
+    // Axis: at least ±20%, else the largest variance rounded up to the next 10%
+    const maxAbs = Math.max(0, ...shown.map((l) => Math.abs(Number(l.variancePct) || 0)));
+    const scale = Math.max(20, Math.ceil(maxAbs / 10) * 10);
+    const pct = (n) => Math.min(100, Math.max(0, (n / scale) * 100));
+    const fr = (...cols) => cols.map((c) => `${Math.round(c * 100) / 100}fr`).join(' ');
+    const tol = pct(tolerance);
+    const rows = shown.map((l) => {
+        const v = Number(l.variancePct) || 0;
+        const bar = pct(Math.abs(v));
+        const band = Math.max(0, tol - bar);
+        const over = v > 0;
+        const under = v < 0;
+        return {
+            ...l,
+            // Left (under) half: spacer, band, bar — the bar sits against the centre line
+            leftTemplate: under ? fr(100 - bar - band, band, bar) : fr(100 - tol, tol, 0),
+            // Right (over) half: bar, band, spacer
+            rightTemplate: over ? fr(bar, band, 100 - bar - band) : fr(0, tol, 100 - tol),
+        };
+    });
+    return { rows, axisMin: `−${scale}%`, axisMax: `+${scale}%` };
+};
+// ── paginate ─────────────────────────────────────────────────────────
+// Client-side paging over a list already in state. `repeat` only accepts a
+// static statePath, so widgets `setState` the returned object into a UI path
+// (on data load via `watch`, and from Prev/Next clicks) and repeat over
+// `<path>/items`. Returns one object so a single setState writes everything —
+// json-render's watch loop cancels after the first state write, so chained
+// setStates would silently drop all but the first.
+// Args: { value: array, page?: number, delta?: number, size?: number (default 30) }
+// Returns: { items, page, label, hasPrev, hasNext, hasPages }
+const paginate = (args) => {
+    const all = Array.isArray(args.value) ? args.value : [];
+    const size = Math.max(1, Math.floor(Number(args.size) || 30));
+    const pageCount = Math.max(1, Math.ceil(all.length / size));
+    const requested = Math.floor(Number(args.page) || 0) + Math.floor(Number(args.delta) || 0);
+    const page = Math.min(Math.max(requested, 0), pageCount - 1);
+    const from = page * size;
+    const to = Math.min(all.length, from + size);
+    return {
+        items: all.slice(from, to),
+        page,
+        label: all.length ? `${from + 1}–${to} of ${all.length}` : '',
+        hasPrev: page > 0,
+        hasNext: page < pageCount - 1,
+        hasPages: pageCount > 1,
+    };
+};
+// ── analyze_bill_duplicates ──────────────────────────────────────────
+// Flags Xero ACCPAY bills that look like accidental double-entries: same
+// REAL vendor + same amount, dated within a few days of each other,
+// scanned over a rolling window (default 30 days). Same-day matches
+// (span 0) are tiered "Exact"; 1-6 days apart is "Near". A same-
+// vendor/amount pair spanning 7+ days is treated as a normal recurring
+// charge (weekly/monthly service fees, subscriptions) and NOT flagged —
+// confirmed against this org's real data (e.g. MCO Cleaning Services'
+// weekly $220 invoice would otherwise false-positive).
+//
+// "Same vendor" is resolved via the contacts list (email, falling back to
+// phone, falling back to raw name), NOT by the bill's embedded Contact.Name
+// alone — confirmed against real data that one vendor can have two
+// separate Xero contact records under slightly different legal names
+// (e.g. "DCT Sunset Office Supplies" vs "...Pty Ltd") sharing the same
+// email/phone. Grouping by name alone silently dropped that second
+// record's bill from the cluster. The group's display name is the most
+// frequent raw name among its bills (a tie keeps the first seen).
+// `organisation` is the raw get_organisation response — used only to pull
+// the real ShortCode needed for Xero's documented deep-link format
+// (https://go.xero.com/organisationlogin/default.aspx?shortcode=...&
+// redirecturl=/AccountsPayable/Edit.aspx?InvoiceID=...) — a bare
+// /AccountsPayable/... URL with no shortcode/org context 404s/errors,
+// confirmed live.
+// Args: { invoices?: Invoice[], contacts?: Contact[], organisation?: unknown, windowDays?: number, expandedGroupId?: string, clickedGroupId?: string }
+const analyze_bill_duplicates = (args) => {
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const windowDays = Number(args.windowDays) > 0 ? Number(args.windowDays) : 30;
+    const org = args.organisation ?? {};
+    const orgs = Array.isArray(org.Organisations) ? org.Organisations : [];
+    const shortCode = String(orgs[0]?.ShortCode ?? '');
+    const parseDate = (raw) => {
+        const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : NaN;
+    };
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        return '$' + new Intl.NumberFormat('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    };
+    const fmtDate = (ms) => {
+        if (!Number.isFinite(ms))
+            return '';
+        return new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    // ContactID -> resolved vendor identity (email > phone > name), built
+    // from the full contacts list (which carries Email/Phones — the bill's
+    // own embedded Contact object doesn't).
+    const identityByContactId = new Map();
+    for (const c of contacts) {
+        const contactId = String(c.ContactID ?? '');
+        if (!contactId)
+            continue;
+        const email = String(c.EmailAddress ?? '').trim().toLowerCase();
+        let identity = email ? `email:${email}` : '';
+        if (!identity) {
+            const phones = Array.isArray(c.Phones) ? c.Phones : [];
+            const phone = phones
+                .map((p) => `${String(p.PhoneAreaCode ?? '')}${String(p.PhoneNumber ?? '')}`)
+                .find((p) => p.replace(/\D/g, '').length >= 3);
+            identity = phone ? `phone:${phone}` : `name:${String(c.Name ?? '').trim().toLowerCase()}`;
+        }
+        identityByContactId.set(contactId, identity);
+    }
+    const resolveIdentity = (contact) => {
+        const contactId = String(contact?.ContactID ?? '');
+        return identityByContactId.get(contactId) ?? `name:${String(contact?.Name ?? 'Unknown').trim().toLowerCase()}`;
+    };
+    const cutoff = Date.now() - windowDays * 86_400_000;
+    const bills = invoices.filter((i) => {
+        if (i.Type !== 'ACCPAY' || i.Status === 'VOIDED' || i.Status === 'DELETED')
+            return false;
+        const t = parseDate(i.Date);
+        return Number.isFinite(t) && t >= cutoff;
+    });
+    const groups = new Map();
+    for (const b of bills) {
+        const contact = b.Contact;
+        const key = `${resolveIdentity(contact)}|${Number(b.Total) || 0}`;
+        (groups.get(key) ?? groups.set(key, []).get(key)).push(b);
+    }
+    const displayName = (arr) => {
+        const counts = new Map();
+        for (const b of arr) {
+            const name = String(b.Contact?.Name ?? 'Unknown');
+            counts.set(name, (counts.get(name) ?? 0) + 1);
+        }
+        return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Unknown';
+    };
+    const flagged = [];
+    for (const [, arr] of groups) {
+        if (arr.length < 2)
+            continue;
+        const sorted = [...arr].sort((a, b) => parseDate(a.Date) - parseDate(b.Date));
+        const spanDays = Math.round((parseDate(sorted[sorted.length - 1].Date) - parseDate(sorted[0].Date)) / 86_400_000);
+        if (spanDays > 6)
+            continue; // normal recurring charge, not a duplicate
+        flagged.push({ contact: displayName(sorted), tier: spanDays === 0 ? 'exact' : 'near', spanDays, bills: sorted });
+    }
+    flagged.sort((a, b) => (a.tier === b.tier ? 0 : a.tier === 'exact' ? -1 : 1));
+    const exactCount = flagged.filter((g) => g.tier === 'exact').reduce((s, g) => s + g.bills.length, 0);
+    const nearCount = flagged.filter((g) => g.tier === 'near').reduce((s, g) => s + g.bills.length, 0);
+    // One compact row per duplicate GROUP (not per bill) — contact + amount,
+    // then a tiered detail line. For an exact (same-day) group, the detail
+    // names the distinct invoice-number variants involved (e.g. "BSE-7001 vs
+    // BSE7001") — this IS the explanation: those numbers colliding on the
+    // same contact/amount/day is why it's flagged. When a group has more
+    // bills than distinct number variants (e.g. "BSE-7001" entered twice
+    // plus "BSE7001"), the bill count is appended for clarity. A near
+    // (1-6 days apart) group instead states the count + day span, since
+    // there's no number collision to point at.
+    // `clickedGroupId` is only present when a row's own click triggered this
+    // recompute — toggles that row's expanded state against whatever was
+    // previously expanded (read back from state as `expandedGroupId`, same
+    // echo-and-compare pattern as analyze_myob_duplicates' `filter`). A
+    // background data refresh (list_invoices/list_contacts/get_organisation
+    // re-arriving) omits `clickedGroupId` entirely, so it just preserves
+    // whatever was already expanded instead of collapsing it.
+    const prevExpandedGroupId = String(args.expandedGroupId ?? '');
+    const clickedGroupId = args.clickedGroupId !== undefined ? String(args.clickedGroupId) : undefined;
+    const expandedGroupId = clickedGroupId !== undefined ? (clickedGroupId === prevExpandedGroupId ? '' : clickedGroupId) : prevExpandedGroupId;
+    const detailRows = flagged.map((g, i) => {
+        const amount = fmtAmt(g.bills[0]?.Total);
+        const groupId = `${g.contact}|${amount}`;
+        const uniqueNumbers = [...new Set(g.bills.map((b) => String(b.InvoiceNumber ?? '—')))];
+        let detail;
+        if (g.tier === 'exact') {
+            detail = uniqueNumbers.length >= 2 ? uniqueNumbers.slice(0, 2).join(' vs ') : uniqueNumbers[0] ?? '';
+            if (g.bills.length > uniqueNumbers.length || g.bills.length > 2)
+                detail += ` (${g.bills.length} bills)`;
+        }
+        else {
+            detail = `${g.bills.length} bills, ${g.spanDays} day${g.spanDays !== 1 ? 's' : ''} apart`;
+        }
+        // One line per actual bill in this group — shown only when the row is
+        // expanded (clicked). preserveLines renders this as a real multi-line
+        // block rather than relying on nested `repeat` (not confirmed supported
+        // inside an already-repeated template in this renderer).
+        const billsSummary = g.bills
+            .map((b) => `${String(b.InvoiceNumber ?? '—')} · ${fmtDate(parseDate(b.Date))} · ${fmtAmt(b.Total)}`)
+            .join('\n');
+        return {
+            groupId,
+            contact: g.contact,
+            amount,
+            tierLabel: g.tier === 'exact' ? 'Exact match' : 'Near match',
+            tierTone: g.tier === 'exact' ? 'destructive' : 'warning',
+            detail,
+            isLast: i === flagged.length - 1,
+            expanded: groupId === expandedGroupId,
+            billsSummary,
+        };
+    });
+    const firstFlaggedInvoiceId = String(flagged[0]?.bills[0]?.InvoiceID ?? '');
+    const reviewUrl = shortCode
+        ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(firstFlaggedInvoiceId ? `/AccountsPayable/Edit.aspx?InvoiceID=${firstFlaggedInvoiceId}` : '/AccountsPayable/Bills')}`
+        : 'https://go.xero.com/';
+    return {
+        groupCount: flagged.length,
+        billCount: exactCount + nearCount,
+        exactCount,
+        nearCount,
+        clearCount: bills.length - exactCount - nearCount,
+        totalScanned: bills.length,
+        reviewUrl,
+        expandedGroupId,
+        detailRows,
+        scannedAt: new Date().toISOString(),
+    };
+};
+// ── time_ago ──────────────────────────────────────────────────────────
+// Formats an ISO timestamp as a short relative-time string: "just now",
+// "N min ago", "N hrs ago", "N days ago".
+// Args: { value: string }
+const time_ago = (args) => {
+    const t = new Date(String(args.value ?? '')).getTime();
+    if (!Number.isFinite(t))
+        return '';
+    const mins = Math.floor((Date.now() - t) / 60_000);
+    if (mins < 1)
+        return 'just now';
+    if (mins < 60)
+        return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24)
+        return `${hours} hr${hours !== 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days !== 1 ? 's' : ''} ago`;
+};
+// ── Bill Entry (record + validate a draft bill) ──────────────────────
+// Helpers for the "Bill-Entry" tile: a form that builds a raw Xero
+// invoice body (Type ACCPAY, Status DRAFT) from user input and submits
+// it via create_invoice. No `checks` prop validation exists on this
+// system's current TextInput/NumberInput/Select/DateInput components
+// (confirmed against widgets-system/system/components.tsx — the
+// underlying @json-render/core library supports a `checks` config, but
+// no component here declares the prop), so validation is done here:
+// bill_entry_is_invalid gates the submit button's `disabled` (a real
+// boolean return — NOT a bare `$or`/`$and`, which only evaluate inside
+// a `visible` condition and pass through as a literal truthy object
+// anywhere else, exactly the bug already hit and fixed on the
+// ApprovalMax Pending Approvals tile's Table `loading` prop).
+function formatAUD(value) {
+    try {
+        return new Intl.NumberFormat('en-AU', {
+            style: 'currency',
+            currency: 'AUD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(value);
+    }
+    catch {
+        return `$${value.toFixed(2)}`;
+    }
+}
+/** Appends one blank editable row. `id` is a client-only row key (never sent to Xero). */
+const bill_entry_add_line = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const id = `line-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    return [...lines, { id, description: '', quantity: 1, unitAmount: 0, accountCode: '', taxType: '' }];
+};
+/** quantity * unitAmount for one row, formatted. Args: { quantity, unitAmount } */
+const bill_entry_line_total = (args) => {
+    const qty = Number(args.quantity) || 0;
+    const unit = Number(args.unitAmount) || 0;
+    return formatAUD(qty * unit);
+};
+/**
+ * Maps each TaxType code to its EffectiveRate (confirmed live: a plain
+ * percentage number, e.g. 10 for 10% GST — NOT a 0–1 fraction). Built once
+ * when list_tax_rates resolves, so per-line tax math never needs to re-scan
+ * the full rates list. Args: { taxRates }
+ */
+const bill_entry_tax_rate_lookup = (args) => {
+    const rates = Array.isArray(args.taxRates) ? args.taxRates : [];
+    const map = {};
+    for (const r of rates) {
+        const taxType = String(r.TaxType ?? '');
+        if (!taxType)
+            continue;
+        map[taxType] = Number(r.EffectiveRate) || 0;
+    }
+    return map;
+};
+/**
+ * Tax amount for one row — quantity * unitAmount * (rate / 100) — using the
+ * row's own selected taxType looked up in taxRateMap (from
+ * bill_entry_tax_rate_lookup). Blank (not "$0.00") until a tax rate is
+ * actually selected, so an untouched row doesn't read as "no tax" before
+ * the user has made a choice.
+ * Args: { quantity, unitAmount, taxType, taxRateMap }
+ */
+const bill_entry_line_tax = (args) => {
+    const taxType = String(args.taxType ?? '').trim();
+    if (!taxType)
+        return '';
+    const qty = Number(args.quantity) || 0;
+    const unit = Number(args.unitAmount) || 0;
+    const map = (args.taxRateMap ?? {});
+    const rate = Number(map[taxType]) || 0;
+    return formatAUD(qty * unit * (rate / 100));
+};
+/** Sum of quantity * unitAmount across all rows, formatted. Args: { lines } */
+const bill_entry_grand_total = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const total = lines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitAmount) || 0), 0);
+    return formatAUD(total);
+};
+/**
+ * True when the form is NOT ready to submit — supplier, date, and every
+ * line item's description/quantity(>0)/unitAmount(>=0)/account/tax must
+ * be filled. Args: { contactId, date, lines }
+ */
+const bill_entry_is_invalid = (args) => {
+    const contactId = String(args.contactId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    if (!contactId || !date || lines.length === 0)
+        return true;
+    for (const l of lines) {
+        const desc = String(l.description ?? '').trim();
+        const qty = Number(l.quantity);
+        const unit = Number(l.unitAmount);
+        const accountCode = String(l.accountCode ?? '').trim();
+        const taxType = String(l.taxType ?? '').trim();
+        if (!desc || !accountCode || !taxType)
+            return true;
+        if (!Number.isFinite(qty) || qty <= 0)
+            return true;
+        if (!Number.isFinite(unit) || unit < 0)
+            return true;
+    }
+    return false;
+};
+/** Human-readable reason the form can't submit yet, mirroring bill_entry_is_invalid's checks in order. */
+const bill_entry_validation_message = (args) => {
+    const contactId = String(args.contactId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    if (!contactId)
+        return 'Select a supplier';
+    if (!date)
+        return 'Set the bill date';
+    if (lines.length === 0)
+        return 'Add at least one line item';
+    for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        const n = i + 1;
+        const desc = String(l.description ?? '').trim();
+        const qty = Number(l.quantity);
+        const unit = Number(l.unitAmount);
+        const accountCode = String(l.accountCode ?? '').trim();
+        const taxType = String(l.taxType ?? '').trim();
+        if (!desc)
+            return `Line ${n}: enter a description`;
+        if (!Number.isFinite(qty) || qty <= 0)
+            return `Line ${n}: quantity must be greater than 0`;
+        if (!Number.isFinite(unit) || unit < 0)
+            return `Line ${n}: unit price can't be negative`;
+        if (!accountCode)
+            return `Line ${n}: choose an account`;
+        if (!taxType)
+            return `Line ${n}: choose a tax rate`;
+    }
+    return '';
+};
+/**
+ * Builds the raw Xero invoice body create_invoice expects. Status is set
+ * explicitly to DRAFT (rather than relying on the tool's own default) so
+ * this tile's intent — record a draft, not submit a live bill — is
+ * unambiguous in the request itself.
+ * Args: { contactId, date, dueDate, reference, lines }
+ */
+const bill_entry_build_payload = (args) => {
+    const lines = Array.isArray(args.lines) ? args.lines : [];
+    const date = String(args.date ?? '').trim();
+    const dueDate = String(args.dueDate ?? '').trim();
+    const reference = String(args.reference ?? '').trim();
+    return {
+        Type: 'ACCPAY',
+        Status: 'DRAFT',
+        Contact: { ContactID: String(args.contactId ?? '') },
+        ...(date ? { Date: date } : {}),
+        ...(dueDate ? { DueDate: dueDate } : {}),
+        ...(reference ? { Reference: reference } : {}),
+        LineItems: lines.map((l) => ({
+            Description: String(l.description ?? ''),
+            Quantity: Number(l.quantity) || 0,
+            UnitAmount: Number(l.unitAmount) || 0,
+            AccountCode: String(l.accountCode ?? ''),
+            TaxType: String(l.taxType ?? ''),
+        })),
+    };
+};
+/**
+ * Validation + payload-building for the Fee & Reimbursement Drafts tile.
+ * Unlike bill_entry_*, this tile is always exactly ONE fixed-purpose line
+ * (the owner's platform fee reimbursement) -- reusing the shared multi-line
+ * bill_entry_is_invalid/_validation_message functions meant wrapping it in
+ * a one-item "lines" array, which skips their `lines.length === 0`
+ * short-circuit and so surfaced a blank/untouched amount as "unit price
+ * can't be negative" instead of "nothing entered yet" (found via a live
+ * UI review). Dedicated, flat-arg functions avoid that mismatch entirely.
+ * Args: { contactId, date, amount, accountCode, taxType }
+ */
+const fee_reimbursement_is_invalid = (args) => {
+    const contactId = String(args.contactId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const accountCode = String(args.accountCode ?? '').trim();
+    const taxType = String(args.taxType ?? '').trim();
+    const amount = Number(args.amount);
+    if (!contactId || !date || !accountCode || !taxType)
+        return true;
+    return !Number.isFinite(amount) || amount <= 0;
+};
+/** Human-readable reason the form can't submit yet, mirroring fee_reimbursement_is_invalid's checks in order. */
+const fee_reimbursement_validation_message = (args) => {
+    const contactId = String(args.contactId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const accountCode = String(args.accountCode ?? '').trim();
+    const taxType = String(args.taxType ?? '').trim();
+    const amount = Number(args.amount);
+    if (!contactId)
+        return 'Select the owner';
+    if (!date)
+        return 'Set the bill date';
+    if (!accountCode)
+        return 'Choose an expense account';
+    if (!taxType)
+        return 'Choose a tax rate';
+    if (!Number.isFinite(amount) || amount <= 0)
+        return 'Enter a fee greater than 0';
+    return '';
+};
+/**
+ * Builds the raw Xero invoice body create_invoice expects: one fixed line
+ * ("Platform fee reimbursement") against the owner. Status is explicit
+ * DRAFT so the tile's intent -- record a draft, not submit a live bill --
+ * is unambiguous in the request itself, same reasoning as
+ * bill_entry_build_payload.
+ * Args: { contactId, date, reference, amount, accountCode, taxType }
+ */
+const fee_reimbursement_build_payload = (args) => {
+    const date = String(args.date ?? '').trim();
+    const reference = String(args.reference ?? '').trim();
+    return {
+        Type: 'ACCPAY',
+        Status: 'DRAFT',
+        Contact: { ContactID: String(args.contactId ?? '') },
+        ...(date ? { Date: date } : {}),
+        ...(reference ? { Reference: reference } : {}),
+        LineItems: [
+            {
+                Description: 'Platform fee reimbursement',
+                Quantity: 1,
+                UnitAmount: Number(args.amount) || 0,
+                AccountCode: String(args.accountCode ?? ''),
+                TaxType: String(args.taxType ?? ''),
+            },
+        ],
+    };
+};
+/**
+ * Looks up the selected expense account's own TaxType (e.g. "INPUT" / GST
+ * on Expenses) so the tax rate pre-fills to what that account actually
+ * uses in Xero, instead of defaulting to nothing (found via the same live
+ * UI review). Falls back to whatever's already selected if the account
+ * isn't found, rather than clearing a manual choice.
+ * Args: { accounts, accountCode, current }
+ */
+const fee_reimbursement_account_tax_type = (args) => {
+    const accounts = Array.isArray(args.accounts) ? args.accounts : [];
+    const accountCode = String(args.accountCode ?? '').trim();
+    if (!accountCode)
+        return args.current ?? '';
+    const account = accounts.find((a) => String(a.Code ?? '') === accountCode);
+    return account?.TaxType ?? (args.current ?? '');
+};
+/**
+ * Filters a list_accounts response to the given Xero account Types and
+ * maps it to Select options -- same {value, label} shape as the system's
+ * to_options, but with a type filter up front, since the dashboard can't
+ * call list_accounts twice with different `where` filters from one widget
+ * (a tool's result is keyed by mcp+tool only, so a second call would
+ * silently overwrite the first). One fetch, filtered twice client-side.
+ *
+ * `valueField` defaults to "Code" (chart-of-accounts selectors, e.g. an
+ * expense account code other tools take as `accountCode`). Pass "AccountID"
+ * for BANK accounts: Xero bank accounts routinely have no Code at all, and
+ * the batch-payment API needs the account's AccountID, not its Code.
+ * Args: { accounts, types: string[], valueField?: "Code" | "AccountID" }
+ */
+const account_options_by_type = (args) => {
+    const accounts = Array.isArray(args.accounts) ? args.accounts : [];
+    const types = new Set((Array.isArray(args.types) ? args.types : []).map((t) => String(t)));
+    const valueField = args.valueField === 'AccountID' ? 'AccountID' : 'Code';
+    return accounts
+        .filter((a) => types.has(String(a.Type ?? '')))
+        .map((a) => ({ value: String(a[valueField] ?? ''), label: String(a.Name ?? '') }))
+        .filter((o) => o.value);
+};
+/**
+ * get_account_movement's own `movement` field is Credit - Debit -- the right
+ * convention for the liability account Provision Journal Drafts reconciles
+ * against, but backwards for an EXPENSE account: expenses are debit-normal,
+ * so a bill posting $X to Cleaning raises its balance via a DEBIT, which
+ * Credit - Debit reports as -$X. Recomputed here from the tool's raw
+ * debit/credit components (Debit - Credit) instead of trusting `movement`,
+ * so a reimbursement bill shows the ledger moving the same direction the
+ * grouped-from-bills total does.
+ */
+const expense_reimbursement_status = (args) => {
+    const grandTotal = Math.round((Number(args.grandTotal) || 0) * 100) / 100;
+    const currentBalance = (Number(args.currentDebit) || 0) - (Number(args.currentCredit) || 0);
+    const priorBalance = (Number(args.priorDebit) || 0) - (Number(args.priorCredit) || 0);
+    const movement = Math.round((currentBalance - priorBalance) * 100) / 100;
+    const accountFound = Boolean(args.accountFound);
+    const accountName = typeof args.accountName === 'string' ? args.accountName : null;
+    const difference = Math.round((movement - grandTotal) * 100) / 100;
+    const isMatch = accountFound && Math.abs(difference) < 0.01;
+    return {
+        accountName,
+        accountFound,
+        grandTotal,
+        movement,
+        difference,
+        matchLabel: !accountFound ? 'Account not found' : isMatch ? 'Reconciled' : 'Mismatch',
+        matchTone: !accountFound ? 'muted' : isMatch ? 'success' : 'destructive',
+    };
+};
+/**
+ * True when the batch-payment form is NOT ready to submit -- the
+ * reimbursement account, a bank account to pay from, and a date must all
+ * be set, and there must be at least one employee with bills to pay.
+ * Args: { reimbursementAccountCode, bankAccountId, date, employeeCount }
+ */
+const expense_reimbursement_is_invalid = (args) => {
+    const reimbursementAccountCode = String(args.reimbursementAccountCode ?? '').trim();
+    const bankAccountId = String(args.bankAccountId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const employeeCount = Number(args.employeeCount) || 0;
+    return !reimbursementAccountCode || !bankAccountId || !date || employeeCount === 0;
+};
+/** Human-readable reason the batch-payment form can't submit yet, mirroring expense_reimbursement_is_invalid's checks in order. */
+const expense_reimbursement_validation_message = (args) => {
+    const reimbursementAccountCode = String(args.reimbursementAccountCode ?? '').trim();
+    const bankAccountId = String(args.bankAccountId ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const employeeCount = Number(args.employeeCount) || 0;
+    if (!reimbursementAccountCode)
+        return 'Choose the reimbursement expense account';
+    if (employeeCount === 0)
+        return 'No outstanding reimbursement bills found on that account';
+    if (!bankAccountId)
+        return 'Choose the bank account to pay from';
+    if (!date)
+        return 'Set the batch payment date';
+    return '';
+};
+/**
+ * Builds the raw Xero BatchPayment body create_batch_payment expects --
+ * one Payment per contributing bill, paying its real amountDue (the
+ * invoice's actual outstanding balance), NOT the narrower reimbursement
+ * line amount -- a batch payment pays off a whole invoice, not one line
+ * item, so using the line amount on a bill with other charges mixed in
+ * would short-pay it.
+ * Args: { employees, bankAccountId, date }
+ */
+const expense_reimbursement_build_batch_payment = (args) => {
+    const employees = Array.isArray(args.employees) ? args.employees : [];
+    const date = String(args.date ?? '').trim();
+    const payments = employees.flatMap((e) => (e.bills ?? [])
+        .filter((b) => b.invoiceId)
+        .map((b) => ({ Invoice: { InvoiceID: b.invoiceId }, Amount: Math.round((Number(b.amountDue) || 0) * 100) / 100 })));
+    return {
+        Account: { AccountID: String(args.bankAccountId ?? '') },
+        ...(date ? { Date: date } : {}),
+        Payments: payments,
+    };
+};
+/**
+ * Names the employees whose reimbursement bill(s) mix in other charges
+ * (amountDue > the reimbursement line amount) so the confirm step can warn
+ * before batch-paying them -- empty string when nothing needs flagging.
+ * Args: { employees }
+ */
+const expense_reimbursement_other_charges_note = (args) => {
+    const employees = Array.isArray(args.employees) ? args.employees : [];
+    const names = employees.filter((e) => e.hasOtherCharges).map((e) => e.contactName || 'Unknown contact');
+    if (names.length === 0)
+        return '';
+    return `${names.join(', ')} ${names.length === 1 ? 'has a bill' : 'have bills'} with other charges mixed in -- the full bill amount will be paid, not just the reimbursement portion.`;
+};
+/**
+ * The amount a provision journal needs to post to bring the ledger up (or
+ * down) to the payroll-computed leave+RDO target -- target minus whatever
+ * is already sitting in the nominated GL account. Positive means the
+ * provision needs to grow (debit expense / credit provision); negative
+ * means it needs to shrink (the reverse). Zero means the ledger already
+ * matches and there's nothing to post.
+ * Args: { targetValue, currentBalance }
+ */
+const leave_provision_adjustment = (args) => {
+    const target = Number(args.targetValue) || 0;
+    const current = Number(args.currentBalance) || 0;
+    return Math.round((target - current) * 100) / 100;
+};
+/**
+ * True when the form is NOT ready to submit -- both accounts and the date
+ * must be set, and there must actually be a non-zero adjustment to post.
+ * Args: { provisionAccountCode, expenseAccountCode, date, adjustment }
+ */
+const leave_provision_is_invalid = (args) => {
+    const provisionAccountCode = String(args.provisionAccountCode ?? '').trim();
+    const expenseAccountCode = String(args.expenseAccountCode ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const adjustment = Number(args.adjustment);
+    if (!provisionAccountCode || !expenseAccountCode || !date)
+        return true;
+    return !Number.isFinite(adjustment) || adjustment === 0;
+};
+/** Human-readable reason the form can't submit yet, mirroring leave_provision_is_invalid's checks in order. */
+const leave_provision_validation_message = (args) => {
+    const provisionAccountCode = String(args.provisionAccountCode ?? '').trim();
+    const expenseAccountCode = String(args.expenseAccountCode ?? '').trim();
+    const date = String(args.date ?? '').trim();
+    const adjustment = Number(args.adjustment);
+    if (!provisionAccountCode)
+        return 'Choose the provision (liability) account';
+    if (!expenseAccountCode)
+        return 'Choose the expense account';
+    if (!date)
+        return 'Set the journal date';
+    if (!Number.isFinite(adjustment) || adjustment === 0)
+        return 'The ledger already matches the provision target — nothing to post';
+    return '';
+};
+/**
+ * Builds the raw Xero manual journal body create_manual_journal expects --
+ * a two-line adjustment: the expense account takes the LineAmount as-is
+ * (Xero's own debit-positive/credit-negative convention for ManualJournal
+ * lines), the provision account takes the exact negative, so the two
+ * always net to zero regardless of whether the adjustment increases or
+ * decreases the provision.
+ * Args: { provisionAccountCode, expenseAccountCode, date, adjustment }
+ */
+const leave_provision_build_journal = (args) => {
+    const date = String(args.date ?? '').trim();
+    const adjustment = Math.round((Number(args.adjustment) || 0) * 100) / 100;
+    return {
+        Narration: 'Leave & RDO provision adjustment',
+        ...(date ? { Date: date } : {}),
+        JournalLines: [
+            {
+                LineAmount: adjustment,
+                AccountCode: String(args.expenseAccountCode ?? ''),
+                Description: 'Leave & RDO provision adjustment',
+            },
+            {
+                LineAmount: -adjustment,
+                AccountCode: String(args.provisionAccountCode ?? ''),
+                Description: 'Leave & RDO provision adjustment',
+            },
+        ],
+    };
+};
+/**
+ * Outstanding balances for the currently selected supplier, read straight
+ * off list_contacts' own response — Xero already returns a `Balances`
+ * block per contact (AccountsPayable/AccountsReceivable, each with
+ * Outstanding/Overdue), so no extra API call is needed.
+ * `AccountsPayable.Outstanding` = what we owe them; `AccountsReceivable
+ * .Outstanding` = what they owe us (normally 0 for a pure supplier, but
+ * shown in case the same contact is also set up as a customer).
+ * Args: { contacts, contactId }
+ */
+const bill_entry_supplier_balances = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const contactId = String(args.contactId ?? '').trim();
+    const empty = {
+        hasSelection: false,
+        weOwe: '',
+        weOweOverdue: '',
+        weOweTone: 'muted',
+        theyOwe: '',
+        theyOweOverdue: '',
+        theyOweTone: 'muted',
+    };
+    if (!contactId)
+        return empty;
+    const contact = contacts.find((c) => String(c.ContactID ?? '') === contactId);
+    if (!contact)
+        return empty;
+    const balances = (contact.Balances ?? {});
+    const ap = (balances.AccountsPayable ?? {});
+    const ar = (balances.AccountsReceivable ?? {});
+    const apOutstanding = Number(ap.Outstanding) || 0;
+    const apOverdue = Number(ap.Overdue) || 0;
+    const arOutstanding = Number(ar.Outstanding) || 0;
+    const arOverdue = Number(ar.Overdue) || 0;
+    return {
+        hasSelection: true,
+        weOwe: formatAUD(apOutstanding),
+        weOweOverdue: formatAUD(apOverdue),
+        weOweIsOverdue: apOverdue > 0,
+        // Destructive once any of it is overdue (we're late paying them) —
+        // muted while current, same as this tile's amount-owed is otherwise
+        // neutral data, not a status.
+        weOweTone: apOverdue > 0 ? 'destructive' : apOutstanding > 0 ? 'default' : 'muted',
+        theyOwe: formatAUD(arOutstanding),
+        theyOweOverdue: formatAUD(arOverdue),
+        theyOweIsOverdue: arOverdue > 0,
+        // Warning rather than destructive — a customer paying us late isn't
+        // this tile's own obligation the way an overdue bill to a supplier is.
+        theyOweTone: arOverdue > 0 ? 'warning' : arOutstanding > 0 ? 'default' : 'muted',
+    };
+};
+// ── analyze_autopay_exclusions ──────────────────────────────────────────
+// Classifies every repeating ACCPAY bill template (`list_repeating_invoices`)
+// by how automated it really is in Xero:
+//  - AUTHORISED templates post without a human touching them each cycle —
+//    the real "autopay" signal — so they're "Excluded from Check" (a
+//    routine manual bill review doesn't need to re-examine them).
+//  - DRAFT templates require a person to approve every generated bill —
+//    "Needs Review".
+// "New Exclusions" counts AUTHORISED templates whose Schedule.StartDate
+// falls within the last ~40 days — the closest real proxy available, since
+// Xero's RepeatingInvoice object carries no "date authorised"/created
+// timestamp. `organisation` supplies the real ShortCode for the documented
+// go.xero.com deep-link format (same mechanism as analyze_bill_duplicates),
+// redirected to the general bills list (no single invoice to point at here).
+// Returns a fresh `scannedAt` ISO timestamp every call — recomputes (and so
+// updates) both on the initial mount fetch and every manual "Rescan Data"
+// click, since both re-fire the same list_repeating_invoices watch chain.
+// `filter` ('' | 'excluded' | 'needsReview' | 'new') narrows the returned
+// `rows` to one stat tile's slice — set by clicking that tile, same
+// click-to-filter pattern as the MYOB Duplicate Bills Queue tabs. The counts
+// themselves always reflect the FULL set regardless of `filter`, so the tiles
+// stay accurate while only the table below them narrows.
+// Args: { repeatingInvoices?: RepeatingInvoice[], organisation?: unknown, newExclusionWindowDays?: number, filter?: string }
+const analyze_autopay_exclusions = (args) => {
+    const all = Array.isArray(args.repeatingInvoices) ? args.repeatingInvoices : [];
+    const newWindowDays = Number(args.newExclusionWindowDays) > 0 ? Number(args.newExclusionWindowDays) : 40;
+    const org = args.organisation ?? {};
+    const orgs = Array.isArray(org.Organisations) ? org.Organisations : [];
+    const shortCode = String(orgs[0]?.ShortCode ?? '');
+    const parseDate = (raw) => {
+        const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : NaN;
+    };
+    const fmtDate = (ms) => Number.isFinite(ms) ? new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const bills = all.filter((r) => r.Type === 'ACCPAY' && r.Status !== 'DELETED');
+    const now = Date.now();
+    const rows = bills
+        .map((r) => {
+        const contact = r.Contact;
+        const startMs = parseDate(r.Schedule?.StartDate);
+        const ageDays = Number.isFinite(startMs) ? (now - startMs) / 86_400_000 : NaN;
+        const autopayEnabled = r.Status === 'AUTHORISED';
+        const isNewExclusion = autopayEnabled && Number.isFinite(ageDays) && ageDays >= 0 && ageDays <= newWindowDays;
+        return {
+            contactId: String(contact?.ContactID ?? contact?.Name ?? Math.random()),
+            vendor: String(contact?.Name ?? 'Unknown'),
+            autopayEnabled,
+            autopayStatusLabel: autopayEnabled ? 'Enabled' : 'Disabled',
+            autopayStatusTone: autopayEnabled ? 'success' : 'muted',
+            exclusionReason: autopayEnabled ? 'AutoPay Enabled' : 'Requires manual approval',
+            added: fmtDate(startMs),
+            startMs,
+            isNewExclusion,
+            status: autopayEnabled ? 'Excluded' : 'Needs Review',
+            statusTone: autopayEnabled ? 'success' : 'warning',
+        };
+    })
+        .sort((a, b) => (Number.isFinite(b.startMs) ? b.startMs : 0) - (Number.isFinite(a.startMs) ? a.startMs : 0));
+    const withIsLast = (arr) => arr.map((r, i) => ({ ...r, isLast: i === arr.length - 1 }));
+    const vendorCount = rows.length;
+    const excludedCount = rows.filter((r) => r.autopayEnabled).length;
+    const needsReviewCount = rows.filter((r) => !r.autopayEnabled).length;
+    const newExclusionsCount = rows.filter((r) => r.isNewExclusion).length;
+    const reviewUrl = shortCode
+        ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent('/AccountsPayable/Bills')}`
+        : 'https://go.xero.com/';
+    const filter = ['excluded', 'needsReview', 'new'].includes(String(args.filter)) ? String(args.filter) : '';
+    const filteredRows = filter === 'excluded'
+        ? rows.filter((r) => r.autopayEnabled)
+        : filter === 'needsReview'
+            ? rows.filter((r) => !r.autopayEnabled)
+            : filter === 'new'
+                ? rows.filter((r) => r.isNewExclusion)
+                : rows;
+    return {
+        vendorCount,
+        excludedCount,
+        needsReviewCount,
+        newExclusionsCount,
+        reviewUrl,
+        filter,
+        filterLabel: filter === 'excluded' ? 'Excluded from Check' : filter === 'needsReview' ? 'Needs Review' : filter === 'new' ? 'New Exclusions' : '',
+        filterIsAll: filter === '',
+        filterIsExcluded: filter === 'excluded',
+        filterIsNeedsReview: filter === 'needsReview',
+        filterIsNew: filter === 'new',
+        rows: withIsLast(filteredRows.map(({ startMs, isNewExclusion, ...r }) => r)),
+        scannedAt: new Date().toISOString(),
+    };
+};
+// ── job_allocation_overview ───────────────────────────────────────────
+// Powers the "Job Allocation" tile — job costing built on a Xero Tracking
+// Category (no Xero Projects module required). "Jobs" are the active
+// Options under whichever TrackingCategory matches `jobTrackingCategoryName`
+// (default "Job").
+//
+// Real-Xero mapping, and the assumptions baked into each:
+// - Committed spend: sum of AUTHORISED (approved, not yet billed) purchase
+//   order line items tagged to a job. A PO can have line items tagged to
+//   more than one job; this attributes each LINE's LineAmount to whichever
+//   job that line's own Tracking entry names (not the whole PO total to a
+//   single job).
+// - PO job-tagging rate: % of non-DELETED purchase orders that have at
+//   least one line item tagged to the Job category at all. Untagged POs
+//   are "to review" — there's no reliable way to guess which job they
+//   belong to.
+// - Bills matched to PO / variance: Xero's core Accounting API has no
+//   formal PurchaseOrderID field on an Invoice, so "matched" is a
+//   heuristic — same Contact, and the bill's Reference contains the PO's
+//   PurchaseOrderNumber (the common real-world convention when billing
+//   against a PO). A "variance" is a matched pair whose totals differ by
+//   more than a cent. This WILL miss a match if the biller didn't quote
+//   the PO number in Reference — documented limitation, not a bug.
+// - Expected deliveries: AUTHORISED (not yet BILLED) POs whose DeliveryDate
+//   has passed — goods/services expected but not yet received/billed.
+// - Tracking-category usage: active Job-option count vs Xero's real
+//   100-option-per-category hard limit.
+// - Budget / over-budget banner: Xero's GET /Budgets, matched to a job via
+//   a BudgetLine whose own Tracking names that job option. Sums the whole
+//   Amounts[] series as one approximate total (not period-precise) — this
+//   tile is an overview, not a budget-vs-actual report. The single
+//   worst-over-budget job is surfaced; omitted entirely if no job has
+//   budget data or none is over.
+//
+// Args: { trackingCategories, purchaseOrders, bills, budgets, organisation,
+//         jobTrackingCategoryName?: string, optionLimit?: number }
+const job_allocation_overview = (args) => {
+    const trackingCategories = Array.isArray(args.trackingCategories) ? args.trackingCategories : [];
+    const purchaseOrders = Array.isArray(args.purchaseOrders) ? args.purchaseOrders : [];
+    const bills = Array.isArray(args.bills) ? args.bills : [];
+    const budgets = Array.isArray(args.budgets) ? args.budgets : [];
+    const categoryName = String(args.jobTrackingCategoryName ?? 'Job');
+    const optionLimit = Number(args.optionLimit) > 0 ? Number(args.optionLimit) : 100;
+    const org = args.organisation ?? {};
+    const orgs = Array.isArray(org.Organisations) ? org.Organisations : [];
+    const shortCode = String(orgs[0]?.ShortCode ?? '');
+    const currencyCode = String(orgs[0]?.BaseCurrency ?? 'AUD');
+    const parseDate = (raw) => {
+        const m = String(raw ?? '').match(/\/Date\((-?\d+)(?:[+-]\d{4})?\)\//);
+        return m ? Number(m[1]) : NaN;
+    };
+    const fmtAmt = (n) => {
+        const v = Number(n);
+        if (!Number.isFinite(v))
+            return '';
+        try {
+            return new Intl.NumberFormat('en-AU', { style: 'currency', currency: currencyCode, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+        }
+        catch {
+            return `$${v.toFixed(2)}`;
+        }
+    };
+    const fmtDate = (ms) => Number.isFinite(ms) ? new Date(ms).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const reviewUrl = shortCode
+        ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent('/Purchases/PurchaseOrders')}`
+        : 'https://go.xero.com/';
+    const jobCategory = trackingCategories.find((c) => String(c.Name ?? '').trim().toLowerCase() === categoryName.trim().toLowerCase());
+    // No matching tracking category (yet) at all — not an error, just the
+    // genuinely-empty case the tile's Empty state is for.
+    if (!jobCategory) {
+        return {
+            activeJobCount: 0,
+            totalCommitted: 0,
+            totalCommittedDisplay: fmtAmt(0),
+            currencyCode,
+            reviewUrl,
+            lastSyncedAt: new Date().toISOString(),
+            detailRows: [],
+            poTagging: { pct: 0, toReviewCount: 0 },
+            billsMatched: { varianceCount: 0 },
+            deliveries: { overdueCount: 0 },
+            trackingUsage: { used: 0, limit: optionLimit },
+        };
+    }
+    const jobCategoryId = String(jobCategory.TrackingCategoryID ?? '');
+    const allOptions = Array.isArray(jobCategory.Options) ? jobCategory.Options : [];
+    const activeOptions = allOptions.filter((o) => String(o.Status ?? 'ACTIVE').toUpperCase() !== 'ARCHIVED');
+    const jobNameByOptionId = new Map(activeOptions.map((o) => [String(o.TrackingOptionID ?? ''), String(o.Name ?? 'Unnamed job')]));
+    // First tagged job option found on a line item's Tracking array, if any.
+    const lineJobName = (line) => {
+        const tracking = Array.isArray(line.Tracking) ? line.Tracking : [];
+        for (const t of tracking) {
+            if (String(t.TrackingCategoryID ?? '') === jobCategoryId || String(t.Name ?? '') === String(jobCategory.Name ?? '')) {
+                const name = jobNameByOptionId.get(String(t.TrackingOptionID ?? '')) ?? String(t.Option ?? '');
+                if (name)
+                    return name;
+            }
+        }
+        return undefined;
+    };
+    // Any line on a PO tagged to the Job category — used for tagging-rate,
+    // independent of whether that option is still active.
+    const poJobName = (po) => {
+        const lines = Array.isArray(po.LineItems) ? po.LineItems : [];
+        for (const line of lines) {
+            const name = lineJobName(line);
+            if (name)
+                return name;
+        }
+        return undefined;
+    };
+    const livePOs = purchaseOrders.filter((po) => po.Status !== 'DELETED');
+    const taggedPOs = livePOs.filter((po) => poJobName(po) !== undefined);
+    const untaggedPOs = livePOs.filter((po) => poJobName(po) === undefined);
+    const poTaggingPct = livePOs.length ? Math.round((100 * taggedPOs.length) / livePOs.length) : 100;
+    // Committed = AUTHORISED (approved, not yet billed) PO line amounts,
+    // summed per job by the LINE's own tag (not the whole PO).
+    const committedByJob = new Map();
+    for (const po of purchaseOrders) {
+        if (po.Status !== 'AUTHORISED')
+            continue;
+        const lines = Array.isArray(po.LineItems) ? po.LineItems : [];
+        for (const line of lines) {
+            const job = lineJobName(line);
+            if (!job)
+                continue;
+            const amount = Number(line.LineAmount) || 0;
+            committedByJob.set(job, (committedByJob.get(job) ?? 0) + amount);
+        }
+    }
+    const totalCommitted = [...committedByJob.values()].reduce((s, v) => s + v, 0);
+    // "Active jobs" for the hero caption = jobs the committed total is spread
+    // across (i.e. have open AUTHORISED spend right now) — not the total
+    // option count, which the Tracking Category row already reports.
+    const activeJobCount = committedByJob.size;
+    // Budget per job: sum a TRACKING-type Budget's whole Amounts[] series for
+    // any BudgetLine whose own Tracking names this job option.
+    const budgetByJob = new Map();
+    for (const budget of budgets) {
+        const lines = Array.isArray(budget.BudgetLines) ? budget.BudgetLines : [];
+        for (const line of lines) {
+            const tracking = Array.isArray(line.Tracking) ? line.Tracking : [];
+            const match = tracking.find((t) => String(t.Name ?? '') === String(jobCategory.Name ?? ''));
+            if (!match)
+                continue;
+            const jobName = String(match.Option ?? '');
+            if (!jobName)
+                continue;
+            const amounts = Array.isArray(line.Amounts) ? line.Amounts : [];
+            const total = amounts.reduce((s, a) => s + (Number(a) || 0), 0);
+            budgetByJob.set(jobName, (budgetByJob.get(jobName) ?? 0) + total);
+        }
+    }
+    let overBudgetJob;
+    for (const [job, committed] of committedByJob) {
+        const budget = budgetByJob.get(job);
+        if (!budget || budget <= 0 || committed <= budget)
+            continue;
+        const pctOver = Math.round((100 * (committed - budget)) / budget);
+        if (!overBudgetJob || pctOver > overBudgetJob.pctOver)
+            overBudgetJob = { name: job, pctOver };
+    }
+    // Bills matched to a PO: same Contact + the bill's Reference contains the
+    // PO's own PurchaseOrderNumber. See the heuristic note in the function
+    // header comment above.
+    const variancePairs = [];
+    for (const bill of bills) {
+        if (bill.Status === 'DELETED' || bill.Status === 'VOIDED')
+            continue;
+        const billContactId = String(bill.Contact?.ContactID ?? '');
+        const reference = String(bill.Reference ?? '').toLowerCase();
+        if (!reference)
+            continue;
+        const matchedPO = purchaseOrders.find((po) => {
+            const poNumber = String(po.PurchaseOrderNumber ?? '').toLowerCase();
+            if (!poNumber)
+                return false;
+            const poContactId = String(po.Contact?.ContactID ?? '');
+            return poContactId === billContactId && reference.includes(poNumber);
+        });
+        if (!matchedPO)
+            continue;
+        const billTotal = Number(bill.Total) || 0;
+        const poTotal = Number(matchedPO.Total) || 0;
+        if (Math.abs(billTotal - poTotal) > 0.01) {
+            variancePairs.push({ bill, po: matchedPO, job: poJobName(matchedPO) });
+        }
+    }
+    // Expected deliveries: still-open (AUTHORISED) POs whose DeliveryDate has
+    // passed.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overduePOs = purchaseOrders.filter((po) => {
+        if (po.Status !== 'AUTHORISED')
+            return false;
+        const ms = parseDate(po.DeliveryDate);
+        if (!Number.isFinite(ms))
+            return false;
+        const d = new Date(ms);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() < today.getTime();
+    });
+    const detailRows = [
+        ...untaggedPOs.map((po) => ({
+            category: 'PO Tagging',
+            job: '—',
+            label: String(po.PurchaseOrderNumber ?? po.PurchaseOrderID ?? '—'),
+            detail: 'Not tagged to a job',
+            severity: 'Needs Review',
+        })),
+        ...variancePairs.map(({ bill, po, job }) => ({
+            category: 'Bill Variance',
+            job: job ?? '—',
+            label: String(bill.InvoiceNumber ?? '—'),
+            detail: `vs PO ${String(po.PurchaseOrderNumber ?? '—')}: billed ${fmtAmt(bill.Total)} vs ${fmtAmt(po.Total)}`,
+            severity: 'Variance',
+        })),
+        ...overduePOs.map((po) => {
+            const ms = parseDate(po.DeliveryDate);
+            const daysLate = Number.isFinite(ms) ? Math.round((today.getTime() - ms) / 86_400_000) : 0;
+            return {
+                category: 'Delivery',
+                job: poJobName(po) ?? '—',
+                label: String(po.PurchaseOrderNumber ?? po.PurchaseOrderID ?? '—'),
+                detail: `Expected ${fmtDate(ms)} — ${daysLate}d overdue`,
+                severity: 'Overdue',
+            };
+        }),
+        ...activeOptions.map((o) => {
+            const name = String(o.Name ?? 'Unnamed job');
+            const committed = committedByJob.get(name) ?? 0;
+            const budget = budgetByJob.get(name);
+            const isOver = overBudgetJob?.name === name;
+            return {
+                category: 'Tracking Category',
+                job: name,
+                label: name,
+                detail: budget ? `${fmtAmt(committed)} committed of ${fmtAmt(budget)} budget` : `${fmtAmt(committed)} committed`,
+                severity: isOver ? 'Over Budget' : 'On Track',
+            };
+        }),
+    ];
+    return {
+        activeJobCount,
+        totalCommitted,
+        totalCommittedDisplay: fmtAmt(totalCommitted),
+        currencyCode,
+        overBudgetJob,
+        poTagging: { pct: poTaggingPct, toReviewCount: untaggedPOs.length },
+        billsMatched: { varianceCount: variancePairs.length },
+        deliveries: { overdueCount: overduePOs.length },
+        trackingUsage: { used: activeOptions.length, limit: optionLimit },
+        detailRows,
+        reviewUrl,
+        lastSyncedAt: new Date().toISOString(),
+    };
+};
+// ── contra_opportunities ────────────────────────────────────────────
+// Finds contacts that have BOTH an open sales invoice (ACCREC) and an
+// open bill (ACCPAY) — candidates for a contra/offset, since Xero has
+// no native offset feature. For each such contact, pairs the LARGEST
+// open invoice against the LARGEST open bill (by AmountDue) — a
+// contact with several open documents on either side is a multi-pair
+// scenario out of scope for this first pass; the suggested pair covers
+// the common single-pair case.
+//
+// Blocks (but still lists, so the mismatch is visible rather than
+// silently dropped) a pair whose invoice/bill currencies differ —
+// netting across currencies isn't a straight min() of two amounts.
+// A contact whose InvoiceNumber is blank (seen in real data) falls
+// back to a short ID-based reference so the contra Reference is never
+// empty.
+//
+// offsetAmount = min(invoice.AmountDue, bill.AmountDue), rounded to 2dp.
+// Returns { rows, count, totalOffsettable } — rows sorted offsettable-
+// first (largest offset first), blocked pairs last.
+// Args: { contacts: Contact[], invoices: Invoice[] }
+const contra_opportunities = (args) => {
+    const contacts = Array.isArray(args.contacts) ? args.contacts : [];
+    const invoices = Array.isArray(args.invoices) ? args.invoices : [];
+    const byContact = new Map();
+    for (const inv of invoices) {
+        const contact = inv.Contact;
+        const contactId = String(contact?.ContactID ?? '');
+        if (!contactId)
+            continue;
+        const bucket = byContact.get(contactId) ?? { ar: [], ap: [] };
+        if (inv.Type === 'ACCREC')
+            bucket.ar.push(inv);
+        else if (inv.Type === 'ACCPAY')
+            bucket.ap.push(inv);
+        byContact.set(contactId, bucket);
+    }
+    const largestBy = (docs) => docs.reduce((max, d) => (Number(d.AmountDue) > Number(max?.AmountDue ?? -1) ? d : max), docs[0]);
+    const shortRef = (doc) => {
+        const num = String(doc.InvoiceNumber ?? '').trim();
+        if (num)
+            return num;
+        return `#${String(doc.InvoiceID ?? '').slice(0, 8)}`;
+    };
+    const rows = [];
+    for (const contact of contacts) {
+        const contactId = String(contact.ContactID ?? '');
+        const bucket = byContact.get(contactId);
+        if (!bucket || bucket.ar.length === 0 || bucket.ap.length === 0)
+            continue;
+        const invoice = largestBy(bucket.ar);
+        const bill = largestBy(bucket.ap);
+        const invoiceCurrency = String(invoice.CurrencyCode ?? '');
+        const billCurrency = String(bill.CurrencyCode ?? '');
+        const blocked = invoiceCurrency !== billCurrency;
+        const offsetAmount = Math.round(Math.min(Number(invoice.AmountDue), Number(bill.AmountDue)) * 100) / 100;
+        rows.push({
+            contactId,
+            contactName: String(contact.Name ?? 'Unknown'),
+            invoiceId: String(invoice.InvoiceID ?? ''),
+            invoiceNumber: shortRef(invoice),
+            invoiceAmountDue: Number(invoice.AmountDue),
+            billId: String(bill.InvoiceID ?? ''),
+            billNumber: shortRef(bill),
+            billAmountDue: Number(bill.AmountDue),
+            offsetAmount,
+            currency: invoiceCurrency,
+            blocked,
+            blockedReason: blocked ? `Currency mismatch (${invoiceCurrency} vs ${billCurrency})` : '',
+            reference: `OFFSET-${shortRef(invoice)}-${shortRef(bill)}`,
+        });
+    }
+    rows.sort((a, b) => {
+        if (!!a.blocked !== !!b.blocked)
+            return a.blocked ? 1 : -1;
+        return b.offsetAmount - a.offsetAmount;
+    });
+    const totalOffsettable = rows
+        .filter((r) => !r.blocked)
+        .reduce((sum, r) => sum + r.offsetAmount, 0);
+    return { rows, count: rows.length, totalOffsettable };
+};
+// ── find_clearing_account ────────────────────────────────────────────
+// Picks the clearing/offset account from a list already filtered to
+// EnablePaymentsToAccount==true (the dataProvider's own `where`) — a
+// generic payable-enabled account (e.g. an Owner Drawings account) is
+// NOT a clearing account and must not be silently offered as one, so
+// this only matches on Code/Name actually hinting "clearing"/"offset"/
+// "contra"/"suspense" rather than taking the first eligible account.
+// Returns { found: false } when nothing matches, so the tile can show
+// the manual Xero-UI setup instructions instead of guessing.
+// Args: { accounts: Account[] }
+const find_clearing_account = (args) => {
+    const accounts = Array.isArray(args.accounts) ? args.accounts : [];
+    const match = accounts.find((a) => /clearing|offset|contra|suspense/i.test(`${a.Code ?? ''} ${a.Name ?? ''}`));
+    if (!match)
+        return { found: false };
+    return {
+        found: true,
+        accountId: String(match.AccountID ?? ''),
+        code: String(match.Code ?? ''),
+        name: String(match.Name ?? ''),
+    };
+};
+// ── today_iso ─────────────────────────────────────────────────────────
+// Today's date as YYYY-MM-DD, for Payment.Date on a same-day contra.
+const today_iso = () => new Date().toISOString().slice(0, 10);
+// ── contra_document_link ─────────────────────────────────────────────
+// Deep link to a specific Xero invoice/bill's edit page — same
+// `go.xero.com/organisationlogin/default.aspx?shortcode=...&
+// redirecturl=/<Module>/Edit.aspx?InvoiceID=...` format already
+// confirmed live elsewhere in this plugin (analyze_bill_duplicates,
+// ready_to_pay_held) — a bare /AccountsPayable/... URL with no
+// shortcode/org context 404s. Falls back to the generic Xero login
+// page before get_organisation resolves or if ShortCode ever comes
+// back empty.
+// Args: { shortCode: string, invoiceId: string, type: 'ACCREC'|'ACCPAY' }
+const contra_document_link = (args) => {
+    const shortCode = String(args.shortCode ?? '').trim();
+    const invoiceId = String(args.invoiceId ?? '').trim();
+    if (!shortCode || !invoiceId)
+        return 'https://go.xero.com/';
+    const module = args.type === 'ACCPAY' ? 'AccountsPayable' : 'AccountsReceivable';
+    const redirect = `/${module}/Edit.aspx?InvoiceID=${invoiceId}`;
+    return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(redirect)}`;
+};
+// ── contra_create_disabled ───────────────────────────────────────────
+// Whether the "Create Contra" button should be disabled for a row —
+// plain-boolean combinator, since generic props (unlike `visible`) don't
+// evaluate $and/$or/native conditions themselves (confirmed from the
+// json-render core source: that resolver only runs for the `visible`
+// field). Disabled when the pair's currencies mismatch, or no eligible
+// clearing account was found at all.
+// Args: { blocked: boolean, clearingFound: boolean }
+const contra_create_disabled = (args) => Boolean(args.blocked) || !args.clearingFound;
+// ── bank_balance_view ────────────────────────────────────────────────
+// The whole derived view for the Bank Balance Change tile in one call:
+// which bank accounts are selected, the totals across them, a summary row
+// per account, and the transactions flattened, sorted and paged.
+//
+// It lives here rather than as a dozen chained $computed calls in the spec
+// because the tile's figures have to agree with the daily Bank Balance
+// Change report, and one testable place to get them is the only way that
+// stays true. Amounts the connector already formatted are reused as-is;
+// only the cross-account totals are formatted here.
+//
+// Args: {
+//   accounts: array,          // get_xero_bank_balance_difference accounts[]
+//   summary: object,          // ...and its summary
+//   selected: string,         // CSV of accountIds; "" means every account
+//   query: string,            // account picker search text
+//   sortField: string,        // bankAccount | code | contact | date | amount
+//   sortDir: string,          // asc | desc
+//   shown: number,            // transaction rows to list
+//   threshold: number,        // default balance to flag against; 0 = off
+//   overrides: string,        // CSV of "accountId:amount" per-account thresholds
+//   overrideTarget: string,   // accountId whose override is being edited
+//   pins: string,             // CSV of pinned accountIds
+//   showAllAccounts: boolean, // list every account, not just the top few
+// }
+const BB_MOVED = 0.005;
+/** The transaction minimum a tile opens with, until someone changes it. */
+const BB_DEFAULT_MIN = 50000;
+const BB_TOP_ACCOUNTS = 5;
+const bbRound2 = (n) => Math.round(n * 100) / 100;
+const bbNum = (v) => {
+    const n = Number(String(v ?? '').replace(/,/g, ''));
+    return Number.isFinite(n) ? n : 0;
+};
+// Whole dollars: the tile is read at a glance, so cents are rounded away. The
+// figures behind it (difference, reconciliation check) still run on full cents.
+const bbAud = (n) => 'A$' + Math.round(Math.abs(bbRound2(n))).toLocaleString('en-AU', { maximumFractionDigits: 0 });
+/** Signed balance, no plus: "-A$12,023" */
+const bbBalance = (n) => (bbRound2(n) < 0 ? '-' : '') + bbAud(n);
+/** Signed change, with plus: "+A$1,235" */
+const bbSigned = (n) => {
+    const r = bbRound2(n);
+    return r > 0 ? `+${bbAud(r)}` : r < 0 ? `-${bbAud(r)}` : bbAud(0);
+};
+const bbDirection = (n) => (bbRound2(n) > 0 ? 'up' : bbRound2(n) < 0 ? 'down' : 'flat');
+const bbTone = (n) => (bbRound2(n) > 0 ? 'success' : bbRound2(n) < 0 ? 'destructive' : 'muted');
+/**
+ * Up and down get an arrow; flat gets nothing. A dash here would sit directly
+ * left of a currency figure and read as a minus sign on a zero.
+ */
+const bbArrow = (n) => (bbRound2(n) > 0 ? '▲' : bbRound2(n) < 0 ? '▼' : '');
+const bbPlural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/**
+ * "+3.2%" of the opening balance. Empty when there is nothing to be a
+ * percentage of, and when nothing moved — "+0.0%" is a signed percentage of
+ * no change, which reads as a figure rather than as silence.
+ */
+const bbPct = (change, opening) => Math.abs(bbRound2(change)) >= 0.005 && Math.abs(opening) >= 1
+    ? `${change < 0 ? '-' : '+'}${((Math.abs(change) / Math.abs(opening)) * 100).toFixed(1)}%`
+    : '';
+const bbCsv = (raw) => String(raw ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+/**
+ * The selection CSV after toggling one account. The spec has no set
+ * arithmetic of its own, so each picker row carries the list its own click
+ * would produce. Everything-selected is stored as "" rather than as every
+ * id, so an account added in Xero later shows up instead of being quietly
+ * excluded by a stale list.
+ */
+const BB_NONE_ID = '__none__';
+const bbToggle = (ids, chosen, id) => {
+    // From the default — every account selected — a click can only mean "narrow
+    // to this one". Treating it as a deselect removes the account that was
+    // clicked and leaves its neighbours standing, so picking an account looks
+    // like it selected the others instead.
+    if (chosen.size === 0)
+        return ids.length === 1 ? '' : id;
+    const current = ids.filter((x) => chosen.has(x));
+    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    // Everything-selected stays "" rather than every id, so an account added in
+    // Xero later shows up instead of being excluded by a stale list. Nothing
+    // selected needs the explicit sentinel for the same reason.
+    if (next.length === ids.length)
+        return '';
+    return next.length === 0 ? BB_NONE_ID : next.join(',');
+};
+/** The pin CSV after starring or unstarring one account. */
+const bbTogglePin = (pinned, id) => {
+    const next = new Set(pinned);
+    if (next.has(id))
+        next.delete(id);
+    else
+        next.add(id);
+    return [...next].join(',');
+};
+/** "id:50000,id:20000" → { id: 50000, id: 20000 }, ignoring anything malformed. */
+const bbParseOv = (raw) => {
+    const out = {};
+    for (const pair of bbCsv(raw)) {
+        const at = pair.lastIndexOf(':');
+        if (at <= 0)
+            continue;
+        const id = pair.slice(0, at).trim();
+        const value = bbNum(pair.slice(at + 1));
+        if (id && value > 0)
+            out[id] = value;
+    }
+    return out;
+};
+const bank_balance_view = (args) => {
+    const all = Array.isArray(args.accounts) ? args.accounts : [];
+    const summary = (args.summary ?? {});
+    const ids = all.map((a) => String(a.accountId ?? '')).filter(Boolean);
+    const mode = String(args.mode || 'today');
+    const BB_NONE = BB_NONE_ID;
+    const requested = bbCsv(args.selected);
+    const known = new Set(all.map((a) => String(a.accountId ?? '')));
+    const live = requested.filter((id) => known.has(id));
+    // An explicit Clear stands; a selection whose every id has gone stale does
+    // not — it falls back to showing everything rather than showing nothing.
+    const chosen = new Set(requested.includes(BB_NONE) ? [BB_NONE] : live.length > 0 || requested.length === 0 ? live : []);
+    const staleSelection = requested.length > 0 && !requested.includes(BB_NONE) && live.length === 0;
+    const pinned = new Set(bbCsv(args.pins));
+    const picked = chosen.size ? all.filter((a) => chosen.has(String(a.accountId ?? ''))) : all;
+    // The threshold is the smallest transaction worth listing. Blank means the
+    // default rather than "off", so the tile opens already filtered; an explicit
+    // 0 is how you turn it off and see everything. Per-account overrides win
+    // over the default for that account only.
+    const threshold = args.threshold === undefined || args.threshold === null || args.threshold === ''
+        ? BB_DEFAULT_MIN
+        : Math.max(0, bbNum(args.threshold));
+    const overrides = bbParseOv(args.overrides);
+    const thrFor = (id) => overrides[id] ?? threshold;
+    const query = String(args.query ?? '').trim().toLowerCase();
+    const matches = (a) => !query || String(a.name ?? '').toLowerCase().includes(query);
+    const accountOptions = all
+        .filter(matches)
+        .sort((x, y) => Number(pinned.has(String(y.accountId ?? ''))) - Number(pinned.has(String(x.accountId ?? ''))) ||
+        String(x.name ?? '').localeCompare(String(y.name ?? '')))
+        .map((a) => {
+        const id = String(a.accountId ?? '');
+        return {
+            accountId: id,
+            name: String(a.name ?? ''),
+            balanceText: bbBalance(bbNum(a.balance)),
+            selected: chosen.size === 0 || chosen.has(id),
+            nextSelected: bbToggle(ids, chosen, id),
+            pinned: pinned.has(id),
+            pinIcon: pinned.has(id) ? '★' : '☆',
+            nextPinned: bbTogglePin(pinned, id),
+        };
+    });
+    const opening = bbRound2(picked.reduce((s, a) => s + bbNum(a.previousBalance), 0));
+    const closing = bbRound2(picked.reduce((s, a) => s + bbNum(a.balance), 0));
+    const difference = bbRound2(closing - opening);
+    const moneyIn = bbRound2(picked.reduce((s, a) => s + bbNum(a.moneyIn), 0));
+    const moneyOut = bbRound2(picked.reduce((s, a) => s + bbNum(a.moneyOut), 0));
+    const pct = bbPct(difference, opening);
+    const ranged = summary.isDefaultRange === false;
+    const withThreshold = picked.filter((a) => thrFor(String(a.accountId ?? '')) > 0);
+    const distinct = new Set(withThreshold.map((a) => thrFor(String(a.accountId ?? ''))));
+    const sharedThreshold = distinct.size === 1 ? [...distinct][0] : 0;
+    const overrideCount = Object.keys(overrides).filter((id) => ids.includes(id)).length;
+    const overrideRows = all.map((a) => {
+        const id = String(a.accountId ?? '');
+        const own = overrides[id];
+        return {
+            accountId: id,
+            name: String(a.name ?? ''),
+            thresholdText: own ? bbAud(own) : threshold > 0 ? `${bbAud(threshold)} (default)` : 'No minimum',
+            isOverride: own !== undefined,
+            editing: id === String(args.overrideTarget ?? ''),
+        };
+    });
+    const target = overrideRows.find((r) => r.editing);
+    const accountRows = [...picked]
+        .sort((x, y) => Math.abs(bbNum(y.difference)) - Math.abs(bbNum(x.difference)) ||
+        String(x.name ?? '').localeCompare(String(y.name ?? '')))
+        .map((a) => {
+        const id = String(a.accountId ?? '');
+        const diff = bbNum(a.difference);
+        const moved = Math.abs(diff) >= BB_MOVED;
+        const rowPct = bbPct(diff, bbNum(a.previousBalance));
+        const own = thrFor(id);
+        return {
+            accountId: id,
+            name: String(a.name ?? ''),
+            balanceText: bbBalance(bbNum(a.balance)),
+            changeText: moved
+                ? `${bbArrow(diff)} ${bbSigned(diff)}${rowPct ? ` · ${rowPct}` : ''}`.trim()
+                : 'No change',
+            tone: moved ? bbTone(diff) : 'muted',
+            // Only coloured when a threshold applies, so the dot never implies a
+            // judgement nobody asked it to make.
+            dotTone: own <= 0
+                ? 'muted'
+                : (Array.isArray(a.transactions) ? a.transactions : []).some((t) => Math.abs(bbNum(t.amount)) >= own)
+                    ? 'success'
+                    : 'muted',
+        };
+    });
+    // Every transaction in the window, before the minimum is applied. The
+    // reconciliation check below has to run on all of them — a filtered list
+    // cannot be expected to add up to the whole movement.
+    const allTxns = [];
+    for (const a of picked) {
+        const id = String(a.accountId ?? '');
+        const name = String(a.name ?? '');
+        for (const t of Array.isArray(a.transactions) ? a.transactions : []) {
+            allTxns.push({ ...t, accountId: id, bankAccount: name });
+        }
+    }
+    // Size is what matters, not direction: a A$60,000 payment out is as worth
+    // seeing as a A$60,000 receipt.
+    const txns = allTxns.filter((t) => {
+        const min = thrFor(String(t.accountId ?? ''));
+        return min <= 0 || Math.abs(bbNum(t.amount)) >= min;
+    });
+    const hidden = allTxns.length - txns.length;
+    const getters = {
+        bankAccount: (t) => String(t.bankAccount ?? '').toLowerCase(),
+        code: (t) => String(t.accountCode ?? ''),
+        contact: (t) => String(t.contact ?? '').toLowerCase(),
+        date: (t) => String(t.date ?? ''),
+        amount: (t) => bbNum(t.amount),
+    };
+    const get = getters[String(args.sortField ?? 'date')] ?? getters.date;
+    const dir = String(args.sortDir ?? 'desc') === 'asc' ? 1 : -1;
+    txns.sort((x, y) => {
+        const a = get(x);
+        const b = get(y);
+        let r = a < b ? -1 : a > b ? 1 : 0;
+        // A stable tiebreak, so sorting one column does not shuffle the rest.
+        if (r === 0)
+            r = String(x.contact ?? '').localeCompare(String(y.contact ?? ''));
+        if (r === 0)
+            r = String(x.id ?? '').localeCompare(String(y.id ?? ''));
+        return r * dir;
+    });
+    const shown = Math.max(1, Math.trunc(bbNum(args.shown)) || 10);
+    const page = txns.slice(0, shown);
+    const remaining = txns.length - page.length;
+    const total = bbRound2(txns.reduce((s, t) => s + bbNum(t.amount), 0));
+    const allTotal = bbRound2(allTxns.reduce((s, t) => s + bbNum(t.amount), 0));
+    const adds = Math.round(allTotal * 100) === Math.round(difference * 100);
+    const showAll = args.showAllAccounts === true;
+    const arrow = bbArrow(difference);
+    // Entries recorded in Xero that haven't been matched to a bank statement line.
+    // Xero can't give us the bank's own balance, so this is what can be shown of
+    // any gap to it. Absent from the connector (older server, or the read failed)
+    // means the section is left out, never shown as "all matched".
+    const unrecKnown = summary.unreconciledAvailable === true && picked.length > 0;
+    const unrecAccounts = picked
+        .map((a) => ({ a, u: (a.unreconciled ?? {}) }))
+        .filter(({ u }) => bbNum(u.count) > 0);
+    const unrecCount = unrecAccounts.reduce((n, { u }) => n + bbNum(u.count), 0);
+    const unrecIn = bbRound2(unrecAccounts.reduce((n, { u }) => n + bbNum(u.moneyIn), 0));
+    const unrecOut = bbRound2(unrecAccounts.reduce((n, { u }) => n + bbNum(u.moneyOut), 0));
+    const unrecNet = bbRound2(unrecIn + unrecOut);
+    const unrecOldest = unrecAccounts
+        .filter(({ u }) => String(u.oldest ?? '') !== '')
+        .sort((x, y) => String(x.u.oldest).localeCompare(String(y.u.oldest)))[0];
+    const unrecCapped = summary.unreconciledTruncated === true;
+    const unrecAllRows = [...unrecAccounts]
+        .sort((x, y) => bbNum(y.u.count) - bbNum(x.u.count) || String(x.a.name ?? '').localeCompare(String(y.a.name ?? '')))
+        .map(({ a, u }) => ({
+        accountId: String(a.accountId ?? ''),
+        name: String(a.name ?? ''),
+        countText: `${bbNum(u.count).toLocaleString('en-AU')} ${bbNum(u.count) === 1 ? 'entry' : 'entries'}`,
+        netText: bbSigned(bbNum(u.net)),
+        countOnly: bbNum(u.count).toLocaleString('en-AU'),
+    }));
+    // Same cap as the by-account list: the section is a summary, not a second ledger.
+    const unrecRows = unrecAllRows.slice(0, BB_TOP_ACCOUNTS);
+    const unrecMore = unrecAllRows.length - unrecRows.length;
+    return {
+        // Selection
+        accountOptions,
+        accountCount: all.length,
+        selectedCount: picked.length,
+        allSelected: chosen.size === 0,
+        noneSelected: picked.length === 0,
+        noAccountMatches: accountOptions.length === 0,
+        pinnedCount: pinned.size,
+        hasPins: pinned.size > 0,
+        pinnedSelection: [...pinned].join(','),
+        staleSelection,
+        selectedLabel: chosen.size === 0
+            ? `All accounts (${all.length})`
+            : picked.length === 0
+                ? 'No accounts selected'
+                : picked.length === 1
+                    ? String(picked[0].name ?? '')
+                    : `${picked.length} of ${all.length} accounts`,
+        subtitle: `${bbPlural(picked.length, 'account')} · ${String(summary.rangeText ?? '')}`,
+        // Which period chip reads as chosen.
+        isToday: mode === 'today',
+        isWeek: mode === 'week',
+        isMonth: mode === 'month',
+        isCustom: mode === 'custom',
+        // Headline figures
+        openingText: bbBalance(opening),
+        closingText: bbBalance(closing),
+        openingLabel: ranged ? 'Opening' : 'Prev business day',
+        closingLabel: ranged ? 'Closing' : 'Today',
+        openingDate: ranged
+            ? `Close of ${String(summary.compareText ?? '')}`
+            : String(summary.compareText ?? ''),
+        closingDate: String(summary.todayText ?? ''),
+        differenceText: bbSigned(difference),
+        direction: bbDirection(difference),
+        tone: bbTone(difference),
+        arrow,
+        hasArrow: arrow !== '',
+        pctText: pct,
+        pctLabel: pct ? `${pct} vs ${ranged ? 'opening' : 'prev business day'}` : '',
+        moneyInText: bbAud(moneyIn),
+        moneyOutText: bbAud(moneyOut),
+        flowText: `${bbAud(moneyIn)} in · ${bbAud(moneyOut)} out`,
+        // Thresholds
+        hasThreshold: withThreshold.length > 0,
+        thresholdText: withThreshold.length === 0
+            ? ''
+            : `${txns.length} of ${bbPlural(allTxns.length, 'transaction')} at or above ${sharedThreshold ? bbAud(sharedThreshold) : 'their minimum'}`,
+        thresholdValue: allTxns.length === 0 ? 0 : (txns.length / allTxns.length) * 100,
+        thresholdTone: hidden > 0 ? 'warning' : 'success',
+        thresholdChipText: threshold > 0 || overrideCount > 0
+            ? `Min ${threshold > 0 ? bbAud(threshold) : 'custom'}${overrideCount > 0 ? ` · ${overrideCount} custom` : ''}`
+            : 'No minimum',
+        hidden,
+        hasHidden: hidden > 0,
+        hiddenText: hidden === 0
+            ? ''
+            : `${bbPlural(hidden, 'transaction')} under ${sharedThreshold ? bbAud(sharedThreshold) : 'the minimum'} not shown`,
+        overrideRows,
+        overrideCount,
+        hasOverrides: overrideCount > 0,
+        overrideTargetName: target ? target.name : '',
+        hasOverrideTarget: target !== undefined,
+        // Per-account
+        showByAccount: picked.length > 1,
+        accountRows: showAll ? accountRows : accountRows.slice(0, BB_TOP_ACCOUNTS),
+        accountRowsHasMore: accountRows.length > BB_TOP_ACCOUNTS,
+        accountRowsToggleLabel: showAll ? 'Show top 5' : `Show all ${accountRows.length}`,
+        // Transactions
+        // The connector's own amountDisplay carries cents; restate it in whole dollars.
+        txnRows: page.map((t) => ({ ...t, amountDisplay: bbBalance(bbNum(t.amount)) })),
+        txnCount: txns.length,
+        txnCountText: hidden > 0
+            ? `${txns.length} of ${allTxns.length} transactions`
+            : bbPlural(txns.length, 'transaction'),
+        hasTxns: txns.length > 0,
+        // Before the connector carried a per-transaction date there is nothing to
+        // put in a Date column, so the tile hides it rather than ruling an empty one.
+        hasDates: allTxns.some((t) => String(t.dateText ?? '') !== ''),
+        totalText: bbBalance(total),
+        remaining,
+        moreLabel: remaining > 0 ? `Show ${Math.min(shown, remaining)} more · ${remaining} remaining` : '',
+        // Entries in Xero not yet matched to the bank
+        unrecShow: unrecKnown,
+        unrecCount,
+        unrecHasAny: unrecKnown && unrecCount > 0,
+        unrecAllMatched: unrecKnown && unrecCount === 0,
+        unrecCountText: `${unrecCount.toLocaleString('en-AU')}${unrecCapped ? '+' : ''}`,
+        unrecCountLabel: `${unrecCount === 1 ? 'entry' : 'entries'} in Xero not yet matched to the bank`,
+        unrecInText: `${bbAud(unrecIn)} in`,
+        unrecOutText: `${bbAud(unrecOut)} out`,
+        unrecSubText: `${unrecOldest ? `Oldest ${String(unrecOldest.u.oldestText ?? '').replace(/^[A-Za-z]{3} /, '')} · ` : ''}net ${bbSigned(unrecNet)}`,
+        unrecNote: 'In the Xero balance but not yet matched to a bank statement line, so they can explain a difference from your bank. Xero cannot show the bank balance itself.',
+        unrecAllMatchedNote: 'Xero cannot show the bank balance itself, so any difference from your bank would be lines the bank feed has not brought in yet.',
+        unrecRows,
+        unrecShowRows: unrecAllRows.length > 1,
+        unrecMoreText: unrecMore > 0 ? `+ ${unrecMore} more ${unrecMore === 1 ? 'account' : 'accounts'}` : '',
+        unrecHasMore: unrecMore > 0,
+        // Footer
+        checkText: adds
+            ? `Transactions add up to the difference (${bbBalance(opening)} → ${bbBalance(closing)})`
+            : `Transactions do not add up to the difference (${bbBalance(allTotal)} listed against ${bbSigned(difference)})`,
+        checkTone: adds ? 'success' : 'warning',
+        checkIcon: adds ? 'CircleCheck' : 'TriangleAlert',
+        truncated: summary.transactionsTruncated === true,
+        updatedText: String(summary.updatedText ?? ''),
+        xeroUrl: String(summary.xeroUrl ?? 'https://go.xero.com/Bank/BankAccounts.aspx'),
+    };
+};
+/**
+ * The override CSV after setting or clearing one account's threshold. Same
+ * reason as bbToggle: the spec has no map arithmetic, so the edit is computed
+ * where the parsing already lives.
+ */
+const bank_balance_set_override = (args) => {
+    const map = bbParseOv(args.overrides);
+    const id = String(args.accountId ?? '').trim();
+    if (!id)
+        return String(args.overrides ?? '');
+    const value = bbNum(args.value);
+    if (value > 0)
+        map[id] = value;
+    else
+        delete map[id];
+    return Object.entries(map)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(',');
+};
+// ── bank_balance_range ───────────────────────────────────────────────
+// One end of a named period, as YYYY-MM-DD, for the Bank Balance Change
+// tile's period chips. 'today' returns "" at both ends so the connector
+// falls back to its own today-vs-previous-business-day default rather than
+// the browser's idea of the date.
+//
+// Args: { preset: 'today'|'week'|'month', part: 'from'|'to' }
+const bank_balance_range = (args) => {
+    const preset = String(args.preset ?? 'today');
+    if (preset === 'today')
+        return '';
+    const now = new Date();
+    const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
+    if (String(args.part ?? 'from') === 'to')
+        return iso(today);
+    if (preset === 'week')
+        return iso(today - 6 * 86400000);
+    if (preset === 'month')
+        return iso(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+    return '';
+};
 const elements = {
     slug: 'xero-accounting',
     functions: {
+        analyze_bill_duplicates,
+        analyze_autopay_exclusions,
+        job_allocation_overview,
+        time_ago,
+        paginate,
+        rate_variance_rows,
+        ready_to_pay_held,
         format_date,
         status_tone,
+        status_label,
         age_bucket,
         age_bucket_tone,
         age_buckets,
         invoices_in_bucket,
         bank_tx_icon,
         bank_tx_tone,
+        bank_tx_label,
+        reconciliation_breakdown,
+        reconciliation_rows,
+        action_queue_view,
+        remittance_rows,
+        remittance_breakdown,
+        reimbursement_draft_rows,
         days_overdue,
         overdue_label,
         overdue_only,
         overdue_tone,
+        awaiting_payment_breakdown,
         po_status_tone,
         quote_status_tone,
         this_month_range,
@@ -380,6 +3133,39 @@ const elements = {
         next_n_days,
         flatten_report_rows,
         report_find_row,
+        analyze_duplicates,
+        analyze_excluded_documents,
+        bill_entry_add_line,
+        bill_entry_line_total,
+        bill_entry_grand_total,
+        bill_entry_is_invalid,
+        bill_entry_validation_message,
+        bill_entry_build_payload,
+        bill_entry_supplier_balances,
+        bill_entry_tax_rate_lookup,
+        bill_entry_line_tax,
+        contra_opportunities,
+        find_clearing_account,
+        today_iso,
+        contra_create_disabled,
+        contra_document_link,
+        fee_reimbursement_is_invalid,
+        fee_reimbursement_validation_message,
+        fee_reimbursement_build_payload,
+        fee_reimbursement_account_tax_type,
+        leave_provision_adjustment,
+        leave_provision_is_invalid,
+        leave_provision_validation_message,
+        leave_provision_build_journal,
+        account_options_by_type,
+        expense_reimbursement_status,
+        expense_reimbursement_is_invalid,
+        expense_reimbursement_validation_message,
+        expense_reimbursement_build_batch_payment,
+        expense_reimbursement_other_charges_note,
+        bank_balance_view,
+        bank_balance_range,
+        bank_balance_set_override,
     },
 };
 export default elements;
