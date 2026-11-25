@@ -1,16 +1,15 @@
 {
-  "category": "work-management",
-  "connectorsUsed": [
-    "monday"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "monday",
-    "params": {},
-    "tool": "list_users_and_teams"
-  },
-  "description": "Your monday.com workspace members — an admin/member/guest breakdown plus the full roster.",
   "id": "monday-team-members",
+  "title": "Team Members",
+  "description": "Your monday.com workspace members — an admin/guest breakdown plus the full roster.",
+  "category": "work-management",
+  "tags": [
+    "monday",
+    "team",
+    "users",
+    "people",
+    "work-management"
+  ],
   "keywords": [
     "team",
     "members",
@@ -21,426 +20,406 @@
     "admin",
     "guest"
   ],
+  "connectorsUsed": [
+    "monday"
+  ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 8,
-      "rowSpan": 10
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
     },
     "min": {
       "colSpan": 3,
       "rowSpan": 4
     },
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 6
+    "max": {
+      "colSpan": 8,
+      "rowSpan": 10
     }
   },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "list_users_and_teams",
+    "params": {}
+  },
   "spec": {
+    "root": "card",
     "elements": {
-      "adminBadge": {
-        "props": {
-          "text": "Admin",
-          "tone": "accent",
-          "variant": "soft"
-        },
-        "type": "Badge",
-        "visible": {
-          "$item": "is_admin"
-        }
-      },
-      "adminLabel": {
-        "props": {
-          "text": "Admins"
-        },
-        "type": "Caption"
-      },
-      "adminStat": {
-        "children": [
-          "adminVal",
-          "adminLabel"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "none",
-          "grow": true
-        },
-        "type": "Stack"
-      },
-      "adminVal": {
-        "props": {
-          "tone": "muted",
-          "value": {
-            "$computed": "count",
-            "args": {
-              "value": {
-                "$computed": "filter_by",
-                "args": {
-                  "field": "is_admin",
-                  "value": {
-                    "$state": "/monday/list_users_and_teams/users"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "type": "Stat"
-      },
-      "avatar": {
-        "props": {
-          "initials": {
-            "$computed": "initials",
-            "args": {
-              "value": {
-                "$item": "name"
-              }
-            }
-          }
-        },
-        "type": "Avatar"
-      },
       "card": {
+        "type": "Card",
+        "props": {},
         "children": [
           "titleRow",
           "loading",
           "empty",
           "content"
         ],
-        "props": {},
-        "type": "Card"
-      },
-      "content": {
-        "children": [
-          "statSection",
-          "div1",
-          "listLabel",
-          "list"
-        ],
-        "props": {
-          "gap": "md"
-        },
-        "type": "Stack",
-        "visible": {
-          "$and": [
+        "watch": {
+          "/monday/list_users_and_teams/users": [
             {
-              "$state": "/_loading/monday.list_users_and_teams",
-              "not": true
-            },
-            {
-              "$state": "/monday/list_users_and_teams/users/0"
-            }
-          ]
-        }
-      },
-      "div1": {
-        "props": {},
-        "type": "Divider"
-      },
-      "empty": {
-        "props": {
-          "message": "No team members found."
-        },
-        "type": "Empty",
-        "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/monday.list_users_and_teams",
-              "not": true
-            },
-            {
-              "$state": "/monday/list_users_and_teams/users/0",
-              "not": true
-            }
-          ]
-        }
-      },
-      "eyebrow": {
-        "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/monday/list_users_and_teams/count"
-              },
-              "pattern": "monday.com · {n} members"
-            }
-          }
-        },
-        "type": "Eyebrow"
-      },
-      "guestBadge": {
-        "props": {
-          "text": "Guest",
-          "tone": "muted",
-          "variant": "soft"
-        },
-        "type": "Badge",
-        "visible": {
-          "$item": "is_guest"
-        }
-      },
-      "guestLabel": {
-        "props": {
-          "text": "Guests"
-        },
-        "type": "Caption"
-      },
-      "guestStat": {
-        "children": [
-          "guestVal",
-          "guestLabel"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "none",
-          "grow": true
-        },
-        "type": "Stack"
-      },
-      "guestVal": {
-        "props": {
-          "tone": "muted",
-          "value": {
-            "$computed": "count",
-            "args": {
-              "value": {
-                "$computed": "filter_by",
-                "args": {
-                  "field": "is_guest",
-                  "value": {
-                    "$state": "/monday/list_users_and_teams/users"
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/team",
+                "value": {
+                  "$computed": "monday_team_dashboard",
+                  "args": {
+                    "value": {
+                      "$state": "/monday/list_users_and_teams/users"
+                    }
                   }
                 }
               }
             }
-          }
-        },
-        "type": "Stat"
+          ]
+        }
       },
-      "list": {
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
         "children": [
-          "userRow"
-        ],
-        "props": {
-          "gap": "xs"
-        },
-        "repeat": {
-          "key": "id",
-          "statePath": "/monday/list_users_and_teams/users"
-        },
-        "type": "Stack"
+          "titleGroup"
+        ]
       },
-      "listLabel": {
+      "titleGroup": {
+        "type": "Row",
         "props": {
-          "text": "All members"
+          "gap": "sm",
+          "align": "center"
         },
-        "type": "Eyebrow"
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Users",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Team Members",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "monday.com · {n} members",
+              "n": {
+                "$state": "/ui/team/total"
+              }
+            }
+          }
+        }
       },
       "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
         "children": [
           "s1",
           "s2",
           "s3"
         ],
-        "props": {
-          "gap": "sm"
-        },
-        "type": "Stack",
         "visible": {
           "$state": "/_loading/monday.list_users_and_teams"
         }
       },
-      "roleBadges": {
-        "children": [
-          "adminBadge",
-          "guestBadge"
-        ],
-        "props": {
-          "gap": "xs"
-        },
-        "type": "Row"
-      },
       "s1": {
+        "type": "Skeleton",
         "props": {
           "height": "2.5rem",
           "rounded": "full"
-        },
-        "type": "Skeleton"
+        }
       },
       "s2": {
+        "type": "Skeleton",
         "props": {
           "height": "2.5rem",
           "rounded": "full"
-        },
-        "type": "Skeleton"
+        }
       },
       "s3": {
+        "type": "Skeleton",
         "props": {
           "height": "2.5rem",
           "rounded": "full"
-        },
-        "type": "Skeleton"
+        }
       },
-      "statRow": {
-        "children": [
-          "totalStat",
-          "adminStat",
-          "guestStat"
-        ],
+      "empty": {
+        "type": "Empty",
         "props": {
-          "gap": "lg"
+          "message": "No team members found."
         },
-        "type": "Row"
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/monday.list_users_and_teams",
+              "not": true
+            },
+            {
+              "$state": "/ui/team/hasData",
+              "not": true
+            }
+          ]
+        }
+      },
+      "content": {
+        "type": "Stack",
+        "props": {
+          "gap": "md"
+        },
+        "children": [
+          "statSection",
+          "divider1",
+          "listLabel",
+          "list"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/monday.list_users_and_teams",
+              "not": true
+            },
+            {
+              "$state": "/ui/team/hasData"
+            }
+          ]
+        }
       },
       "statSection": {
-        "children": [
-          "statRow"
-        ],
+        "type": "Section",
         "props": {
           "variant": "muted"
         },
-        "type": "Section"
-      },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "Team Members"
-        },
-        "type": "Heading"
-      },
-      "titleGroup": {
         "children": [
-          "titleIcon",
-          "titleStack"
-        ],
+          "statRow"
+        ]
+      },
+      "statRow": {
+        "type": "Grid",
         "props": {
-          "align": "center",
+          "cols": 3,
           "gap": "sm"
         },
-        "type": "Row"
-      },
-      "titleIcon": {
-        "props": {
-          "name": "Users",
-          "size": "sm",
-          "tone": "accent"
-        },
-        "type": "Icon"
-      },
-      "titleRow": {
         "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
+          "totalCell",
+          "adminCell",
+          "guestCell"
+        ]
       },
-      "titleStack": {
+      "totalCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
         "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
-      },
-      "totalLabel": {
-        "props": {
-          "text": "Total"
-        },
-        "type": "Caption"
+          "totalStat",
+          "totalLabel"
+        ]
       },
       "totalStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/team/total"
+          },
+          "tone": "brand",
+          "size": "sm"
+        }
+      },
+      "totalLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Total",
+          "tone": "muted"
+        }
+      },
+      "adminCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
         "children": [
-          "totalVal",
-          "totalLabel"
+          "adminStat",
+          "adminLabel"
+        ]
+      },
+      "adminStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/team/adminCount"
+          },
+          "size": "sm"
+        }
+      },
+      "adminLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Admins",
+          "tone": "muted"
+        }
+      },
+      "guestCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "guestStat",
+          "guestLabel"
+        ]
+      },
+      "guestStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/team/guestCount"
+          },
+          "size": "sm"
+        }
+      },
+      "guestLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Guests",
+          "tone": "muted"
+        }
+      },
+      "divider1": {
+        "type": "Divider",
+        "props": {}
+      },
+      "listLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "All members"
+        }
+      },
+      "list": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "userRow"
         ],
+        "repeat": {
+          "statePath": "/ui/team/rows",
+          "key": "id"
+        }
+      },
+      "userRow": {
+        "type": "Row",
         "props": {
           "align": "center",
-          "gap": "none",
-          "grow": true
+          "gap": "sm",
+          "justify": "between"
         },
-        "type": "Stack"
-      },
-      "totalVal": {
-        "props": {
-          "tone": "accent",
-          "value": {
-            "$state": "/monday/list_users_and_teams/count"
-          }
-        },
-        "type": "Stat"
-      },
-      "userEmail": {
-        "props": {
-          "size": "xs",
-          "text": {
-            "$item": "email"
-          },
-          "tone": "muted",
-          "truncate": true
-        },
-        "type": "Text"
-      },
-      "userInfo": {
         "children": [
-          "userName",
-          "userEmail"
-        ],
-        "props": {
-          "gap": "none",
-          "grow": true
-        },
-        "type": "Stack"
+          "userLeft",
+          "roleBadge"
+        ]
       },
       "userLeft": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "grow": true
+        },
         "children": [
           "avatar",
           "userInfo"
-        ],
+        ]
+      },
+      "avatar": {
+        "type": "Avatar",
         "props": {
-          "align": "center",
-          "gap": "sm",
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": {
+            "$item": "avatarTone"
+          }
+        }
+      },
+      "userInfo": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
           "grow": true
         },
-        "type": "Row"
+        "children": [
+          "userName",
+          "userEmail"
+        ]
       },
       "userName": {
+        "type": "Text",
         "props": {
-          "size": "sm",
           "text": {
             "$item": "name"
           },
-          "truncate": true,
-          "weight": "medium"
-        },
-        "type": "Text"
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
       },
-      "userRow": {
-        "children": [
-          "userLeft",
-          "roleBadges"
-        ],
+      "userEmail": {
+        "type": "Text",
         "props": {
-          "align": "center",
-          "gap": "sm",
-          "justify": "between"
-        },
-        "type": "Row"
+          "text": {
+            "$item": "email"
+          },
+          "size": "xs",
+          "tone": "muted",
+          "truncate": true
+        }
+      },
+      "roleBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "roleLabel"
+          },
+          "tone": {
+            "$item": "roleTone"
+          },
+          "variant": "soft"
+        }
       }
-    },
-    "root": "card"
+    }
   },
-  "tags": [
-    "monday",
-    "team",
-    "users",
-    "people",
-    "work-management"
-  ],
-  "title": "Team Members"
+  "status": "published",
+  "branding": {
+    "color": "#0073ea"
+  }
 }
