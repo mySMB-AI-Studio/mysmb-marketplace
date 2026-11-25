@@ -1,0 +1,224 @@
+{
+  "contentHash": "2ad61dc35373e8692e77ca71b70dd265ea7756242ea73d5f4ea45c684ee2a569",
+  "declaredScopes": [
+    "connectors:xero-accounting"
+  ],
+  "dependencies": [],
+  "description": "Lays out a bill line by line as the review sheet a person sees when asked to approve it: what is on the bill (or in Xero now) next to what will be sent, problems first, with a check code for those exact values.",
+  "flowIr": {
+    "description": "Builds the review sheet for an approval.",
+    "irVersion": 1,
+    "name": "Bookkeeping AP: build review sheet",
+    "nodes": [
+      {
+        "code": "import copy\nimport hashlib\nimport json\n\nSTATUS_ORDER = {\"DRAFT\": 0, \"SUBMITTED\": 1, \"AUTHORISED\": 2}\n# The highest Xero status the agent may set, by the client's approval route. Any other route: Draft only.\nMAX_STATUS = {\"bookkeeper\": \"AUTHORISED\", \"hj_reviewer\": \"AUTHORISED\", \"client_each_bill\": \"SUBMITTED\"}\n\n\nclass Refused(Exception):\n    def __init__(self, code, reason):\n        super().__init__(reason)\n        self.code = code\n        self.reason = reason\n\n\ndef as_data(value):\n    if isinstance(value, str):\n        try:\n            return json.loads(value)\n        except Exception:\n            return value\n    return value\n\n\ndef tidy(value):\n    \"\"\"The same value however it was written: 100 and 100.0 compare equal.\"\"\"\n    value = as_data(value)\n    if isinstance(value, dict):\n        return {str(k): tidy(v) for k, v in value.items()}\n    if isinstance(value, list):\n        return [tidy(v) for v in value]\n    if isinstance(value, float) and value.is_integer():\n        return int(value)\n    return value\n\n\ndef approval_digest(action, tenant, invoice, invoice_id, patch):\n    body = {\"action\": action, \"xero_tenant_id\": tenant}\n    if action == \"create\":\n        body[\"invoice\"] = invoice\n    else:\n        body[\"invoice_id\"] = invoice_id\n        body[\"patch\"] = patch\n    text = json.dumps(tidy(body), sort_keys=True, separators=(\",\", \":\"), ensure_ascii=False)\n    return hashlib.sha256(text.encode(\"utf-8\")).hexdigest()[:12]\n\n\ndef approval_from_params():\n    action = str(params.get(\"action\") or \"\").strip().lower()\n    tenant = str(params.get(\"xero_tenant_id\") or \"\").strip()\n    invoice = tidy(params.get(\"invoice\")) if action == \"create\" else None\n    invoice_id = str(params.get(\"invoice_id\") or \"\").strip() if action == \"update\" else \"\"\n    patch = tidy(params.get(\"patch\")) if action == \"update\" else None\n    return action, tenant, invoice, invoice_id, patch\n\n\ndef first_invoice(value):\n    value = as_data(value)\n    if isinstance(value, dict):\n        rows = value.get(\"Invoices\") or value.get(\"invoices\")\n        if isinstance(rows, list):\n            return rows[0] if rows and isinstance(rows[0], dict) else {}\n        if value.get(\"InvoiceID\"):\n            return value\n    if isinstance(value, list) and value and isinstance(value[0], dict):\n        return value[0]\n    return {}\n\n\ndef all_invoices(value):\n    value = as_data(value)\n    if isinstance(value, dict):\n        rows = value.get(\"Invoices\") or value.get(\"invoices\") or []\n        return [r for r in rows if isinstance(r, dict)]\n    if isinstance(value, list):\n        return [r for r in value if isinstance(r, dict)]\n    return []\n\n\ndef amount(value):\n    try:\n        return round(float(value), 4)\n    except Exception:\n        return None\n\n\ndef get_record(type_slug, record_id):\n    if not record_id:\n        return {}\n    row = as_data(api.records.get(type_slug=type_slug, record_id=record_id))\n    if isinstance(row, dict) and isinstance(row.get(\"record\"), dict):\n        row = row[\"record\"]\n    return row if isinstance(row, dict) else {}\n\n\ndef field(row, key):\n    data = row.get(\"data\") or row.get(\"fields\") or {}\n    return data.get(key, row.get(key))\n\n\ndef client_id_of(row):\n    links = row.get(\"links\") if isinstance(row.get(\"links\"), dict) else {}\n    found = links.get(\"client\") or field(row, \"client\")\n    if isinstance(found, list):\n        found = found[0] if found else \"\"\n    if isinstance(found, dict):\n        found = found.get(\"id\") or found.get(\"record_id\") or \"\"\n    return str(found or \"\")\n\n\ndef bill_context(record_id, tenant):\n    \"\"\"The AP bill row, its client's approval route, and a check that the Xero organisation is that client's.\"\"\"\n    row = get_record(\"ap_bill\", record_id)\n    if not row:\n        raise Refused(\"bad_input\", \"The AP bill row couldn't be read.\")\n    client = get_record(\"client\", client_id_of(row))\n    route = str(field(row, \"approval_route\") or field(client, \"ap_approval_route\") or \"\").strip().lower()\n    given = str(params.get(\"route\") or \"\").strip().lower()\n    if given and given != route:\n        raise Refused(\"route\", f\"The route given ({given}) isn't this client's route ({route or 'none'}).\")\n    row_tenant = str(field(row, \"xero_tenant_id\") or \"\").strip()\n    client_tenant = str(field(client, \"ap_xero_tenant_id\") or \"\").strip()\n    if (row_tenant and row_tenant != tenant) or (client_tenant and client_tenant != tenant):\n        raise Refused(\"tenant\", \"That Xero organisation isn't the one this bill's client uses.\")\n    return row, route\n\n\ndef same_supplier(bill, contact):\n    theirs = bill.get(\"Contact\") or {}\n    if contact.get(\"ContactID\") and theirs.get(\"ContactID\"):\n        return contact.get(\"ContactID\") == theirs.get(\"ContactID\")\n    mine = str(contact.get(\"Name\") or \"\").strip().lower()\n    return bool(mine) and mine == str(theirs.get(\"Name\") or \"\").strip().lower()\n\n\ndef in_job():\n    return str((trigger or {}).get(\"kind\") or \"\") == \"process\"\n\n\ndef as_list(value):\n    return value if isinstance(value, list) else []\n\n\ndef cut(value, limit):\n    \"\"\"Trim to `limit` characters as the platform counts them (UTF-16 units).\"\"\"\n    text = \" \".join((\"\" if value is None else str(value)).split())\n    while len(text.encode(\"utf-16-le\")) // 2 > limit:\n        text = text[:-1]\n    return text\n\n\ndef tracking_text(tracking):\n    parts = []\n    for t in tracking or []:\n        if isinstance(t, dict):\n            parts.append(f\"{t.get('Name') or ''}: {t.get('Option') or ''}\".strip(\": \"))\n    return \", \".join(p for p in parts if p)\n\n\ndef coding_text(line):\n    bits = [str(line.get(\"AccountCode\") or \"\"), str(line.get(\"TaxType\") or \"\"), tracking_text(line.get(\"Tracking\"))]\n    return \" / \".join(b for b in bits if b)\n\n\ndef line_amount(line):\n    if line.get(\"LineAmount\") is not None:\n        return amount(line.get(\"LineAmount\"))\n    qty, unit = amount(line.get(\"Quantity\")), amount(line.get(\"UnitAmount\"))\n    if qty is not None and unit is not None:\n        return round(qty * unit, 2)\n    return None\n\n\ndef build():\n    action, tenant, bill, bill_id, patch = approval_from_params()\n    digest = approval_digest(action, tenant, bill, bill_id, patch) if action in (\"create\", \"update\") else \"\"\n    originals = [cut(s, 500) for s in (as_data(params.get(\"original_lines\")) or []) if isinstance(s, str)]\n    notes = [cut(s, 300) for s in (as_data(params.get(\"line_notes\")) or []) if isinstance(s, str)]\n    rows = []\n    status_line = \"\"\n    total = 0.0\n    amounts_type = \"\"\n    if action == \"create\" and isinstance(bill, dict):\n        amounts_type = str(bill.get(\"LineAmountTypes\") or \"\")\n        status_line = f\"Xero status after approval: {bill.get('Status') or 'not given'}\"\n        for n, line in enumerate([l for l in as_list(bill.get(\"LineItems\")) if isinstance(l, dict)], start=1):\n            value = line_amount(line)\n            total += value or 0\n            rows.append({\"key\": str(n), \"label\": f\"Line {n}\", \"original\": originals[n - 1] if n <= len(originals) else \"\",\n                         \"problem\": notes[n - 1] if n <= len(notes) else \"\",\n                         \"values\": {\"description\": cut(line.get(\"Description\"), 300) or None, \"amount\": value,\n                                    \"account\": cut(line.get(\"AccountCode\"), 300) or None, \"tax_type\": cut(line.get(\"TaxType\"), 300) or None,\n                                    \"tracking\": cut(tracking_text(line.get(\"Tracking\")), 300) or None}})\n    elif action == \"update\" and isinstance(patch, dict):\n        current = {}\n        if in_job() and tenant and bill_id:\n            current = first_invoice(api.connectors.invoke(server=\"xero-accounting\", tool=\"get_invoice\", args={\"xero_tenant_id\": tenant, \"invoiceId\": bill_id}))\n        amounts_type = str(current.get(\"LineAmountTypes\") or \"\")\n        status_line = f\"Xero status after approval: {patch.get('Status') or current.get('Status') or 'unchanged'}\"\n        proposed = {str(l.get(\"LineItemID\")): l for l in as_list(patch.get(\"LineItems\")) if isinstance(l, dict)}\n        for n, now in enumerate([l for l in (current.get(\"LineItems\") or []) if isinstance(l, dict)], start=1):\n            new = dict(now, **{k: v for k, v in proposed.get(str(now.get(\"LineItemID\")), {}).items() if k in (\"Description\", \"AccountCode\", \"TaxType\", \"Tracking\")})\n            value = line_amount(now)\n            total += value or 0\n            changed = coding_text(now) != coding_text(new)\n            note = notes[n - 1] if n <= len(notes) else \"\"\n            if changed and not note:\n                note = f\"Changed from {coding_text(now) or 'nothing'}\"\n            rows.append({\"key\": str(n), \"label\": f\"Line {n}\", \"original\": cut(coding_text(now), 500), \"problem\": cut(note, 300),\n                         \"values\": {\"description\": cut(new.get(\"Description\"), 300) or None, \"amount\": value,\n                                    \"account\": cut(new.get(\"AccountCode\"), 300) or None, \"tax_type\": cut(new.get(\"TaxType\"), 300) or None,\n                                    \"tracking\": cut(tracking_text(new.get(\"Tracking\")), 300) or None}})\n    for row in rows:\n        for key in (\"original\", \"problem\"):\n            if not row[key]:\n                row.pop(key)\n    if not rows:\n        rows = [{\"key\": \"1\", \"label\": \"Bill\", \"problem\": \"No lines to show.\", \"values\": {\"description\": None, \"amount\": None, \"account\": None, \"tax_type\": None, \"tracking\": None}}]\n    summary = [s for s in [status_line, f\"Lines total {round(total, 2)}\" + (f\" (amounts {amounts_type.lower()} of GST)\" if amounts_type in (\"Inclusive\", \"Exclusive\") else \"\"), f\"Check code {digest}\" if digest else \"\"] if s]\n    summary += [cut(s, 300) for s in (as_data(params.get(\"summary\")) or []) if isinstance(s, str) and s.strip()]\n    sheet = {\n        \"title\": cut(params.get(\"title\"), 200) or \"Supplier bill\",\n        \"summary\": summary[:8],\n        \"originalLabel\": cut(params.get(\"original_label\"), 40) or (\"In Xero now\" if action == \"update\" else \"On the bill\"),\n        \"proposedLabel\": cut(params.get(\"proposed_label\"), 40) or (\"After approval\" if action == \"update\" else \"To enter in Xero\"),\n        \"columns\": [\n            {\"key\": \"description\", \"label\": \"Description\"},\n            {\"key\": \"amount\", \"label\": \"Amount\"},\n            {\"key\": \"account\", \"label\": \"Account\", \"edit\": \"text\"},\n            {\"key\": \"tax_type\", \"label\": \"Tax code\", \"edit\": \"text\"},\n            {\"key\": \"tracking\", \"label\": \"Tracking\", \"edit\": \"text\"},\n        ],\n        \"rows\": rows[:300],\n    }\n    # Keep the sheet well inside the platform's 64 KiB limit for one output.\n    while len(json.dumps(sheet)) > 60000:\n        for row in sheet[\"rows\"]:\n            if \"original\" in row:\n                row[\"original\"] = row[\"original\"][: max(0, len(row[\"original\"]) // 2)]\n            row[\"values\"][\"description\"] = (row[\"values\"][\"description\"] or \"\")[:60] or None\n        if len(json.dumps(sheet)) > 60000:\n            sheet[\"rows\"] = sheet[\"rows\"][: max(1, len(sheet[\"rows\"]) // 2)]\n            sheet[\"summary\"] = (sheet[\"summary\"] + [\"Only the first lines are shown here.\"])[:8]\n    return sheet, digest, round(total, 2)\n\n\nreview, digest, total = build()\nrow_count = len(review[\"rows\"])",
+        "id": "build_sheet",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "The sheet the person is shown when asked to approve it",
+            "name": "review",
+            "type": "dict"
+          },
+          {
+            "description": "The check code of these exact values",
+            "name": "digest",
+            "type": "str"
+          },
+          {
+            "description": "The total of the lines",
+            "name": "total",
+            "type": "float"
+          },
+          {
+            "description": "How many lines the sheet has",
+            "name": "row_count",
+            "type": "int"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.action }}",
+            "control": "hidden",
+            "name": "action",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.xero_tenant_id }}",
+            "control": "hidden",
+            "name": "xero_tenant_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.invoice }}",
+            "control": "hidden",
+            "name": "invoice",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.invoice_id }}",
+            "control": "hidden",
+            "name": "invoice_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.patch }}",
+            "control": "hidden",
+            "name": "patch",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.title }}",
+            "control": "hidden",
+            "name": "title",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.summary }}",
+            "control": "hidden",
+            "name": "summary",
+            "required": false,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ params.original_lines }}",
+            "control": "hidden",
+            "name": "original_lines",
+            "required": false,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ params.line_notes }}",
+            "control": "hidden",
+            "name": "line_notes",
+            "required": false,
+            "type": "list[str]"
+          },
+          {
+            "binding": "{{ params.original_label }}",
+            "control": "hidden",
+            "name": "original_label",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.proposed_label }}",
+            "control": "hidden",
+            "name": "proposed_label",
+            "required": false,
+            "type": "str"
+          }
+        ],
+        "summary": "Turns the exact values to be sent into the sheet shown with the approval, and works out their check code.",
+        "title": "Build the review sheet"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "description": "The same values the approval will take",
+        "label": "Create or update",
+        "name": "action",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Xero organisation ID",
+        "name": "xero_tenant_id",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Bill to create",
+        "name": "invoice",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "label": "Xero InvoiceID",
+        "name": "invoice_id",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Changes",
+        "name": "patch",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "description": "<supplier> <number> for <total>",
+        "label": "Title",
+        "name": "title",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "Short lines, the findings that matter first",
+        "label": "Summary lines",
+        "name": "summary",
+        "required": false,
+        "type": "list[str]"
+      },
+      {
+        "control": "hidden",
+        "description": "For create: each line as written on the PDF, in order",
+        "label": "Lines as on the bill",
+        "name": "original_lines",
+        "required": false,
+        "type": "list[str]"
+      },
+      {
+        "control": "hidden",
+        "description": "A finding about each line, in order (empty text when none)",
+        "label": "Notes per line",
+        "name": "line_notes",
+        "required": false,
+        "type": "list[str]"
+      },
+      {
+        "control": "hidden",
+        "label": "Label for what is there now",
+        "name": "original_label",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "label": "Label for what will be sent",
+        "name": "proposed_label",
+        "required": false,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "build_sheet"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Bookkeeping AP: build review sheet",
+  "originKey": "68c8fa31-29e2-4210-861a-951b9b63c185",
+  "practiceRun": {
+    "intendedActions": [],
+    "version": 2
+  },
+  "tags": []
+}

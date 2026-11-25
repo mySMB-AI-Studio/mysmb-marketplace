@@ -1,0 +1,202 @@
+{
+  "contentHash": "f485bc820cac53f273d02d450cbc8687d0fe1f1315d66f8f308f1203fe44f0b6",
+  "declaredScopes": [
+    "records:ap_bill:read",
+    "records:ap_bill:write",
+    "records:client:read"
+  ],
+  "dependencies": [],
+  "description": "Records that the bookkeeper approved these exact values for a client whose bills also need an internal reviewer, so only those values can be approved in Xero next. It changes nothing in Xero.",
+  "flowIr": {
+    "description": "Passes the bookkeeper-approved bill to the internal reviewer.",
+    "irVersion": 1,
+    "name": "Bookkeeping AP: send to internal review",
+    "nodes": [
+      {
+        "code": "import copy\nimport hashlib\nimport json\n\nSTATUS_ORDER = {\"DRAFT\": 0, \"SUBMITTED\": 1, \"AUTHORISED\": 2}\n# The highest Xero status the agent may set, by the client's approval route. Any other route: Draft only.\nMAX_STATUS = {\"bookkeeper\": \"AUTHORISED\", \"hj_reviewer\": \"AUTHORISED\", \"client_each_bill\": \"SUBMITTED\"}\n\n\nclass Refused(Exception):\n    def __init__(self, code, reason):\n        super().__init__(reason)\n        self.code = code\n        self.reason = reason\n\n\ndef as_data(value):\n    if isinstance(value, str):\n        try:\n            return json.loads(value)\n        except Exception:\n            return value\n    return value\n\n\ndef tidy(value):\n    \"\"\"The same value however it was written: 100 and 100.0 compare equal.\"\"\"\n    value = as_data(value)\n    if isinstance(value, dict):\n        return {str(k): tidy(v) for k, v in value.items()}\n    if isinstance(value, list):\n        return [tidy(v) for v in value]\n    if isinstance(value, float) and value.is_integer():\n        return int(value)\n    return value\n\n\ndef approval_digest(action, tenant, invoice, invoice_id, patch):\n    body = {\"action\": action, \"xero_tenant_id\": tenant}\n    if action == \"create\":\n        body[\"invoice\"] = invoice\n    else:\n        body[\"invoice_id\"] = invoice_id\n        body[\"patch\"] = patch\n    text = json.dumps(tidy(body), sort_keys=True, separators=(\",\", \":\"), ensure_ascii=False)\n    return hashlib.sha256(text.encode(\"utf-8\")).hexdigest()[:12]\n\n\ndef approval_from_params():\n    action = str(params.get(\"action\") or \"\").strip().lower()\n    tenant = str(params.get(\"xero_tenant_id\") or \"\").strip()\n    invoice = tidy(params.get(\"invoice\")) if action == \"create\" else None\n    invoice_id = str(params.get(\"invoice_id\") or \"\").strip() if action == \"update\" else \"\"\n    patch = tidy(params.get(\"patch\")) if action == \"update\" else None\n    return action, tenant, invoice, invoice_id, patch\n\n\ndef first_invoice(value):\n    value = as_data(value)\n    if isinstance(value, dict):\n        rows = value.get(\"Invoices\") or value.get(\"invoices\")\n        if isinstance(rows, list):\n            return rows[0] if rows and isinstance(rows[0], dict) else {}\n        if value.get(\"InvoiceID\"):\n            return value\n    if isinstance(value, list) and value and isinstance(value[0], dict):\n        return value[0]\n    return {}\n\n\ndef all_invoices(value):\n    value = as_data(value)\n    if isinstance(value, dict):\n        rows = value.get(\"Invoices\") or value.get(\"invoices\") or []\n        return [r for r in rows if isinstance(r, dict)]\n    if isinstance(value, list):\n        return [r for r in value if isinstance(r, dict)]\n    return []\n\n\ndef amount(value):\n    try:\n        return round(float(value), 4)\n    except Exception:\n        return None\n\n\ndef get_record(type_slug, record_id):\n    if not record_id:\n        return {}\n    row = as_data(api.records.get(type_slug=type_slug, record_id=record_id))\n    if isinstance(row, dict) and isinstance(row.get(\"record\"), dict):\n        row = row[\"record\"]\n    return row if isinstance(row, dict) else {}\n\n\ndef field(row, key):\n    data = row.get(\"data\") or row.get(\"fields\") or {}\n    return data.get(key, row.get(key))\n\n\ndef client_id_of(row):\n    links = row.get(\"links\") if isinstance(row.get(\"links\"), dict) else {}\n    found = links.get(\"client\") or field(row, \"client\")\n    if isinstance(found, list):\n        found = found[0] if found else \"\"\n    if isinstance(found, dict):\n        found = found.get(\"id\") or found.get(\"record_id\") or \"\"\n    return str(found or \"\")\n\n\ndef bill_context(record_id, tenant):\n    \"\"\"The AP bill row, its client's approval route, and a check that the Xero organisation is that client's.\"\"\"\n    row = get_record(\"ap_bill\", record_id)\n    if not row:\n        raise Refused(\"bad_input\", \"The AP bill row couldn't be read.\")\n    client = get_record(\"client\", client_id_of(row))\n    route = str(field(row, \"approval_route\") or field(client, \"ap_approval_route\") or \"\").strip().lower()\n    given = str(params.get(\"route\") or \"\").strip().lower()\n    if given and given != route:\n        raise Refused(\"route\", f\"The route given ({given}) isn't this client's route ({route or 'none'}).\")\n    row_tenant = str(field(row, \"xero_tenant_id\") or \"\").strip()\n    client_tenant = str(field(client, \"ap_xero_tenant_id\") or \"\").strip()\n    if (row_tenant and row_tenant != tenant) or (client_tenant and client_tenant != tenant):\n        raise Refused(\"tenant\", \"That Xero organisation isn't the one this bill's client uses.\")\n    return row, route\n\n\ndef same_supplier(bill, contact):\n    theirs = bill.get(\"Contact\") or {}\n    if contact.get(\"ContactID\") and theirs.get(\"ContactID\"):\n        return contact.get(\"ContactID\") == theirs.get(\"ContactID\")\n    mine = str(contact.get(\"Name\") or \"\").strip().lower()\n    return bool(mine) and mine == str(theirs.get(\"Name\") or \"\").strip().lower()\n\n\ndef in_job():\n    return str((trigger or {}).get(\"kind\") or \"\") == \"process\"\ndef main():\n    action, tenant, bill, bill_id, patch = approval_from_params()\n    record_id = str(params.get(\"bill_record_id\") or \"\").strip()\n    if action not in (\"create\", \"update\") or not tenant or not record_id:\n        raise Refused(\"bad_input\", \"The action, the Xero organisation ID and the AP bill row are all needed.\")\n    digest = approval_digest(action, tenant, bill, bill_id, patch)\n    if str(params.get(\"sheet_digest\") or \"\").strip() != digest:\n        raise Refused(\"sheet_mismatch\", \"These values aren't the ones on the review sheet. Rebuild the sheet and ask again.\")\n    row, route = bill_context(record_id, tenant)\n    if route != \"hj_reviewer\":\n        raise Refused(\"route\", \"Only bills for clients on the internal review route go to internal review.\")\n    api.records.update(type_slug=\"ap_bill\", record_id=record_id, record={\"data\": {\"internal_review_digest\": digest}})\n    return digest\n\n\npassed = False\nrefused = \"\"\ndigest = \"\"\nresult = \"\"\nif not in_job():\n    refused = \"not_in_job\"\n    result = \"Not run: only a Bookkeeping AP job can run this, after the bookkeeper approves it.\"\nelse:\n    try:\n        digest = main()\n        passed = True\n        result = \"The bookkeeper sent these exact values to internal review.\"\n    except Refused as no:\n        refused = f\"{no.code}: {no.reason}\"\n        result = \"Not sent to internal review. \" + no.reason",
+        "id": "send_on",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when the bill was passed to the internal reviewer",
+            "name": "passed",
+            "type": "bool"
+          },
+          {
+            "description": "Why it was not passed on, as code: reason",
+            "name": "refused",
+            "type": "str"
+          },
+          {
+            "description": "The review sheet's check code",
+            "name": "digest",
+            "type": "str"
+          },
+          {
+            "description": "What happened, in one sentence",
+            "name": "result",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.action }}",
+            "control": "hidden",
+            "name": "action",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.bill_record_id }}",
+            "control": "hidden",
+            "name": "bill_record_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.xero_tenant_id }}",
+            "control": "hidden",
+            "name": "xero_tenant_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.route }}",
+            "control": "hidden",
+            "name": "route",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.invoice }}",
+            "control": "hidden",
+            "name": "invoice",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.invoice_id }}",
+            "control": "hidden",
+            "name": "invoice_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.patch }}",
+            "control": "hidden",
+            "name": "patch",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.expected_updated_utc }}",
+            "control": "hidden",
+            "name": "expected_updated_utc",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.sheet_digest }}",
+            "control": "hidden",
+            "name": "sheet_digest",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "summary": "Checks the values match the review sheet and the client's route, then notes the sheet's check code on the AP bill row.",
+        "title": "Record the bookkeeper's approval"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "description": "create (a new bill from email) or update (a bill already in Xero)",
+        "label": "Create or update",
+        "name": "action",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The AP bill row this bill belongs to",
+        "label": "AP bill row",
+        "name": "bill_record_id",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The client's Xero organisation ID",
+        "label": "Xero organisation ID",
+        "name": "xero_tenant_id",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The client's approval route, as recorded at Checking",
+        "label": "Approval route",
+        "name": "route",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "For create: the exact Xero bill (Type ACCPAY)",
+        "label": "Bill to create",
+        "name": "invoice",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "description": "For update: the bill in Xero",
+        "label": "Xero InvoiceID",
+        "name": "invoice_id",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "For update: Status, DueDate and LineItems (coding only)",
+        "label": "Changes",
+        "name": "patch",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "description": "For update: the bill's UpdatedDateUTC when it was checked",
+        "label": "Last changed in Xero",
+        "name": "expected_updated_utc",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The check code of the review sheet the person was shown",
+        "label": "Check code",
+        "name": "sheet_digest",
+        "required": true,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "send_on"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Bookkeeping AP: send to internal review",
+  "originKey": "be2dcab5-4880-4a36-9166-e3e3af28fe6c",
+  "practiceRun": {
+    "intendedActions": [],
+    "version": 2
+  },
+  "tags": []
+}
