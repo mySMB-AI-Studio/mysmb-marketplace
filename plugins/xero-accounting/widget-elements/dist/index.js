@@ -225,6 +225,53 @@ const aqRow = (count, sub, activePill, activeTone, url) => {
         url,
     };
 };
+// Whole days from the due date to today: positive once past due, 0 on the
+// due date, negative before it. Xero due dates are midnight UTC on the due
+// day, so the UTC calendar date is compared with the viewer's local date.
+// A plain "2026-10-01T00:00:00" string has no zone, so its date part is
+// read as-is rather than parsed as local time.
+const aqDaysPastDue = (raw, today) => {
+    let dueDay;
+    const plain = typeof raw === 'string' ? raw.match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+    if (plain) {
+        dueDay = Date.UTC(Number(plain[1]), Number(plain[2]) - 1, Number(plain[3]));
+    }
+    else {
+        const ms = toEpochMs(raw);
+        if (ms == null)
+            return null;
+        const due = new Date(ms);
+        dueDay = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+    }
+    const todayDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    return Math.round((todayDay - dueDay) / (24 * 60 * 60 * 1000));
+};
+// An invoices or bills row, toned by its most urgent due date under the
+// overdue rule (TILE-DISPLAY-STANDARDS.md §7): muted until the due date,
+// warning on the due date, destructive from the day after.
+const aqDueRow = (docs, url, today) => {
+    if (!docs)
+        return aqRow('—', '—', '', 'muted', url);
+    let overdue = 0;
+    let dueToday = 0;
+    let undated = 0;
+    for (const d of docs) {
+        const days = aqDaysPastDue(d.DueDate ?? d.DueDateString, today);
+        if (days == null)
+            undated += 1;
+        else if (days > 0)
+            overdue += 1;
+        else if (days === 0)
+            dueToday += 1;
+    }
+    const count = docs.length;
+    const sub = overdue > 0 ? `${count} outstanding · ${overdue} overdue` : `${count} outstanding`;
+    if (overdue > 0)
+        return aqRow(count, sub, 'Overdue', 'destructive', url);
+    if (dueToday > 0)
+        return aqRow(count, sub, 'Due Today', 'warning', url);
+    return aqRow(count, sub, undated > 0 ? 'Outstanding' : 'Not Yet Due', 'muted', url);
+};
 const action_queue_view = (args) => {
     const list = (v) => (Array.isArray(v) ? v : null);
     const invoices = list(args.invoices);
@@ -236,8 +283,9 @@ const action_queue_view = (args) => {
     const orgName = String(org.Name ?? '').trim();
     const shortCode = String(org.ShortCode ?? '').trim();
     const link = (path) => aqXeroLink(shortCode, path);
-    const invCount = invoices ? invoices.filter((i) => i.Type === 'ACCREC').length : '—';
-    const billCount = invoices ? invoices.filter((i) => i.Type === 'ACCPAY').length : '—';
+    const today = new Date();
+    const sales = invoices ? invoices.filter((i) => i.Type === 'ACCREC') : null;
+    const bills = invoices ? invoices.filter((i) => i.Type === 'ACCPAY') : null;
     let recCount = '—';
     let recSub = 'Entered in Xero, not yet reconciled';
     if (bankTransactions) {
@@ -270,8 +318,8 @@ const action_queue_view = (args) => {
     }
     const expCount = expenseClaims ? expenseClaims.length : '—';
     const rows = {
-        inv: aqRow(invCount, invCount === '—' ? '—' : `${invCount} outstanding`, 'Chase Up', 'destructive', link(AQ_PATHS.inv)),
-        bill: aqRow(billCount, billCount === '—' ? '—' : `${billCount} outstanding`, 'Due Soon', 'warning', link(AQ_PATHS.bill)),
+        inv: aqDueRow(sales, link(AQ_PATHS.inv), today),
+        bill: aqDueRow(bills, link(AQ_PATHS.bill), today),
         rec: aqRow(recCount, recSub, 'To Review', 'warning', link(AQ_PATHS.rec)),
         exp: aqRow(expCount, 'Awaiting Approval', 'To Approve', 'warning', link(AQ_PATHS.exp)),
     };

@@ -268,6 +268,41 @@ describe('Xero Action Queue in the real widget runtime', () => {
     expect(text(tile, 'headSub')).toBe('10 items need your attention');
   });
 
+  it('tones invoices and bills by due date: muted before, warning on, destructive after', async () => {
+    const day = (offset: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return `/Date(${Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())}+0000)/`;
+    };
+    const original = XERO.list_invoices;
+    XERO.list_invoices = {
+      Invoices: [
+        { Type: 'ACCREC', DueDate: day(-1) },
+        { Type: 'ACCREC', DueDate: day(3) },
+        { Type: 'ACCPAY', DueDate: day(0) },
+      ],
+    };
+    try {
+      const tile = await mount();
+      await loadInvoices(tile);
+      await settle();
+      expect(text(tile, 'invBadge')).toBe('Overdue');
+      expect(tone(tile, 'invBadge')).toBe('destructive');
+      expect(text(tile, 'invSub')).toBe('2 outstanding · 1 overdue');
+      expect(text(tile, 'billBadge')).toBe('Due Today');
+      expect(tone(tile, 'billBadge')).toBe('warning');
+      XERO.list_invoices = { Invoices: [{ Type: 'ACCREC', DueDate: day(3) }] };
+      const later = await mount();
+      await loadInvoices(later);
+      await settle();
+      expect(text(later, 'invBadge')).toBe('Not Yet Due');
+      expect(tone(later, 'invBadge')).toBe('muted');
+      expect(text(later, 'invSub')).toBe('1 outstanding');
+    } finally {
+      XERO.list_invoices = original;
+    }
+  });
+
   it('shows a dash, not 0, for a count Xero has not answered yet', async () => {
     const tile = await mount({ skip: ['list_payments'] });
     await loadInvoices(tile);
