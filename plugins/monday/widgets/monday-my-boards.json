@@ -1,18 +1,16 @@
 {
-  "category": "work-management",
-  "connectorsUsed": [
-    "monday"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "monday",
-    "params": {
-      "limit": 20
-    },
-    "tool": "get_board_info"
-  },
-  "description": "Your monday.com boards in a sortable table — name, type, status, and a one-click link to each.",
   "id": "monday-my-boards",
+  "title": "Boards",
+  "description": "Your monday.com boards: Active/Archived breakdown, then a sortable table with name, type, status, and a one-click link to each.",
+  "category": "work-management",
+  "tags": [
+    "monday",
+    "boards",
+    "work-management",
+    "tasks",
+    "projects",
+    "table"
+  ],
   "keywords": [
     "board",
     "boards",
@@ -23,115 +21,303 @@
     "overview",
     "table"
   ],
+  "connectorsUsed": [
+    "monday"
+  ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 10,
-      "rowSpan": 10
+    "preferred": {
+      "colSpan": 6,
+      "rowSpan": 4
     },
     "min": {
       "colSpan": 4,
       "rowSpan": 4
     },
-    "preferred": {
-      "colSpan": 6,
-      "rowSpan": 4
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 10
+    }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "get_board_info",
+    "params": {
+      "limit": 20
     }
   },
   "spec": {
+    "root": "card",
     "elements": {
-      "activeLabel": {
-        "props": {
-          "text": "Active"
-        },
-        "type": "Caption"
-      },
-      "activeStat": {
-        "children": [
-          "activeVal",
-          "activeLabel"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "none",
-          "grow": true
-        },
-        "type": "Stack"
-      },
-      "activeVal": {
-        "props": {
-          "tone": "success",
-          "value": {
-            "$computed": "count",
-            "args": {
-              "value": {
-                "$computed": "filter_by",
-                "args": {
-                  "equals": "active",
-                  "field": "state",
-                  "value": {
-                    "$state": "/monday/get_board_info/boards"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "type": "Stat"
-      },
-      "archivedLabel": {
-        "props": {
-          "text": "Archived"
-        },
-        "type": "Caption"
-      },
-      "archivedStat": {
-        "children": [
-          "archivedVal",
-          "archivedLabel"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "none",
-          "grow": true
-        },
-        "type": "Stack"
-      },
-      "archivedVal": {
-        "props": {
-          "tone": "muted",
-          "value": {
-            "$computed": "count",
-            "args": {
-              "value": {
-                "$computed": "filter_by",
-                "args": {
-                  "equals": "archived",
-                  "field": "state",
-                  "value": {
-                    "$state": "/monday/get_board_info/boards"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "type": "Stat"
-      },
       "card": {
+        "type": "Card",
+        "props": {},
         "children": [
           "titleRow",
           "statSection",
           "tableBody"
         ],
+        "watch": {
+          "/monday/get_board_info/boards": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/boards",
+                "value": {
+                  "$computed": "monday_boards_dashboard",
+                  "args": {
+                    "value": {
+                      "$state": "/monday/get_board_info/boards"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "titleRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "center"
+        },
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "LayoutGrid",
+          "tone": "accent",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Boards",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/ui/boards/scopeText"
+          }
+        }
+      },
+      "statSection": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "statRow"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/monday.get_board_info",
+              "not": true
+            },
+            {
+              "$state": "/ui/boards/hasData"
+            }
+          ]
+        }
+      },
+      "statRow": {
+        "type": "Grid",
+        "props": {
+          "cols": 2,
+          "gap": "sm"
+        },
+        "children": [
+          "activeCell",
+          "archivedCell"
+        ]
+      },
+      "activeCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "activeTopRow",
+          "activeBarRow"
+        ]
+      },
+      "activeTopRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "baseline"
+        },
+        "children": [
+          "activeLabel",
+          "activeStat"
+        ]
+      },
+      "activeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Active",
+          "tone": "success"
+        }
+      },
+      "activeStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/boards/activeCount"
+          },
+          "size": "sm"
+        }
+      },
+      "activeBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/boards/activePct"
+          },
+          "tone": "success"
+        }
+      },
+      "archivedCell": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "archivedTopRow",
+          "archivedBarRow"
+        ]
+      },
+      "archivedTopRow": {
+        "type": "Row",
+        "props": {
+          "justify": "between",
+          "align": "baseline"
+        },
+        "children": [
+          "archivedLabel",
+          "archivedStat"
+        ]
+      },
+      "archivedLabel": {
+        "type": "Caption",
+        "props": {
+          "text": "Archived",
+          "tone": "muted"
+        }
+      },
+      "archivedStat": {
+        "type": "Stat",
+        "props": {
+          "value": {
+            "$state": "/ui/boards/archivedCount"
+          },
+          "size": "sm"
+        }
+      },
+      "archivedBar": {
+        "type": "ProgressBar",
+        "props": {
+          "value": {
+            "$state": "/ui/boards/archivedPct"
+          },
+          "tone": "muted"
+        }
+      },
+      "tableBody": {
+        "type": "Body",
         "props": {},
-        "type": "Card"
+        "children": [
+          "table",
+          "empty"
+        ]
+      },
+      "table": {
+        "type": "Table",
+        "props": {
+          "columns": [
+            {
+              "id": "name",
+              "field": "name",
+              "header": "Board",
+              "priority": 1
+            },
+            {
+              "id": "board_kind",
+              "field": "board_kind",
+              "header": "Type",
+              "priority": 2,
+              "width": 90
+            },
+            {
+              "id": "state",
+              "field": "state",
+              "header": "State",
+              "priority": 2,
+              "width": 90
+            },
+            {
+              "id": "workspace",
+              "field": "workspace.name",
+              "header": "Workspace",
+              "priority": 2,
+              "width": 140
+            }
+          ],
+          "rows": {
+            "$state": "/monday/get_board_info/boards"
+          },
+          "rowAction": [
+            {
+              "action": "open_url",
+              "fromRow": {
+                "url": "url"
+              },
+              "params": {
+                "target": "_blank"
+              }
+            }
+          ],
+          "loading": {
+            "$state": "/_loading/monday.get_board_info"
+          },
+          "skeletonRows": 5
+        }
       },
       "empty": {
+        "type": "Empty",
         "props": {
           "message": "No boards found."
         },
-        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -145,160 +331,30 @@
           ]
         }
       },
-      "eyebrow": {
+      "activeBarRow": {
+        "type": "Row",
         "props": {
-          "text": {
-            "$computed": "fmt",
-            "args": {
-              "n": {
-                "$state": "/monday/get_board_info/count"
-              },
-              "pattern": "monday.com · {n} boards"
-            }
-          }
+          "template": "minmax(0, 1fr)",
+          "align": "center"
         },
-        "type": "Eyebrow"
-      },
-      "statRow": {
         "children": [
-          "activeStat",
-          "archivedStat"
-        ],
-        "props": {
-          "gap": "lg"
-        },
-        "type": "Row"
+          "activeBar"
+        ]
       },
-      "statSection": {
+      "archivedBarRow": {
+        "type": "Row",
+        "props": {
+          "template": "minmax(0, 1fr)",
+          "align": "center"
+        },
         "children": [
-          "statRow"
-        ],
-        "props": {
-          "variant": "muted"
-        },
-        "type": "Section",
-        "visible": {
-          "$state": "/_loading/monday.get_board_info",
-          "not": true
-        }
-      },
-      "table": {
-        "props": {
-          "columns": [
-            {
-              "field": "name",
-              "header": "Board",
-              "id": "name",
-              "priority": 1
-            },
-            {
-              "field": "board_kind",
-              "header": "Type",
-              "id": "board_kind",
-              "priority": 2,
-              "width": 90
-            },
-            {
-              "field": "state",
-              "header": "State",
-              "id": "state",
-              "priority": 2,
-              "width": 90
-            },
-            {
-              "field": "workspace.name",
-              "header": "Workspace",
-              "id": "workspace",
-              "priority": 2,
-              "width": 140
-            }
-          ],
-          "loading": {
-            "$state": "/_loading/monday.get_board_info"
-          },
-          "rowAction": [
-            {
-              "action": "open_url",
-              "fromRow": {
-                "boardUrl": "url"
-              },
-              "params": {
-                "target": "_blank",
-                "url": "{boardUrl}"
-              }
-            }
-          ],
-          "rows": {
-            "$state": "/monday/get_board_info/boards"
-          },
-          "skeletonRows": 5
-        },
-        "type": "Table"
-      },
-      "tableBody": {
-        "children": [
-          "table",
-          "empty"
-        ],
-        "props": {},
-        "type": "Body"
-      },
-      "title": {
-        "props": {
-          "level": "h2",
-          "text": "Boards"
-        },
-        "type": "Heading"
-      },
-      "titleGroup": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row"
-      },
-      "titleIcon": {
-        "props": {
-          "name": "LayoutGrid",
-          "size": "sm",
-          "tone": "accent"
-        },
-        "type": "Icon"
-      },
-      "titleRow": {
-        "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+          "archivedBar"
+        ]
       }
-    },
-    "root": "card"
+    }
   },
-  "tags": [
-    "monday",
-    "boards",
-    "work-management",
-    "tasks",
-    "projects",
-    "table"
-  ],
-  "title": "Boards"
+  "status": "published",
+  "branding": {
+    "color": "#0073ea"
+  }
 }
