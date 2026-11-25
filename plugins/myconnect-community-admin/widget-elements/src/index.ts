@@ -40,6 +40,31 @@ const days_ago: ComputedFunction = (args) => {
   return d.toISOString().slice(0, 10);
 };
 
+// ── first_selected_community ──────────────────────────────────────────
+// Auto-picks a default community to select, without clobbering a choice
+// the person already made. Without this, `/ui/selectedCommunity` stayed
+// unset until the picker's dropdown was touched, so every data watch
+// tied to it fired with an empty community param the moment the tile
+// loaded for anyone administering more than one -- the connector's own
+// disambiguation error ("You administer N communities, so say which
+// one: ...") then showed up as a raw "Couldn't load..." banner before
+// the person had a chance to pick.
+//
+// Prefers "mysmb" (mySMB.com) when the viewer administers it, since
+// that's this tile's primary home; falls back to whichever community
+// happens to come first for anyone who doesn't administer it.
+//
+// Args: { communities: Array<{ slug?: string }>, current?: string }
+const first_selected_community: ComputedFunction = (args) => {
+  const current = typeof args.current === 'string' ? args.current : '';
+  if (current) return current;
+  const communities = Array.isArray(args.communities) ? (args.communities as Array<{ slug?: unknown }>) : [];
+  const mysmb = communities.find((c) => c.slug === 'mysmb');
+  if (mysmb) return 'mysmb';
+  const first = communities[0];
+  return first && typeof first.slug === 'string' ? first.slug : '';
+};
+
 // ── is_after ─────────────────────────────────────────────────────────
 // True when YYYY-MM-DD string `a` is chronologically after `b` (plain
 // string compare -- safe because the format is fixed-width). json-render's
@@ -227,6 +252,54 @@ const signups_rows: ComputedFunction = (args) => {
         : '') || '—',
     dateJoined: formatDate(m.createdAt),
   }));
+};
+
+// ── signups_busiest_days ─────────────────────────────────────────────
+// The days with at least one sign-up in [fromDate, toDate], as
+// { label: "D-Mon-YY", value: count } rows for a BarChart above the
+// Sign-ups table -- BarChart shows each row's own number inline, unlike
+// a Sparkline's bare line, so the busiest days read with real numbers
+// and dates attached rather than just an unlabelled shape.
+//
+// Buckets straight from the real sign-up rows rather than walking every
+// calendar day in range: a day-by-day walk only earns its cost when
+// EVERY day needs a point (a continuous line, which this isn't -- zero
+// days are simply left out of a ranked list), and it was the reason an
+// earlier version of this function refused to run past 90 days at all.
+// Bucketing from items directly works unchanged for "To Date" or any
+// custom span, however wide: cost is items.length (bounded by
+// PAGE_LIMIT), never days-in-range. The caller's `sort`/`limit` props
+// pick the top few out of however many distinct days this returns.
+//
+// Shares signups_rows' own "first PAGE_LIMIT" cap -- a range with more
+// sign-ups than that will undercount its later days the same way the
+// table's own "Showing the first 100" caption already discloses; nothing
+// new to disclose here.
+//
+// Args: { items: ReportMember[], fromDate: string, toDate: string }
+const signups_busiest_days: ComputedFunction = (args) => {
+  const items = Array.isArray(args.items) ? (args.items as ReportMember[]) : [];
+  const fromDate = typeof args.fromDate === 'string' ? args.fromDate : '';
+  const toDate = typeof args.toDate === 'string' ? args.toDate : '';
+  if (!fromDate || !toDate) return [];
+  const start = Date.parse(fromDate + 'T00:00:00Z');
+  const end = Date.parse(toDate + 'T00:00:00Z');
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return [];
+  // Bounded to [start, end] -- `items` is the host's cache of the most
+  // recent list_members response for this panel, and a quick
+  // double-click between presets can leave it still holding an EARLIER,
+  // WIDER range's rows for one render cycle; without this bound a stale
+  // day outside the current window could show up in a list that's
+  // supposed to describe only it.
+  const counts: Record<string, number> = {};
+  items.forEach((m) => {
+    const day = typeof m.createdAt === 'string' ? m.createdAt.slice(0, 10) : '';
+    if (!day) return;
+    const t = Date.parse(day + 'T00:00:00Z');
+    if (Number.isNaN(t) || t < start || t > end) return;
+    counts[day] = (counts[day] ?? 0) + 1;
+  });
+  return Object.keys(counts).map((day) => ({ label: formatDate(day), value: counts[day]! }));
 };
 
 function downloadCsv(filename: string, csv: string) {
@@ -779,7 +852,7 @@ const print_rsvp_report: PluginWidgetAction = {
 
 const elements: PluginElementsModule = {
   slug: 'myconnect-community-admin',
-  functions: { today, days_ago, year_start, is_after, signups_rows, active_members_rows, rsvps_rows, event_card_day, event_card_month, event_card_weekday_time },
+  functions: { today, days_ago, year_start, is_after, first_selected_community, signups_rows, signups_busiest_days, active_members_rows, rsvps_rows, event_card_day, event_card_month, event_card_weekday_time },
   actions: { export_signups_csv, print_rsvp_report },
 };
 export default elements;

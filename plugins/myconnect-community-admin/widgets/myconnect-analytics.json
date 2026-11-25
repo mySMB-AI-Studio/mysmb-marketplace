@@ -20,7 +20,28 @@
   "spec": {
     "root": "card",
     "elements": {
-      "card": { "type": "Card", "props": {}, "children": ["header", "divider1", "communityRow", "dateRangeRow", "tabBar", "divider2", "body", "infoOverlay"] },
+      "card": {
+        "type": "Card",
+        "props": {},
+        "children": ["header", "divider1", "communityRow", "dateRangeRow", "tabBar", "divider2", "body", "infoOverlay"],
+        "watch": {
+          "/myconnect-community-admin/list_communities": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/selectedCommunity",
+                "value": {
+                  "$computed": "myconnect-community-admin_first_selected_community",
+                  "args": {
+                    "communities": { "$state": "/myconnect-community-admin/list_communities" },
+                    "current": { "$state": "/ui/selectedCommunity" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
 
       "titleIcon": { "type": "Icon", "props": { "name": "BarChart3", "tone": "accent", "size": "sm" } },
       "title": { "type": "Heading", "props": { "level": "h2", "text": "myConnect Analytics" } },
@@ -175,7 +196,7 @@
           "leadingIcon": "UserPlus",
           "size": "sm",
           "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "signups" }, "$then": "primary", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "primary", "$else": "secondary" } },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "signups" }, "$then": "info", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "info", "$else": "default" } }
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "signups" }, "$then": "chart-1", "$else": { "$cond": { "$state": "/ui/activeTab", "not": true }, "$then": "chart-1", "$else": "default" } }
         },
         "on": { "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "signups" } } }
       },
@@ -186,7 +207,7 @@
           "leadingIcon": "Users",
           "size": "sm",
           "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "activeMembers" }, "$then": "primary", "$else": "secondary" },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "activeMembers" }, "$then": "info", "$else": "default" }
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "activeMembers" }, "$then": "chart-2", "$else": "default" }
         },
         "on": {
           "click": [
@@ -205,7 +226,7 @@
           "leadingIcon": "MessageSquare",
           "size": "sm",
           "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "postsComments" }, "$then": "primary", "$else": "secondary" },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "postsComments" }, "$then": "info", "$else": "default" }
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "postsComments" }, "$then": "chart-3", "$else": "default" }
         },
         "on": {
           "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "postsComments" } }
@@ -218,7 +239,7 @@
           "leadingIcon": "Calendar",
           "size": "sm",
           "variant": { "$cond": { "$state": "/ui/activeTab", "eq": "rsvp" }, "$then": "primary", "$else": "secondary" },
-          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "rsvp" }, "$then": "info", "$else": "default" }
+          "tone": { "$cond": { "$state": "/ui/activeTab", "eq": "rsvp" }, "$then": "chart-4", "$else": "default" }
         },
         "on": {
           "click": { "action": "setState", "params": { "statePath": "/ui/activeTab", "value": "rsvp" } }
@@ -227,10 +248,25 @@
       "tabBar": { "type": "Row", "props": { "gap": "xs", "wrap": true }, "children": ["signupsTabBtn", "activeMembersTabBtn", "postsCommentsTabBtn", "rsvpTabBtn"] },
       "divider2": { "type": "Divider", "props": {} },
 
+      "signupsPickCommunityPrompt": {
+        "type": "Caption",
+        "props": { "text": "Pick a community above to see its sign-ups.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.list_members" },
+            { "$state": "/ui/selectedCommunity", "not": true }
+          ]
+        }
+      },
       "signupsErrorBanner": {
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't load sign-ups: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
-        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.list_members" },
+            { "$state": "/ui/selectedCommunity" }
+          ]
+        }
       },
       "signupsLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "signupsLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -240,6 +276,47 @@
         "children": ["signupsLoading1", "signupsLoading2"],
         "visible": { "$state": "/_loading/myconnect-community-admin.list_members" }
       },
+      "signupsViewTableBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Table",
+          "leadingIcon": "Table",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/signupsView", "eq": "chart" }, "$then": "secondary", "$else": "primary" },
+          "tone": { "$cond": { "$state": "/ui/signupsView", "eq": "chart" }, "$then": "default", "$else": "info" }
+        },
+        "on": { "click": { "action": "setState", "params": { "statePath": "/ui/signupsView", "value": "table" } } }
+      },
+      "signupsViewChartBtn": {
+        "type": "Button",
+        "props": {
+          "label": "Chart",
+          "leadingIcon": "BarChart3",
+          "size": "sm",
+          "variant": { "$cond": { "$state": "/ui/signupsView", "eq": "chart" }, "$then": "primary", "$else": "secondary" },
+          "tone": { "$cond": { "$state": "/ui/signupsView", "eq": "chart" }, "$then": "info", "$else": "default" }
+        },
+        "on": {
+          "click": [
+            { "action": "setState", "params": { "statePath": "/ui/signupsView", "value": "chart" } },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/signupsBusiestDays",
+                "value": {
+                  "$computed": "myconnect-community-admin_signups_busiest_days",
+                  "args": {
+                    "items": { "$state": "/myconnect-community-admin/list_members/items" },
+                    "fromDate": { "$state": "/ui/range/from" },
+                    "toDate": { "$state": "/ui/range/to" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "signupsViewToggle": { "type": "Row", "props": { "gap": "xs" }, "children": ["signupsViewTableBtn", "signupsViewChartBtn"] },
       "signupsEmpty": {
         "type": "Empty",
         "props": { "message": "No sign-ups in this date range." },
@@ -267,12 +344,22 @@
             { "id": "dateJoined", "header": "Date joined", "field": "dateJoined", "width": 100, "priority": 2 }
           ]
         },
-        "visible": { "$state": "/ui/signupsRows/0" }
+        "visible": {
+          "$and": [
+            { "$state": "/ui/signupsRows/0" },
+            { "$state": "/ui/signupsView", "neq": "chart" }
+          ]
+        }
       },
       "signupsMoreCaption": {
         "type": "Caption",
         "props": { "text": "Showing the first 100 — narrow the date range or download the CSV for the complete list.", "tone": "muted" },
-        "visible": { "$state": "/myconnect-community-admin/list_members/nextCursor" }
+        "visible": {
+          "$and": [
+            { "$state": "/myconnect-community-admin/list_members/nextCursor" },
+            { "$state": "/ui/signupsView", "neq": "chart" }
+          ]
+        }
       },
       "signupsCsvNotice": {
         "type": "Caption",
@@ -300,11 +387,80 @@
           }
         }
       },
-      "signupsFooterRow": { "type": "Row", "props": { "align": "center", "justify": "between", "gap": "sm" }, "children": ["signupsCsvNotice", "downloadCsvBtn"] },
+      "signupsFooterRow": {
+        "type": "Row",
+        "props": { "align": "center", "justify": "between", "gap": "sm" },
+        "children": ["signupsCsvNotice", "downloadCsvBtn"],
+        "visible": { "$state": "/ui/signupsView", "neq": "chart" }
+      },
+      "signupsBusiestDaysLabel": {
+        "type": "Caption",
+        "props": { "text": "Busiest days", "tone": "muted", "weight": "semibold" },
+        "visible": { "$state": "/ui/signupsBusiestDays/0" }
+      },
+      "signupsBusiestDaysChart": {
+        "type": "BarChart",
+        "props": {
+          "data": { "$state": "/ui/signupsBusiestDays" },
+          "labelField": "label",
+          "valueField": "value",
+          "tone": "chart-1",
+          "sort": "desc"
+        },
+        "visible": { "$state": "/ui/signupsBusiestDays/0" },
+        "watch": {
+          "/myconnect-community-admin/list_members/items": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/signupsBusiestDays",
+                "value": {
+                  "$computed": "myconnect-community-admin_signups_busiest_days",
+                  "args": {
+                    "items": { "$state": "/myconnect-community-admin/list_members/items" },
+                    "fromDate": { "$state": "/ui/range/from" },
+                    "toDate": { "$state": "/ui/range/to" }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "signupsTrendFromLabel": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/range/from" }, "format": "dd-mmm-yy" } },
+          "tone": "muted"
+        }
+      },
+      "signupsTrendToLabel": {
+        "type": "Caption",
+        "props": {
+          "text": { "$computed": "format_date", "args": { "value": { "$state": "/ui/range/to" }, "format": "dd-mmm-yy" } },
+          "tone": "muted"
+        }
+      },
+      "signupsTrendDatesRow": {
+        "type": "Row",
+        "props": { "justify": "between", "gap": "sm" },
+        "children": ["signupsTrendFromLabel", "signupsTrendToLabel"]
+      },
+      "signupsTrendGroup": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["signupsTrendDatesRow", "signupsBusiestDaysLabel", "signupsBusiestDaysChart"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/myconnect-community-admin.list_members", "not": true },
+            { "$state": "/ui/signupsView", "eq": "chart" }
+          ]
+        }
+      },
       "signupsPanel": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["signupsErrorBanner", "signupsLoading", "signupsEmpty", "signupsTable", "signupsMoreCaption", "signupsFooterRow"],
+        "children": ["signupsPickCommunityPrompt", "signupsErrorBanner", "signupsViewToggle", "signupsTrendGroup", "signupsLoading", "signupsEmpty", "signupsTable", "signupsMoreCaption", "signupsFooterRow"],
         "visible": { "$or": [{ "$state": "/ui/activeTab", "eq": "signups" }, { "$state": "/ui/activeTab", "not": true }] },
         "watch": {
           "/myconnect-community-admin/list_members/items": [
@@ -319,10 +475,25 @@
         }
       },
 
+      "activeMembersPickCommunityPrompt": {
+        "type": "Caption",
+        "props": { "text": "Pick a community above to see its active members.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.list_members" },
+            { "$state": "/ui/selectedCommunity", "not": true }
+          ]
+        }
+      },
       "activeMembersErrorBanner": {
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't load active members: ${/_errors/myconnect-community-admin.list_members}" }, "tone": "destructive" },
-        "visible": { "$state": "/_errors/myconnect-community-admin.list_members" }
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.list_members" },
+            { "$state": "/ui/selectedCommunity" }
+          ]
+        }
       },
       "activeMembersLoading1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
       "activeMembersLoading2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
@@ -366,7 +537,7 @@
       "activeMembersPanel": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["activeMembersErrorBanner", "activeMembersLoading", "activeMembersEmpty", "activeMembersTable", "activeMembersMoreCaption"],
+        "children": ["activeMembersPickCommunityPrompt", "activeMembersErrorBanner", "activeMembersLoading", "activeMembersEmpty", "activeMembersTable", "activeMembersMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "activeMembers" },
         "watch": {
           "/myconnect-community-admin/list_members/items": [
@@ -386,13 +557,24 @@
           ]
         }
       },
+      "postsCommentsPickCommunityPrompt": {
+        "type": "Caption",
+        "props": { "text": "Pick a community above to see its posts and comments.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.get_posts_comments_summary" },
+            { "$state": "/ui/selectedCommunity", "not": true }
+          ]
+        }
+      },
       "postsCommentsErrorBanner": {
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't load posts and comments: ${/_errors/myconnect-community-admin.get_posts_comments_summary}" }, "tone": "destructive" },
         "visible": {
           "$and": [
             { "$state": "/_errors/myconnect-community-admin.get_posts_comments_summary" },
-            { "$state": "/ui/range/from" }
+            { "$state": "/ui/range/from" },
+            { "$state": "/ui/selectedCommunity" }
           ]
         }
       },
@@ -445,7 +627,7 @@
       "postsCommentsPanel": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["postsCommentsErrorBanner", "postsCommentsLoading", "postsCommentsPrompt", "postsCommentsEmpty", "postsCommentsTable"],
+        "children": ["postsCommentsPickCommunityPrompt", "postsCommentsErrorBanner", "postsCommentsLoading", "postsCommentsPrompt", "postsCommentsEmpty", "postsCommentsTable"],
         "visible": { "$state": "/ui/activeTab", "eq": "postsComments" },
         "watch": {
           "/ui/selectedCommunity": [
@@ -462,13 +644,24 @@
           ]
         }
       },
+      "rsvpPickCommunityPrompt": {
+        "type": "Caption",
+        "props": { "text": "Pick a community above to see its RSVPs.", "tone": "muted" },
+        "visible": {
+          "$and": [
+            { "$state": "/_errors/myconnect-community-admin.list_rsvps_in_range" },
+            { "$state": "/ui/selectedCommunity", "not": true }
+          ]
+        }
+      },
       "rsvpErrorBanner": {
         "type": "Caption",
         "props": { "text": { "$template": "Couldn't load RSVPs: ${/_errors/myconnect-community-admin.list_rsvps_in_range}" }, "tone": "destructive" },
         "visible": {
           "$and": [
             { "$state": "/_errors/myconnect-community-admin.list_rsvps_in_range" },
-            { "$state": "/ui/range/from" }
+            { "$state": "/ui/range/from" },
+            { "$state": "/ui/selectedCommunity" }
           ]
         }
       },
@@ -529,7 +722,7 @@
       "rsvpPanel": {
         "type": "Stack",
         "props": { "gap": "sm" },
-        "children": ["rsvpErrorBanner", "rsvpLoading", "rsvpPrompt", "rsvpEmpty", "rsvpTable", "rsvpMoreCaption"],
+        "children": ["rsvpPickCommunityPrompt", "rsvpErrorBanner", "rsvpLoading", "rsvpPrompt", "rsvpEmpty", "rsvpTable", "rsvpMoreCaption"],
         "visible": { "$state": "/ui/activeTab", "eq": "rsvp" },
         "watch": {
           "/myconnect-community-admin/list_rsvps_in_range/items": [
