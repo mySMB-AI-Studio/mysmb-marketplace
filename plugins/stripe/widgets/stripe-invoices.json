@@ -1,15 +1,17 @@
 {
   "id": "stripe-invoices",
-  "title": "Stripe Invoices",
-  "description": "Latest invoices with status badges — quickly see what's paid, open, or overdue.",
+  "title": "Invoices",
+  "description": "Your Stripe invoices with the money owed set out first — what is outstanding, how many of those are past their due date, and what has been collected. Below that, one row per invoice showing who it was billed to, its number, a status badge and the due date with how far it is from today. Stripe has no 'overdue' status of its own, so an open invoice past its due date is shown as Overdue here. Click any row to open that invoice in Stripe.",
   "category": "payments",
   "tags": ["stripe", "invoices", "billing", "finance", "payments"],
-  "keywords": ["invoices", "stripe", "billing", "paid", "open", "draft", "uncollectible", "void"],
+  "keywords": ["invoices", "stripe", "billing", "paid", "open", "overdue", "outstanding", "due date", "draft", "uncollectible", "void"],
   "connectorsUsed": ["stripe"],
   "popularity": 0,
+  "branding": { "color": "#635bff" },
+  "brandColor": "#635bff",
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 5 },
-    "min": { "colSpan": 6, "rowSpan": 4 },
+    "preferred": { "colSpan": 6, "rowSpan": 8 },
+    "min": { "colSpan": 5, "rowSpan": 5 },
     "max": { "colSpan": 10, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -23,93 +25,390 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"],
+        "children": ["header", "headerDivider", "body", "footerDivider", "footer"],
         "watch": {
           "/stripe/list_invoices/data": [
-            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" } },
-            { "action": "setState", "params": { "statePath": "/ui/invoiceRows", "value": { "$computed": "stripe_flatten_invoices", "args": { "value": { "$state": "/stripe/list_invoices/data" }, "key": "customer_name|asc" } } } }
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "due_date_ts|asc" }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/inv",
+                "value": {
+                  "$computed": "stripe_invoice_board",
+                  "args": {
+                    "value": { "$state": "/stripe/list_invoices/data" },
+                    "key": "due_date_ts|asc"
+                  }
+                }
+              }
+            }
           ],
           "/ui/sortKey": [
-            { "action": "setState", "params": { "statePath": "/ui/invoiceRows", "value": { "$computed": "stripe_flatten_invoices", "args": { "value": { "$state": "/stripe/list_invoices/data" }, "key": { "$state": "/ui/sortKey" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/inv",
+                "value": {
+                  "$computed": "stripe_invoice_board",
+                  "args": {
+                    "value": { "$state": "/stripe/list_invoices/data" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
           ]
         }
       },
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "FileText", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Invoices", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Stripe" } },
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "listHeader", "list"] },
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "FileText", "tone": "brand", "size": "sm" }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Invoices", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "Stripe" }
+      },
+      "headerDivider": { "type": "Divider", "props": {} },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "empty", "summary", "columnHeaders", "list"]
+      },
+
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skSummary", "sk1", "sk2", "sk3", "sk4"],
         "visible": { "$state": "/_loading/stripe.list_invoices" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
+      "skSummary": { "type": "Skeleton", "props": { "height": "5rem",   "rounded": "md" } },
+      "sk1":       { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2":       { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3":       { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4":       { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
       "empty": {
-        "type": "Empty", "props": { "message": "No invoices found." },
-        "visible": { "$and": [{ "$state": "/_loading/stripe.list_invoices", "not": true }, { "$state": "/stripe/list_invoices/data/0", "not": true }] }
+        "type": "Empty",
+        "props": { "message": "No invoices found in Stripe." },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0", "not": true }
+          ]
+        }
       },
-      "listHeader": {
+
+      "summary": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["sumOutstanding", "sumOverdue", "sumPaid"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0" }
+          ]
+        }
+      },
+
+      "sumOutstanding": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["outStack"]
+      },
+      "outStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["outHead", "outValue", "outCaption"]
+      },
+      "outHead": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 7rem 6rem 8rem 9rem", "padded": true },
-        "children": ["hdrBilledToOuter", "hdrStatus", "hdrAmount", "hdrDueDate", "hdrNumber"],
-        "visible": { "$and": [{ "$state": "/_loading/stripe.list_invoices", "not": true }, { "$state": "/stripe/list_invoices/data/0" }] }
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["outDot", "outLabel"]
       },
-      "hdrBilledToOuter": { "type": "Stack", "props": { "align": "start" }, "children": ["hdrBilledToGroup"] },
-      "hdrBilledToGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrBilledTo", "sortBtn"] },
-      "hdrBilledTo": { "type": "Caption", "props": { "text": "Billed to" } },
-      "sortBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" } } } }] }
+      "outDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/inv/outstandingTone" }, "size": "sm" } },
+      "outLabel": { "type": "Eyebrow", "props": { "text": "Outstanding" } },
+      "outValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/ui/inv/outstanding" } }
       },
-      "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
-      "hdrAmount": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrAmountLabel", "sortAmountBtn"] },
-      "hdrAmountLabel": { "type": "Caption", "props": { "text": "Amount" } },
+      "outCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} open invoices", "n": { "$state": "/ui/inv/outstandingCount" } }
+          }
+        }
+      },
+
+      "sumOverdue": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["ovStack"]
+      },
+      "ovStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["ovHead", "ovValue", "ovCaption"]
+      },
+      "ovHead": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["ovDot", "ovLabel"]
+      },
+      "ovDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/inv/overdueTone" }, "size": "sm" } },
+      "ovLabel": { "type": "Eyebrow", "props": { "text": "Overdue" } },
+      "ovValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/ui/inv/overdueCount" } }
+      },
+      "ovCaption": {
+        "type": "Caption",
+        "props": { "text": "past due date", "tone": "muted" }
+      },
+
+      "sumPaid": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["paidStack"]
+      },
+      "paidStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["paidHead", "paidValue", "paidCaption"]
+      },
+      "paidHead": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["paidDot", "paidLabel"]
+      },
+      "paidDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/inv/paidTone" }, "size": "sm" } },
+      "paidLabel": { "type": "Eyebrow", "props": { "text": "Paid" } },
+      "paidValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/ui/inv/paidTotal" } }
+      },
+      "paidCaption": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$computed": "fmt",
+            "args": { "pattern": "{n} invoices", "n": { "$state": "/ui/inv/paidCount" } }
+          }
+        }
+      },
+
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 6rem 6rem 8rem"
+        },
+        "children": ["colBilled", "colStatus", "colAmount", "colDue"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0" }
+          ]
+        }
+      },
+      "colBilled": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colBilledLabel", "sortBilledBtn"]
+      },
+      "colBilledLabel": { "type": "Eyebrow", "props": { "text": "Billed To / Invoice" } },
+      "sortBilledBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" }
+              }
+            }
+          }
+        }
+      },
+      "colStatus": { "type": "Eyebrow", "props": { "text": "Status" } },
+      "colAmount": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colAmountLabel", "sortAmountBtn"]
+      },
+      "colAmountLabel": { "type": "Eyebrow", "props": { "text": "Amount" } },
       "sortAmountBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" } } } }] }
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" }
+              }
+            }
+          }
+        }
       },
-      "hdrDueDate": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrDueDateLabel", "sortDueDateBtn"] },
-      "hdrDueDateLabel": { "type": "Caption", "props": { "text": "Due date" } },
-      "sortDueDateBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by due date" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "due_date_ts" } } } }] }
+      "colDue": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colDueLabel", "sortDueBtn"]
       },
-      "hdrNumber": { "type": "Caption", "props": { "text": "Invoice number" } },
+      "colDueLabel": { "type": "Eyebrow", "props": { "text": "Due Date" } },
+      "sortDueBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by due date" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "due_date_ts" }
+              }
+            }
+          }
+        }
+      },
+
       "list": {
-        "type": "Stack", "props": { "gap": "xs" },
+        "type": "Stack",
+        "props": { "gap": "xs" },
         "children": ["invoiceRow"],
-        "repeat": { "statePath": "/ui/invoiceRows", "key": "id" },
-        "visible": { "$and": [{ "$state": "/_loading/stripe.list_invoices", "not": true }, { "$state": "/stripe/list_invoices/data/0" }] }
+        "repeat": { "statePath": "/ui/inv/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0" }
+          ]
+        }
       },
       "invoiceRow": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 7rem 6rem 8rem 9rem" },
-        "children": ["identity", "statusWrap", "invoiceAmount", "invoiceDueDate", "invoiceNumber"]
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "clickable": true,
+          "template": "minmax(0, 1fr) 6rem 6rem 8rem"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": { "$item": "hosted_invoice_url" } }
+          }
+        },
+        "children": ["identity", "statusCellWrap", "amountCell", "dueCell"]
       },
-      "identity": { "type": "Stack", "props": { "gap": "none" }, "children": ["customerName"] },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["customerName", "invoiceNumber"]
+      },
       "customerName": {
         "type": "Text",
         "props": { "text": { "$item": "customer_name" }, "size": "sm", "weight": "medium", "truncate": true }
       },
-      "statusWrap": { "type": "Stack", "props": { "align": "start" }, "children": ["statusBadge"] },
-      "statusBadge": {
+      "invoiceNumber": {
+        "type": "Text",
+        "props": { "text": { "$item": "number" }, "tone": "muted", "truncate": true }
+      },
+      "statusCellWrap": {
+        "type": "Row",
+        "props": { "justify": "start" },
+        "children": ["statusCell"]
+      },
+      "statusCell": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$computed": "stripe_invoice_status_tone", "args": { "status": { "$item": "status" } } },
+          "text": { "$item": "display_status" },
+          "tone": { "$item": "display_tone" },
           "variant": "soft"
         }
       },
-      "invoiceAmount": { "type": "Caption", "props": { "text": { "$item": "amount" } } },
-      "invoiceDueDate": { "type": "Caption", "props": { "text": { "$item": "due_date" } } },
-      "invoiceNumber": { "type": "Caption", "props": { "text": { "$item": "number" }, "truncate": true } }
+      "amountCell": {
+        "type": "Row",
+        "props": { "justify": "end" },
+        "children": ["amountText"]
+      },
+      "amountText": {
+        "type": "Text",
+        "props": { "text": { "$item": "amount" }, "size": "sm", "weight": "medium" }
+      },
+      "dueCell": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["dueDateText", "dueRelText"]
+      },
+      "dueDateText": {
+        "type": "Text",
+        "props": { "text": { "$item": "due_date" }, "size": "sm", "weight": "medium" }
+      },
+      "dueRelText": {
+        "type": "Caption",
+        "props": { "text": { "$item": "rel_label" }, "tone": { "$item": "display_tone" } }
+      },
+
+      "footerDivider": {
+        "type": "Divider",
+        "props": {},
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0" }
+          ]
+        }
+      },
+      "footer": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": "Open invoices past their due date are shown as Overdue. Click an invoice to open it in Stripe."
+        },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_invoices", "not": true },
+            { "$state": "/stripe/list_invoices/data/0" }
+          ]
+        }
+      }
     }
   },
   "status": "published"
