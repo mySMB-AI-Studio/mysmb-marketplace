@@ -477,6 +477,70 @@ const balance_share_note = (args) => {
     const pct = Number(percent_of(args));
     return 'Current balance is ' + Math.round(pct) + '% of lifetime volume';
 };
+// ── flatten_customers ─────────────────────────────────────────────────────
+// Pre-process raw Stripe customer objects into display-ready rows: a label
+// that falls back to the email when the customer has no name, avatar
+// initials, a dd-Mmm-yy join date, and the balance formatted in the
+// customer's own currency with a tone that says which way it points.
+//
+// Stripe's `balance` is signed from the account's point of view: NEGATIVE is
+// credit sitting on the customer's account, POSITIVE is an amount that will
+// be added to their next invoice. Zero takes `default` rather than `muted`
+// because `Text` silently drops to 11px when the tone is muted, which would
+// make zero rows a different size from the rest of the column.
+//
+// Args: { value: raw customer array, key: sort key e.g. "created|desc" }
+// Returns: display row array
+/** "Ava Martinez" → AV; "noah.kim@example.com" → NK; "Amelia" → AM. */
+function customerInitials(label) {
+    const words = label.trim().split(/\s+/).filter(Boolean);
+    if (words.length >= 2)
+        return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    const local = (words[0] ?? '').split('@')[0];
+    const parts = local.split(/[._-]+/).filter(Boolean);
+    if (parts.length >= 2)
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return local.slice(0, 2).toUpperCase() || '\u00b7';
+}
+const flatten_customers = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const keyStr = String(args.key ?? 'created|desc');
+    const [field, dir] = keyStr.split('|');
+    const rows = raw.map(c => {
+        const name = String(c.name ?? '').trim();
+        const email = String(c.email ?? '').trim();
+        const label = name || email || '(No Name)';
+        const balance = typeof c.balance === 'number' ? c.balance : Number(c.balance ?? 0);
+        const safeBalance = Number.isFinite(balance) ? balance : 0;
+        // A customer carries no currency until they transact; fall back to the
+        // account default rather than letting format_currency guess.
+        const currency = String(c.currency ?? '').trim() || 'aud';
+        const created = typeof c.created === 'number' ? c.created : Number(c.created ?? 0);
+        return {
+            id: String(c.id ?? ''),
+            name: label,
+            email,
+            // Initials come from the real name/email, never from the
+            // "(No Name)" placeholder — that would read as "(N".
+            initials: customerInitials(name || email),
+            created: Number.isFinite(created) ? created : 0,
+            created_label: String(format_stripe_date_dmy({ value: c.created })),
+            balance: safeBalance,
+            balance_label: String(format_currency({ amount: safeBalance, currency })),
+            balance_tone: safeBalance < 0 ? 'success' : safeBalance > 0 ? 'warning' : 'default',
+            livemode: Boolean(c.livemode),
+        };
+    });
+    rows.sort((a, b) => {
+        const av = a[field] ?? '';
+        const bv = b[field] ?? '';
+        const an = Number(av);
+        const bn = Number(bv);
+        const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        return dir === 'desc' ? -cmp : cmp;
+    });
+    return rows;
+};
 const elements = {
     slug: 'stripe',
     functions: {
@@ -495,6 +559,7 @@ const elements = {
         calc_mrr,
         flatten_subscriptions,
         flatten_payments,
+        flatten_customers,
         balance_flow_tone,
         balance_flow_note,
         percent_of,
