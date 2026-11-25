@@ -1,18 +1,15 @@
 {
-  "category": "work-management",
-  "connectorsUsed": [
-    "monday"
-  ],
-  "dataProvider": {
-    "kind": "tool",
-    "mcp": "monday",
-    "params": {
-      "limit": 50
-    },
-    "tool": "get_board_info"
-  },
-  "description": "Pick a monday.com board to see its recent activity log — items created, columns changed, updates posted.",
   "id": "monday-board-activity",
+  "title": "Board Activity",
+  "description": "Pick a monday.com board to see its recent activity log — items created, columns changed, updates posted.",
+  "category": "work-management",
+  "tags": [
+    "monday",
+    "activity",
+    "audit log",
+    "boards",
+    "work-management"
+  ],
   "keywords": [
     "board",
     "activity",
@@ -21,41 +18,204 @@
     "monday",
     "feed"
   ],
+  "connectorsUsed": [
+    "monday"
+  ],
   "popularity": 0,
   "sizing": {
-    "max": {
-      "colSpan": 6,
-      "rowSpan": 9
+    "preferred": {
+      "colSpan": 4,
+      "rowSpan": 6
     },
     "min": {
       "colSpan": 3,
       "rowSpan": 5
     },
-    "preferred": {
-      "colSpan": 4,
-      "rowSpan": 6
+    "max": {
+      "colSpan": 6,
+      "rowSpan": 9
+    }
+  },
+  "dataProvider": {
+    "mcp": "monday",
+    "tool": "get_board_info",
+    "params": {
+      "limit": 50
     }
   },
   "spec": {
+    "root": "card",
     "elements": {
-      "activityDetail": {
+      "card": {
+        "type": "Card",
+        "props": {},
         "children": [
-          "detailType",
-          "detailEvent",
-          "detailTime",
-          "detailDataLabel",
-          "detailData"
+          "titleRow",
+          "divider1",
+          "pickerRow",
+          "body"
         ],
+        "watch": {
+          "/ui/selectedBoardId": [
+            {
+              "action": "monday.get_board_activity",
+              "params": {
+                "board_id": {
+                  "$state": "/ui/selectedBoardId"
+                },
+                "limit": 20
+              }
+            }
+          ],
+          "/monday/get_board_activity": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/activity",
+                "value": {
+                  "$computed": "monday_activity_dashboard",
+                  "args": {
+                    "value": {
+                      "$state": "/monday/get_board_activity"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "titleRow": {
+        "type": "Row",
         "props": {
-          "variant": "muted"
+          "justify": "between",
+          "align": "center"
         },
-        "type": "Section"
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Activity",
+          "tone": "warning",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Board Activity",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "monday.com · pick a board"
+        }
+      },
+      "divider1": {
+        "type": "Divider",
+        "props": {}
+      },
+      "pickerRow": {
+        "type": "FormRow",
+        "props": {
+          "label": "Board"
+        },
+        "children": [
+          "boardSelect"
+        ]
+      },
+      "boardSelect": {
+        "type": "Select",
+        "props": {
+          "value": {
+            "$bindState": "/ui/selectedBoardId"
+          },
+          "options": {
+            "$computed": "to_options",
+            "args": {
+              "value": {
+                "$state": "/monday/get_board_info/boards"
+              },
+              "valueField": "id",
+              "labelField": "name"
+            }
+          },
+          "placeholder": "Select a board…",
+          "size": "sm"
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "promptEmpty",
+          "loading",
+          "activityEmpty",
+          "scopeLabel",
+          "activityList"
+        ]
+      },
+      "promptEmpty": {
+        "type": "Empty",
+        "props": {
+          "message": "Select a board to see its activity."
+        },
+        "visible": {
+          "$state": "/ui/selectedBoardId",
+          "not": true
+        }
+      },
+      "loading": {
+        "type": "Row",
+        "props": {
+          "align": "center",
+          "gap": "sm"
+        },
+        "children": [
+          "loadingSpinner"
+        ],
+        "visible": {
+          "$state": "/_loading/monday.get_board_activity"
+        }
+      },
+      "loadingSpinner": {
+        "type": "Spinner",
+        "props": {
+          "label": "Loading activity…",
+          "size": "sm"
+        }
       },
       "activityEmpty": {
+        "type": "Empty",
         "props": {
           "message": "No recent activity on this board."
         },
-        "type": "Empty",
         "visible": {
           "$and": [
             {
@@ -66,34 +226,65 @@
               "not": true
             },
             {
-              "$state": "/ui/activity/0",
+              "$state": "/ui/activity/hasData",
               "not": true
             }
           ]
         }
       },
+      "scopeLabel": {
+        "type": "Caption",
+        "props": {
+          "text": {
+            "$state": "/ui/activity/scopeText"
+          },
+          "tone": "muted"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/monday.get_board_activity",
+              "not": true
+            },
+            {
+              "$state": "/ui/activity/hasData"
+            }
+          ]
+        }
+      },
       "activityList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
         "children": [
           "activityRowCollapsed",
           "activityRowExpanded"
         ],
-        "props": {
-          "gap": "xs"
-        },
         "repeat": {
-          "key": "id",
-          "statePath": "/ui/activity"
+          "statePath": "/ui/activity/rows",
+          "key": "id"
         },
-        "type": "Stack",
         "visible": {
           "$state": "/_loading/monday.get_board_activity",
           "not": true
         }
       },
       "activityRowCollapsed": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
         "children": [
           "activityRowCollapsedItem"
         ],
+        "visible": {
+          "$item": "id",
+          "eq": {
+            "$state": "/ui/expandedActivityId"
+          },
+          "not": true
+        },
         "on": {
           "click": {
             "action": "setState",
@@ -104,28 +295,13 @@
               }
             }
           }
-        },
-        "props": {
-          "clickable": true
-        },
-        "type": "Row",
-        "visible": {
-          "$item": "id",
-          "eq": {
-            "$state": "/ui/expandedActivityId"
-          },
-          "not": true
         }
       },
       "activityRowCollapsedItem": {
+        "type": "ActivityItem",
         "props": {
-          "initials": {
-            "$computed": "initials",
-            "args": {
-              "value": {
-                "$item": "actor_name"
-              }
-            }
+          "title": {
+            "$item": "actor_name"
           },
           "subtitle": {
             "$item": "action_text"
@@ -138,21 +314,25 @@
               }
             }
           },
-          "title": {
-            "$item": "actor_name"
+          "initials": {
+            "$computed": "initials",
+            "args": {
+              "value": {
+                "$item": "actor_name"
+              }
+            }
           }
-        },
-        "type": "ActivityItem"
+        }
       },
       "activityRowExpanded": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
         "children": [
           "activityRowSummary",
           "activityDetail"
         ],
-        "props": {
-          "gap": "xs"
-        },
-        "type": "Stack",
         "visible": {
           "$item": "id",
           "eq": {
@@ -161,6 +341,10 @@
         }
       },
       "activityRowSummary": {
+        "type": "Row",
+        "props": {
+          "clickable": true
+        },
         "children": [
           "activityRowSummaryItem"
         ],
@@ -172,21 +356,13 @@
               "value": ""
             }
           }
-        },
-        "props": {
-          "clickable": true
-        },
-        "type": "Row"
+        }
       },
       "activityRowSummaryItem": {
+        "type": "ActivityItem",
         "props": {
-          "initials": {
-            "$computed": "initials",
-            "args": {
-              "value": {
-                "$item": "actor_name"
-              }
-            }
+          "title": {
+            "$item": "actor_name"
           },
           "subtitle": {
             "$item": "action_text"
@@ -199,145 +375,31 @@
               }
             }
           },
-          "title": {
-            "$item": "actor_name"
-          }
-        },
-        "type": "ActivityItem"
-      },
-      "boardSelect": {
-        "props": {
-          "options": {
-            "$computed": "to_options",
-            "args": {
-              "labelField": "name",
-              "value": {
-                "$state": "/monday/get_board_info/boards"
-              },
-              "valueField": "id"
-            }
-          },
-          "placeholder": "Select a board…",
-          "size": "sm",
-          "value": {
-            "$bindState": "/ui/selectedBoardId"
-          }
-        },
-        "type": "Select"
-      },
-      "body": {
-        "children": [
-          "promptEmpty",
-          "loading",
-          "activityEmpty",
-          "activityList"
-        ],
-        "props": {},
-        "type": "Body"
-      },
-      "card": {
-        "children": [
-          "titleRow",
-          "divider1",
-          "pickerRow",
-          "body"
-        ],
-        "props": {},
-        "type": "Card",
-        "watch": {
-          "/monday/get_board_activity": [
-            {
-              "action": "setState",
-              "params": {
-                "statePath": "/ui/activity",
-                "value": {
-                  "$computed": "monday_flatten_activity",
-                  "args": {
-                    "value": {
-                      "$state": "/monday/get_board_activity"
-                    }
-                  }
-                }
-              }
-            }
-          ],
-          "/ui/selectedBoardId": [
-            {
-              "action": "monday.get_board_activity",
-              "params": {
-                "board_id": {
-                  "$state": "/ui/selectedBoardId"
-                },
-                "limit": 20
-              }
-            }
-          ]
-        }
-      },
-      "detailData": {
-        "props": {
-          "size": "xs",
-          "text": {
-            "$computed": "monday_pretty_json",
+          "initials": {
+            "$computed": "initials",
             "args": {
               "value": {
-                "$item": "data"
+                "$item": "actor_name"
               }
             }
-          },
-          "tone": "muted"
-        },
-        "type": "Text",
-        "visible": {
-          "$item": "data"
+          }
         }
       },
-      "detailDataLabel": {
+      "activityDetail": {
+        "type": "Section",
         "props": {
-          "text": "Raw details",
-          "tone": "muted"
+          "variant": "muted"
         },
-        "type": "Caption"
-      },
-      "detailEvent": {
-        "props": {
-          "label": "Event code",
-          "value": {
-            "$item": "event"
-          }
-        },
-        "type": "KeyValue"
-      },
-      "detailTime": {
-        "props": {
-          "label": "Time",
-          "value": {
-            "$computed": "fmt",
-            "args": {
-              "d": {
-                "$computed": "format_date",
-                "args": {
-                  "format": "dd-mmm-yy",
-                  "value": {
-                    "$item": "created_at"
-                  }
-                }
-              },
-              "pattern": "{d} at {t}",
-              "t": {
-                "$computed": "format_time",
-                "args": {
-                  "value": {
-                    "$item": "created_at"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "type": "KeyValue"
+        "children": [
+          "detailType",
+          "detailEvent",
+          "detailTime",
+          "detailDataLabel",
+          "detailData"
+        ]
       },
       "detailType": {
+        "type": "KeyValue",
         "props": {
           "label": "Type",
           "value": {
@@ -348,113 +410,73 @@
               }
             }
           }
-        },
-        "type": "KeyValue"
-      },
-      "divider1": {
-        "props": {},
-        "type": "Divider"
-      },
-      "eyebrow": {
-        "props": {
-          "text": "monday.com · pick a board"
-        },
-        "type": "Eyebrow"
-      },
-      "loading": {
-        "children": [
-          "loadingSpinner"
-        ],
-        "props": {
-          "align": "center",
-          "gap": "sm"
-        },
-        "type": "Row",
-        "visible": {
-          "$state": "/_loading/monday.get_board_activity"
         }
       },
-      "loadingSpinner": {
+      "detailEvent": {
+        "type": "KeyValue",
         "props": {
-          "label": "Loading activity…",
-          "size": "sm"
-        },
-        "type": "Spinner"
-      },
-      "pickerRow": {
-        "children": [
-          "boardSelect"
-        ],
-        "props": {
-          "label": "Board"
-        },
-        "type": "FormRow"
-      },
-      "promptEmpty": {
-        "props": {
-          "message": "Select a board to see its activity."
-        },
-        "type": "Empty",
-        "visible": {
-          "$state": "/ui/selectedBoardId",
-          "not": true
+          "label": "Event code",
+          "value": {
+            "$item": "event"
+          }
         }
       },
-      "title": {
+      "detailTime": {
+        "type": "KeyValue",
         "props": {
-          "level": "h2",
-          "text": "Board Activity"
-        },
-        "type": "Heading"
+          "label": "Time",
+          "value": {
+            "$computed": "fmt",
+            "args": {
+              "pattern": "{d} at {t}",
+              "d": {
+                "$computed": "format_date",
+                "args": {
+                  "value": {
+                    "$item": "created_at"
+                  },
+                  "format": "dd-mmm-yy"
+                }
+              },
+              "t": {
+                "$computed": "format_time",
+                "args": {
+                  "value": {
+                    "$item": "created_at"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
-      "titleGroup": {
-        "children": [
-          "titleIcon",
-          "titleStack"
-        ],
+      "detailDataLabel": {
+        "type": "Caption",
         "props": {
-          "align": "center",
-          "gap": "sm"
+          "text": "Details",
+          "tone": "muted"
         },
-        "type": "Row"
+        "visible": {
+          "$item": "detailText"
+        }
       },
-      "titleIcon": {
+      "detailData": {
+        "type": "Text",
         "props": {
-          "name": "Activity",
-          "size": "sm",
-          "tone": "warning"
+          "text": {
+            "$item": "detailText"
+          },
+          "size": "xs",
+          "tone": "muted"
         },
-        "type": "Icon"
-      },
-      "titleRow": {
-        "children": [
-          "titleGroup"
-        ],
-        "props": {
-          "align": "center",
-          "justify": "between"
-        },
-        "type": "Row"
-      },
-      "titleStack": {
-        "children": [
-          "title",
-          "eyebrow"
-        ],
-        "props": {
-          "gap": "none"
-        },
-        "type": "Stack"
+        "visible": {
+          "$item": "detailText"
+        }
       }
-    },
-    "root": "card"
+    }
   },
-  "tags": [
-    "monday",
-    "activity",
-    "audit log",
-    "boards",
-    "work-management"
-  ],
-  "title": "Board Activity"
+  "status": "published",
+  "branding": {
+    "color": "#0073ea"
+  }
 }
