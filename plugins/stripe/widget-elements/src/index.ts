@@ -467,7 +467,7 @@ const balance_flow_note: ComputedFunction = (args) => {
   const amount = Number(args.amount ?? 0);
   const onHold = String(args.kind ?? '') === 'on_hold';
   if (!Number.isFinite(amount) || amount === 0) {
-    return onHold ? 'No funds held' : 'Nothing on its way';
+    return onHold ? 'Nothing pending' : 'Nothing on its way';
   }
   return onHold ? 'Clearing into your balance' : 'Paying out to your bank';
 };
