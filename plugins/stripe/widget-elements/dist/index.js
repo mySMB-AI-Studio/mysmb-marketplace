@@ -477,6 +477,180 @@ const balance_share_note = (args) => {
     const pct = Number(percent_of(args));
     return 'Current balance is ' + Math.round(pct) + '% of lifetime volume';
 };
+// ── flatten_customers ─────────────────────────────────────────────────────
+// Pre-process raw Stripe customer objects into display-ready rows: a label
+// that falls back to the email when the customer has no name, avatar
+// initials, a dd-Mmm-yy join date, and the balance formatted in the
+// customer's own currency with a tone that says which way it points.
+//
+// Stripe's `balance` is signed from the account's point of view: NEGATIVE is
+// credit sitting on the customer's account, POSITIVE is an amount that will
+// be added to their next invoice. Zero takes `default` rather than `muted`
+// because `Text` silently drops to 11px when the tone is muted, which would
+// make zero rows a different size from the rest of the column.
+//
+// Args: { value: raw customer array, key: sort key e.g. "created|desc" }
+// Returns: display row array
+/** "Ava Martinez" → AV; "noah.kim@example.com" → NK; "Amelia" → AM. */
+function customerInitials(label) {
+    const words = label.trim().split(/\s+/).filter(Boolean);
+    if (words.length >= 2)
+        return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    const local = (words[0] ?? '').split('@')[0];
+    const parts = local.split(/[._-]+/).filter(Boolean);
+    if (parts.length >= 2)
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return local.slice(0, 2).toUpperCase() || '\u00b7';
+}
+const flatten_customers = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const keyStr = String(args.key ?? 'created|desc');
+    const [field, dir] = keyStr.split('|');
+    const rows = raw.map(c => {
+        const name = String(c.name ?? '').trim();
+        const email = String(c.email ?? '').trim();
+        const label = name || email || '(No Name)';
+        const balance = typeof c.balance === 'number' ? c.balance : Number(c.balance ?? 0);
+        const safeBalance = Number.isFinite(balance) ? balance : 0;
+        // A customer carries no currency until they transact; fall back to the
+        // account default rather than letting format_currency guess.
+        const currency = String(c.currency ?? '').trim() || 'aud';
+        const created = typeof c.created === 'number' ? c.created : Number(c.created ?? 0);
+        return {
+            id: String(c.id ?? ''),
+            name: label,
+            email,
+            // Initials come from the real name/email, never from the
+            // "(No Name)" placeholder — that would read as "(N".
+            initials: customerInitials(name || email),
+            created: Number.isFinite(created) ? created : 0,
+            created_label: String(format_stripe_date_dmy({ value: c.created })),
+            balance: safeBalance,
+            balance_label: String(format_currency({ amount: safeBalance, currency })),
+            balance_tone: safeBalance < 0 ? 'success' : safeBalance > 0 ? 'warning' : 'default',
+            livemode: Boolean(c.livemode),
+        };
+    });
+    rows.sort((a, b) => {
+        const av = a[field] ?? '';
+        const bv = b[field] ?? '';
+        const an = Number(av);
+        const bn = Number(bv);
+        const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        return dir === 'desc' ? -cmp : cmp;
+    });
+    return rows;
+};
+// ── invoice_board ─────────────────────────────────────────────────────────
+// Everything the Invoices tile draws, from one pass over the raw invoices:
+// the sorted rows plus the three headline figures above them.
+//
+// The key idea is that what the tile SHOWS is not always Stripe's status.
+// Stripe has no "overdue" — an unpaid invoice stays `open` forever. So an
+// open invoice past its due date is relabelled Overdue here, and the tone
+// follows the display standard's escalation rather than the raw status:
+// not yet due is muted, due today is warning, past due is destructive.
+//
+// Args: { value: raw invoice array, key: sort key e.g. "due_date_ts|desc",
+//         today?: ISO date string for deterministic testing }
+// Returns: { rows, count, outstanding, outstandingCount, outstandingTone,
+//            overdueCount, overdueTone, paidTotal, paidCount, paidTone }
+const invoice_board = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const keyStr = String(args.key ?? 'due_date_ts|desc');
+    const [field, dir] = keyStr.split('|');
+    const today = args.today ? new Date(String(args.today)) : new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    let outstandingCents = 0;
+    let outstandingCount = 0;
+    let overdueCount = 0;
+    let paidCents = 0;
+    let paidCount = 0;
+    // Invoices on one account share a currency; remember the last real one so
+    // the headline figures aren't formatted with a guessed symbol.
+    let currency = 'aud';
+    const rows = raw.map(inv => {
+        const status = String(inv.status ?? '').toLowerCase();
+        const cents = typeof inv.amount_due === 'number' ? inv.amount_due : Number(inv.amount_due ?? 0);
+        const amountCents = Number.isFinite(cents) ? cents : 0;
+        const cur = String(inv.currency ?? '').trim();
+        if (cur)
+            currency = cur;
+        const rawDue = typeof inv.due_date === 'number' ? inv.due_date : Number(inv.due_date ?? 0);
+        const dueTs = Number.isFinite(rawDue) && rawDue > 0 ? rawDue : 0;
+        let days = NaN;
+        if (dueTs) {
+            const d = new Date(dueTs * 1000);
+            const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            days = Math.round((todayUtc - dueUtc) / 86_400_000);
+        }
+        let displayStatus = formatInvoiceStatusLabel(status);
+        let displayTone = String(invoice_status_tone({ status }));
+        let relLabel = '';
+        if (status === 'paid') {
+            paidCents += amountCents;
+            paidCount += 1;
+        }
+        else if (status === 'open') {
+            outstandingCents += amountCents;
+            outstandingCount += 1;
+            if (Number.isFinite(days)) {
+                if (days > 0) {
+                    displayStatus = 'Overdue';
+                    displayTone = 'destructive';
+                    relLabel = `${days}d overdue`;
+                    overdueCount += 1;
+                }
+                else if (days === 0) {
+                    displayTone = 'warning';
+                    relLabel = 'due today';
+                }
+                else {
+                    displayTone = 'muted';
+                    relLabel = `in ${-days}d`;
+                }
+            }
+        }
+        return {
+            id: String(inv.id ?? ''),
+            customer_name: String(inv.customer_name ?? '').trim() || String(inv.customer_email ?? '').trim() || '(No Customer)',
+            number: String(inv.number ?? ''),
+            amount: String(format_currency({ amount: amountCents, currency: cur || currency })),
+            amount_cents: amountCents,
+            due_date: dueTs ? String(format_stripe_date_dmy({ value: dueTs })) : '—',
+            // Sort key only (nothing displays it). An invoice with no due date
+            // sorts last ascending rather than jumping above everything at 0.
+            due_date_ts: dueTs || Number.MAX_SAFE_INTEGER,
+            rel_label: relLabel,
+            status,
+            display_status: displayStatus,
+            display_tone: displayTone,
+            hosted_invoice_url: String(inv.hosted_invoice_url ?? ''),
+        };
+    });
+    rows.sort((a, b) => {
+        const av = a[field] ?? '';
+        const bv = b[field] ?? '';
+        const an = Number(av);
+        const bn = Number(bv);
+        const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        return dir === 'desc' ? -cmp : cmp;
+    });
+    return {
+        rows,
+        count: rows.length,
+        outstanding: String(format_currency({ amount: outstandingCents, currency })),
+        outstandingCount,
+        // Tones stay data-driven: a headline only takes a status colour when it
+        // has something to report, so an all-clear board reads quiet.
+        outstandingTone: outstandingCents > 0 ? 'warning' : 'muted',
+        overdueCount,
+        overdueTone: overdueCount > 0 ? 'destructive' : 'muted',
+        paidTotal: String(format_currency({ amount: paidCents, currency })),
+        paidCount,
+        paidTone: paidCents > 0 ? 'success' : 'muted',
+    };
+};
 const elements = {
     slug: 'stripe',
     functions: {
@@ -495,6 +669,8 @@ const elements = {
         calc_mrr,
         flatten_subscriptions,
         flatten_payments,
+        flatten_customers,
+        invoice_board,
         balance_flow_tone,
         balance_flow_note,
         percent_of,
