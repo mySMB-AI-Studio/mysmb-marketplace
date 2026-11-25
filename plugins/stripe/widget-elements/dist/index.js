@@ -651,6 +651,120 @@ const invoice_board = (args) => {
         paidTone: paidCents > 0 ? 'success' : 'muted',
     };
 };
+// ── payment_board ─────────────────────────────────────────────────────────
+// Everything the Recent Payments tile draws, from one pass over the raw
+// PaymentIntents: the sorted rows plus the three headline figures.
+//
+// Stripe has roughly eight PaymentIntent statuses. The headline figures
+// collapse them into the three that matter to a business owner — money
+// taken, money not taken yet, money that got away — while each ROW keeps
+// Stripe's precise label, so "Action required" stays distinguishable from
+// "Processing" even though both count as not-yet-collected above.
+//
+// Args: { value: raw PaymentIntent array, key: sort key e.g. "customer_name|asc" }
+// Returns: { rows, count, succeededTotal, succeededCount, successRate, ...tones }
+const payment_board = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const keyStr = String(args.key ?? 'customer_name|asc');
+    const [field, dir] = keyStr.split('|');
+    let succeededCents = 0, succeededCount = 0;
+    let pendingCents = 0, pendingCount = 0;
+    let cancelledCents = 0, cancelledCount = 0;
+    let currency = 'aud';
+    const rows = raw.map(pi => {
+        const status = String(pi.status ?? '').toLowerCase();
+        const cents = typeof pi.amount === 'number' ? pi.amount : Number(pi.amount ?? 0);
+        const amountCents = Number.isFinite(cents) ? cents : 0;
+        const cur = String(pi.currency ?? '').trim();
+        if (cur)
+            currency = cur;
+        // `customer` arrives expanded when the tool asked for it, a bare id when not.
+        const customer = pi.customer;
+        let customerName = '';
+        if (customer && typeof customer === 'object') {
+            const c = customer;
+            customerName = String(c.name ?? c.email ?? '');
+        }
+        else {
+            customerName = String(customer ?? '');
+        }
+        const created = typeof pi.created === 'number' ? pi.created : Number(pi.created ?? 0);
+        let createdAt = '';
+        if (Number.isFinite(created) && created > 0) {
+            const d = new Date(created * 1000);
+            const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            createdAt = `${format_stripe_date_dmy({ value: created })}, ${time}`;
+        }
+        // A card brand is worth reading; a bare "Card" is just the fallback, so
+        // it drops to muted rather than competing with the real ones.
+        const pm = pi.payment_method ?? {};
+        const card = pm.card ?? {};
+        let method = '';
+        let methodTone = 'default';
+        if (card.brand) {
+            const brand = String(card.brand);
+            const brandDisplay = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase();
+            method = card.last4 ? `${brandDisplay} ••${card.last4}` : brandDisplay;
+        }
+        else {
+            const types = Array.isArray(pi.payment_method_types) ? pi.payment_method_types : [];
+            const t = types[0] ? String(types[0]) : '';
+            method = t ? t.charAt(0).toUpperCase() + t.slice(1) : '—';
+            methodTone = 'muted';
+        }
+        if (status === 'succeeded') {
+            succeededCents += amountCents;
+            succeededCount += 1;
+        }
+        else if (status === 'canceled' || status === 'cancelled') {
+            cancelledCents += amountCents;
+            cancelledCount += 1;
+        }
+        else {
+            pendingCents += amountCents;
+            pendingCount += 1;
+        }
+        return {
+            id: String(pi.id ?? ''),
+            customer_name: customerName || '(No Customer)',
+            created_at: createdAt,
+            created_ts: Number.isFinite(created) ? created : 0,
+            amount: String(format_currency({ amount: amountCents, currency: cur || currency })),
+            amount_cents: amountCents,
+            method,
+            method_tone: methodTone,
+            status,
+            status_label: formatPaymentStatusLabel(status),
+            status_tone: String(payment_intent_status_tone({ status })),
+        };
+    });
+    rows.sort((a, b) => {
+        const av = a[field] ?? '';
+        const bv = b[field] ?? '';
+        const an = Number(av);
+        const bn = Number(bv);
+        const cmp = !isNaN(an) && !isNaN(bn) ? an - bn : String(av).localeCompare(String(bv));
+        return dir === 'desc' ? -cmp : cmp;
+    });
+    const total = rows.length;
+    const successRate = total > 0 ? Math.round((succeededCount / total) * 100) : 0;
+    return {
+        rows,
+        count: total,
+        succeededTotal: String(format_currency({ amount: succeededCents, currency })),
+        succeededCount,
+        successRate,
+        // Tones stay data-driven: a bucket only takes a status colour when it has
+        // something in it, so a clean run doesn't show a permanent red dot.
+        succeededTone: succeededCount > 0 ? 'success' : 'muted',
+        pendingCount,
+        pendingTotal: String(format_currency({ amount: pendingCents, currency })),
+        pendingTone: pendingCount > 0 ? 'warning' : 'muted',
+        cancelledCount,
+        cancelledTotal: String(format_currency({ amount: cancelledCents, currency })),
+        cancelledTone: cancelledCount > 0 ? 'destructive' : 'muted',
+    };
+};
 const elements = {
     slug: 'stripe',
     functions: {
@@ -671,6 +785,7 @@ const elements = {
         flatten_payments,
         flatten_customers,
         invoice_board,
+        payment_board,
         balance_flow_tone,
         balance_flow_note,
         percent_of,
