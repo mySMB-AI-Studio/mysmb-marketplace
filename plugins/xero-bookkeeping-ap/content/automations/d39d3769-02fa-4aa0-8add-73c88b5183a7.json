@@ -1,0 +1,218 @@
+{
+  "contentHash": "aff4788c317ebb67c841433d619b2ef9a49198ee2d110612eb80a704dca4f224",
+  "declaredScopes": [
+    "connectors:xero-accounting",
+    "records:ap_bill:read",
+    "records:ap_bill:write",
+    "records:client:read"
+  ],
+  "dependencies": [],
+  "description": "Creates the approved supplier bill in the client's Xero, or applies the approved coding and approval status to a bill already there. It runs from a Bookkeeping AP job after the reviewer approves. It sends only the exact values on the review sheet, keeps to the client's approval route and Xero organisation, never changes amounts, never moves a bill back, and never changes a bill a client approved before Xero.",
+  "flowIr": {
+    "description": "Writes the reviewer-approved bill or correction to the client's Xero.",
+    "irVersion": 1,
+    "name": "Bookkeeping AP: approve in Xero",
+    "nodes": [
+      {
+        "code": "import copy\nimport hashlib\nimport json\n\nSTATUS_ORDER = {\"DRAFT\": 0, \"SUBMITTED\": 1, \"AUTHORISED\": 2}\n# The highest Xero status the agent may set, by the client's approval route. Any other route: Draft only.\nMAX_STATUS = {\"bookkeeper\": \"AUTHORISED\", \"hj_reviewer\": \"AUTHORISED\", \"client_each_bill\": \"SUBMITTED\"}\n\n\nclass Refused(Exception):\n    def __init__(self, code, reason):\n        super().__init__(reason)\n        self.code = code\n        self.reason = reason\n\n\ndef as_data(value):\n    if isinstance(value, str):\n        try:\n            return json.loads(value)\n        except Exception:\n            return value\n    return value\n\n\ndef tidy(value):\n    \"\"\"The same value however it was written: 100 and 100.0 compare equal.\"\"\"\n    value = as_data(value)\n    if isinstance(value, dict):\n        return {str(k): tidy(v) for k, v in value.items()}\n    if isinstance(value, list):\n        return [tidy(v) for v in value]\n    if isinstance(value, float) and value.is_integer():\n        return int(value)\n    return value\n\n\ndef approval_digest(action, tenant, invoice, invoice_id, patch):\n    body = {\"action\": action, \"xero_tenant_id\": tenant}\n    if action == \"create\":\n        body[\"invoice\"] = invoice\n    else:\n        body[\"invoice_id\"] = invoice_id\n        body[\"patch\"] = patch\n    text = json.dumps(tidy(body), sort_keys=True, separators=(\",\", \":\"), ensure_ascii=False)\n    return hashlib.sha256(text.encode(\"utf-8\")).hexdigest()[:12]\n\n\ndef approval_from_params():\n    action = str(params.get(\"action\") or \"\").strip().lower()\n    tenant = str(params.get(\"xero_tenant_id\") or \"\").strip()\n    invoice = tidy(params.get(\"invoice\")) if action == \"create\" else None\n    invoice_id = str(params.get(\"invoice_id\") or \"\").strip() if action == \"update\" else \"\"\n    patch = tidy(params.get(\"patch\")) if action == \"update\" else None\n    return action, tenant, invoice, invoice_id, patch\n\n\ndef first_invoice(value):\n    value = as_data(value)\n    if isinstance(value, dict):\n        rows = value.get(\"Invoices\") or value.get(\"invoices\")\n        if isinstance(rows, list):\n            return rows[0] if rows and isinstance(rows[0], dict) else {}\n        if value.get(\"InvoiceID\"):\n            return value\n    if isinstance(value, list) and value and isinstance(value[0], dict):\n        return value[0]\n    return {}\n\n\ndef all_invoices(value):\n    value = as_data(value)\n    if isinstance(value, dict):\n        rows = value.get(\"Invoices\") or value.get(\"invoices\") or []\n        return [r for r in rows if isinstance(r, dict)]\n    if isinstance(value, list):\n        return [r for r in value if isinstance(r, dict)]\n    return []\n\n\ndef amount(value):\n    try:\n        return round(float(value), 4)\n    except Exception:\n        return None\n\n\ndef get_record(type_slug, record_id):\n    if not record_id:\n        return {}\n    row = as_data(api.records.get(type_slug=type_slug, record_id=record_id))\n    if isinstance(row, dict) and isinstance(row.get(\"record\"), dict):\n        row = row[\"record\"]\n    return row if isinstance(row, dict) else {}\n\n\ndef field(row, key):\n    data = row.get(\"data\") or row.get(\"fields\") or {}\n    return data.get(key, row.get(key))\n\n\ndef client_id_of(row):\n    links = row.get(\"links\") if isinstance(row.get(\"links\"), dict) else {}\n    found = links.get(\"client\") or field(row, \"client\")\n    if isinstance(found, list):\n        found = found[0] if found else \"\"\n    if isinstance(found, dict):\n        found = found.get(\"id\") or found.get(\"record_id\") or \"\"\n    return str(found or \"\")\n\n\ndef bill_context(record_id, tenant):\n    \"\"\"The AP bill row, its client's approval route, and a check that the Xero organisation is that client's.\"\"\"\n    row = get_record(\"ap_bill\", record_id)\n    if not row:\n        raise Refused(\"bad_input\", \"The AP bill row couldn't be read.\")\n    client = get_record(\"client\", client_id_of(row))\n    route = str(field(row, \"approval_route\") or field(client, \"ap_approval_route\") or \"\").strip().lower()\n    given = str(params.get(\"route\") or \"\").strip().lower()\n    if given and given != route:\n        raise Refused(\"route\", f\"The route given ({given}) isn't this client's route ({route or 'none'}).\")\n    row_tenant = str(field(row, \"xero_tenant_id\") or \"\").strip()\n    client_tenant = str(field(client, \"ap_xero_tenant_id\") or \"\").strip()\n    if (row_tenant and row_tenant != tenant) or (client_tenant and client_tenant != tenant):\n        raise Refused(\"tenant\", \"That Xero organisation isn't the one this bill's client uses.\")\n    return row, route\n\n\ndef same_supplier(bill, contact):\n    theirs = bill.get(\"Contact\") or {}\n    if contact.get(\"ContactID\") and theirs.get(\"ContactID\"):\n        return contact.get(\"ContactID\") == theirs.get(\"ContactID\")\n    mine = str(contact.get(\"Name\") or \"\").strip().lower()\n    return bool(mine) and mine == str(theirs.get(\"Name\") or \"\").strip().lower()\n\n\ndef in_job():\n    return str((trigger or {}).get(\"kind\") or \"\") == \"process\"\n\nMODE = \"reviewer\"  # \"reviewer\" for 'approve in Xero'; \"internal\" for 'approve in Xero after internal review'\nCREATE_KEYS = {\"Type\", \"Status\", \"Contact\", \"Date\", \"DueDate\", \"InvoiceNumber\", \"Reference\", \"CurrencyCode\", \"LineAmountTypes\", \"LineItems\"}\nCREATE_LINE_KEYS = {\"Description\", \"Quantity\", \"UnitAmount\", \"LineAmount\", \"AccountCode\", \"TaxType\", \"Tracking\"}\nPATCH_KEYS = {\"Status\", \"DueDate\", \"LineAmountTypes\", \"LineItems\"}\nPATCH_LINE_KEYS = {\"LineItemID\", \"Description\", \"Quantity\", \"UnitAmount\", \"LineAmount\", \"AccountCode\", \"TaxType\", \"Tracking\"}\nAMOUNT_KEYS = (\"Quantity\", \"UnitAmount\", \"LineAmount\")\n\n\ndef find_same(tenant, number, contact):\n    found = api.connectors.invoke(server=\"xero-accounting\", tool=\"list_invoices\", args={\"xero_tenant_id\": tenant, \"invoiceNumbers\": number, \"where\": 'Type==\"ACCPAY\"'})\n    live = [b for b in all_invoices(found) if b.get(\"Status\") not in (\"DELETED\", \"VOIDED\") and same_supplier(b, contact)]\n    return live[0] if live else None\n\n\ndef claim_once(record_id, row, digest):\n    \"\"\"A replayed run carries the same run and step as the approved one, so it is refused here.\"\"\"\n    claim = f\"{(trigger or {}).get('runId')}:{(trigger or {}).get('stepKey')}:{digest}\"\n    claims = [c for c in str(field(row, \"xero_write_claims\") or \"\").splitlines() if c.strip()]\n    if claim in claims:\n        raise Refused(\"replayed\", \"This approved run has already been carried out once.\")\n    api.records.update(type_slug=\"ap_bill\", record_id=record_id, record={\"data\": {\"xero_write_claims\": \"\\n\".join(claims[-50:] + [claim])}})\n\n\ndef create(record_id, row, route, tenant, bill, digest):\n    if field(row, \"xero_bill_id\"):\n        raise Refused(\"already_entered\", f\"This AP bill is already in Xero ({field(row, 'xero_bill_id')}).\")\n    if not isinstance(bill, dict) or not bill:\n        raise Refused(\"bad_input\", \"The bill to create is missing.\")\n    extra = sorted(set(bill) - CREATE_KEYS)\n    if extra:\n        raise Refused(\"bad_input\", \"These can't be sent when creating a bill: \" + \", \".join(extra) + \".\")\n    if bill.get(\"Type\") != \"ACCPAY\":\n        raise Refused(\"bad_input\", \"Only supplier bills (Type ACCPAY) can be created.\")\n    status = bill.get(\"Status\")\n    if status not in STATUS_ORDER:\n        raise Refused(\"bad_input\", \"The status must be DRAFT, SUBMITTED or AUTHORISED.\")\n    cap = MAX_STATUS.get(route, \"DRAFT\")\n    if STATUS_ORDER[status] > STATUS_ORDER[cap]:\n        raise Refused(\"route\", f\"For this client's route ({route or 'none'}) a new bill can be at most {cap}.\")\n    contact = bill.get(\"Contact\")\n    if not isinstance(contact, dict) or set(contact) - {\"ContactID\", \"Name\"} or not (contact.get(\"ContactID\") or contact.get(\"Name\")):\n        raise Refused(\"bad_input\", \"The supplier must be given as a ContactID or a Name.\")\n    lines = bill.get(\"LineItems\")\n    if not isinstance(lines, list) or not lines or any(not isinstance(l, dict) or set(l) - CREATE_LINE_KEYS for l in lines):\n        raise Refused(\"bad_input\", \"Each line may only have Description, Quantity, UnitAmount, LineAmount, AccountCode, TaxType and Tracking.\")\n    number = str(bill.get(\"InvoiceNumber\") or \"\").strip()\n    if not number:\n        raise Refused(\"bad_input\", \"A bill needs its invoice number.\")\n    same = find_same(tenant, number, contact)\n    if same:\n        raise Refused(\"duplicate\", f\"Xero already has bill {number} from this supplier ({same.get('InvoiceID')}, {same.get('Status')}).\")\n    claim_once(record_id, row, digest)\n    try:\n        written = first_invoice(api.connectors.invoke(server=\"xero-accounting\", tool=\"create_invoice\", args={\"xero_tenant_id\": tenant, \"invoice\": bill}))\n    except Exception:\n        # The answer may have been lost after Xero created the bill: look before giving up.\n        written = find_same(tenant, number, contact)\n        if not written:\n            raise\n    return written, \"\"\n\n\ndef update(record_id, row, route, tenant, bill_id, patch, digest):\n    if route == \"approved_upstream\":\n        raise Refused(\"route\", \"This client approves bills before Xero (Dext, Restock or ApprovalMax), so the agent never changes them.\")\n    if not bill_id or not isinstance(patch, dict) or not patch:\n        raise Refused(\"nothing_to_change\", \"There is nothing to change on this bill.\")\n    row_bill = str(field(row, \"xero_bill_id\") or \"\")\n    if row_bill and row_bill != bill_id:\n        raise Refused(\"bad_input\", \"That InvoiceID isn't this AP bill's bill in Xero.\")\n    extra = sorted(set(patch) - PATCH_KEYS)\n    if extra:\n        raise Refused(\"bad_input\", \"These can't be changed here: \" + \", \".join(extra) + \".\")\n    current = first_invoice(api.connectors.invoke(server=\"xero-accounting\", tool=\"get_invoice\", args={\"xero_tenant_id\": tenant, \"invoiceId\": bill_id}))\n    if not current or current.get(\"Type\") != \"ACCPAY\":\n        raise Refused(\"bad_input\", \"The bill couldn't be read from Xero as a supplier bill.\")\n    now = str(current.get(\"Status\") or \"\")\n    if now not in STATUS_ORDER:\n        raise Refused(\"handled_in_xero\", f\"The bill is {now or 'in an unknown status'} in Xero now.\")\n    expected = str(params.get(\"expected_updated_utc\") or \"\").strip()\n    if not expected or str(current.get(\"UpdatedDateUTC\") or \"\") != expected:\n        raise Refused(\"changed_in_xero\", \"The bill has changed in Xero since it was checked.\")\n    if \"Status\" in patch:\n        want = patch[\"Status\"]\n        if want not in STATUS_ORDER:\n            raise Refused(\"bad_input\", \"The status must be DRAFT, SUBMITTED or AUTHORISED.\")\n        cap = MAX_STATUS.get(route)\n        if not cap:\n            raise Refused(\"route\", f\"For this client's route ({route or 'none'}) the agent doesn't change a bill's status.\")\n        if STATUS_ORDER[want] > STATUS_ORDER[cap]:\n            raise Refused(\"route\", f\"For this client's route ({route}) a bill can be at most {cap}.\")\n        if STATUS_ORDER[want] < STATUS_ORDER[now]:\n            raise Refused(\"bad_input\", f\"A bill is never moved back from {now} to {want}.\")\n    if \"LineAmountTypes\" in patch and patch[\"LineAmountTypes\"] != current.get(\"LineAmountTypes\"):\n        raise Refused(\"amounts\", \"Changing whether amounts include GST changes the total. A person does that in Xero.\")\n    send = copy.deepcopy(patch)\n    if \"LineItems\" in send:\n        lines = send[\"LineItems\"]\n        existing = {str(li.get(\"LineItemID\")): li for li in (current.get(\"LineItems\") or []) if isinstance(li, dict)}\n        ids = [str(l.get(\"LineItemID\")) for l in lines if isinstance(l, dict)] if isinstance(lines, list) else []\n        if not ids or len(ids) != len(lines) or len(set(ids)) != len(ids) or set(ids) != set(existing):\n            raise Refused(\"bad_input\", \"Send every line of the bill once, with its LineItemID, and no new lines.\")\n        for line in lines:\n            if set(line) - PATCH_LINE_KEYS:\n                raise Refused(\"bad_input\", \"A line may only change its description, account, tax code and tracking.\")\n            old = existing[str(line.get(\"LineItemID\"))]\n            for key in AMOUNT_KEYS:\n                if key in line and amount(line.get(key)) != amount(old.get(key)):\n                    raise Refused(\"amounts\", f\"Amounts are never changed here: {key} on a line differs from Xero.\")\n                if key in old:\n                    line[key] = old[key]\n    claim_once(record_id, row, digest)\n    written = first_invoice(api.connectors.invoke(server=\"xero-accounting\", tool=\"update_invoice\", args={\"xero_tenant_id\": tenant, \"invoiceId\": bill_id, \"patch\": send}))\n    if not written.get(\"InvoiceID\"):\n        written = dict(written, InvoiceID=bill_id)\n    note = \"\"\n    before, after = amount(current.get(\"Total\")), amount(written.get(\"Total\"))\n    if before is not None and after is not None and before != after:\n        note = f\"Xero's total changed from {before} to {after} (a tax code change).\"\n    return written, note\n\n\ndef main():\n    action, tenant, bill, bill_id, patch = approval_from_params()\n    record_id = str(params.get(\"bill_record_id\") or \"\").strip()\n    if action not in (\"create\", \"update\"):\n        raise Refused(\"bad_input\", 'action must be \"create\" or \"update\".')\n    if not tenant or not record_id:\n        raise Refused(\"bad_input\", \"The Xero organisation ID and the AP bill row are both needed.\")\n    digest = approval_digest(action, tenant, bill, bill_id, patch)\n    if str(params.get(\"sheet_digest\") or \"\").strip() != digest:\n        raise Refused(\"sheet_mismatch\", \"These values aren't the ones on the review sheet. Rebuild the sheet and ask again.\")\n    row, route = bill_context(record_id, tenant)\n    if MODE == \"reviewer\" and route == \"hj_reviewer\":\n        raise Refused(\"route\", \"This client's bills go to the bookkeeper and then an internal reviewer.\")\n    if MODE == \"internal\":\n        if route != \"hj_reviewer\":\n            raise Refused(\"route\", \"Only bills for clients on the internal review route go to internal review.\")\n        if str(field(row, \"internal_review_digest\") or \"\") != digest:\n            raise Refused(\"not_sent_by_bookkeeper\", \"The bookkeeper hasn't sent these exact values to internal review.\")\n    if action == \"create\":\n        written, note = create(record_id, row, route, tenant, bill, digest)\n    else:\n        written, note = update(record_id, row, route, tenant, bill_id, patch, digest)\n    # From here on Xero has changed: never raise, so nothing tries to write it again.\n    done = {\"xero_bill_id\": str(written.get(\"InvoiceID\") or bill_id)}\n    if MODE == \"internal\":\n        done[\"internal_review_digest\"] = \"\"\n    try:\n        api.records.update(type_slug=\"ap_bill\", record_id=record_id, record={\"data\": done})\n    except Exception as err:\n        note = (note + \" \" if note else \"\") + f\"Xero was updated, but the AP bill row couldn't be: {err}\"\n    return written, note, route\n\n\nwritten_ok = False\nrefused = \"\"\ninvoice_id = \"\"\nstatus = \"\"\ninvoice_number = \"\"\nproblems = \"\"\nresult = \"\"\nif not in_job():\n    refused = \"not_in_job\"\n    result = \"Not run: only a Bookkeeping AP job can run this, after a person approves it. Nothing was sent to Xero.\"\nelse:\n    try:\n        bill_written, problems, used_route = main()\n        written_ok = True\n        invoice_id = str(bill_written.get(\"InvoiceID\") or \"\")\n        status = str(bill_written.get(\"Status\") or \"\")\n        invoice_number = str(bill_written.get(\"InvoiceNumber\") or \"\")\n        result = f\"Xero now has bill {invoice_number or invoice_id}\" + (f\" as {status}\" if status else \"\") + f\" (route {used_route or 'none'}).\"\n    except Refused as no:\n        refused = f\"{no.code}: {no.reason}\"\n        result = \"Nothing was sent to Xero. \" + no.reason\nwritten = written_ok",
+        "id": "write_to_xero",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "True when Xero now has the approved bill or change",
+            "name": "written",
+            "type": "bool"
+          },
+          {
+            "description": "Why nothing was sent, as code: reason (empty when written)",
+            "name": "refused",
+            "type": "str"
+          },
+          {
+            "description": "The bill's InvoiceID in Xero",
+            "name": "invoice_id",
+            "type": "str"
+          },
+          {
+            "description": "The status Xero now shows",
+            "name": "status",
+            "type": "str"
+          },
+          {
+            "description": "The invoice number in Xero",
+            "name": "invoice_number",
+            "type": "str"
+          },
+          {
+            "description": "What happened, in one sentence",
+            "name": "result",
+            "type": "str"
+          },
+          {
+            "description": "Anything to know after Xero was updated",
+            "name": "problems",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.action }}",
+            "control": "hidden",
+            "name": "action",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.bill_record_id }}",
+            "control": "hidden",
+            "name": "bill_record_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.xero_tenant_id }}",
+            "control": "hidden",
+            "name": "xero_tenant_id",
+            "required": true,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.route }}",
+            "control": "hidden",
+            "name": "route",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.invoice }}",
+            "control": "hidden",
+            "name": "invoice",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.invoice_id }}",
+            "control": "hidden",
+            "name": "invoice_id",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.patch }}",
+            "control": "hidden",
+            "name": "patch",
+            "required": false,
+            "type": "dict"
+          },
+          {
+            "binding": "{{ params.expected_updated_utc }}",
+            "control": "hidden",
+            "name": "expected_updated_utc",
+            "required": false,
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.sheet_digest }}",
+            "control": "hidden",
+            "name": "sheet_digest",
+            "required": true,
+            "type": "str"
+          }
+        ],
+        "summary": "Checks the approved values again (the sheet's check code, the client's route and Xero organisation, duplicates, amounts), then creates or updates the bill in Xero and notes its InvoiceID on the AP bill row.",
+        "title": "Write the approved bill to Xero"
+      }
+    ],
+    "params": [
+      {
+        "control": "hidden",
+        "description": "create (a new bill from email) or update (a bill already in Xero)",
+        "label": "Create or update",
+        "name": "action",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The AP bill row this bill belongs to",
+        "label": "AP bill row",
+        "name": "bill_record_id",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The client's Xero organisation ID",
+        "label": "Xero organisation ID",
+        "name": "xero_tenant_id",
+        "required": true,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The client's approval route, as recorded at Checking",
+        "label": "Approval route",
+        "name": "route",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "For create: the exact Xero bill (Type ACCPAY)",
+        "label": "Bill to create",
+        "name": "invoice",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "description": "For update: the bill in Xero",
+        "label": "Xero InvoiceID",
+        "name": "invoice_id",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "For update: Status, DueDate and LineItems (coding only)",
+        "label": "Changes",
+        "name": "patch",
+        "required": false,
+        "type": "dict"
+      },
+      {
+        "control": "hidden",
+        "description": "For update: the bill's UpdatedDateUTC when it was checked",
+        "label": "Last changed in Xero",
+        "name": "expected_updated_utc",
+        "required": false,
+        "type": "str"
+      },
+      {
+        "control": "hidden",
+        "description": "The check code of the review sheet the person was shown",
+        "label": "Check code",
+        "name": "sheet_digest",
+        "required": true,
+        "type": "str"
+      }
+    ],
+    "rootOrder": [
+      "write_to_xero"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Bookkeeping AP: approve in Xero",
+  "originKey": "d39d3769-02fa-4aa0-8add-73c88b5183a7",
+  "practiceRun": {
+    "intendedActions": [],
+    "version": 2
+  },
+  "tags": []
+}
