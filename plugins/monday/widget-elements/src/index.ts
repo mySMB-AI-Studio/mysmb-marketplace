@@ -110,20 +110,87 @@ const pretty_json: ComputedFunction = (args) => {
  * Spec example:
  *   { "$computed": "monday_activity_dashboard", "args": { "value": { "$state": "/monday/get_board_activity" } } }
  */
+/**
+ * Pulls a human-readable string out of a monday activity-log field value,
+ * which can be a plain string, a number/boolean, or a nested object shaped
+ * differently per column type (`{name: "..."}` for a name/text column,
+ * `{label: "..."}` or `{label: {text: "..."}}` for others). Falls back to an
+ * em dash for anything unrecognized rather than guessing — the caller treats
+ * that as "nothing readable came out of this."
+ */
+function textOf(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string') return v || '—';
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (typeof v === 'object') {
+    const o = v as AnyRecord;
+    if (typeof o.name === 'string' && o.name) return o.name;
+    if (typeof o.label === 'string' && o.label) return o.label;
+    const nestedLabel = (o.label ?? null) as AnyRecord | null;
+    if (nestedLabel && typeof nestedLabel.text === 'string' && nestedLabel.text) return nestedLabel.text;
+    if (typeof o.text === 'string' && o.text) return o.text;
+  }
+  return '—';
+}
+
+/**
+ * Turns an activity row's raw `data` field (monday's own internal payload
+ * shape, which varies per event type) into one readable sentence for the
+ * two event types that dominate real activity logs — a rename or a column
+ * value change. Everything else returns '' (no detail row shown) rather
+ * than falling back to a pretty-printed JSON blob: a raw `{"column_title":
+ * "Name", "group_id": "group_mm8sb8qf", ...}` dump reads like unfinished
+ * debug output, confirmed directly from a real monday.com activity log
+ * during live testing — not worth showing over no detail at all.
+ *
+ * Spec example:
+ *   { "$computed": "monday_activity_detail", "args": { "event": { "$item": "event" }, "data": { "$item": "data" } } }
+ */
+const activity_detail: ComputedFunction = (args) => {
+  const event = String(args.event ?? '');
+  const raw = args.data;
+  let data: AnyRecord;
+  if (typeof raw === 'string' && raw) {
+    try {
+      data = JSON.parse(raw) as AnyRecord;
+    } catch {
+      return '';
+    }
+  } else if (raw && typeof raw === 'object') {
+    data = raw as AnyRecord;
+  } else {
+    return '';
+  }
+  if (event === 'update_name') {
+    const from = textOf(data.previous_value);
+    const to = textOf(data.value);
+    return from === '—' && to === '—' ? '' : `Renamed from "${from}" to "${to}"`;
+  }
+  if (event === 'update_column_value' || event === 'change_column_value') {
+    const column = typeof data.column_title === 'string' ? data.column_title.trim() : '';
+    const from = textOf(data.previous_value);
+    const to = textOf(data.value);
+    if (from === '—' && to === '—') return '';
+    return column ? `${column}: "${from}" → "${to}"` : `"${from}" → "${to}"`;
+  }
+  return '';
+};
+
 const activity_dashboard: ComputedFunction = (args) => {
   const arr = Array.isArray(args.value) ? (args.value as AnyRecord[]) : [];
   const rows = arr.map((row) => {
     const r = (row ?? {}) as AnyRecord;
     const user = (r.user ?? null) as AnyRecord | null;
     const actorName = typeof user?.name === 'string' && user.name ? user.name : 'Someone';
+    const event = String(r.event ?? '');
     return {
       id: r.id,
       actor_name: actorName,
-      action_text: labelForEvent(String(r.event ?? '')),
+      action_text: labelForEvent(event),
       created_at: r.created_at,
-      event: r.event,
+      event,
       entity: r.entity,
-      data: r.data,
+      detailText: activity_detail({ event, data: r.data }),
     };
   });
   const total = rows.length;
@@ -179,6 +246,11 @@ function titleCase(s: string): string {
  * Spec example:
  *   { "$computed": "monday_workspaces_dashboard", "args": { "value": { "$state": "/monday/list_workspaces/workspaces" } } }
  */
+/** "1 board" vs "3 boards" — monday.com·count eyebrows read oddly otherwise ("1 boards"). */
+function pluralCount(n: number, singular: string, plural: string = `${singular}s`): string {
+  return `${n.toLocaleString('en-US')} ${n === 1 ? singular : plural}`;
+}
+
 const workspaces_dashboard: ComputedFunction = (args) => {
   const list = Array.isArray(args.value) ? (args.value as AnyRecord[]) : [];
   const total = list.length;
@@ -197,7 +269,13 @@ const workspaces_dashboard: ComputedFunction = (args) => {
     kind: titleCase(String(ws.kind ?? '').trim() || 'other'),
     kindTone: kindTone(String(ws.kind ?? 'other')),
   }));
-  return { hasData: total > 0, total, kindRows, rows };
+  return {
+    hasData: total > 0,
+    total,
+    scopeText: `monday.com · ${pluralCount(total, 'workspace')}`,
+    kindRows,
+    rows,
+  };
 };
 
 /**
@@ -221,6 +299,7 @@ const boards_dashboard: ComputedFunction = (args) => {
   return {
     hasData: total > 0,
     total,
+    scopeText: `monday.com · ${pluralCount(total, 'board')}`,
     activeCount: active,
     activePct: pct(active),
     archivedCount: archived,
@@ -271,6 +350,7 @@ const team_dashboard: ComputedFunction = (args) => {
   return {
     hasData: total > 0,
     total,
+    scopeText: `monday.com · ${pluralCount(total, 'member')}`,
     adminCount: admins,
     adminPct: pct(admins),
     guestCount: guests,
@@ -287,18 +367,37 @@ const team_dashboard: ComputedFunction = (args) => {
  * doesn't go stale between re-renders — same reasoning as the activity
  * dashboard above.
  *
- * Args: { value: object } — the raw `board_insights` result.
+ * Takes each field as its OWN arg bound to its own `/monday/board_insights/<field>`
+ * state path — NOT one `value` arg bound to the bare `/monday/board_insights`
+ * path. Confirmed against `resultToStateWrites` (myHubV2's
+ * `widgets-system/call-tool.ts`): a tool result that's a plain object (not an
+ * array) is fanned out into one state write per field — the bare base path
+ * itself is never written. `board_insights` returns exactly that shape (a
+ * flat object), so a `value` arg bound to the bare path always reads
+ * `undefined` — confirmed live (real monday data, real board, real token):
+ * the tile rendered completely blank past the board picker, no error, no
+ * loading spinner, because `hasData` was permanently false. (Board Items'
+ * and Board Activity's dashboard fns don't have this bug because their tools
+ * return an array at the top level, which the SAME helper writes to the bare
+ * base path directly — see those tools' own fan-out behavior before copying
+ * this one-`value`-arg shape onto a new tool without checking its result shape.)
+ *
+ * Args: { id, totalItems, groups: array, columnTypes: array } — each bound to
+ *   its own `/monday/board_insights/<field>` path.
  *
  * Spec example:
- *   { "$computed": "monday_board_snapshot_dashboard", "args": { "value": { "$state": "/monday/board_insights" } } }
+ *   { "$computed": "monday_board_snapshot_dashboard", "args": {
+ *       "id": { "$state": "/monday/board_insights/id" },
+ *       "totalItems": { "$state": "/monday/board_insights/total_items" },
+ *       "groups": { "$state": "/monday/board_insights/groups" },
+ *       "columnTypes": { "$state": "/monday/board_insights/column_types" } } }
  */
 const board_snapshot_dashboard: ComputedFunction = (args) => {
-  const report = (args.value && typeof args.value === 'object' ? args.value : {}) as AnyRecord;
-  const groups = Array.isArray(report.groups) ? (report.groups as AnyRecord[]) : [];
-  const columnTypes = Array.isArray(report.column_types) ? (report.column_types as string[]) : [];
+  const groups = Array.isArray(args.groups) ? (args.groups as AnyRecord[]) : [];
+  const columnTypes = Array.isArray(args.columnTypes) ? (args.columnTypes as string[]) : [];
   return {
-    hasData: report.id !== undefined && report.id !== null,
-    totalItems: Number(report.total_items) || 0,
+    hasData: args.id !== undefined && args.id !== null && args.id !== '',
+    totalItems: Number(args.totalItems) || 0,
     groupCount: groups.length,
     columnCount: columnTypes.length,
     groups,
