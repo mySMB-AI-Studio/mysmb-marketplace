@@ -443,6 +443,61 @@ const flatten_payments: ComputedFunction = (args) => {
   });
 };
 
+// ── balance_flow_tone ─────────────────────────────────────────────────────
+// Tone for one of the two secondary balance figures (in transit / on hold).
+// Zero is not a problem, so it stays neutral; a non-zero figure takes the
+// tone that says what it means — money on its way out is good news (success),
+// money being held back is a caveat (warning).
+//
+// Args: { amount: number, kind: 'in_transit' | 'on_hold' }
+// Returns: 'muted' | 'success' | 'warning'
+const balance_flow_tone: ComputedFunction = (args) => {
+  const amount = Number(args.amount ?? 0);
+  if (!Number.isFinite(amount) || amount === 0) return 'muted';
+  return String(args.kind ?? '') === 'on_hold' ? 'warning' : 'success';
+};
+
+// ── balance_flow_note ─────────────────────────────────────────────────────
+// Plain-English caption under a secondary balance figure, so a cell showing
+// A$0.00 reads as "nothing to do" rather than as missing data.
+//
+// Args: { amount: number, kind: 'in_transit' | 'on_hold' }
+// Returns: string
+const balance_flow_note: ComputedFunction = (args) => {
+  const amount = Number(args.amount ?? 0);
+  const onHold = String(args.kind ?? '') === 'on_hold';
+  if (!Number.isFinite(amount) || amount === 0) {
+    return onHold ? 'Nothing pending' : 'Nothing on its way';
+  }
+  return onHold ? 'Clearing into your balance' : 'Paying out to your bank';
+};
+
+// ── percent_of ────────────────────────────────────────────────────────────
+// What share one amount is of another, as a 0-100 number for ProgressBar.
+// A zero or missing denominator gives 0 rather than NaN or Infinity.
+//
+// Args: { value: number, total: number }
+// Returns: number
+const percent_of: ComputedFunction = (args) => {
+  const value = Number(args.value ?? 0);
+  const total = Number(args.total ?? 0);
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(100, (value / total) * 100));
+};
+
+// ── balance_share_note ────────────────────────────────────────────────────
+// Caption spelling out the bar: "Current balance is 97% of lifetime volume".
+// Falls back to a statement of fact when there is no volume to compare with.
+//
+// Args: { value: number, total: number }
+// Returns: string
+const balance_share_note: ComputedFunction = (args) => {
+  const total = Number(args.total ?? 0);
+  if (!Number.isFinite(total) || total <= 0) return 'No charge volume recorded yet';
+  const pct = Number(percent_of(args));
+  return 'Current balance is ' + Math.round(pct) + '% of lifetime volume';
+};
+
 const elements: PluginElementsModule = {
   slug: 'stripe',
   functions: {
@@ -461,6 +516,10 @@ const elements: PluginElementsModule = {
     calc_mrr,
     flatten_subscriptions,
     flatten_payments,
+    balance_flow_tone,
+    balance_flow_note,
+    percent_of,
+    balance_share_note,
   },
 };
 
