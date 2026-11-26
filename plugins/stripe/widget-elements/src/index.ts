@@ -797,6 +797,179 @@ const payment_board: ComputedFunction = (args) => {
   };
 };
 
+// ── subscription_board ────────────────────────────────────────────────────────
+// One pass over the raw subscription list that returns both the headline
+// figures and the display rows, so the tile never asks two helpers the same
+// question and risks two answers.
+//
+// MRR normalises every plan to a monthly figure (toMonthlyCents), but each row
+// shows what the customer is ACTUALLY charged and how often — a yearly plan
+// reads "A$1,188.00 / year", not a normalised monthly slice that never appears
+// on a statement.
+//
+// Args: { value: raw subscription array, key: "field|dir", today?: ISO date }
+// Returns: { rows, count, activeCount, mrr, mrrCents, mrrTone, countTone, currency }
+
+/** "/ month", "/ year", "/ 3 months" — the cadence as the customer reads it. */
+function intervalLabel(interval: string, count: number): string {
+  const unit = interval || 'month';
+  if (!Number.isFinite(count) || count <= 1) return `/ ${unit}`;
+  return `/ ${count} ${unit}s`;
+}
+
+const subscription_board: ComputedFunction = (args) => {
+  const subs = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const keyStr = String(args.key ?? 'customer_name|asc');
+  const [field, dir] = keyStr.split('|');
+
+  const today = args.today ? new Date(String(args.today)) : new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+  // Stripe counts a subscription toward recurring revenue while it is live and
+  // priced: active and past_due. A trial is not revenue yet; canceled,
+  // incomplete and unpaid are not revenue any more.
+  const BILLING = new Set(['active', 'past_due']);
+
+  let currency = 'aud';
+  let mrrCents = 0;
+  let activeCount = 0;
+
+  const rows = subs.map((sub) => {
+    const status = String(sub.status ?? '').toLowerCase();
+    const items = ((sub.items as Record<string, unknown>)?.data as Record<string, unknown>[]) ?? [];
+
+    const customer = sub.customer;
+    let customerName = '';
+    let customerEmail = '';
+    if (customer && typeof customer === 'object') {
+      const c = customer as Record<string, unknown>;
+      customerName = String(c.name ?? c.email ?? '');
+      customerEmail = String(c.email ?? '');
+    } else {
+      customerName = String(customer ?? '');
+    }
+
+    const first = items[0] ?? {};
+    const price = (first.price as Record<string, unknown>) ?? {};
+    const product = (price.product as Record<string, unknown>) ?? {};
+    let planName = String(product.name ?? price.nickname ?? price.id ?? '');
+    // A multi-line subscription bills as one amount, so say there is more
+    // rather than silently showing only the first product's name.
+    if (items.length > 1) planName = `${planName} +${items.length - 1} more`;
+
+    const cur = String(price.currency ?? sub.currency ?? '').trim();
+    if (cur) currency = cur;
+
+    // Charged amount is what the invoice says; monthly is the MRR equivalent.
+    let chargedCents = 0;
+    let monthlyCents = 0;
+    for (const item of items) {
+      const p = (item.price as Record<string, unknown>) ?? {};
+      const unit = typeof p.unit_amount === 'number' ? p.unit_amount : 0;
+      const qty = typeof item.quantity === 'number' ? item.quantity : 1;
+      chargedCents += unit * qty;
+      monthlyCents += toMonthlyCents(item);
+    }
+
+    const recurring = (price.recurring as Record<string, unknown>) ?? {};
+    const interval = String(recurring.interval ?? 'month');
+    const intervalCount = typeof recurring.interval_count === 'number' ? recurring.interval_count : 1;
+
+    if (BILLING.has(status)) {
+      mrrCents += monthlyCents;
+      activeCount += 1;
+    }
+
+    // current_period_end sits on the subscription on the API version this
+    // connector pins, and on each item on newer ones. Take whichever is there.
+    let nextTs = typeof sub.current_period_end === 'number' ? sub.current_period_end : 0;
+    if (!nextTs && typeof first.current_period_end === 'number') {
+      nextTs = first.current_period_end;
+    }
+
+    let days = NaN;
+    if (nextTs) {
+      const d = new Date(nextTs * 1000);
+      days = Math.round(
+        (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - todayUtc) / 86_400_000,
+      );
+    }
+
+    // The countdown only takes a status colour when something is really going
+    // on. An ordinary renewal is a date, not a warning.
+    let relLabel = '';
+    let relTone = 'muted';
+    const ending = Boolean(sub.cancel_at_period_end);
+    if (status === 'past_due') {
+      relLabel = 'Payment overdue';
+      relTone = 'destructive';
+    } else if (status === 'canceled' || status === 'incomplete_expired') {
+      relLabel = 'Ended';
+    } else if (Number.isFinite(days)) {
+      const when =
+        days === 0 ? 'today'
+        : days === 1 ? 'tomorrow'
+        : days > 0 ? `in ${days}d`
+        : `${-days}d ago`;
+      if (ending) {
+        relLabel = `Ends ${when}`;
+        relTone = 'warning';
+      } else if (status === 'trialing') {
+        relLabel = `Trial ends ${when}`;
+        // `info` resolves to plain foreground on text, so a trial borrows the
+        // brand colour to stay visibly a state of its own.
+        relTone = 'brand';
+      } else {
+        relLabel = when.charAt(0).toUpperCase() + when.slice(1);
+      }
+    }
+
+    return {
+      id:             String(sub.id ?? ''),
+      customer_name:  customerName,
+      customer_email: customerEmail,
+      plan_name:      planName,
+      amount:         String(format_currency({ amount: chargedCents, currency: cur || currency })),
+      amount_cents:   chargedCents,
+      interval_label: intervalLabel(interval, intervalCount),
+      next_bill:      nextTs ? String(format_stripe_date_dmy({ value: nextTs })) : '—',
+      // Sort key only, never displayed. A subscription with no period end
+      // sorts last ascending instead of jumping above every real date at 0.
+      next_bill_ts:   nextTs || Number.MAX_SAFE_INTEGER,
+      rel_label:      relLabel,
+      rel_tone:       relTone,
+      status,
+      status_label:   formatSubscriptionStatusLabel(status),
+    };
+  });
+
+  rows.sort((a, b) => {
+    const av = (a as Record<string, unknown>)[field] ?? '';
+    const bv = (b as Record<string, unknown>)[field] ?? '';
+    const an = Number(av);
+    const bn = Number(bv);
+    // Number('') is 0, not NaN, so blanks would sort as zero in a numeric
+    // column without this guard.
+    const numeric = av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn);
+    const cmp = numeric ? an - bn : String(av).localeCompare(String(bv));
+    return dir === 'desc' ? -cmp : cmp;
+  });
+
+  return {
+    rows,
+    count: rows.length,
+    activeCount,
+    mrr: String(format_currency({ amount: mrrCents, currency })),
+    mrrCents,
+    currency,
+    // Zero is not a failure, just nothing yet, so it stays uncoloured.
+    mrrTone: mrrCents > 0 ? 'success' : 'muted',
+    // `info` is colourless on an icon, so the subscriber count uses the brand
+    // tone where the mockup used blue.
+    countTone: activeCount > 0 ? 'brand' : 'muted',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'stripe',
   functions: {
@@ -818,6 +991,7 @@ const elements: PluginElementsModule = {
     flatten_customers,
     invoice_board,
     payment_board,
+    subscription_board,
     balance_flow_tone,
     balance_flow_note,
     percent_of,

@@ -1,16 +1,18 @@
 {
   "id": "stripe-subscription-overview",
-  "title": "Stripe Subscription Overview",
-  "description": "MRR, active subscription count, and full subscription list with status badges.",
+  "title": "Subscription Overview",
+  "description": "What your recurring revenue is worth and who it comes from. Two headline figures lead — monthly recurring revenue, normalised so a yearly plan is counted as one twelfth per month, and the number of people actually subscribed — then every active subscriber is listed with their plan, what they are charged and when they are next billed. The countdown beside each date only takes a colour when something is really happening: amber when the subscription is set to end at the period close, red when a payment is overdue. With nothing subscribed yet the tile says so plainly instead of showing an empty table.",
   "category": "payments",
   "tags": ["stripe", "subscriptions", "mrr", "billing", "recurring", "revenue"],
-  "keywords": ["subscriptions", "mrr", "stripe", "active", "monthly", "revenue", "recurring"],
+  "keywords": ["subscriptions", "mrr", "stripe", "active", "monthly", "revenue", "recurring", "plan", "renewal", "next bill", "subscribers"],
   "connectorsUsed": ["stripe"],
   "popularity": 0,
+  "branding": { "color": "#635bff" },
+  "brandColor": "#635bff",
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 8 },
-    "min": { "colSpan": 5, "rowSpan": 6 },
-    "max": { "colSpan": 10, "rowSpan": 14 }
+    "preferred": { "colSpan": 5, "rowSpan": 5 },
+    "min": { "colSpan": 4, "rowSpan": 4 },
+    "max": { "colSpan": 8, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "stripe",
@@ -23,124 +25,337 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "kpiRow", "divider", "body"],
+        "children": ["header", "body"],
         "watch": {
           "/stripe/list_subscriptions/data": [
-            { "action": "setState", "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" } },
-            { "action": "setState", "params": { "statePath": "/ui/subRows", "value": { "$computed": "stripe_flatten_subscriptions", "args": { "value": { "$state": "/stripe/list_subscriptions/data" }, "key": "customer_name|asc" } } } }
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "customer_name|asc" }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "stripe_subscription_board",
+                  "args": {
+                    "value": { "$state": "/stripe/list_subscriptions/data" },
+                    "key": "customer_name|asc"
+                  }
+                }
+              }
+            }
           ],
           "/ui/sortKey": [
-            { "action": "setState", "params": { "statePath": "/ui/subRows", "value": { "$computed": "stripe_flatten_subscriptions", "args": { "value": { "$state": "/stripe/list_subscriptions/data" }, "key": { "$state": "/ui/sortKey" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "stripe_subscription_board",
+                  "args": {
+                    "value": { "$state": "/stripe/list_subscriptions/data" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
           ]
         }
       },
-      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "RefreshCw", "tone": "accent", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Subscription Overview", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Stripe" } },
-      "kpiRow": {
-        "type": "Grid",
-        "props": { "cols": 2, "gap": "sm" },
-        "children": ["tileMrr", "tileCount"],
-        "visible": { "$state": "/_loading/stripe.list_subscriptions", "not": true }
+
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": ["titleGroup"]
       },
-      "tileMrr": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackMrr"] },
-      "stackMrr": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["mrrIcon", "valMrr", "lblMrr"] },
-      "mrrIcon": { "type": "Icon", "props": { "name": "TrendingUp", "tone": "accent", "size": "sm" } },
-      "valMrr": {
-        "type": "Stat",
-        "props": {
-          "value": { "$computed": "stripe_calc_mrr", "args": { "value": { "$state": "/stripe/list_subscriptions/data" } } },
-          "tone": "success"
-        }
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
       },
-      "lblMrr": { "type": "Caption", "props": { "text": "Monthly Recurring Revenue" } },
-      "tileCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["stackCount"] },
-      "stackCount": { "type": "Stack", "props": { "gap": "xxs", "align": "center" }, "children": ["countIcon", "valCount", "lblCount"] },
-      "countIcon": { "type": "Icon", "props": { "name": "Users", "tone": "accent", "size": "sm" } },
-      "valCount": {
-        "type": "Stat",
-        "props": {
-          "value": { "$computed": "count", "args": { "value": { "$state": "/stripe/list_subscriptions/data" } } }
-        }
+      "titleIcon": {
+        "type": "Icon",
+        "props": { "name": "RefreshCw", "tone": "brand", "size": "sm" }
       },
-      "lblCount": { "type": "Caption", "props": { "text": "Active Subscription" } },
-      "divider": { "type": "Divider", "props": {} },
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "listHeader", "list"] },
+      "titleStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["title", "eyebrow"]
+      },
+      "title": {
+        "type": "Heading",
+        "props": { "text": "Subscription Overview", "level": "h2" }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": { "text": "STRIPE · RECURRING REVENUE" }
+      },
+
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": ["loading", "kpiGrid", "emptyPanel", "columnHeaders", "list"]
+      },
+
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3", "sk4"],
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skKpi", "sk1", "sk2", "sk3"],
         "visible": { "$state": "/_loading/stripe.list_subscriptions" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "sk4": { "type": "Skeleton", "props": { "height": "2.5rem", "rounded": "md" } },
-      "empty": {
-        "type": "Empty", "props": { "message": "No active subscriptions found." },
-        "visible": { "$and": [{ "$state": "/_loading/stripe.list_subscriptions", "not": true }, { "$state": "/stripe/list_subscriptions/data/0", "not": true }] }
+      "skKpi": { "type": "Skeleton", "props": { "height": "5.5rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 2, "gap": "sm" },
+        "children": ["kpiMrr", "kpiCount"],
+        "visible": { "$state": "/_loading/stripe.list_subscriptions", "not": true }
       },
-      "listHeader": {
+
+      "kpiMrr": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["mrrStack"]
+      },
+      "mrrStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["mrrHead", "mrrValue", "mrrNote"]
+      },
+      "mrrHead": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "template": "minmax(0, 1fr) 6rem 8rem 7rem", "padded": true },
-        "children": ["hdrSubscriberOuter", "hdrAmount", "hdrRenews", "hdrStatus"],
-        "visible": { "$and": [{ "$state": "/_loading/stripe.list_subscriptions", "not": true }, { "$state": "/stripe/list_subscriptions/data/0" }] }
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["mrrIcon", "mrrLabel"]
       },
-      "hdrSubscriberOuter": { "type": "Stack", "props": { "align": "start" }, "children": ["hdrSubscriberGroup"] },
-      "hdrSubscriberGroup": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrSubscriber", "sortBtn"] },
-      "hdrSubscriber": { "type": "Caption", "props": { "text": "Subscriber" } },
-      "sortBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by subscriber" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" } } } }] }
+      "mrrIcon": {
+        "type": "Icon",
+        "props": { "name": "TrendingUp", "size": "sm", "tone": { "$state": "/ui/board/mrrTone" } }
       },
-      "hdrAmount": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrAmountLabel", "sortAmountBtn"] },
-      "hdrAmountLabel": { "type": "Caption", "props": { "text": "Amount" } },
+      "mrrLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "MONTHLY RECURRING REVENUE" }
+      },
+      "mrrValue": {
+        "type": "Stat",
+        "props": { "size": "md", "value": { "$state": "/ui/board/mrr" } }
+      },
+      "mrrNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Per month, every plan normalised" }
+      },
+
+      "kpiCount": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["countStack"]
+      },
+      "countStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["countHead", "countValue", "countNote"]
+      },
+      "countHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["countIcon", "countLabel"]
+      },
+      "countIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "size": "sm", "tone": { "$state": "/ui/board/countTone" } }
+      },
+      "countLabel": {
+        "type": "Eyebrow",
+        "props": { "text": "ACTIVE SUBSCRIPTIONS" }
+      },
+      "countValue": {
+        "type": "Stat",
+        "props": { "size": "md", "value": { "$state": "/ui/board/activeCount" } }
+      },
+      "countNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Subscribers billing right now" }
+      },
+
+      "emptyPanel": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_subscriptions", "not": true },
+            { "$state": "/stripe/list_subscriptions/data/0", "not": true }
+          ]
+        }
+      },
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
+      },
+      "emptyIcon": {
+        "type": "Icon",
+        "props": { "name": "RefreshCw", "tone": "brand", "size": "lg" }
+      },
+      "emptyTitle": {
+        "type": "Text",
+        "props": { "text": "No active subscriptions yet", "size": "sm", "weight": "medium" }
+      },
+      "emptyNote": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "align": "center",
+          "text": "When a customer subscribes, they appear here with their plan, what they pay and when they are next billed."
+        }
+      },
+
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 7rem 7rem"
+        },
+        "children": ["colCustomer", "colAmount", "colNext"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_subscriptions", "not": true },
+            { "$state": "/stripe/list_subscriptions/data/0" }
+          ]
+        }
+      },
+      "colCustomer": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colCustomerLabel", "sortCustomerBtn"]
+      },
+      "colCustomerLabel": { "type": "Eyebrow", "props": { "text": "CUSTOMER / PLAN" } },
+      "sortCustomerBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" }
+              }
+            }
+          }
+        }
+      },
+      "colAmount": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colAmountLabel", "sortAmountBtn"]
+      },
+      "colAmountLabel": { "type": "Eyebrow", "props": { "text": "AMOUNT" } },
       "sortAmountBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" } } } }] }
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents" }
+              }
+            }
+          }
+        }
       },
-      "hdrRenews": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["hdrRenewsLabel", "sortRenewsBtn"] },
-      "hdrRenewsLabel": { "type": "Caption", "props": { "text": "Renews" } },
-      "sortRenewsBtn": {
-        "type": "IconButton", "props": { "icon": "ArrowUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by renewal date" },
-        "on": { "click": [{ "action": "setState", "params": { "statePath": "/ui/sortKey", "value": { "$computed": "stripe_set_sort_field", "args": { "current": { "$state": "/ui/sortKey" }, "field": "current_period_end" } } } }] }
-      },
-      "hdrStatus": { "type": "Caption", "props": { "text": "Status" } },
-      "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["subRow"],
-        "repeat": { "statePath": "/ui/subRows", "key": "id" },
-        "visible": { "$and": [{ "$state": "/_loading/stripe.list_subscriptions", "not": true }, { "$state": "/stripe/list_subscriptions/data/0" }] }
-      },
-      "subRow": {
+      "colNext": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center", "hover": true, "template": "minmax(0, 1fr) 6rem 8rem 7rem" },
-        "children": ["identity", "subAmount", "subRenews", "statusWrap"]
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colNextLabel", "sortNextBtn"]
       },
-      "identity": { "type": "Stack", "props": { "gap": "none" }, "children": ["customerName", "planName"] },
+      "colNextLabel": { "type": "Eyebrow", "props": { "text": "NEXT BILL" } },
+      "sortNextBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by next bill date" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "stripe_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "next_bill_ts" }
+              }
+            }
+          }
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/board/rows", "key": "id" },
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/stripe.list_subscriptions", "not": true },
+            { "$state": "/stripe/list_subscriptions/data/0" }
+          ]
+        }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 7rem 7rem"
+        },
+        "children": ["identity", "amountCell", "nextCell"]
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["customerName", "planName"]
+      },
       "customerName": {
         "type": "Text",
         "props": { "text": { "$item": "customer_name" }, "size": "sm", "weight": "medium", "truncate": true }
       },
       "planName": {
-        "type": "Caption",
-        "props": { "text": { "$item": "plan_name" }, "truncate": true }
+        "type": "Text",
+        "props": { "text": { "$item": "plan_name" }, "tone": "muted", "truncate": true }
       },
-      "subAmount": { "type": "Caption", "props": { "text": { "$item": "amount" } } },
-      "subRenews": {
-        "type": "Caption",
-        "props": { "text": { "$computed": "stripe_format_stripe_date_dmy", "args": { "value": { "$item": "current_period_end" } } } }
+      "amountCell": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["amountText", "intervalText"]
       },
-      "statusWrap": { "type": "Stack", "props": { "align": "start" }, "children": ["statusBadge"] },
-      "statusBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$computed": "stripe_subscription_status_tone", "args": { "status": { "$item": "status" } } },
-          "variant": "soft"
-        }
+      "amountText": {
+        "type": "Text",
+        "props": { "text": { "$item": "amount" }, "size": "sm", "weight": "medium" }
+      },
+      "intervalText": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$item": "interval_label" } }
+      },
+      "nextCell": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["nextDateText", "nextRelText"]
+      },
+      "nextDateText": {
+        "type": "Text",
+        "props": { "text": { "$item": "next_bill" }, "size": "sm" }
+      },
+      "nextRelText": {
+        "type": "Caption",
+        "props": { "text": { "$item": "rel_label" }, "tone": { "$item": "rel_tone" } }
       }
     }
   },
