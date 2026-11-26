@@ -151,9 +151,83 @@ const customer_board: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Pull cents back out of a string the connector already formatted
+ * ("A$1,250.00" -> 125000). get_latest_payments returns only the display
+ * string, so this is the only way the tile can total, average or compare
+ * payments. Safe to parse because the same server-side formatter produced
+ * every one of them: en-AU grouping, always two decimal places.
+ */
+function parseMoneyCents(display: string): number {
+  const m = /-?[\d,]+(?:\.\d+)?/.exec(String(display));
+  if (!m) return 0;
+  const value = Number(m[0].replace(/,/g, ''));
+  return Number.isFinite(value) ? Math.round(value * 100) : 0;
+}
+
+/**
+ * Turn get_latest_payments' rows into what the Latest Payments tile draws:
+ * the three headline figures the connector does not return — total taken,
+ * average payment and largest — plus a bar per payment measured against
+ * the largest one in the window.
+ *
+ * args.value — the `payments` array
+ */
+const payment_board: ComputedFunction = (args) => {
+  const list = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const cents: number[] = [];
+  let totalCents = 0;
+  let maxCents = 0;
+  let symbol = '';
+  for (const p of list) {
+    const display = String(p.amount_display ?? '');
+    const c = parseMoneyCents(display);
+    cents.push(c);
+    totalCents += c;
+    if (c > maxCents) maxCents = c;
+    if (!symbol) symbol = symbolOf(display);
+  }
+
+  // Only one row wears the badge, and only when there is something to be
+  // largest than — a lone payment is not a standout.
+  let largestTagged = false;
+
+  const rows = list.map((p, i) => {
+    const name = String(p.name ?? '').trim();
+    const c = cents[i];
+    const isLargest = list.length > 1 && c > 0 && c === maxCents && !largestTagged;
+    if (isLargest) largestTagged = true;
+    return {
+      id: String(p.id ?? i),
+      // "Guest" is what the connector calls a payment with nobody attached.
+      // Alone it reads like a name; as "Guest checkout" it reads like what
+      // it is. A payment that does have a customer keeps their real name.
+      title: name && name.toLowerCase() !== 'guest' ? name : 'Guest checkout',
+      sub_label: String(p.sub_label ?? ''),
+      amount: String(p.amount_display ?? ''),
+      // Share of the largest payment in this window, so the bars compare
+      // takings against each other rather than an arbitrary ceiling.
+      amount_pct: maxCents > 0 ? Math.round((c / maxCents) * 100) : 0,
+      is_largest: isLargest,
+    };
+  });
+
+  const avgCents = rows.length > 0 ? Math.round(totalCents / rows.length) : 0;
+
+  return {
+    rows,
+    count: rows.length,
+    count_note: rows.length === 1 ? '1 payment' : `${rows.length} payments`,
+    total: formatMoney(totalCents, symbol),
+    average: formatMoney(avgCents, symbol),
+    largest: formatMoney(maxCents, symbol),
+  };
+};
+
 const mod: PluginElementsModule = {
   slug: 'square',
-  functions: { enrich_orders, customer_board },
+  functions: { enrich_orders, customer_board, payment_board },
 };
 
 export default mod;
