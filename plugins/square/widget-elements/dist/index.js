@@ -551,10 +551,46 @@ const order_board = (args) => {
         completed_note: `${completedPct}% of order value`,
     };
 };
+/**
+ * Fill the gaps in get_payments_summary for the Sales Summary tile.
+ *
+ * The connector already formats gross, net and the average, but it returns
+ * the refund total only as a number of cents and says nothing about what
+ * share of gross survived them — which is the whole point of showing gross
+ * and net side by side.
+ *
+ * args.gross       — gross_cents
+ * args.refunds     — refund_total_cents
+ * args.net         — net_cents
+ * args.refundCount — refund_count
+ * args.currency    — currency code, for formatting the refund figure
+ */
+const sales_board = (args) => {
+    const gross = Number(args.gross) || 0;
+    const refunds = Number(args.refunds) || 0;
+    const net = Number(args.net) || gross - refunds;
+    const refundCount = Number(args.refundCount) || 0;
+    const currency = String(args.currency ?? '');
+    // Clamped because "kept" is a share of gross: a period whose refunds belong
+    // to earlier sales can drive net below zero, and "-40% kept" tells a reader
+    // less than an empty bar does.
+    const keptPct = gross > 0 ? Math.max(0, Math.min(100, Math.round((net / gross) * 100))) : 0;
+    return {
+        refunds: formatCurrencyAmount(refunds, currency),
+        refund_note: refundCount === 1 ? '1 refund' : `${refundCount} refunds`,
+        // Zero refunds is a good outcome, not a neutral one, so it reads green
+        // and only turns amber once there is something to look into.
+        refund_tone: refundCount > 0 ? 'warning' : 'success',
+        kept_pct: keptPct,
+        kept_note: `${keptPct}%`,
+        has_sales: gross > 0 || refunds > 0,
+    };
+};
 const mod = {
     slug: 'square',
     functions: {
-        enrich_orders, customer_board, payment_board, invoice_board, order_board, set_sort_field,
+        enrich_orders, customer_board, payment_board, invoice_board, order_board, sales_board,
+        set_sort_field,
     },
 };
 export default mod;
