@@ -225,9 +225,114 @@ const payment_board: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * Statuses where the invoice is closed: nobody is going to pay it now, so it
+ * sits below the live ones and is left out of what is still owed. Mirrors the
+ * connector's own outstanding filter so the tile's figure agrees with the
+ * `outstanding_display` it returns.
+ */
+const SETTLED_STATUSES = new Set(['Paid', 'Cancelled', 'Refunded']);
+
+/**
+ * Turn get_recent_invoices' rows into what the Recent Invoices tile draws.
+ *
+ * The connector returns a status label and tone per invoice but no money it
+ * can be totalled by and no ordering, so this does three things it cannot:
+ * puts unpaid invoices first with the soonest due date on top, totals what is
+ * owed against what has been collected, and says how far off each due date is
+ * ("Due today", "In 21 days", "3d overdue").
+ *
+ * args.value — the `invoices` array
+ * args.today — optional ISO date, for testing; defaults to now
+ */
+const invoice_board: ComputedFunction = (args) => {
+  const list = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const today = args.today ? new Date(String(args.today)) : new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+  let symbol = '';
+  let outstandingCents = 0;
+  let paidCents = 0;
+  let unpaidCount = 0;
+  let paidCount = 0;
+  let overdueCount = 0;
+
+  const rows = list.map((inv, i) => {
+    const status = String(inv.status_label ?? '');
+    const tone = String(inv.status_tone ?? 'muted');
+    const display = String(inv.amount_display ?? '');
+    const cents = parseMoneyCents(display);
+    if (!symbol) symbol = symbolOf(display);
+
+    const settled = SETTLED_STATUSES.has(status);
+    if (status === 'Paid') { paidCents += cents; paidCount += 1; }
+    if (!settled) { outstandingCents += cents; unpaidCount += 1; }
+    if (status === 'Overdue') overdueCount += 1;
+
+    const due = String(inv.due_display ?? '');
+    const dueTs = parseDmy(due);
+
+    // A settled invoice gets no countdown — "in 14 days" under a paid invoice
+    // is noise, and under a cancelled one it is wrong.
+    let dueNote = '';
+    // The caption's colour comes from the caption's own arithmetic rather
+    // than the connector's status, so "3d overdue" can never render amber.
+    // In practice the two agree: both are measured against the same day.
+    let dueTone = tone;
+    if (!settled && dueTs !== null) {
+      const days = Math.round((dueTs - todayUtc) / 86_400_000);
+      if (days < 0) { dueNote = `${-days}d overdue`; dueTone = 'destructive'; }
+      else if (days === 0) { dueNote = 'Due today'; dueTone = 'warning'; }
+      else if (days === 1) { dueNote = 'In 1 day'; dueTone = 'warning'; }
+      else { dueNote = `In ${days} days`; dueTone = 'warning'; }
+    }
+
+    return {
+      id: String(inv.invoice_number ?? i),
+      customer_name: String(inv.customer_name ?? ''),
+      invoice_ref: `#${String(inv.invoice_number ?? '')}`,
+      amount: display,
+      status_label: status,
+      status_tone: tone,
+      due_display: due || '—',
+      due_note: dueNote,
+      due_tone: dueTone,
+      settled,
+      // Sort key only, never displayed. An invoice with no due date sorts last
+      // instead of leaping to the top of an ascending date column at zero.
+      due_ts: dueTs === null ? Number.MAX_SAFE_INTEGER : dueTs,
+    };
+  });
+
+  // What still needs doing first, soonest deadline on top; everything closed
+  // below it, also by date.
+  rows.sort((a, b) => {
+    if (a.settled !== b.settled) return a.settled ? 1 : -1;
+    return a.due_ts - b.due_ts;
+  });
+
+  const billableCents = outstandingCents + paidCents;
+  const collectedPct = billableCents > 0 ? Math.round((paidCents / billableCents) * 100) : 0;
+
+  return {
+    rows,
+    count: rows.length,
+    count_note: rows.length === 1 ? '1 invoice' : `${rows.length} invoices`,
+    outstanding: formatMoney(outstandingCents, symbol),
+    outstanding_note: unpaidCount === 1 ? '1 unpaid' : `${unpaidCount} unpaid`,
+    overdue_count: overdueCount,
+    overdue_note: overdueCount > 0 ? 'Need chasing' : 'All on time',
+    overdue_tone: overdueCount > 0 ? 'destructive' : 'success',
+    paid: formatMoney(paidCents, symbol),
+    paid_note: paidCount === 1 ? '1 invoice' : `${paidCount} invoices`,
+    collected_pct: collectedPct,
+    collected_note: `${collectedPct}% of ${formatMoney(billableCents, symbol)}`,
+  };
+};
+
 const mod: PluginElementsModule = {
   slug: 'square',
-  functions: { enrich_orders, customer_board, payment_board },
+  functions: { enrich_orders, customer_board, payment_board, invoice_board },
 };
 
 export default mod;
