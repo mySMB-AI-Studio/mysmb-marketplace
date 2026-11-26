@@ -10,8 +10,8 @@
   "branding": { "color": "#2ec4b6" },
   "brandColor": "#2ec4b6",
   "sizing": {
-    "preferred": { "colSpan": 7, "rowSpan": 6 },
-    "min": { "colSpan": 6, "rowSpan": 4 },
+    "preferred": { "colSpan": 7, "rowSpan": 7 },
+    "min": { "colSpan": 7, "rowSpan": 4 },
     "max": { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -30,13 +30,34 @@
           "/square/get_customer_orders_summary/customers": [
             {
               "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "total_spent_cents|desc" }
+            },
+            {
+              "action": "setState",
               "params": {
                 "statePath": "/ui/board",
                 "value": {
                   "$computed": "square_customer_board",
                   "args": {
                     "value": { "$state": "/square/get_customer_orders_summary/customers" },
-                    "sample": { "$state": "/square/get_customer_orders_summary/avg_spend_display" }
+                    "sample": { "$state": "/square/get_customer_orders_summary/avg_spend_display" },
+                    "key": "total_spent_cents|desc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_customer_board",
+                  "args": {
+                    "value": { "$state": "/square/get_customer_orders_summary/customers" },
+                    "sample": { "$state": "/square/get_customer_orders_summary/avg_spend_display" },
+                    "key": { "$state": "/ui/sortKey" }
                   }
                 }
               }
@@ -248,30 +269,103 @@
           "gap": "md",
           "align": "center",
           "hover": true,
-          "template": "2rem minmax(0, 1fr) 3.5rem 7rem 5rem"
+          "template": "2rem minmax(0, 1fr) 5rem 7rem 6.5rem"
         },
         "children": ["colSpacer", "colCustomer", "colOrders", "colSpent", "colVisit"]
       },
       "colSpacer": { "type": "Stack", "props": { "gap": "xs" } },
-      "colCustomer": { "type": "Eyebrow", "props": { "text": "CUSTOMER" } },
+
+      "colCustomer": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colCustomerLabel", "sortCustomerBtn"]
+      },
+      "colCustomerLabel": { "type": "Eyebrow", "props": { "text": "CUSTOMER" } },
+      "sortCustomerBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer name" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" }
+              }
+            }
+          }
+        }
+      },
+
       "colOrders": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["colOrdersLabel"]
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colOrdersLabel", "sortOrdersBtn"]
       },
       "colOrdersLabel": { "type": "Eyebrow", "props": { "text": "ORDERS" } },
+      "sortOrdersBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by order count" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "order_count", "defaultDir": "desc" }
+              }
+            }
+          }
+        }
+      },
+
       "colSpent": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["colSpentLabel"]
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colSpentLabel", "sortSpentBtn"]
       },
       "colSpentLabel": { "type": "Eyebrow", "props": { "text": "TOTAL SPENT" } },
+      "sortSpentBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by total spent" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "total_spent_cents", "defaultDir": "desc" }
+              }
+            }
+          }
+        }
+      },
+
       "colVisit": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["colVisitLabel"]
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colVisitLabel", "sortVisitBtn"]
       },
       "colVisitLabel": { "type": "Eyebrow", "props": { "text": "LAST VISIT" } },
+      "sortVisitBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by last visit" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "last_visit_ts", "defaultDir": "desc" }
+              }
+            }
+          }
+        }
+      },
 
       "list": {
         "type": "Stack",
@@ -285,7 +379,7 @@
           "gap": "md",
           "align": "center",
           "hover": true,
-          "template": "2rem minmax(0, 1fr) 3.5rem 7rem 5rem"
+          "template": "2rem minmax(0, 1fr) 5rem 7rem 6.5rem"
         },
         "children": ["avatar", "identity", "ordersCell", "spentCell", "visitCell"]
       },
@@ -381,7 +475,7 @@
       "footerDivider": { "type": "Divider", "props": {} },
       "footerNote": {
         "type": "Caption",
-        "props": { "tone": "muted", "text": "Sorted by total spent. Bars are measured against your top spender." }
+        "props": { "tone": "muted", "text": "Bars are measured against your top spender. Sort by any column from its header." }
       }
     }
   },
