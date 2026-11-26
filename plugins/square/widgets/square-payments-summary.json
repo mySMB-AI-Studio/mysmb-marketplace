@@ -30,12 +30,32 @@
           "/square/get_latest_payments/payments": [
             {
               "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "order_index|asc" }
+            },
+            {
+              "action": "setState",
               "params": {
                 "statePath": "/ui/board",
                 "value": {
                   "$computed": "square_payment_board",
                   "args": {
-                    "value": { "$state": "/square/get_latest_payments/payments" }
+                    "value": { "$state": "/square/get_latest_payments/payments" },
+                    "key": "order_index|asc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_payment_board",
+                  "args": {
+                    "value": { "$state": "/square/get_latest_payments/payments" },
+                    "key": { "$state": "/ui/sortKey" }
                   }
                 }
               }
@@ -206,12 +226,68 @@
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["list"],
+        "children": ["columnHeaders", "list"],
         "visible": {
           "$and": [
             { "$state": "/_loading/square.get_latest_payments", "not": true },
             { "$state": "/square/get_latest_payments/payments/0" }
           ]
+        }
+      },
+
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "2.5rem minmax(0, 1fr) 9rem"
+        },
+        "children": ["colSpacer", "colPayment", "colAmount"]
+      },
+      "colSpacer": { "type": "Stack", "props": { "gap": "xs" } },
+      "colPayment": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colPaymentLabel", "sortTimeBtn"]
+      },
+      "colPaymentLabel": { "type": "Eyebrow", "props": { "text": "PAYMENT / TIME" } },
+      "sortTimeBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by time taken" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "order_index" }
+              }
+            }
+          }
+        }
+      },
+      "colAmount": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colAmountLabel", "sortAmountBtn"]
+      },
+      "colAmountLabel": { "type": "Eyebrow", "props": { "text": "AMOUNT" } },
+      "sortAmountBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents", "defaultDir": "desc" }
+              }
+            }
+          }
         }
       },
 
@@ -301,7 +377,7 @@
       "footerDivider": { "type": "Divider", "props": {} },
       "footerNote": {
         "type": "Caption",
-        "props": { "tone": "muted", "text": "Newest first. Bars compare each payment to the largest shown." }
+        "props": { "tone": "muted", "text": "Bars compare each payment to the largest shown. Sort by time or amount from the headers." }
       }
     }
   },
