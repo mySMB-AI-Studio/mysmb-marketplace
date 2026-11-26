@@ -74,6 +74,49 @@ function formatMoney(cents, symbol) {
     return `${symbol}${amount}`;
 }
 /**
+ * Apply a `"field|dir"` sort key to a set of board rows, in place.
+ *
+ * Numeric columns compare as numbers and everything else with
+ * localeCompare. The blank guard matters: Number('') is 0, not NaN, so a
+ * row with nothing in a numeric column would otherwise sort as if it held
+ * zero and jump above real values in an ascending column.
+ */
+function applySort(rows, key) {
+    const [field, dir] = String(key).split('|');
+    if (!field)
+        return;
+    rows.sort((a, b) => {
+        const av = a[field] ?? '';
+        const bv = b[field] ?? '';
+        const an = Number(av);
+        const bn = Number(bv);
+        const numeric = av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn);
+        const cmp = numeric ? an - bn : String(av).localeCompare(String(bv));
+        return dir === 'desc' ? -cmp : cmp;
+    });
+}
+/**
+ * Work out the next sort key when a column header is clicked.
+ *
+ * Clicking the column already sorted flips its direction. Clicking a
+ * different one starts it at `defaultDir`, which lets a money or count
+ * column open on its big end — the first thing anyone wants from
+ * "total spent" is the largest, not A$0.00.
+ *
+ * args.current    — the active "field|dir" key
+ * args.field      — the column clicked
+ * args.defaultDir — direction for a column not currently sorted (default asc)
+ */
+const set_sort_field = (args) => {
+    const [currentField, currentDir] = String(args.current ?? '').split('|');
+    const field = String(args.field ?? '');
+    if (!field)
+        return String(args.current ?? '');
+    if (currentField === field)
+        return `${field}|${currentDir === 'desc' ? 'asc' : 'desc'}`;
+    return `${field}|${args.defaultDir === 'desc' ? 'desc' : 'asc'}`;
+};
+/**
  * Turn get_customer_orders_summary's customer rows into everything the
  * Customers tile draws: initials and avatar tone, a spend bar measured
  * against the top spender, how long since each last visit, and the two
@@ -84,6 +127,8 @@ function formatMoney(cents, symbol) {
  * args.sample — any already-formatted money string from the same response
  *               (avg_spend_display), used only to learn the currency symbol
  * args.today  — optional ISO date, for testing; defaults to now
+ * args.key    — "field|dir" sort key; defaults to the connector's own
+ *               order, biggest spender first
  */
 const customer_board = (args) => {
     const list = Array.isArray(args.value) ? args.value : [];
@@ -132,10 +177,17 @@ const customer_board = (args) => {
             has_orders: hasOrders,
             no_orders: !hasOrders,
             is_top: isTop,
+            // Sort keys, never displayed. The date arrives pre-formatted, so the
+            // column needs a real timestamp to order by. A customer who has never
+            // visited gets zero: last in a most-recent-first column, first when
+            // the column is flipped, which is the "who have we not seen" view.
+            total_spent_cents: cents,
+            last_visit_ts: parseDmy(lastVisit) ?? 0,
             last_visit: lastVisit || '—',
             visit_note: visitNote(lastVisit, todayUtc),
         };
     });
+    applySort(rows, String(args.key ?? 'total_spent_cents|desc'));
     const withOrders = rows.filter((r) => r.has_orders).length;
     return {
         rows,
@@ -168,6 +220,8 @@ function parseMoneyCents(display) {
  * the largest one in the window.
  *
  * args.value — the `payments` array
+ * args.key   — "field|dir" sort key; defaults to the order the connector
+ *              returned, which is newest first
  */
 const payment_board = (args) => {
     const list = Array.isArray(args.value) ? args.value : [];
@@ -206,8 +260,14 @@ const payment_board = (args) => {
             // takings against each other rather than an arbitrary ceiling.
             amount_pct: maxCents > 0 ? Math.round((c / maxCents) * 100) : 0,
             is_largest: isLargest,
+            // Sort keys, never displayed. There is no timestamp on a payment row —
+            // only a formatted time — so position stands in for recency, which is
+            // exact because the connector already returned them newest first.
+            amount_cents: c,
+            order_index: i,
         };
     });
+    applySort(rows, String(args.key ?? 'order_index|asc'));
     const avgCents = rows.length > 0 ? Math.round(totalCents / rows.length) : 0;
     return {
         rows,
@@ -226,6 +286,15 @@ const payment_board = (args) => {
  */
 const SETTLED_STATUSES = new Set(['Paid', 'Cancelled', 'Refunded']);
 /**
+ * How loudly each status asks to be dealt with. Sorting the status column
+ * alphabetically would put Draft above Overdue, which is backwards; this
+ * puts the money at risk first and the closed invoices last.
+ */
+const STATUS_RANK = {
+    Overdue: 0, Failed: 1, 'Part Paid': 2, Sent: 3, Scheduled: 4, Draft: 5,
+    Paid: 10, 'Part Refunded': 11, Refunded: 12, Cancelled: 13,
+};
+/**
  * Turn get_recent_invoices' rows into what the Recent Invoices tile draws.
  *
  * The connector returns a status label and tone per invoice but no money it
@@ -236,6 +305,8 @@ const SETTLED_STATUSES = new Set(['Paid', 'Cancelled', 'Refunded']);
  *
  * args.value — the `invoices` array
  * args.today — optional ISO date, for testing; defaults to now
+ * args.key   — "field|dir" sort key; defaults to "priority", the two-level
+ *              order below
  */
 const invoice_board = (args) => {
     const list = Array.isArray(args.value) ? args.value : [];
@@ -304,18 +375,35 @@ const invoice_board = (args) => {
             due_note: dueNote,
             due_tone: dueTone,
             settled,
+            // Sort keys, never displayed. STATUS orders by how much attention the
+            // invoice wants rather than alphabetically, where Draft would outrank
+            // Overdue for no reason anyone would recognise.
+            amount_cents: cents,
+            status_rank: STATUS_RANK[status] ?? 50,
             // Sort key only, never displayed. An invoice with no due date sorts last
             // instead of leaping to the top of an ascending date column at zero.
             due_ts: dueTs === null ? Number.MAX_SAFE_INTEGER : dueTs,
         };
     });
-    // What still needs doing first, soonest deadline on top; everything closed
-    // below it, also by date.
-    rows.sort((a, b) => {
-        if (a.settled !== b.settled)
-            return a.settled ? 1 : -1;
-        return a.due_ts - b.due_ts;
-    });
+    // "priority" is the tile's own default and cannot be expressed as one
+    // field: what still needs doing first, soonest deadline on top, then
+    // everything closed below it, also by date. Any other key is a plain
+    // column sort the reader asked for.
+    // Settle ties by due date before any column sort runs. Array.sort is
+    // stable, so two invoices with the same status or the same amount then
+    // keep deadline order rather than whatever order Square listed them in.
+    rows.sort((a, b) => a.due_ts - b.due_ts);
+    const key = String(args.key ?? 'priority|asc');
+    if (key.split('|')[0] === 'priority') {
+        rows.sort((a, b) => {
+            if (a.settled !== b.settled)
+                return a.settled ? 1 : -1;
+            return a.due_ts - b.due_ts;
+        });
+    }
+    else {
+        applySort(rows, key);
+    }
     const billableCents = outstandingCents + paidCents;
     const collectedPct = billableCents > 0 ? Math.round((paidCents / billableCents) * 100) : 0;
     return {
@@ -335,6 +423,6 @@ const invoice_board = (args) => {
 };
 const mod = {
     slug: 'square',
-    functions: { enrich_orders, customer_board, payment_board, invoice_board },
+    functions: { enrich_orders, customer_board, payment_board, invoice_board, set_sort_field },
 };
 export default mod;
