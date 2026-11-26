@@ -1,0 +1,55 @@
+{
+  "name": "apxium",
+  "version": "0.1.0",
+  "description": "Read-only Apxium (Practice Engine) practice-management data via the myHub-hosted Apxium MCP gateway — clients and matters/jobs for accounting and legal firms.",
+  "author": {
+    "name": "mySMB AI Studio"
+  },
+  "license": "MIT",
+  "displayName": "Apxium (Practice Engine)",
+  "category": "accounting",
+  "icon": "Briefcase",
+  "keywords": [
+    "apxium",
+    "practice engine",
+    "pe",
+    "practice management",
+    "accounting practice",
+    "legal practice",
+    "matters",
+    "time and billing",
+    "trust accounting",
+    "clients"
+  ],
+  "connection": {
+    "authType": "api_key",
+    "instructions": "Apxium (Practice Engine) uses machine-to-machine OAuth2 client-credentials — there is no login redirect, and you never paste a bearer token; the gateway exchanges your App Id/App Key for a short-lived token automatically on every call.\n\n1. In your Practice Engine instance, sign in as a PE Admin and go to **Admin → API Authentication Administration** (or browse directly to `https://<your-practice>.pehosted.com/PE/Admin/APIAuth`).\n2. Create a new API credential. PE issues an **AppId** and an **AppKey** — these are your OAuth2 `client_id`/`client_secret`, mapped to a staff user account.\n3. Make sure the staff user the AppId maps to has these PE permissions: `API_Admin`, `API_Banking`, `API_Billing`, `API_Client`, `API_Export`, `ClientDRS`, `ClientSearch`, `LodgeHeader`. Without them, calls will be rejected even with a valid AppId/AppKey.\n4. Copy the **AppId** and **AppKey** below, and enter your practice's **Site** — the subdomain before `.pehosted.com` (e.g. `acme` for `acme.pehosted.com`).",
+    "docUrl": "https://support.apxium.com/knowledge/practice-engine-creating-an-api-access-token",
+    "fields": [
+      {
+        "name": "APXIUM_APP_ID",
+        "label": "App Id",
+        "type": "text",
+        "required": true,
+        "placeholder": "your-practice-engine-app-id",
+        "helpText": "From Admin → API Authentication Administration in Practice Engine. This is your OAuth2 client_id."
+      },
+      {
+        "name": "APXIUM_APP_KEY",
+        "label": "App Key",
+        "type": "password",
+        "required": true,
+        "placeholder": "your-practice-engine-app-key",
+        "helpText": "Issued alongside the App Id. This is your OAuth2 client_secret. Stored encrypted; exchanged server-side for a token."
+      },
+      {
+        "name": "APXIUM_SITE",
+        "label": "Site",
+        "type": "text",
+        "required": true,
+        "placeholder": "acme",
+        "helpText": "The subdomain before .pehosted.com, e.g. \"acme\" for acme.pehosted.com."
+      }
+    ]
+  }
+}
