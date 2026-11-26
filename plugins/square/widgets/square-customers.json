@@ -1,16 +1,18 @@
 {
   "id": "square-customers",
-  "title": "Square — Customers",
-  "description": "Customer list enriched with order count, total spent, and last visit date — sorted by highest spender.",
+  "title": "Customers",
+  "description": "Your Square customer book ranked by what each person has actually spent. Four figures lead — how many customers you hold, how many have ever bought, the average spend among those who have, and the total across the whole book — then every customer is listed with their initials, order count, total spent and last visit. A bar beside each amount measures that customer against your top spender, so the shape of the book reads at a glance; the leader is badged, and anyone who has never ordered is greyed and marked so they stand out as a follow-up rather than disappearing at the bottom.",
   "category": "sales",
   "tags": ["square", "customers", "crm", "orders", "spending"],
-  "keywords": ["customers", "clients", "square", "orders", "spending", "last visit", "top customers"],
+  "keywords": ["customers", "clients", "square", "orders", "spending", "last visit", "top customers", "top spender", "customer value", "repeat customers"],
   "connectorsUsed": ["square"],
   "popularity": 0,
+  "branding": { "color": "#2ec4b6" },
+  "brandColor": "#2ec4b6",
   "sizing": {
-    "preferred": { "colSpan": 6, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
-    "max": { "colSpan": 12, "rowSpan": 10 }
+    "preferred": { "colSpan": 7, "rowSpan": 6 },
+    "min": { "colSpan": 6, "rowSpan": 4 },
+    "max": { "colSpan": 12, "rowSpan": 12 }
   },
   "dataProvider": {
     "mcp": "square",
@@ -23,30 +25,43 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "statsStrip", "body"]
+        "children": ["header", "loading", "kpiStrip", "emptyPanel", "body", "footer"],
+        "watch": {
+          "/square/get_customer_orders_summary/customers": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_customer_board",
+                  "args": {
+                    "value": { "$state": "/square/get_customer_orders_summary/customers" },
+                    "sample": { "$state": "/square/get_customer_orders_summary/avg_spend_display" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
 
       "header": {
         "type": "Header",
+        "props": {},
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIconBox", "titleStack"]
-      },
-      "titleIconBox": {
-        "type": "Section",
-        "props": { "tone": "info" },
-        "children": ["titleIcon"]
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "Users", "tone": "accent", "size": "md" }
+        "props": { "name": "Users", "tone": "brand", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "xs" },
         "children": ["title", "eyebrow"]
       },
       "title": {
@@ -55,114 +70,318 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Square", "tone": "info" }
+        "props": { "text": "SQUARE · CUSTOMER VALUE" }
       },
 
-      "statsStrip": {
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skKpi", "sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/_loading/square.get_customer_orders_summary" }
+      },
+      "skKpi": { "type": "Skeleton", "props": { "height": "5.5rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "kpiStrip": {
         "type": "Grid",
-        "props": { "cols": 3, "gap": "sm" },
-        "children": ["totalBox", "activeBox", "avgBox"]
+        "props": { "cols": 4, "gap": "sm" },
+        "children": ["kpiTotal", "kpiActive", "kpiAvg", "kpiSpend"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_customer_orders_summary", "not": true },
+            { "$state": "/square/get_customer_orders_summary/customers/0" }
+          ]
+        }
       },
 
-      "totalBox": {
+      "kpiTotal": {
         "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["totalLabelRow", "totalValue"]
+        "props": { "variant": "muted" },
+        "children": ["totalStack"]
       },
-      "totalLabelRow": {
+      "totalStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["totalHead", "totalValue", "totalNote"]
+      },
+      "totalHead": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["totalIcon", "totalLabel"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["totalDot", "totalLabel"]
       },
-      "totalIcon": {
-        "type": "Icon",
-        "props": { "name": "Users", "tone": "accent", "size": "xs" }
-      },
-      "totalLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Total" }
-      },
+      "totalDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "totalLabel": { "type": "Eyebrow", "props": { "text": "TOTAL" } },
       "totalValue": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_customer_orders_summary/total_count" },
-          "size": "sm",
-          "tone": "accent"
-        }
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/count" } }
+      },
+      "totalNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Customers on file" }
       },
 
-      "activeBox": {
+      "kpiActive": {
         "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["activeLabelRow", "activeValue"]
+        "props": { "variant": "muted" },
+        "children": ["activeStack"]
       },
-      "activeLabelRow": {
+      "activeStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["activeHead", "activeValue", "activeNote"]
+      },
+      "activeHead": {
         "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["activeIcon", "activeLabel"]
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["activeDot", "activeLabel"]
       },
-      "activeIcon": {
-        "type": "Icon",
-        "props": { "name": "UserCheck", "tone": "success", "size": "xs" }
-      },
-      "activeLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "With Orders" }
-      },
+      "activeDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "activeLabel": { "type": "Eyebrow", "props": { "text": "WITH ORDERS" } },
       "activeValue": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_customer_orders_summary/active_count" },
-          "size": "sm",
-          "tone": "success"
-        }
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/with_orders" } }
+      },
+      "activeNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$state": "/ui/board/with_orders_note" } }
       },
 
-      "avgBox": {
+      "kpiAvg": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["avgStack"]
+      },
+      "avgStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["avgHead", "avgValue", "avgNote"]
+      },
+      "avgHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["avgDot", "avgLabel"]
+      },
+      "avgDot": { "type": "Dot", "props": { "tone": "brand", "size": "sm" } },
+      "avgLabel": { "type": "Eyebrow", "props": { "text": "AVG SPEND" } },
+      "avgValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/square/get_customer_orders_summary/avg_spend_display" } }
+      },
+      "avgNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Per customer with orders" }
+      },
+
+      "kpiSpend": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["spendStack"]
+      },
+      "spendStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["spendHead", "spendValue", "spendNote"]
+      },
+      "spendHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["spendDot", "spendLabel"]
+      },
+      "spendDot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "spendLabel": { "type": "Eyebrow", "props": { "text": "TOTAL SPENT" } },
+      "spendValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/total_spent" } }
+      },
+      "spendNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Across all customers" }
+      },
+
+      "emptyPanel": {
         "type": "Section",
         "props": { "variant": "bordered" },
-        "children": ["avgLabelRow", "avgValue"]
-      },
-      "avgLabelRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["avgIcon", "avgLabel"]
-      },
-      "avgIcon": {
-        "type": "Icon",
-        "props": { "name": "TrendingUp", "tone": "info", "size": "xs" }
-      },
-      "avgLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Avg Spend" }
-      },
-      "avgValue": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_customer_orders_summary/avg_spend_display" },
-          "size": "sm",
-          "tone": "info"
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_customer_orders_summary", "not": true },
+            { "$state": "/square/get_customer_orders_summary/customers/0", "not": true }
+          ]
         }
+      },
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
+      },
+      "emptyIcon": {
+        "type": "Icon",
+        "props": { "name": "Users", "tone": "brand", "size": "lg" }
+      },
+      "emptyTitle": {
+        "type": "Text",
+        "props": { "text": "No customers yet", "size": "sm", "weight": "medium" }
+      },
+      "emptyNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "They appear here as soon as they are added in Square." }
       },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["table"]
-      },
-      "table": {
-        "type": "Table",
-        "props": {
-          "loading": { "$state": "/_loading/square.get_customer_orders_summary" },
-          "skeletonRows": 5,
-          "rows": { "$state": "/square/get_customer_orders_summary/customers" },
-          "columns": [
-            { "id": "name",    "header": "Customer",    "field": "name",                "priority": 1 },
-            { "id": "orders",  "header": "Orders",      "field": "order_count",         "width": 90,  "priority": 1, "align": "right" },
-            { "id": "spent",   "header": "Total Spent", "field": "total_spent_display", "width": 150, "priority": 1, "align": "right" },
-            { "id": "visit",   "header": "Last Visit",  "field": "last_visit",          "width": 110, "priority": 2 }
+        "children": ["columnHeaders", "list"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_customer_orders_summary", "not": true },
+            { "$state": "/square/get_customer_orders_summary/customers/0" }
           ]
         }
+      },
+
+      "columnHeaders": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "2rem minmax(0, 1fr) 3.5rem 7rem 5rem"
+        },
+        "children": ["colSpacer", "colCustomer", "colOrders", "colSpent", "colVisit"]
+      },
+      "colSpacer": { "type": "Stack", "props": { "gap": "xs" } },
+      "colCustomer": { "type": "Eyebrow", "props": { "text": "CUSTOMER" } },
+      "colOrders": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["colOrdersLabel"]
+      },
+      "colOrdersLabel": { "type": "Eyebrow", "props": { "text": "ORDERS" } },
+      "colSpent": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["colSpentLabel"]
+      },
+      "colSpentLabel": { "type": "Eyebrow", "props": { "text": "TOTAL SPENT" } },
+      "colVisit": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["colVisitLabel"]
+      },
+      "colVisitLabel": { "type": "Eyebrow", "props": { "text": "LAST VISIT" } },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/board/rows", "key": "id" }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "2rem minmax(0, 1fr) 3.5rem 7rem 5rem"
+        },
+        "children": ["avatar", "identity", "ordersCell", "spentCell", "visitCell"]
+      },
+      "avatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$item": "initials" },
+          "tone": { "$item": "avatar_tone" },
+          "size": "md"
+        }
+      },
+      "identity": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["customerName", "topBadge", "noOrdersBadge"]
+      },
+      "customerName": {
+        "type": "Text",
+        "props": { "text": { "$item": "name" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "topBadge": {
+        "type": "Badge",
+        "props": { "text": "Top Spender", "tone": "brand", "variant": "soft" },
+        "visible": { "$item": "is_top" }
+      },
+      "noOrdersBadge": {
+        "type": "Badge",
+        "props": { "text": "No Orders Yet", "tone": "muted", "variant": "soft" },
+        "visible": { "$item": "no_orders" }
+      },
+      "ordersCell": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["ordersCount", "ordersLabel"]
+      },
+      "ordersCount": {
+        "type": "Text",
+        "props": { "text": { "$item": "order_count" }, "size": "sm", "weight": "medium" }
+      },
+      "ordersLabel": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$item": "orders_label" } }
+      },
+      "spentCell": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["spentAmountRow", "spentBarRow"]
+      },
+      "spentAmountRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["spentAmount"]
+      },
+      "spentAmount": {
+        "type": "Text",
+        "props": { "text": { "$item": "total_spent" }, "size": "sm", "weight": "medium" }
+      },
+      "spentBarRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["spentBar"],
+        "visible": { "$item": "has_orders" }
+      },
+      "spentBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$item": "spend_pct" }, "tone": "brand" }
+      },
+      "visitCell": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["visitDate", "visitNote"]
+      },
+      "visitDate": {
+        "type": "Text",
+        "props": { "text": { "$item": "last_visit" }, "size": "sm" }
+      },
+      "visitNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$item": "visit_note" } }
+      },
+
+      "footer": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["footerDivider", "footerNote"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_customer_orders_summary", "not": true },
+            { "$state": "/square/get_customer_orders_summary/customers/0" }
+          ]
+        }
+      },
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Sorted by total spent. Bars are measured against your top spender." }
       }
     }
   },
