@@ -30,12 +30,32 @@
           "/square/get_recent_invoices/invoices": [
             {
               "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "priority|asc" }
+            },
+            {
+              "action": "setState",
               "params": {
                 "statePath": "/ui/board",
                 "value": {
                   "$computed": "square_invoice_board",
                   "args": {
-                    "value": { "$state": "/square/get_recent_invoices/invoices" }
+                    "value": { "$state": "/square/get_recent_invoices/invoices" },
+                    "key": "priority|asc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_invoice_board",
+                  "args": {
+                    "value": { "$state": "/square/get_recent_invoices/invoices" },
+                    "key": { "$state": "/ui/sortKey" }
                   }
                 }
               }
@@ -292,20 +312,97 @@
         },
         "children": ["colCustomer", "colAmount", "colStatus", "colDue"]
       },
-      "colCustomer": { "type": "Eyebrow", "props": { "text": "CUSTOMER / INVOICE" } },
+      "colCustomer": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colCustomerLabel", "sortCustomerBtn"]
+      },
+      "colCustomerLabel": { "type": "Eyebrow", "props": { "text": "CUSTOMER / INVOICE" } },
+      "sortCustomerBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by customer name" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "customer_name" }
+              }
+            }
+          }
+        }
+      },
+
       "colAmount": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["colAmountLabel"]
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colAmountLabel", "sortAmountBtn"]
       },
       "colAmountLabel": { "type": "Eyebrow", "props": { "text": "AMOUNT" } },
-      "colStatus": { "type": "Eyebrow", "props": { "text": "STATUS" } },
+      "sortAmountBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by amount" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents", "defaultDir": "desc" }
+              }
+            }
+          }
+        }
+      },
+
+      "colStatus": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colStatusLabel", "sortStatusBtn"]
+      },
+      "colStatusLabel": { "type": "Eyebrow", "props": { "text": "STATUS" } },
+      "sortStatusBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by status, most urgent first" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "status_rank" }
+              }
+            }
+          }
+        }
+      },
+
       "colDue": {
-        "type": "Stack",
-        "props": { "gap": "xs", "align": "end" },
-        "children": ["colDueLabel"]
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colDueLabel", "sortDueBtn"]
       },
       "colDueLabel": { "type": "Eyebrow", "props": { "text": "DUE" } },
+      "sortDueBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by due date" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "due_ts" }
+              }
+            }
+          }
+        }
+      },
 
       "list": {
         "type": "Stack",
@@ -386,7 +483,7 @@
       "footerDivider": { "type": "Divider", "props": {} },
       "footerNote": {
         "type": "Caption",
-        "props": { "tone": "muted", "text": "Unpaid first, soonest due on top. Overdue means unpaid and past its due date." }
+        "props": { "tone": "muted", "text": "Overdue means unpaid and past its due date. Sort by any column from its header." }
       }
     }
   },
