@@ -1,16 +1,18 @@
 {
   "id": "square-sales-summary",
-  "title": "Square — Sales Summary",
-  "description": "Recent gross sales, transaction count, average sale, and net sales after refunds — all in one compact card.",
+  "title": "Sales Summary",
+  "description": "What Square has taken recently, and how much of it you kept. Gross sales lead, then the arithmetic is shown rather than asserted — gross less refunds equals net — with a bar for the share of gross that survived refunds. Transaction count and average sale sit underneath, so a quiet day of large sales reads differently from a busy day of small ones. The refund figure only turns amber once there is a refund to look into.",
   "category": "finance",
   "tags": ["square", "payments", "sales", "summary", "pos", "finance"],
-  "keywords": ["sales", "revenue", "gross", "net", "refunds", "transactions", "average", "square", "today"],
+  "keywords": ["sales", "revenue", "gross", "net", "refunds", "transactions", "average", "square", "today", "takings"],
   "connectorsUsed": ["square"],
   "popularity": 0,
+  "branding": { "color": "#2ec4b6" },
+  "brandColor": "#2ec4b6",
   "sizing": {
-    "preferred": { "colSpan": 4, "rowSpan": 6 },
-    "min": { "colSpan": 3, "rowSpan": 5 },
-    "max": { "colSpan": 8, "rowSpan": 9 }
+    "preferred": { "colSpan": 6, "rowSpan": 5 },
+    "min": { "colSpan": 5, "rowSpan": 5 },
+    "max": { "colSpan": 10, "rowSpan": 9 }
   },
   "dataProvider": {
     "mcp": "square",
@@ -23,30 +25,46 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "grossSection", "statsGrid", "netSection"]
+        "children": ["header", "loading", "hero", "flow", "kept", "bottomGrid", "emptyPanel"],
+        "watch": {
+          "/square/get_payments_summary/gross_cents": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_sales_board",
+                  "args": {
+                    "gross": { "$state": "/square/get_payments_summary/gross_cents" },
+                    "refunds": { "$state": "/square/get_payments_summary/refund_total_cents" },
+                    "net": { "$state": "/square/get_payments_summary/net_cents" },
+                    "refundCount": { "$state": "/square/get_payments_summary/refund_count" },
+                    "currency": { "$state": "/square/get_payments_summary/currency" }
+                  }
+                }
+              }
+            }
+          ]
+        }
       },
 
       "header": {
         "type": "Header",
+        "props": {},
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIconBox", "titleStack"]
-      },
-      "titleIconBox": {
-        "type": "Section",
-        "props": { "tone": "info" },
-        "children": ["titleIcon"]
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "TrendingUp", "tone": "accent", "size": "md" }
+        "props": { "name": "TrendingUp", "tone": "brand", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "xs" },
         "children": ["title", "eyebrow"]
       },
       "title": {
@@ -55,131 +73,273 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Square", "tone": "info" }
+        "props": { "text": "SQUARE · GROSS TO NET" }
       },
 
-      "grossSection": {
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skHero", "skFlow", "skBar", "skGrid"],
+        "visible": { "$state": "/_loading/square.get_payments_summary" }
+      },
+      "skHero": { "type": "Skeleton", "props": { "height": "5rem", "rounded": "md" } },
+      "skFlow": { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "skBar": { "type": "Skeleton", "props": { "height": "2rem", "rounded": "md" } },
+      "skGrid": { "type": "Skeleton", "props": { "height": "5.5rem", "rounded": "md" } },
+
+      "hero": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["heroRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_payments_summary", "not": true },
+            { "$state": "/ui/board/has_sales" }
+          ]
+        }
+      },
+      "heroRow": {
+        "type": "Row",
+        "props": { "gap": "md", "align": "center" },
+        "children": ["coinBox", "heroStack"]
+      },
+      "coinBox": {
         "type": "Section",
         "props": { "variant": "bordered" },
-        "children": ["grossLabelRow", "grossAmount"]
+        "children": ["coinIcon"]
       },
-      "grossLabelRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["grossIcon", "grossLabel"]
-      },
-      "grossIcon": {
+      "coinIcon": {
         "type": "Icon",
-        "props": { "name": "DollarSign", "tone": "success", "size": "xs" }
+        "props": { "name": "CircleDollarSign", "tone": "brand", "size": "lg" }
       },
-      "grossLabel": {
+      "heroStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["heroLabel", "heroValue"]
+      },
+      "heroLabel": {
         "type": "Eyebrow",
-        "props": { "text": "Gross sales · recent" }
+        "props": { "text": "GROSS SALES · RECENT" }
       },
-      "grossAmount": {
+      "heroValue": {
         "type": "Stat",
+        "props": { "size": "lg", "value": { "$state": "/square/get_payments_summary/gross_display" } }
+      },
+
+      "flow": {
+        "type": "Row",
         "props": {
-          "value": { "$state": "/square/get_payments_summary/gross_display" },
-          "tone": "success"
+          "gap": "sm",
+          "align": "center",
+          "template": "minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr)"
+        },
+        "children": ["flowGross", "opMinus", "flowRefunds", "opEquals", "flowNet"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_payments_summary", "not": true },
+            { "$state": "/ui/board/has_sales" }
+          ]
         }
       },
 
-      "statsGrid": {
+      "flowGross": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["flowGrossStack"]
+      },
+      "flowGrossStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["flowGrossHead", "flowGrossValue"]
+      },
+      "flowGrossHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["flowGrossDot", "flowGrossLabel"]
+      },
+      "flowGrossDot": { "type": "Dot", "props": { "tone": "brand", "size": "sm" } },
+      "flowGrossLabel": { "type": "Eyebrow", "props": { "text": "GROSS" } },
+      "flowGrossValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/square/get_payments_summary/gross_display" } }
+      },
+
+      "opMinus": { "type": "Text", "props": { "text": "−", "size": "sm" } },
+
+      "flowRefunds": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["flowRefundsStack"]
+      },
+      "flowRefundsStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["flowRefundsHead", "flowRefundsValue"]
+      },
+      "flowRefundsHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["flowRefundsDot", "flowRefundsLabel"]
+      },
+      "flowRefundsDot": {
+        "type": "Dot",
+        "props": { "tone": { "$state": "/ui/board/refund_tone" }, "size": "sm" }
+      },
+      "flowRefundsLabel": { "type": "Eyebrow", "props": { "text": "REFUNDS" } },
+      "flowRefundsValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/refunds" } }
+      },
+
+      "opEquals": { "type": "Text", "props": { "text": "=", "size": "sm" } },
+
+      "flowNet": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["flowNetStack"]
+      },
+      "flowNetStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["flowNetHead", "flowNetValue"]
+      },
+      "flowNetHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["flowNetDot", "flowNetLabel"]
+      },
+      "flowNetDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "flowNetLabel": { "type": "Eyebrow", "props": { "text": "NET SALES" } },
+      "flowNetValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/square/get_payments_summary/net_display" } }
+      },
+
+      "kept": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["keptHead", "keptBarRow"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_payments_summary", "not": true },
+            { "$state": "/ui/board/has_sales" }
+          ]
+        }
+      },
+      "keptHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["keptLabel", "keptValue"]
+      },
+      "keptLabel": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Kept after refunds" }
+      },
+      "keptValue": {
+        "type": "Caption",
+        "props": { "tone": "success", "text": { "$state": "/ui/board/kept_note" } }
+      },
+      "keptBarRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["keptBar"]
+      },
+      "keptBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/board/kept_pct" }, "tone": "success" }
+      },
+
+      "bottomGrid": {
         "type": "Grid",
         "props": { "cols": 2, "gap": "sm" },
-        "children": ["txBox", "avgBox"]
-      },
-      "txBox": {
-        "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["txLabelRow", "txValue"]
-      },
-      "txLabelRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["txIcon", "txLabel"]
-      },
-      "txIcon": {
-        "type": "Icon",
-        "props": { "name": "ShoppingCart", "tone": "accent", "size": "xs" }
-      },
-      "txLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Transactions" }
-      },
-      "txValue": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_payments_summary/transaction_count" },
-          "size": "sm",
-          "tone": "accent"
-        }
-      },
-      "avgBox": {
-        "type": "Section",
-        "props": { "variant": "bordered" },
-        "children": ["avgLabelRow", "avgValue"]
-      },
-      "avgLabelRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["avgIcon", "avgLabel"]
-      },
-      "avgIcon": {
-        "type": "Icon",
-        "props": { "name": "Tag", "tone": "info", "size": "xs" }
-      },
-      "avgLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Average sale" }
-      },
-      "avgValue": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_payments_summary/average_display" },
-          "size": "sm",
-          "tone": "info"
+        "children": ["txCard", "avgCard"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_payments_summary", "not": true },
+            { "$state": "/ui/board/has_sales" }
+          ]
         }
       },
 
-      "netSection": {
+      "txCard": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["txStack"]
+      },
+      "txStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["txHead", "txValue", "txNote"]
+      },
+      "txHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["txDot", "txLabel"]
+      },
+      "txDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "txLabel": { "type": "Eyebrow", "props": { "text": "TRANSACTIONS" } },
+      "txValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/square/get_payments_summary/transaction_count" } }
+      },
+      "txNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Payments received" }
+      },
+
+      "avgCard": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["avgStack"]
+      },
+      "avgStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["avgHead", "avgValue", "avgNote"]
+      },
+      "avgHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["avgDot", "avgLabel"]
+      },
+      "avgDot": { "type": "Dot", "props": { "tone": "brand", "size": "sm" } },
+      "avgLabel": { "type": "Eyebrow", "props": { "text": "AVERAGE SALE" } },
+      "avgValue": {
+        "type": "Stat",
+        "props": { "size": "sm", "value": { "$state": "/square/get_payments_summary/average_display" } }
+      },
+      "avgNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Per transaction" }
+      },
+
+      "emptyPanel": {
         "type": "Section",
         "props": { "variant": "bordered" },
-        "children": ["netTop", "netValue"]
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/square.get_payments_summary", "not": true },
+            { "$state": "/ui/board/has_sales", "not": true }
+          ]
+        }
       },
-      "netTop": {
-        "type": "Row",
-        "props": { "justify": "between", "align": "center" },
-        "children": ["netLabelRow", "refundBadge"]
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
       },
-      "netLabelRow": {
-        "type": "Row",
-        "props": { "gap": "xs", "align": "center" },
-        "children": ["netIcon", "netLabel"]
-      },
-      "netIcon": {
+      "emptyIcon": {
         "type": "Icon",
-        "props": { "name": "ReceiptText", "tone": "success", "size": "xs" }
+        "props": { "name": "TrendingUp", "tone": "brand", "size": "lg" }
       },
-      "netLabel": {
-        "type": "Eyebrow",
-        "props": { "text": "Net sales (after refunds)" }
+      "emptyTitle": {
+        "type": "Text",
+        "props": { "text": "No sales yet", "size": "sm", "weight": "medium" }
       },
-      "refundBadge": {
-        "type": "Badge",
-        "props": {
-          "text": { "$state": "/square/get_payments_summary/refund_badge_label" },
-          "tone": "warning",
-          "variant": "soft"
-        }
-      },
-      "netValue": {
-        "type": "Stat",
-        "props": {
-          "value": { "$state": "/square/get_payments_summary/net_display" },
-          "size": "sm",
-          "tone": "success"
-        }
+      "emptyNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Takings appear here as soon as Square records a payment." }
       }
     }
   },
