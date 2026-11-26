@@ -8,46 +8,70 @@
     "kind": "tool",
     "mcp": "asana",
     "params": {
-      "limit": 20
+      "limit": 50
     },
     "tool": "list_milestones"
   },
-  "description": "Upcoming milestones (incomplete, due today or later) across your active Asana projects, sorted by due date. Uses list_milestones, which auto-resolves your workspace and scans up to 20 active projects server-side — no workspace_gid needed. Live-verified 2026-09-14 against a real connected account. Click a row to open that milestone in Asana; a footer button opens Asana itself in a new tab (there's no single cross-project \"milestones\" page in Asana to deep-link to instead). Row links are built client-side as https://app.asana.com/0/{project_gid}/{gid} — Asana's long-standing task deep-link convention — since list_milestones doesn't request the real permalink_url field the way this plugin's Projects tile does; NOT yet confirmed by actually clicking one against a live account.",
+  "description": "Upcoming Asana milestones on a runway: the next one due with a day countdown, a proportional timeline of everything ahead, and a date-tiled list grouped by month, filterable to the next two weeks, the next month or everything found. Uses list_milestones, which auto-resolves the workspace and scans the first 20 active projects server-side — milestones in projects past those 20 are not searched, and a task only counts as a milestone if it carries Asana’s milestone subtype and a due date. Rows open the milestone in Asana using https://app.asana.com/0/{project_gid}/{gid}; list_milestones does not request the real permalink_url field, so that link is built from ids rather than returned by the API. No assignee or project colour is available from this tool.",
   "id": "asana-upcoming-milestones",
   "keywords": [
     "asana milestones",
     "upcoming milestones",
     "deadlines",
-    "project milestones"
+    "project milestones",
+    "milestone timeline",
+    "project runway"
   ],
   "popularity": 0,
   "sizing": {
     "max": {
       "colSpan": 8,
-      "rowSpan": 10
+      "rowSpan": 12
     },
     "min": {
       "colSpan": 3,
       "rowSpan": 4
     },
     "preferred": {
-      "colSpan": 4,
-      "rowSpan": 5
+      "colSpan": 5,
+      "rowSpan": 6
     }
   },
   "spec": {
     "elements": {
-      "asanaLabel": {
+      "axisEnd": {
         "props": {
-          "text": "Asana"
+          "text": {
+            "$state": "/ui/board/axis_end_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "axisRow": {
+        "children": [
+          "axisStart",
+          "axisEnd"
+        ],
+        "props": {
+          "align": "center",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "axisStart": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/axis_start_label"
+          },
+          "tone": "brand"
         },
         "type": "Caption"
       },
       "body": {
         "children": [
           "loading",
-          "empty",
-          "list"
+          "content"
         ],
         "props": {},
         "type": "Body"
@@ -56,6 +80,7 @@
         "children": [
           "header",
           "body",
+          "footnote",
           "footerDivider",
           "footerRow"
         ],
@@ -66,10 +91,39 @@
             {
               "action": "setState",
               "params": {
-                "statePath": "/ui/rows",
+                "statePath": "/ui/range",
+                "value": "all"
+              }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
                 "value": {
-                  "$computed": "asana_flatten_milestones",
+                  "$computed": "asana_flatten_milestone_runway",
                   "args": {
+                    "range": {
+                      "$state": "/ui/range"
+                    },
+                    "value": {
+                      "$state": "/asana/list_milestones/data"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/range": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "asana_flatten_milestone_runway",
+                  "args": {
+                    "range": {
+                      "$state": "/ui/range"
+                    },
                     "value": {
                       "$state": "/asana/list_milestones/data"
                     }
@@ -80,23 +134,89 @@
           ]
         }
       },
+      "content": {
+        "children": [
+          "hero",
+          "controlsRow",
+          "runwayStack",
+          "empty",
+          "list"
+        ],
+        "props": {
+          "gap": "md"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/_loading/asana.list_milestones",
+          "not": true
+        }
+      },
+      "controlsRow": {
+        "children": [
+          "runwayLabel",
+          "rangeRow"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row",
+        "visible": {
+          "$state": "/ui/board/has_any"
+        }
+      },
+      "dateDay": {
+        "props": {
+          "level": "h1",
+          "text": {
+            "$item": "day_label"
+          }
+        },
+        "type": "Heading"
+      },
+      "dateTile": {
+        "children": [
+          "dateWeekday",
+          "dateDay"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "dateWeekday": {
+        "props": {
+          "text": {
+            "$item": "weekday_label"
+          },
+          "tone": {
+            "$item": "tone"
+          }
+        },
+        "type": "Caption"
+      },
       "empty": {
         "props": {
-          "message": "No upcoming milestones across your active projects."
+          "message": {
+            "$state": "/ui/board/empty_message"
+          }
         },
         "type": "Empty",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_milestones",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0",
-              "not": true
-            }
-          ]
+          "$state": "/ui/board/has_rows",
+          "not": true
         }
+      },
+      "eyebrow": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/header_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
       },
       "footerDivider": {
         "props": {},
@@ -105,13 +225,10 @@
       "footerLabel": {
         "props": {
           "text": {
-            "$state": "/ui/rows/0/footer_label"
+            "$state": "/ui/board/footer_label"
           }
         },
-        "type": "Caption",
-        "visible": {
-          "$state": "/ui/rows/0"
-        }
+        "type": "Caption"
       },
       "footerRow": {
         "children": [
@@ -124,6 +241,40 @@
         },
         "type": "Row"
       },
+      "footnote": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/footnote"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption",
+        "visible": {
+          "$state": "/_loading/asana.list_milestones",
+          "not": true
+        }
+      },
+      "groupHeader": {
+        "children": [
+          "groupLabel"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "xs"
+        },
+        "type": "Row",
+        "visible": {
+          "$item": "show_group"
+        }
+      },
+      "groupLabel": {
+        "props": {
+          "text": {
+            "$item": "group_label"
+          }
+        },
+        "type": "Eyebrow"
+      },
       "header": {
         "children": [
           "titleGroup"
@@ -131,28 +282,140 @@
         "props": {},
         "type": "Header"
       },
-      "list": {
+      "hero": {
         "children": [
-          "row"
+          "heroRow"
         ],
         "props": {
-          "gap": "md"
+          "variant": "muted"
+        },
+        "type": "Section",
+        "visible": {
+          "$state": "/ui/board/has_next"
+        }
+      },
+      "heroCount": {
+        "children": [
+          "heroCountValue",
+          "heroCountCaption"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "heroCountCaption": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/next_count_caption"
+          },
+          "tone": {
+            "$state": "/ui/board/next_tone"
+          }
+        },
+        "type": "Caption"
+      },
+      "heroCountValue": {
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/board/next_count"
+          }
+        },
+        "type": "Stat"
+      },
+      "heroEyebrow": {
+        "props": {
+          "text": "NEXT MILESTONE"
+        },
+        "type": "Eyebrow"
+      },
+      "heroMain": {
+        "children": [
+          "heroEyebrow",
+          "heroName",
+          "heroMeta"
+        ],
+        "props": {
+          "gap": "xs",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "heroMeta": {
+        "props": {
+          "text": {
+            "$state": "/ui/board/next_meta"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "heroName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$state": "/ui/board/next_name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "heroRow": {
+        "children": [
+          "heroMain",
+          "heroCount"
+        ],
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": {
+                "$state": "/ui/board/next_url"
+              }
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": {
+            "$state": "/ui/board/next_has_url"
+          },
+          "gap": "sm",
+          "justify": "between"
+        },
+        "type": "Row"
+      },
+      "inBadge": {
+        "props": {
+          "text": {
+            "$item": "in_label"
+          },
+          "tone": {
+            "$item": "tone"
+          },
+          "variant": "soft"
+        },
+        "type": "Badge"
+      },
+      "list": {
+        "children": [
+          "groupHeader",
+          "milestoneRow"
+        ],
+        "props": {
+          "gap": "xs"
         },
         "repeat": {
           "key": "id",
-          "statePath": "/ui/rows"
+          "statePath": "/ui/board/rows"
         },
         "type": "Stack",
         "visible": {
-          "$and": [
-            {
-              "$state": "/_loading/asana.list_milestones",
-              "not": true
-            },
-            {
-              "$state": "/ui/rows/0"
-            }
-          ]
+          "$state": "/ui/board/has_rows"
         }
       },
       "loading": {
@@ -169,28 +432,78 @@
           "$state": "/_loading/asana.list_milestones"
         }
       },
-      "openInAsanaBtn": {
-        "on": {
-          "click": {
-            "action": "open_url",
-            "params": {
-              "target": "_blank",
-              "url": "https://app.asana.com/"
-            }
+      "marker": {
+        "children": [
+          "markerDot"
+        ],
+        "props": {
+          "align": "end",
+          "gap": "none"
+        },
+        "type": "Stack"
+      },
+      "markerDot": {
+        "props": {
+          "size": "sm",
+          "tone": {
+            "$item": "tone"
           }
         },
-        "props": {
-          "label": "Open Asana",
-          "size": "sm",
-          "tone": "brand",
-          "variant": "primary"
-        },
-        "type": "Button"
+        "type": "Dot"
       },
-      "row": {
+      "markerRow": {
         "children": [
-          "rowDueBadge",
-          "rowRight"
+          "marker"
+        ],
+        "props": {
+          "align": "center",
+          "gap": "none",
+          "template": {
+            "$state": "/ui/board/runway_template"
+          }
+        },
+        "repeat": {
+          "key": "id",
+          "statePath": "/ui/board/markers"
+        },
+        "type": "Row"
+      },
+      "milestoneMain": {
+        "children": [
+          "milestoneName",
+          "milestoneMeta"
+        ],
+        "props": {
+          "gap": "none",
+          "grow": true
+        },
+        "type": "Stack"
+      },
+      "milestoneMeta": {
+        "props": {
+          "text": {
+            "$item": "meta_label"
+          },
+          "tone": "muted"
+        },
+        "type": "Caption"
+      },
+      "milestoneName": {
+        "props": {
+          "size": "sm",
+          "text": {
+            "$item": "name"
+          },
+          "truncate": true,
+          "weight": "medium"
+        },
+        "type": "Text"
+      },
+      "milestoneRow": {
+        "children": [
+          "dateTile",
+          "milestoneMain",
+          "inBadge"
         ],
         "on": {
           "click": {
@@ -210,56 +523,177 @@
         },
         "props": {
           "align": "center",
-          "clickable": true,
+          "clickable": {
+            "$item": "has_url"
+          },
           "gap": "sm",
-          "hover": true
+          "hover": true,
+          "template": "auto minmax(0, 1fr) auto"
         },
         "type": "Row"
       },
-      "rowDueBadge": {
+      "openInAsanaBtn": {
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "target": "_blank",
+              "url": "https://app.asana.com/"
+            }
+          }
+        },
         "props": {
-          "text": {
-            "$item": "due_label"
-          },
+          "label": "Open Asana",
+          "size": "sm",
+          "tone": "brand",
+          "variant": "primary"
+        },
+        "type": "Button"
+      },
+      "range14": {
+        "children": [
+          "range14Badge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/range",
+              "value": "14"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "range14Badge": {
+        "props": {
+          "text": "2 weeks",
           "tone": {
-            "$item": "due_tone"
+            "$state": "/ui/board/range_14_tone"
+          },
+          "variant": {
+            "$state": "/ui/board/range_14_variant"
           }
         },
         "type": "Badge"
       },
-      "rowName": {
-        "props": {
-          "size": "sm",
-          "text": {
-            "$item": "name"
-          },
-          "truncate": true,
-          "weight": "semibold"
-        },
-        "type": "Text"
-      },
-      "rowProject": {
-        "props": {
-          "text": {
-            "$item": "project_label"
+      "range30": {
+        "children": [
+          "range30Badge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/range",
+              "value": "30"
+            }
           }
         },
-        "type": "Caption"
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
       },
-      "rowRight": {
+      "range30Badge": {
+        "props": {
+          "text": "1 month",
+          "tone": {
+            "$state": "/ui/board/range_30_tone"
+          },
+          "variant": {
+            "$state": "/ui/board/range_30_variant"
+          }
+        },
+        "type": "Badge"
+      },
+      "rangeAll": {
         "children": [
-          "rowName",
-          "rowProject"
+          "rangeAllBadge"
+        ],
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/range",
+              "value": "all"
+            }
+          }
+        },
+        "props": {
+          "align": "center",
+          "clickable": true
+        },
+        "type": "Row"
+      },
+      "rangeAllBadge": {
+        "props": {
+          "text": "All",
+          "tone": {
+            "$state": "/ui/board/range_all_tone"
+          },
+          "variant": {
+            "$state": "/ui/board/range_all_variant"
+          }
+        },
+        "type": "Badge"
+      },
+      "rangeRow": {
+        "children": [
+          "range14",
+          "range30",
+          "rangeAll"
         ],
         "props": {
-          "gap": "none",
-          "grow": true
+          "align": "center",
+          "gap": "xs"
         },
-        "type": "Stack"
+        "type": "Row"
+      },
+      "runwayLabel": {
+        "props": {
+          "text": "RUNWAY"
+        },
+        "type": "Eyebrow"
+      },
+      "runwayRail": {
+        "children": [
+          "runwayRailBar"
+        ],
+        "props": {
+          "align": "center"
+        },
+        "type": "Row"
+      },
+      "runwayRailBar": {
+        "props": {
+          "tone": "brand",
+          "value": 0
+        },
+        "type": "ProgressBar"
+      },
+      "runwayStack": {
+        "children": [
+          "markerRow",
+          "runwayRail",
+          "axisRow"
+        ],
+        "props": {
+          "gap": "xs"
+        },
+        "type": "Stack",
+        "visible": {
+          "$state": "/ui/board/show_runway"
+        }
       },
       "sk1": {
         "props": {
-          "height": "2.5rem",
+          "height": "4rem",
           "rounded": "md"
         },
         "type": "Skeleton"
@@ -291,7 +725,7 @@
           "titleStack"
         ],
         "props": {
-          "align": "start",
+          "align": "center",
           "gap": "sm"
         },
         "type": "Row"
@@ -307,7 +741,7 @@
       "titleStack": {
         "children": [
           "title",
-          "asanaLabel"
+          "eyebrow"
         ],
         "props": {
           "gap": "none"
