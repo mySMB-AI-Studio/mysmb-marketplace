@@ -1,15 +1,17 @@
 {
   "id": "square-recent-orders",
-  "title": "Square — Recent Orders",
-  "description": "Recent Square orders — order ID, total, status, and date. Sorted most recent first.",
+  "title": "Recent Orders",
+  "description": "Every recent Square order and where its value sits. Three figures lead — how many orders there are and what they come to altogether, how much is still sitting in open orders, and how much has completed — with a bar showing the completed share of order value. Each order is then listed with its short reference, where it came from, how many items it holds and how long ago it was taken, its state, and what it totals. Open means the order has been raised but not yet completed, so the money is promised rather than banked. Any column can be sorted from its header.",
   "category": "finance",
   "tags": ["square", "orders", "pos", "transactions", "finance"],
-  "keywords": ["orders", "transactions", "square", "pos", "sales"],
+  "keywords": ["orders", "transactions", "square", "pos", "sales", "open orders", "completed", "order value", "fulfilment"],
   "connectorsUsed": ["square"],
   "popularity": 0,
+  "branding": { "color": "#2ec4b6" },
+  "brandColor": "#2ec4b6",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 5 },
-    "min": { "colSpan": 4, "rowSpan": 4 },
+    "preferred": { "colSpan": 6, "rowSpan": 7 },
+    "min": { "colSpan": 5, "rowSpan": 4 },
     "max": { "colSpan": 10, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -23,7 +25,7 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body"],
+        "children": ["header", "loading", "kpiStrip", "completed", "emptyPanel", "body", "footer"],
         "watch": {
           "/square/get_merchant/main_location_id": [
             {
@@ -35,31 +37,61 @@
                 "limit": 50
               }
             }
+          ],
+          "/square/search_orders/orders": [
+            {
+              "action": "setState",
+              "params": { "statePath": "/ui/sortKey", "value": "created_ts|desc" }
+            },
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_order_board",
+                  "args": {
+                    "value": { "$state": "/square/search_orders/orders" },
+                    "key": "created_ts|desc"
+                  }
+                }
+              }
+            }
+          ],
+          "/ui/sortKey": [
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "square_order_board",
+                  "args": {
+                    "value": { "$state": "/square/search_orders/orders" },
+                    "key": { "$state": "/ui/sortKey" }
+                  }
+                }
+              }
+            }
           ]
         }
       },
 
       "header": {
         "type": "Header",
+        "props": {},
         "children": ["titleGroup"]
       },
       "titleGroup": {
         "type": "Row",
-        "props": { "gap": "sm", "align": "center" },
-        "children": ["titleIconBox", "titleStack"]
-      },
-      "titleIconBox": {
-        "type": "Section",
-        "props": { "tone": "info" },
-        "children": ["titleIcon"]
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
       },
       "titleIcon": {
         "type": "Icon",
-        "props": { "name": "ShoppingBag", "tone": "info", "size": "md" }
+        "props": { "name": "ShoppingBag", "tone": "brand", "size": "sm" }
       },
       "titleStack": {
         "type": "Stack",
-        "props": { "gap": "none" },
+        "props": { "gap": "xs" },
         "children": ["title", "eyebrow"]
       },
       "title": {
@@ -68,31 +100,320 @@
       },
       "eyebrow": {
         "type": "Eyebrow",
-        "props": { "text": "Square", "tone": "info" }
+        "props": { "text": "SQUARE · OPEN AND COMPLETED" }
+      },
+
+      "loading": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skKpi", "skBar", "sk1", "sk2", "sk3", "sk4"],
+        "visible": { "$state": "/square/search_orders/orders", "not": true }
+      },
+      "skKpi": { "type": "Skeleton", "props": { "height": "5.5rem", "rounded": "md" } },
+      "skBar": { "type": "Skeleton", "props": { "height": "1.75rem", "rounded": "md" } },
+      "sk1": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk2": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk3": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+      "sk4": { "type": "Skeleton", "props": { "height": "2.75rem", "rounded": "md" } },
+
+      "kpiStrip": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["kpiOrders", "kpiOpen", "kpiDone"],
+        "visible": { "$state": "/square/search_orders/orders/0" }
+      },
+
+      "kpiOrders": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["ordersStack"]
+      },
+      "ordersStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["ordersHead", "ordersValue", "ordersNote"]
+      },
+      "ordersHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["ordersDot", "ordersLabel"]
+      },
+      "ordersDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "ordersLabel": { "type": "Eyebrow", "props": { "text": "ORDERS" } },
+      "ordersValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/count" } }
+      },
+      "ordersNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$state": "/ui/board/total_note" } }
+      },
+
+      "kpiOpen": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["openStack"]
+      },
+      "openStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["openHead", "openValue", "openNote"]
+      },
+      "openHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["openDot", "openLabel"]
+      },
+      "openDot": { "type": "Dot", "props": { "tone": "warning", "size": "sm" } },
+      "openLabel": { "type": "Eyebrow", "props": { "text": "OPEN" } },
+      "openValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/open_value" } }
+      },
+      "openNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$state": "/ui/board/open_note" } }
+      },
+
+      "kpiDone": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["doneStack"]
+      },
+      "doneStack": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["doneHead", "doneValue", "doneNote"]
+      },
+      "doneHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["doneDot", "doneLabel"]
+      },
+      "doneDot": { "type": "Dot", "props": { "tone": "success", "size": "sm" } },
+      "doneLabel": { "type": "Eyebrow", "props": { "text": "COMPLETED" } },
+      "doneValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$state": "/ui/board/done_value" } }
+      },
+      "doneNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$state": "/ui/board/done_note" } }
+      },
+
+      "completed": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["completedHead", "completedBarRow"],
+        "visible": { "$state": "/square/search_orders/orders/0" }
+      },
+      "completedHead": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["completedLabel", "completedValue"]
+      },
+      "completedLabel": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Completed" }
+      },
+      "completedValue": {
+        "type": "Caption",
+        "props": { "tone": "success", "text": { "$state": "/ui/board/completed_note" } }
+      },
+      "completedBarRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["completedBar"]
+      },
+      "completedBar": {
+        "type": "ProgressBar",
+        "props": { "value": { "$state": "/ui/board/completed_pct" }, "tone": "success" }
+      },
+
+      "emptyPanel": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/square/search_orders/orders" },
+            { "$state": "/square/search_orders/orders/0", "not": true }
+          ]
+        }
+      },
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
+      },
+      "emptyIcon": {
+        "type": "Icon",
+        "props": { "name": "ShoppingBag", "tone": "brand", "size": "lg" }
+      },
+      "emptyTitle": {
+        "type": "Text",
+        "props": { "text": "No orders yet", "size": "sm", "weight": "medium" }
+      },
+      "emptyNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Orders appear here as soon as one is raised in Square." }
       },
 
       "body": {
         "type": "Body",
         "props": {},
-        "children": ["table"]
+        "children": ["columnHeaders", "list"],
+        "visible": { "$state": "/square/search_orders/orders/0" }
       },
-      "table": {
-        "type": "Table",
+
+      "columnHeaders": {
+        "type": "Row",
         "props": {
-          "loading": { "$state": "/_loading/square.search_orders" },
-          "skeletonRows": 5,
-          "rows": {
-            "$computed": "square_enrich_orders",
-            "args": { "value": { "$state": "/square/search_orders/orders" } }
-          },
-          "columns": [
-            { "id": "id",      "header": "Order",  "field": "order_id_short",     "width": 110, "priority": 1 },
-            { "id": "total",   "header": "Total",  "field": "total_money.amount", "width": 120, "priority": 1, "format": "currency" },
-            { "id": "status",  "header": "Status", "field": "status_label",       "width": 110, "priority": 1, "variant": "badge", "tone": "status_tone" },
-            { "id": "source",  "header": "Source", "field": "source.name",        "priority": 2 },
-            { "id": "created", "header": "Date",   "field": "created_at",         "width": 120, "priority": 1, "format": "relative" }
-          ]
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 7rem 7.5rem"
+        },
+        "children": ["colOrder", "colStatus", "colTotal"]
+      },
+      "colOrder": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colOrderLabel", "sortOrderBtn"]
+      },
+      "colOrderLabel": { "type": "Eyebrow", "props": { "text": "ORDER / TIME" } },
+      "sortOrderBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by time taken" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "created_ts", "defaultDir": "desc" }
+              }
+            }
+          }
         }
+      },
+      "colStatus": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["colStatusLabel", "sortStatusBtn"]
+      },
+      "colStatusLabel": { "type": "Eyebrow", "props": { "text": "STATUS" } },
+      "sortStatusBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by status, open first" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "status_rank" }
+              }
+            }
+          }
+        }
+      },
+      "colTotal": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["colTotalLabel", "sortTotalBtn"]
+      },
+      "colTotalLabel": { "type": "Eyebrow", "props": { "text": "TOTAL" } },
+      "sortTotalBtn": {
+        "type": "IconButton",
+        "props": { "icon": "ChevronsUpDown", "size": "sm", "variant": "ghost", "ariaLabel": "Sort by order total" },
+        "on": {
+          "click": {
+            "action": "setState",
+            "params": {
+              "statePath": "/ui/sortKey",
+              "value": {
+                "$computed": "square_set_sort_field",
+                "args": { "current": { "$state": "/ui/sortKey" }, "field": "amount_cents", "defaultDir": "desc" }
+              }
+            }
+          }
+        }
+      },
+
+      "list": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["row"],
+        "repeat": { "statePath": "/ui/board/rows", "key": "id" }
+      },
+      "row": {
+        "type": "Row",
+        "props": {
+          "gap": "md",
+          "align": "center",
+          "hover": true,
+          "template": "minmax(0, 1fr) 7rem 7.5rem"
+        },
+        "children": ["identity", "statusCell", "totalCell"]
+      },
+      "identity": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["orderRef", "metaRow"]
+      },
+      "orderRef": {
+        "type": "Text",
+        "props": { "text": { "$item": "order_ref" }, "size": "sm", "weight": "medium", "truncate": true }
+      },
+      "metaRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["sourceBadge", "metaCaption"]
+      },
+      "sourceBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "source_name" }, "tone": "muted", "variant": "outline" }
+      },
+      "metaCaption": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": { "$item": "meta" } }
+      },
+      "statusCell": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["statusBadge"]
+      },
+      "statusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": { "$item": "status_label" },
+          "tone": { "$item": "status_tone" },
+          "variant": "soft"
+        }
+      },
+      "totalCell": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center", "justify": "end" },
+        "children": ["totalText"]
+      },
+      "totalText": {
+        "type": "Text",
+        "props": { "text": { "$item": "amount" }, "size": "sm", "weight": "medium" }
+      },
+
+      "footer": {
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["footerDivider", "footerNote"],
+        "visible": { "$state": "/square/search_orders/orders/0" }
+      },
+      "footerDivider": { "type": "Divider", "props": {} },
+      "footerNote": {
+        "type": "Caption",
+        "props": { "tone": "muted", "text": "Open means raised but not yet completed. Sort by any column from its header." }
       }
     }
   },

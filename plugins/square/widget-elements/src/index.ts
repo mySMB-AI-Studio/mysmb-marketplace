@@ -420,9 +420,146 @@ const invoice_board: ComputedFunction = (args) => {
   };
 };
 
+/**
+ * How Square names the money it hands back, as the connector formats it.
+ * search_orders returns a real currency code rather than a pre-formatted
+ * string, so an order total can be printed properly instead of parsed out of
+ * one — but it has to agree with the server's own formatMoney to the letter,
+ * or two tiles on the same dashboard would spell the same dollar differently.
+ */
+const CURRENCY_PREFIX: Record<string, string> = { AUD: 'A$', NZD: 'NZ$', USD: '$' };
+
+function formatCurrencyAmount(cents: number, currency: string): string {
+  const prefix = CURRENCY_PREFIX[currency] ?? (currency ? `${currency} ` : '');
+  return formatMoney(cents, prefix);
+}
+
+const ORDER_STATE_LABEL: Record<string, string> = {
+  OPEN: 'Open', COMPLETED: 'Completed', CANCELED: 'Cancelled', DRAFT: 'Draft',
+};
+
+/**
+ * Open before completed before cancelled: an order still open is the only one
+ * on the tile anybody can still act on.
+ */
+const ORDER_STATE_RANK: Record<string, number> = {
+  OPEN: 0, DRAFT: 1, COMPLETED: 2, CANCELED: 3,
+};
+
+const ORDER_STATE_TONE: Record<string, string> = {
+  // Amber is "not finished yet", the same reading a sent invoice gets on the
+  // Invoices tile — not a warning that something has gone wrong.
+  OPEN: 'warning', DRAFT: 'muted', COMPLETED: 'success', CANCELED: 'muted',
+};
+
+/** "Just now", "7m ago", "2h ago", "3d ago", then the plain date past a week. */
+function relativeTime(iso: string, nowMs: number): string {
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return '';
+  const secs = Math.round((nowMs - ts) / 1000);
+  if (secs < 60) return 'Just now';
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const d = new Date(ts);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${day}-${MONTHS[d.getUTCMonth()]}-${String(d.getUTCFullYear()).slice(-2)}`;
+}
+
+/**
+ * Turn raw search_orders results into what the Recent Orders tile draws.
+ *
+ * Unlike the other Square tools this one hands back Square's own order
+ * objects, untouched — so everything the tile shows is derived here: the short
+ * reference, the state label and tone, the money, how long ago it was taken,
+ * and the split of order value between what is still open and what has
+ * completed.
+ *
+ * args.value — the `orders` array from search_orders
+ * args.key   — "field|dir" sort key; defaults to newest first
+ * args.now   — optional ISO timestamp, for testing; defaults to now
+ */
+const order_board: ComputedFunction = (args) => {
+  const list = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+  const nowMs = args.now ? Date.parse(String(args.now)) : Date.now();
+
+  let currency = '';
+  let totalCents = 0;
+  let openCents = 0;
+  let doneCents = 0;
+  let openCount = 0;
+  let doneCount = 0;
+
+  const rows = list.map((o, i) => {
+    const money = (o.total_money as Record<string, unknown>) ?? {};
+    const cents = Number(money.amount) || 0;
+    const cur = String(money.currency ?? '');
+    if (cur && !currency) currency = cur;
+
+    const state = String(o.state ?? '').toUpperCase();
+    // A cancelled order is worth nothing, so it is counted as an order but
+    // adds to neither side of the split. Keeping it out of the total as well
+    // is what makes open + completed reconcile with it, and keeps cancelled
+    // money out of the denominator of the completed share.
+    if (state === 'COMPLETED') { doneCents += cents; doneCount += 1; totalCents += cents; }
+    else if (state !== 'CANCELED') { openCents += cents; openCount += 1; totalCents += cents; }
+
+    const createdAt = String(o.created_at ?? '');
+    const items = Array.isArray(o.line_items) ? o.line_items : [];
+    const itemCount = items.reduce(
+      (sum, li) => sum + (Number((li as Record<string, unknown>).quantity) || 1),
+      0,
+    );
+
+    const rel = relativeTime(createdAt, nowMs);
+    const itemsLabel = itemCount === 1 ? '1 item' : `${itemCount} items`;
+
+    return {
+      id: String(o.id ?? i),
+      // Square ids are 28 characters of noise. The tail is what its own
+      // dashboard shows and what a merchant would read out loud.
+      order_ref: `#${String(o.id ?? '').slice(-8).toUpperCase()}`,
+      source_name: String(((o.source as Record<string, unknown>) ?? {}).name ?? 'Point of Sale'),
+      meta: rel ? `${itemsLabel} · ${rel}` : itemsLabel,
+      amount: formatCurrencyAmount(cents, cur),
+      status_label: ORDER_STATE_LABEL[state] ?? state,
+      status_tone: ORDER_STATE_TONE[state] ?? 'muted',
+      // Sort keys, never displayed.
+      amount_cents: cents,
+      status_rank: ORDER_STATE_RANK[state] ?? 50,
+      created_ts: Date.parse(createdAt) || 0,
+    };
+  });
+
+  // Settle ties by recency before any column sort runs. Array.sort is stable,
+  // so two orders of the same value or the same state keep newest-first order.
+  rows.sort((a, b) => b.created_ts - a.created_ts);
+  applySort(rows, String(args.key ?? 'created_ts|desc'));
+
+  const completedPct = totalCents > 0 ? Math.round((doneCents / totalCents) * 100) : 0;
+
+  return {
+    rows,
+    count: rows.length,
+    total_value: formatCurrencyAmount(totalCents, currency),
+    total_note: `${formatCurrencyAmount(totalCents, currency)} total value`,
+    open_value: formatCurrencyAmount(openCents, currency),
+    open_note: openCount === 1 ? '1 order' : `${openCount} orders`,
+    done_value: formatCurrencyAmount(doneCents, currency),
+    done_note: doneCount === 1 ? '1 order' : `${doneCount} orders`,
+    completed_pct: completedPct,
+    completed_note: `${completedPct}% of order value`,
+  };
+};
+
 const mod: PluginElementsModule = {
   slug: 'square',
-  functions: { enrich_orders, customer_board, payment_board, invoice_board, set_sort_field },
+  functions: {
+    enrich_orders, customer_board, payment_board, invoice_board, order_board, set_sort_field,
+  },
 };
 
 export default mod;
