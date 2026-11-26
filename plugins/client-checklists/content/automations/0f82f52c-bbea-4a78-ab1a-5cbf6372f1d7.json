@@ -1,0 +1,96 @@
+{
+  "contentHash": "58c26bb5728049a208e473cba006dc46adc937797a71713faaa7bcb402f8d9d5",
+  "declaredScopes": [
+    "records:client_checklist:read",
+    "records:client_checklist_task:read",
+    "records:client_checklist_task:write",
+    "workq:read",
+    "workq:write",
+    "notify:send"
+  ],
+  "dependencies": [],
+  "description": "When someone asks to remove a required task from a client's checklist, raises a WorkQ approval for the checklist's approver (or the practice manager). Sends a required task back if it was removed without approval, and closes the approval once the approver decides.",
+  "flowIr": {
+    "description": "When someone asks to remove a required task from a client's checklist, raises a WorkQ approval for the checklist's approver (or the practice manager). Sends a required task back if it was removed without approval, and closes the approval once the approver decides.",
+    "irVersion": 1,
+    "name": "Client checklists: Removal approvals",
+    "nodes": [
+      {
+        "code": "CL = \"client_checklist\"\nTK = \"client_checklist_task\"\n\n\ndef _s(v):\n    return str(v if v is not None else \"\").strip()\n\n\ndef _link_ids(rec, key):\n    out = []\n    for v in ((rec or {}).get(\"links\") or {}).get(key) or []:\n        if isinstance(v, dict):\n            if v.get(\"id\"):\n                out.append(str(v[\"id\"]))\n        elif v:\n            out.append(str(v))\n    return out\n\n\ndef _record(slug, rid):\n    if not rid:\n        return {}\n    res = api.records.get(type_slug=slug, record_id=rid) or {}\n    return res.get(\"record\") or {}\n\n\ndef _open_item(item_id):\n    if not item_id:\n        return None\n    t = api.workq.get(todo_id=item_id)\n    if t and _s(t.get(\"status\")) not in (\"done\", \"cancelled\"):\n        return t\n    return None\n\n\nrid = _s(params.get(\"record_id\"))\nto = _s(params.get(\"to_stage\"))\nfrm = _s(params.get(\"from_stage\"))\nactor = _s(params.get(\"actor_id\"))\npractice_manager = _s(params.get(\"practice_manager\"))\noutcome = \"Nothing to do.\"\n\nrec = _record(TK, rid)\nif rec:\n    d = rec.get(\"data\") or {}\n    cl_ids = _link_ids(rec, \"checklist\")\n    cl = _record(CL, cl_ids[0]) if cl_ids else {}\n    approver = _s((cl.get(\"data\") or {}).get(\"manager\")) or practice_manager\n    task = _s(d.get(\"changed_title\")) or _s(rec.get(\"title\"))\n    where = _s(cl.get(\"title\")) or \"a client checklist\"\n    reason = _s(d.get(\"reason\"))\n    required = bool(d.get(\"required_task\"))\n    item_id = _s(d.get(\"approval_item_id\"))\n\n    if to == \"removed\" and required and frm != \"removal_requested\" and not (approver and actor == approver):\n        # A required task can't skip approval: send it back, which raises the approval item on the next event.\n        api.records.change_stage(type_slug=TK, record_id=rid, stage=\"removal_requested\",\n                                 note=\"Required task: removing it needs the checklist manager's approval.\")\n        outcome = \"Sent back for approval: \" + task\n    elif to == \"removed\" and required and approver and actor and actor != approver:\n        api.records.change_stage(type_slug=TK, record_id=rid, stage=\"removal_requested\",\n                                 note=\"Only the checklist's manager can approve removing a required task.\")\n        outcome = \"Not the approver, so sent back: \" + task\n    elif to == \"removal_requested\":\n        if not _open_item(item_id):\n            link = \"/records/\" + TK + \"/\" + rid\n            desc = (\"**\" + task + \"** on \" + where + \"\\n\\n\"\n                    + \"Reason given: \" + (reason or \"(none)\") + \"\\n\\n\"\n                    + \"Open the task: [\" + task + \"](\" + link + \")\\n\\n\"\n                    + \"To approve, move the task to **Removed**. To decline, move it back to **Kept**.\")\n            kw = {\"title\": \"Approve removing a required task: \" + task + \" (\" + where + \")\",\n                  \"description\": desc, \"priority\": \"medium\", \"labels\": [\"checklist\", \"approval\"]}\n            if approver:\n                kw[\"assignee_ids\"] = [approver]\n            item = api.workq.create(**kw)\n            api.records.update(type_slug=TK, record_id=rid, record={\"data\": {\"approval_item_id\": _s(item.get(\"id\"))}})\n            if approver:\n                api.notify.send(title=\"Approval needed: remove \\\"\" + task + \"\\\"\", body=where, user_ids=[approver])\n            outcome = \"Approval requested: \" + task\n        else:\n            outcome = \"Approval already open: \" + task\n    elif frm == \"removal_requested\":\n        item = _open_item(item_id)\n        if item:\n            word = \"approved: the task is removed\" if to == \"removed\" else \"declined: the task stays (\" + to + \")\"\n            api.workq.comment(todo_id=item_id, body=\"Removal \" + word + \".\")\n            api.workq.complete(todo_id=item_id)\n        outcome = \"Approval closed: \" + task\n",
+        "id": "handle_stage_change",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "What the run did.",
+            "name": "outcome",
+            "type": "str"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ trigger.event.subject.record_id }}",
+            "control": "hidden",
+            "name": "record_id",
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.subject.to }}",
+            "control": "hidden",
+            "name": "to_stage",
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.event.subject.from }}",
+            "control": "hidden",
+            "name": "from_stage",
+            "type": "str"
+          },
+          {
+            "binding": "{{ trigger.actor_user_id }}",
+            "control": "hidden",
+            "name": "actor_id",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.practice_manager }}",
+            "control": "hidden",
+            "name": "practice_manager",
+            "type": "str"
+          }
+        ],
+        "summary": "Raises, enforces or closes the approval for removing a required task.",
+        "title": "Handle a task's status change"
+      }
+    ],
+    "params": [
+      {
+        "control": "user-picker",
+        "description": "Approves removing required tasks on checklists with no approver of their own.",
+        "label": "Practice manager",
+        "name": "practice_manager",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "handle_stage_change"
+    ],
+    "triggers": [
+      {
+        "eventType": "record.stage_changed",
+        "filter": {
+          "type_slug": "client_checklist_task"
+        },
+        "kind": "event"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Client checklists: Removal approvals",
+  "originKey": "0f82f52c-bbea-4a78-ab1a-5cbf6372f1d7",
+  "tags": [
+    "checklists"
+  ]
+}

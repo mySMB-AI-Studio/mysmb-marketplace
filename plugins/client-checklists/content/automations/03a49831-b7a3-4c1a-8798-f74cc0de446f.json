@@ -1,0 +1,180 @@
+{
+  "contentHash": "737439fa5d9b9e8128b00f1039f3a9957633d227d39f6cda19ecb53686b8f13f",
+  "declaredScopes": [
+    "records:client_checklist:read",
+    "records:client_checklist:write",
+    "records:client_checklist_task:read",
+    "records:client_checklist_task:write",
+    "templates:read",
+    "clients:read"
+  ],
+  "dependencies": [],
+  "description": "Attaches a master checklist (an Activity template) to a client, copying each step into the client's own list of tasks. Every night it also syncs every client's copy with its master: new required steps are added, new optional steps wait for review, and steps the master drops are retired. A client's own changes are never overwritten.",
+  "flowIr": {
+    "description": "Attaches a master checklist (an Activity template) to a client, copying each step into the client's own list of tasks. Every night it also syncs every client's copy with its master: new required steps are added, new optional steps wait for review, and steps the master drops are retired. A client's own changes are never overwritten.",
+    "irVersion": 1,
+    "name": "Client checklists: Attach or sync",
+    "nodes": [
+      {
+        "code": "import datetime\n\nCL = \"client_checklist\"\nTK = \"client_checklist_task\"\n# Stages a row keeps through a master change: a person decided them, so a sync never overwrites them.\nKEEP_STAGES = (\"removed\", \"removal_requested\", \"retired\")\n\n\ndef _s(v):\n    return str(v if v is not None else \"\").strip()\n\n\ndef _link_ids(rec, key):\n    out = []\n    for v in ((rec or {}).get(\"links\") or {}).get(key) or []:\n        if isinstance(v, dict):\n            if v.get(\"id\"):\n                out.append(str(v[\"id\"]))\n        elif v:\n            out.append(str(v))\n    return out\n\n\ndef _list_all(slug):\n    rows, cursor = [], None\n    for _ in range(200):\n        kw = {\"type_slug\": slug, \"limit\": 200}\n        if cursor:\n            kw[\"cursor\"] = cursor\n        res = api.records.list(**kw) or {}\n        rows.extend(res.get(\"records\") or [])\n        cursor = res.get(\"nextCursor\")\n        if not cursor:\n            break\n    return rows\n\n\ndef _required(step):\n    tags = [_s(t).lower() for t in (step.get(\"tags\") or [])]\n    text = (_s(step.get(\"title\")) + \" \" + _s(step.get(\"description\"))).lower()\n    return \"required\" in tags or \"[required]\" in text\n\n\ndef _steps(tpl):\n    body = (tpl or {}).get(\"body\") or {}\n    return [s for s in (body.get(\"steps\") or []) if isinstance(s, dict) and _s(s.get(\"id\")) and _s(s.get(\"title\"))]\n\n\ndef _clean_title(title):\n    return _s(title).replace(\"[required]\", \"\").replace(\"[Required]\", \"\").strip()\n\n\nnow = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()\nlines = []\nclient_id = _s(params.get(\"client_id\"))\ntemplate_id = _s(params.get(\"template_id\"))\ntargets = []  # (checklist record, is_new)\n\nif client_id or template_id:\n    if not (client_id and template_id):\n        raise ValueError(\"To attach a checklist, choose both a client and a master Activity template.\")\n    client = api.clients.get(client_id=client_id)\n    if not client:\n        raise ValueError(\"That client wasn't found.\")\n    tpl = api.templates.get(template_id=template_id)\n    if not tpl:\n        raise ValueError(\"That Activity template wasn't found, or this automation's owner can't see it.\")\n    ckey = client_id + \":\" + template_id\n    existing = [r for r in _list_all(CL) if _s((r.get(\"data\") or {}).get(\"checklist_key\")) == ckey]\n    data = {\"checklist_key\": ckey, \"master_template_id\": template_id, \"master_name\": _s(tpl.get(\"name\")), \"active\": True}\n    if _s(params.get(\"cadence\")):\n        data[\"cadence\"] = _s(params.get(\"cadence\"))\n    if _s(params.get(\"due_day\")):\n        data[\"due_day\"] = int(float(_s(params.get(\"due_day\"))))\n    if _s(params.get(\"starts_on\")):\n        data[\"starts_on\"] = _s(params.get(\"starts_on\"))[:10]\n    if _s(params.get(\"manager_id\")):\n        data[\"manager\"] = _s(params.get(\"manager_id\"))\n    title = _s(client.get(\"name\")) + \" · \" + _s(tpl.get(\"name\"))\n    rec = {\"title\": title, \"data\": data, \"links\": {\"client\": [client_id]}}\n    if _s(params.get(\"owner_id\")):\n        rec[\"ownerUserId\"] = _s(params.get(\"owner_id\"))\n    if existing:\n        cl = api.records.update(type_slug=CL, record_id=existing[0][\"id\"], record=rec)\n        lines.append(\"Updated \" + title + \".\")\n        targets.append((cl, False))\n    else:\n        cl = api.records.create(type_slug=CL, record=rec)\n        lines.append(\"Attached \" + _s(tpl.get(\"name\")) + \" to \" + _s(client.get(\"name\")) + \".\")\n        targets.append((cl, True))\nelse:\n    for r in _list_all(CL):\n        if (r.get(\"data\") or {}).get(\"active\") is not False:\n            targets.append((r, False))\n\nall_tasks = _list_all(TK) if targets else []\ntemplates = {}\n\nfor cl, is_new in targets:\n    d = cl.get(\"data\") or {}\n    ckey = _s(d.get(\"checklist_key\"))\n    tid = _s(d.get(\"master_template_id\"))\n    if tid not in templates:\n        templates[tid] = api.templates.get(template_id=tid) if tid else None\n    tpl = templates[tid]\n    if not tpl:\n        api.records.update(type_slug=CL, record_id=cl[\"id\"], record={\"data\": {\n            \"last_synced\": now, \"sync_note\": \"The master Activity template wasn't found, so nothing changed.\"}})\n        lines.append(_s(cl.get(\"title\")) + \": master not found, nothing changed.\")\n        continue\n    client_ids = _link_ids(cl, \"client\")\n    by_step = {}\n    for r in all_tasks:\n        rd = r.get(\"data\") or {}\n        if _s(rd.get(\"task_key\")).startswith(ckey + \":\") and _s(rd.get(\"step_key\")):\n            by_step[_s(rd.get(\"step_key\"))] = r\n    added = held = retired = updated = back = 0\n    seen = set()\n    for i, st in enumerate(_steps(tpl)):\n        sk = _s(st.get(\"id\"))\n        seen.add(sk)\n        req = _required(st)\n        mtitle = _clean_title(st.get(\"title\"))\n        row = by_step.get(sk)\n        if row is None:\n            # A brand-new checklist copies every step. On a later sync, a new required step is added straight\n            # away and a new optional step waits for review (decision D7).\n            stage = \"kept\" if (is_new or req) else \"new_in_master\"\n            new = {\"title\": mtitle, \"stage\": stage,\n                   \"data\": {\"task_key\": ckey + \":\" + sk, \"step_key\": sk, \"master_title\": mtitle,\n                            \"required_task\": req, \"position\": i},\n                   \"links\": {\"checklist\": [cl[\"id\"]]}}\n            if client_ids:\n                new[\"links\"][\"client\"] = client_ids[:1]\n            api.records.create(type_slug=TK, record=new)\n            if stage == \"kept\":\n                added += 1\n            else:\n                held += 1\n        else:\n            rd = row.get(\"data\") or {}\n            patch = {}\n            if _s(rd.get(\"master_title\")) != mtitle:\n                patch[\"master_title\"] = mtitle\n            if bool(rd.get(\"required_task\")) != req:\n                patch[\"required_task\"] = req\n            if rd.get(\"position\") != i:\n                patch[\"position\"] = i\n            if patch:\n                api.records.update(type_slug=TK, record_id=row[\"id\"], record={\"data\": patch})\n                updated += 1\n            if row.get(\"stage\") == \"retired\":\n                api.records.change_stage(type_slug=TK, record_id=row[\"id\"], stage=\"kept\",\n                                         note=\"This step is back in the master Activity template.\")\n                back += 1\n    for sk, row in by_step.items():\n        if sk not in seen and row.get(\"stage\") not in KEEP_STAGES:\n            api.records.change_stage(type_slug=TK, record_id=row[\"id\"], stage=\"retired\",\n                                     note=\"This step is no longer in the master Activity template.\")\n            retired += 1\n    parts = []\n    if is_new:\n        parts.append(str(added) + \" tasks copied from the master\")\n    else:\n        if added:\n            parts.append(str(added) + \" new required task(s) added\")\n        if held:\n            parts.append(str(held) + \" new optional task(s) waiting for review (New in master)\")\n        if retired:\n            parts.append(str(retired) + \" task(s) retired (no longer in the master)\")\n        if back:\n            parts.append(str(back) + \" task(s) back in the master\")\n        if updated:\n            parts.append(str(updated) + \" task(s) refreshed from the master\")\n    note = \"; \".join(parts) if parts else \"Already matches the master.\"\n    api.records.update(type_slug=CL, record_id=cl[\"id\"], record={\"data\": {\n        \"last_synced\": now, \"master_name\": _s(tpl.get(\"name\")), \"sync_note\": note}})\n    lines.append(_s(cl.get(\"title\")) + \": \" + note + \".\")\n\nsummary = \"\\n\".join(lines) if lines else \"No active client checklists to sync.\"\nchecklists_synced = len(targets)\n",
+        "id": "attach_or_sync",
+        "kind": "python",
+        "outputs": [
+          {
+            "description": "What was attached or changed.",
+            "name": "summary",
+            "type": "str"
+          },
+          {
+            "description": "How many client checklists were synced.",
+            "name": "checklists_synced",
+            "type": "int"
+          }
+        ],
+        "params": [
+          {
+            "binding": "{{ params.client }}",
+            "control": "hidden",
+            "name": "client_id",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.master }}",
+            "control": "hidden",
+            "name": "template_id",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.cadence }}",
+            "control": "hidden",
+            "name": "cadence",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.due_day }}",
+            "control": "hidden",
+            "name": "due_day",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.starts_on }}",
+            "control": "hidden",
+            "name": "starts_on",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.assigned_to }}",
+            "control": "hidden",
+            "name": "owner_id",
+            "type": "str"
+          },
+          {
+            "binding": "{{ params.approver }}",
+            "control": "hidden",
+            "name": "manager_id",
+            "type": "str"
+          }
+        ],
+        "summary": "Attaches the chosen master to the chosen client, or syncs every client checklist with its master when none is chosen.",
+        "title": "Attach or sync client checklists"
+      }
+    ],
+    "params": [
+      {
+        "control": "client-picker",
+        "description": "Leave empty (with no master) to sync every client checklist with its master.",
+        "label": "Client",
+        "name": "client",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
+      {
+        "control": "template-picker",
+        "label": "Master checklist (Activity template)",
+        "name": "master",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
+      {
+        "control": "select",
+        "label": "Repeats",
+        "name": "cadence",
+        "options": [
+          {
+            "label": "Monthly",
+            "value": "monthly"
+          },
+          {
+            "label": "Quarterly (ATO quarters)",
+            "value": "quarterly"
+          },
+          {
+            "label": "Yearly (30 June year-end)",
+            "value": "yearly"
+          },
+          {
+            "label": "Once (onboarding)",
+            "value": "once"
+          }
+        ],
+        "required": false,
+        "type": "str",
+        "value": "monthly"
+      },
+      {
+        "control": "text",
+        "label": "Due day of the month (monthly, 1-28)",
+        "name": "due_day",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
+      {
+        "control": "date",
+        "label": "First period starts",
+        "name": "starts_on",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
+      {
+        "control": "user-picker",
+        "label": "Assigned to",
+        "name": "assigned_to",
+        "required": false,
+        "type": "str",
+        "value": ""
+      },
+      {
+        "control": "user-picker",
+        "label": "Approver for removing required tasks",
+        "name": "approver",
+        "required": false,
+        "type": "str",
+        "value": ""
+      }
+    ],
+    "rootOrder": [
+      "attach_or_sync"
+    ],
+    "triggers": [
+      {
+        "kind": "manual"
+      },
+      {
+        "cron": "30 1 * * *",
+        "kind": "schedule",
+        "timezone": "Australia/Sydney"
+      }
+    ]
+  },
+  "kind": "automation",
+  "level": "org",
+  "name": "Client checklists: Attach or sync",
+  "originKey": "03a49831-b7a3-4c1a-8798-f74cc0de446f",
+  "tags": [
+    "checklists"
+  ]
+}

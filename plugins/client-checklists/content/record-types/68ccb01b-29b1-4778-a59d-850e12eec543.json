@@ -1,0 +1,187 @@
+{
+  "contentHash": "4d46682591462cb51e3e339087b772f4b5b92d1a47fddca84f32604bd1752c61",
+  "definition": {
+    "color": null,
+    "description": "One row per client per master checklist (an Activity template). The client's own copy is the Client checklist tasks linked to it. Created by the 'Client checklists: Attach or sync' automation.",
+    "fields": [
+      {
+        "key": "name",
+        "kind": "text",
+        "label": "Checklist",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "client"
+        },
+        "key": "client",
+        "kind": "relation",
+        "label": "Client",
+        "position": 1,
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "key": "assigned_to",
+        "kind": "user",
+        "label": "Assigned to",
+        "position": 2,
+        "promoted": "owner",
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "Approves removing a required task. Empty: the practice manager set on the 'Removal approvals' automation."
+        },
+        "key": "manager",
+        "kind": "user",
+        "label": "Approver",
+        "position": 3,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Master",
+        "key": "master_name",
+        "kind": "text",
+        "label": "Master checklist",
+        "position": 4,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": "Master",
+        "key": "master_template_id",
+        "kind": "text",
+        "label": "Master Activity template ID",
+        "position": 5,
+        "required": true,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "monthly",
+              "label": "Monthly"
+            },
+            {
+              "key": "quarterly",
+              "label": "Quarterly (ATO quarters)"
+            },
+            {
+              "key": "yearly",
+              "label": "Yearly (30 June year-end)"
+            },
+            {
+              "key": "once",
+              "label": "Once (onboarding)"
+            }
+          ]
+        },
+        "key": "cadence",
+        "kind": "select",
+        "label": "Repeats",
+        "position": 6,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "decimals": 0,
+          "helpText": "Monthly checklists: the day each month's items are due (1-28).",
+          "max": 28,
+          "min": 1
+        },
+        "key": "due_day",
+        "kind": "number",
+        "label": "Due day of the month",
+        "position": 7,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "key": "starts_on",
+        "kind": "date",
+        "label": "First period starts",
+        "position": 8,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "key": "active",
+        "kind": "boolean",
+        "label": "Active",
+        "position": 9,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "Client ID and master template ID. Set by the automation; don't edit."
+        },
+        "groupLabel": "System",
+        "key": "checklist_key",
+        "kind": "text",
+        "label": "Checklist key",
+        "position": 10,
+        "required": true,
+        "rules": [
+          {
+            "kind": "unique_within_type"
+          }
+        ],
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "System",
+        "key": "last_synced",
+        "kind": "datetime",
+        "label": "Last synced with the master",
+        "position": 11,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": "System",
+        "key": "sync_note",
+        "kind": "long_text",
+        "label": "Last sync",
+        "position": 12,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": false
+      }
+    ],
+    "icon": "list-checks",
+    "labelPlural": "Client checklists",
+    "labelSingular": "Client checklist",
+    "slug": "client_checklist",
+    "titleFieldKey": "name"
+  },
+  "kind": "record_type",
+  "name": "Client checklists",
+  "originKey": "68ccb01b-29b1-4778-a59d-850e12eec543"
+}
