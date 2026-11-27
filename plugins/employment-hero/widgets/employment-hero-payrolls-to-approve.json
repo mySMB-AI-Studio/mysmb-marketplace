@@ -1,14 +1,16 @@
 {
   "id": "employment-hero-payrolls-to-approve",
   "title": "Payrolls to Approve",
-  "description": "Pending timesheet entries grouped by employee, awaiting payroll approval in Employment Hero.",
+  "description": "Pending timesheets waiting on payroll approval, one card each. Every card leads with how far past its own period end it has run, because a timesheet that is late is holding up a pay run. Under that sit the pay period, how many days it covers and the hours logged against it, so an empty timesheet is as visible as a full one. The three figures across the top count what is waiting, how late the worst one is and the hours in total.",
   "category": "hr",
   "tags": ["employment-hero", "hr", "payroll", "timesheets", "approve"],
-  "keywords": ["payroll", "timesheets", "approve", "pending", "hours", "employment hero"],
+  "keywords": ["payroll", "timesheets", "approve", "pending", "pay run", "hours", "pay period", "overdue", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
+  "branding": { "color": "#7b61ff" },
+  "brandColor": "#7b61ff",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
     "min":       { "colSpan": 4, "rowSpan": 5 },
     "max":       { "colSpan": 10, "rowSpan": 12 }
   },
@@ -24,108 +26,215 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": ["header", "loading", "kpiGrid", "emptyPanel", "body", "footer"],
         "watch": {
           "/employment-hero/list_pending_timesheets_by_employee/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/timesheetRows", "value": { "$computed": "employment-hero_flatten_timesheets_to_approve", "args": { "value": { "$state": "/employment-hero/list_pending_timesheets_by_employee/data/items" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "employment-hero_payroll_board",
+                  "args": { "value": { "$state": "/employment-hero/list_pending_timesheets_by_employee/data/items" } }
+                }
+              }
+            }
           ]
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "ReceiptText", "tone": "accent", "size": "sm" } },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ReceiptText", "tone": "brand", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Payrolls to Approve", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "EMPLOYMENT HERO" } },
 
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skKpi", "skCard1", "skCard2"],
         "visible": { "$state": "/_loading/employment-hero.list_pending_timesheets_by_employee" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "skKpi":   { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "skCard1": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "md" } },
+      "skCard2": { "type": "Skeleton", "props": { "height": "9rem", "rounded": "md" } },
 
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No timesheets awaiting approval." },
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["kpiCount", "kpiOldest", "kpiHours"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_pending_timesheets_by_employee", "not": true },
-            { "$state": "/ui/timesheetRows/0", "not": true }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
+
+      "kpiCount": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiCountStack"] },
+      "kpiCountStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiCountHead", "kpiCountValue", "kpiCountNote"] },
+      "kpiCountHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiCountDot", "kpiCountLabel"] },
+      "kpiCountDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/count_tone" }, "size": "sm" } },
+      "kpiCountLabel": { "type": "Eyebrow", "props": { "text": "TO APPROVE" } },
+      "kpiCountValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/count" } } },
+      "kpiCountNote": { "type": "Caption", "props": { "tone": "muted", "text": { "$state": "/ui/board/count_note" } } },
+
+      "kpiOldest": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiOldestStack"] },
+      "kpiOldestStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiOldestHead", "kpiOldestValue", "kpiOldestNote"] },
+      "kpiOldestHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiOldestDot", "kpiOldestLabel"] },
+      "kpiOldestDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/oldest_tone" }, "size": "sm" } },
+      "kpiOldestLabel": { "type": "Eyebrow", "props": { "text": "OLDEST" } },
+      "kpiOldestValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/oldest_value" } } },
+      "kpiOldestNote": { "type": "Caption", "props": { "tone": "muted", "text": { "$state": "/ui/board/oldest_note" } } },
+
+      "kpiHours": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiHoursStack"] },
+      "kpiHoursStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiHoursHead", "kpiHoursValue", "kpiHoursNote"] },
+      "kpiHoursHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiHoursDot", "kpiHoursLabel"] },
+      "kpiHoursDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "kpiHoursLabel": { "type": "Eyebrow", "props": { "text": "HOURS" } },
+      "kpiHoursValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/hours_total" } } },
+      "kpiHoursNote": { "type": "Caption", "props": { "tone": "muted", "text": { "$state": "/ui/board/hours_note" } } },
+
+      "body": { "type": "Body", "props": {}, "children": ["list"] },
 
       "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["timesheetRow"],
-        "repeat": { "statePath": "/ui/timesheetRows", "key": "id" },
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["payrollCard"],
+        "repeat": { "statePath": "/ui/board/rows", "key": "id" },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_pending_timesheets_by_employee", "not": true },
-            { "$state": "/ui/timesheetRows/0" }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
 
-      "timesheetRow": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["timesheetRowContent", "timesheetRowDivider"]
+      "payrollCard": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["cardTopRow", "cardNameRow", "cardPeriodRow", "cardDivider", "cardBottomRow"]
       },
-      "timesheetRowContent": {
+
+      "cardTopRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center", "hover": true },
-        "children": ["timesheetLeft", "timesheetRight"]
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["cardStatusBadge", "cardLateNote"]
       },
-      "timesheetLeft": {
-        "type": "Stack", "props": { "gap": "none" },
-        "children": ["empName", "empHours"]
+      "cardStatusBadge": {
+        "type": "Badge",
+        "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" }
       },
-      "empName": {
+      "cardLateNote": {
+        "type": "Caption",
+        "props": { "tone": { "$item": "late_tone" }, "text": { "$item": "late_note" } }
+      },
+
+      "cardNameRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["cardAvatar", "cardName"],
+        "visible": { "$item": "has_name" }
+      },
+      "cardAvatar": {
+        "type": "Avatar",
+        "props": { "initials": { "$item": "initials" }, "tone": { "$item": "status_tone" }, "size": "sm" }
+      },
+      "cardName": {
         "type": "Text",
         "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "medium", "truncate": true }
       },
-      "empHours": {
+
+      "cardPeriodRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "template": "2.75rem minmax(0, 1fr)" },
+        "children": ["cardPeriodIconBox", "cardPeriodStack"]
+      },
+      "cardPeriodIconBox": { "type": "Section", "props": { "variant": "muted" }, "children": ["cardPeriodIcon"] },
+      "cardPeriodIcon": { "type": "Icon", "props": { "name": "CalendarDays", "tone": "brand", "size": "lg" } },
+      "cardPeriodStack": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["cardPeriodEyebrow", "cardPeriodRange", "cardPeriodDays"]
+      },
+      "cardPeriodEyebrow": { "type": "Eyebrow", "props": { "text": "PAY PERIOD" } },
+      "cardPeriodRange": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$item": "period_range" } }
+      },
+      "cardPeriodDays": {
         "type": "Caption",
-        "props": { "text": { "$item": "hours_display" } }
+        "props": { "tone": "muted", "text": { "$item": "period_days" } },
+        "visible": { "$item": "show_span" }
       },
-      "timesheetRight": {
-        "type": "Stack", "props": { "gap": "none", "align": "end" },
-        "children": ["timesheetStatus", "timesheetPeriod"]
+
+      "cardDivider": { "type": "Divider", "props": {} },
+
+      "cardBottomRow": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "center", "justify": "between" },
+        "children": ["cardHoursRow", "cardReviewButton"]
       },
-      "timesheetStatus": {
-        "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
-          "variant": "soft"
+      "cardHoursRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["cardHoursValue", "cardHoursLabel"]
+      },
+      "cardHoursValue": {
+        "type": "Heading",
+        "props": { "level": "h1", "text": { "$item": "hours_value" } }
+      },
+      "cardHoursLabel": { "type": "Caption", "props": { "tone": "muted", "text": "hours logged" } },
+      "cardReviewButton": {
+        "type": "Button",
+        "props": { "label": "Review", "variant": "secondary", "size": "sm" },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": { "url": "https://secure.employmenthero.com/", "target": "_blank" }
+          }
         }
       },
-      "timesheetPeriod": {
-        "type": "Caption",
-        "props": { "text": { "$item": "pay_period" } }
+
+      "emptyPanel": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_pending_timesheets_by_employee", "not": true },
+            { "$state": "/ui/board/has_rows", "not": true }
+          ]
+        }
       },
-      "timesheetRowDivider": { "type": "Divider", "props": {} },
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "ReceiptText", "tone": "success", "size": "lg" } },
+      "emptyTitle": { "type": "Text", "props": { "text": "Nothing to approve", "size": "sm", "weight": "medium" } },
+      "emptyNote": { "type": "Caption", "props": { "tone": "muted", "text": "Timesheets appear here once they are submitted for payroll approval." } },
 
       "footer": {
-        "type": "Row", "props": { "justify": "center" },
+        "type": "Row",
+        "props": { "justify": "center" },
         "children": ["footerText"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_pending_timesheets_by_employee", "not": true },
-            { "$state": "/ui/timesheetRows/0" }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Timesheets awaiting your approval · Employment Hero" }
+        "props": { "tone": "muted", "text": "Timesheets awaiting your approval · Employment Hero. Most overdue first." }
       }
 
     }

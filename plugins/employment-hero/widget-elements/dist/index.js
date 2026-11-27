@@ -892,6 +892,75 @@ const upcoming_leave_board = (args) => {
         next_days_note: days === 0 ? 'starts today' : days === 1 ? 'day to go' : 'days to go',
     };
 };
+// ── payroll_board ─────────────────────────────────────────────────────────────
+// Builds the Payrolls to Approve tile from pending timesheet entries already
+// grouped per employee by the connector. Each group becomes a card: how late it
+// is against its own period end, the period itself, and the hours logged.
+//
+// The employee name is rendered only when the connector supplies one.
+// list_pending_timesheets_by_employee does not join against /employees the way
+// the leave tools do, so today it returns an empty name and the card simply
+// leads with the pay period. It will start naming people the moment that join
+// is added, with no change here.
+//
+// Args: { value: grouped items array from list_pending_timesheets_by_employee }
+const payroll_board = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTs = today.getTime();
+    const rows = raw.map(item => {
+        const name = String(item.employee_name ?? '').trim();
+        const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+        const { display: endDisplay, ts: endTs } = formatEhDate(item.end_date);
+        const periodRange = !endDisplay || endDisplay === startDisplay
+            ? startDisplay
+            : `${startDisplay} → ${endDisplay}`;
+        // Inclusive of both ends: a Monday-to-Monday period is 8 days of timesheet,
+        // not 7, which is what someone checking the dates would count.
+        const spanDays = startTs > 0 && endTs > 0
+            ? Math.round((endTs - startTs) / 86_400_000) + 1
+            : 0;
+        const daysLate = endTs > 0 ? Math.round((todayTs - endTs) / 86_400_000) : 0;
+        const overdue = endTs > 0 && daysLate > 0;
+        const hours = Number(item.total_hours ?? 0);
+        return {
+            id: String(item.id ?? ''),
+            has_name: name !== '',
+            employee_name: name,
+            initials: name ? initialsOf(name) : '',
+            status_label: overdue ? 'Overdue' : 'Pending',
+            status_tone: overdue ? 'destructive' : 'warning',
+            late_note: overdue ? `${daysLate} days past period end` : 'Period still open',
+            late_tone: overdue ? 'destructive' : 'muted',
+            period_range: periodRange || 'No period on record',
+            period_days: spanDays > 0 ? `${spanDays} days` : '',
+            show_span: spanDays > 0,
+            // One decimal throughout, so a genuine zero reads as a measured zero
+            // rather than as a missing value.
+            hours_value: hours.toFixed(1),
+            days_late: daysLate,
+            end_ts: endTs,
+        };
+    });
+    // Furthest past its period end first.
+    rows.sort((a, b) => b.days_late - a.days_late);
+    const overdueRows = rows.filter(r => r.days_late > 0);
+    const oldest = overdueRows.length > 0 ? overdueRows[0].days_late : 0;
+    const totalHours = raw.reduce((sum, item) => sum + Number(item.total_hours ?? 0), 0);
+    return {
+        rows,
+        has_rows: rows.length > 0,
+        count: rows.length,
+        count_note: rows.length === 1 ? 'timesheet' : 'timesheets',
+        count_tone: overdueRows.length > 0 ? 'destructive' : rows.length > 0 ? 'warning' : 'success',
+        oldest_value: overdueRows.length > 0 ? `${oldest} days` : 'None',
+        oldest_note: overdueRows.length > 0 ? 'past due' : 'nothing past due',
+        oldest_tone: overdueRows.length > 0 ? 'destructive' : 'success',
+        hours_total: totalHours.toFixed(1),
+        hours_note: 'total logged',
+    };
+};
 const elements = {
     slug: 'employment-hero',
     functions: {
@@ -908,6 +977,7 @@ const elements = {
         leave_approvals_board,
         my_leave_board,
         upcoming_leave_board,
+        payroll_board,
         flatten_timesheets_to_approve,
         flatten_direct_reports_upcoming_leave,
         flatten_timesheet_daily_summary,
