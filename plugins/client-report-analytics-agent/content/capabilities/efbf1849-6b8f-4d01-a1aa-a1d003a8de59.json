@@ -1,0 +1,72 @@
+{
+  "contentHash": "fc9010b6d7a16b6abb5dc07b938b3f305b35bca1216081fc9007d085f4503ace",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "includeJunk": "includeJunk",
+          "limit": "limit",
+          "mailbox": "mailbox",
+          "query": "query"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "search_emails"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "includeJunk": {
+          "description": "Include provider-designated Junk. Omit to exclude it.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max messages to return.",
+          "type": "integer"
+        },
+        "mailbox": {
+          "description": "A shared mailbox to search instead of the signed-in user's own, if connected.",
+          "type": "string"
+        },
+        "query": {
+          "description": "Search text.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "key": "m365.mail.search",
+    "kind": "capability",
+    "originKey": "efbf1849-6b8f-4d01-a1aa-a1d003a8de59",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "messages": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Search Outlook mail"
+  },
+  "kind": "capability",
+  "name": "Search Outlook mail",
+  "originKey": "efbf1849-6b8f-4d01-a1aa-a1d003a8de59"
+}

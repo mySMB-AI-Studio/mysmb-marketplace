@@ -1,0 +1,89 @@
+{
+  "contentHash": "f6601539f3ddcf8010c1404eac333ef35de30c6e72999434c2cd18d9b3a5233a",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "folder": "folder",
+          "includeJunk": "includeJunk",
+          "limit": "limit",
+          "mailbox": "mailbox",
+          "oldestFirst": "oldestFirst",
+          "receivedAfter": "receivedAfter",
+          "skip": "skip",
+          "unreadOnly": "unreadOnly"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "list_emails"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "folder": {
+          "description": "Mail folder: a well-known name (inbox, sentitems...), a folder id, or a display-name path.",
+          "type": "string"
+        },
+        "includeJunk": {
+          "description": "Include provider-designated Junk. Omit to exclude it.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max messages to return.",
+          "type": "integer"
+        },
+        "mailbox": {
+          "description": "A shared mailbox to read instead of the signed-in user's own, if connected.",
+          "type": "string"
+        },
+        "oldestFirst": {
+          "description": "Return oldest first instead of newest first.",
+          "type": "boolean"
+        },
+        "receivedAfter": {
+          "description": "ISO date-time; only messages received after this.",
+          "type": "string"
+        },
+        "skip": {
+          "description": "Paging offset.",
+          "type": "integer"
+        },
+        "unreadOnly": {
+          "description": "Only unread messages.",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "key": "m365.mail.list",
+    "kind": "capability",
+    "originKey": "c70910dd-8c9d-4015-bedf-e53d06134f43",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "messages": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "List Outlook mail"
+  },
+  "kind": "capability",
+  "name": "List Outlook mail",
+  "originKey": "c70910dd-8c9d-4015-bedf-e53d06134f43"
+}

@@ -1,0 +1,138 @@
+{
+  "contentHash": "389fdf2ea52165ad89c3dd6c908f8a5e63808274dd68786d9d44dedbc1c7c62f",
+  "definition": {
+    "color": null,
+    "description": "One logged action against a work item: who (or the agent), what changed, and when. Kept by Email Management.",
+    "fields": [
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "summary",
+        "kind": "text",
+        "label": "Summary",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:em_work_items"
+        },
+        "groupLabel": null,
+        "key": "work_item",
+        "kind": "relation",
+        "label": "Work item",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "helpText": "A person's name, or \"Email Management\" when the agent did it.",
+          "maxLength": 120
+        },
+        "groupLabel": null,
+        "key": "actor_label",
+        "kind": "text",
+        "label": "By",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "status_change",
+              "label": "Status changed"
+            },
+            {
+              "key": "owner_change",
+              "label": "Owner changed"
+            },
+            {
+              "key": "note_added",
+              "label": "Note added"
+            },
+            {
+              "key": "draft_created",
+              "label": "Draft created"
+            },
+            {
+              "key": "workq_created",
+              "label": "WorkQ item created"
+            },
+            {
+              "key": "snoozed",
+              "label": "Snoozed"
+            },
+            {
+              "key": "ignored",
+              "label": "Marked as ignored"
+            },
+            {
+              "key": "synced",
+              "label": "Updated from new mail"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "action_type",
+        "kind": "select",
+        "label": "Action",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 2000
+        },
+        "groupLabel": null,
+        "key": "details",
+        "kind": "long_text",
+        "label": "Details",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "groupLabel": null,
+        "key": "occurred_at",
+        "kind": "datetime",
+        "label": "When",
+        "position": 5,
+        "required": false,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": true
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Activity log",
+    "labelSingular": "Activity log entry",
+    "settings": {
+      "packageWritesOnly": true
+    },
+    "slug": "em_activity_log",
+    "titleFieldKey": "summary"
+  },
+  "kind": "record_type",
+  "name": "Activity log",
+  "originKey": "da389212-4da1-47a6-a06c-f300bbb34747"
+}
