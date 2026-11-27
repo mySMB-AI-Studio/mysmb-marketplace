@@ -50,6 +50,14 @@ function formatEhDate(raw: unknown): { display: string; ts: number } {
   };
 }
 
+// ── initialsOf ────────────────────────────────────────────────────────────────
+// First letter of the first two words of a name, for Avatar initials.
+function initialsOf(name: string): string {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
 // ── flatten_employees ─────────────────────────────────────────────────────────
 // Sort and normalise raw EH employee objects into display-ready row data.
 // Args: { value: raw items array, key: sort key e.g. "full_name|asc" }
@@ -613,6 +621,76 @@ const flatten_team_timesheet_entries: ComputedFunction = (args) => {
   return rows;
 };
 
+// ── compliance_board ──────────────────────────────────────────────────────────
+// Builds the whole Compliances at Risk tile from the pre-filtered at-risk
+// certification list. The server decides what counts as at risk; this adds the
+// display shape — employee split from certification, initials, a days-past-due
+// badge and the three summary figures — and sorts most overdue first.
+// Args: { value: pre-filtered items array from list_compliance_documents }
+const compliance_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw.map(item => {
+    const certName = String(
+      item.name ?? item.certification_name ?? item.document_name ?? item.title ?? '',
+    ).trim();
+    const empName = String(item.employee_name ?? '').trim();
+
+    const dueRaw = item.due_date ?? item.expiry_date ?? item.expires_at;
+    const { display: dueDisplay, ts: dueTs } = formatEhDate(dueRaw);
+
+    // Days are measured from the date the row actually shows, so the badge and
+    // the date beneath it can never disagree. A record with no usable date gets
+    // -1 and sorts to the bottom rather than reading as "due today".
+    const days = dueTs > 0 ? Math.round((todayTs - dueTs) / 86_400_000) : -1;
+
+    return {
+      id:            String(item.id ?? ''),
+      employee_name: empName || 'Unknown employee',
+      initials:      initialsOf(empName),
+      cert_name:     certName || 'Certification',
+      due_display:   dueDisplay ? `Due ${dueDisplay}` : 'Date not set',
+      badge_label:   days > 0 ? `${days}d overdue` : days === 0 ? 'Due today' : 'No due date',
+      badge_tone:    days > 0 ? 'destructive' : days === 0 ? 'warning' : 'muted',
+      days,
+    };
+  });
+
+  rows.sort((a, b) => b.days - a.days || a.employee_name.localeCompare(b.employee_name));
+
+  const overdue = rows.filter(r => r.days > 0);
+  const dueToday = rows.filter(r => r.days === 0).length;
+  const oldest = overdue.length > 0 ? overdue[0].days : 0;
+  const people = new Set(rows.map(r => r.employee_name)).size;
+  const certTypes = new Set(rows.map(r => r.cert_name)).size;
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+
+    overdue_count: overdue.length,
+    // The caption names the items due today only when there are some, so the
+    // headline figure is never read as covering them.
+    overdue_note: dueToday > 0
+      ? `plus ${dueToday} due today`
+      : overdue.length === 1 ? 'certification' : 'certifications',
+    overdue_tone: overdue.length > 0 ? 'destructive' : 'warning',
+
+    // "Oldest" is a span of time, so with nothing past its date there is no
+    // number to show — saying none is truer than showing a zero.
+    oldest_value: overdue.length > 0 ? `${oldest} days` : 'None',
+    oldest_note:  overdue.length > 0 ? 'past due date' : 'nothing past due',
+    oldest_tone:  overdue.length > 0 ? 'destructive' : 'warning',
+
+    people_count: people,
+    cert_note:    `${certTypes} certification type${certTypes === 1 ? '' : 's'}`,
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'employment-hero',
   functions: {
@@ -625,6 +703,7 @@ const elements: PluginElementsModule = {
     flatten_my_leave_requests,
     flatten_my_upcoming_leave,
     flatten_compliance_at_risk,
+    compliance_board,
     flatten_timesheets_to_approve,
     flatten_direct_reports_upcoming_leave,
     flatten_timesheet_daily_summary,
