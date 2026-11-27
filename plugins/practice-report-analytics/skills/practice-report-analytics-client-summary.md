@@ -18,14 +18,15 @@ Use when the user asks for the Client Summary Metrics (PRA-01) across the practi
 
 ## Template
 
-| Template slug | Tool (per platform) |
-|---|---|
-| `practice-client-summary` | `get_practice_client_summary` on `xero-accounting` and `myob-accounting` |
+| Template slug | Xero | MYOB |
+|---|---|---|
+| `practice-client-summary` | read per organisation by the report from the Xero API connector (`xero-api`) | `get_practice_client_summary` on `myob-accounting` |
 
 | Input | Label | Type | Default |
 |---|---|---|---|
 | `as_at` | As at | date | `today` |
 | `clients` | Clients | string | `` |
+| `org` | Xero organisation (set by the report, one per call: leave empty) | string | `` |
 
 ## Steps
 
@@ -35,7 +36,8 @@ Use when the user asks for the Client Summary Metrics (PRA-01) across the practi
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Every client row comes from `get_practice_client_summary`; a client that failed to load is named in a notice, not silently dropped from the totals.
+- Every Xero row is read by the report from the Xero API connector, one organisation at a time (a large practice can take a minute or two to load, and the report shows its progress); every MYOB row comes from `get_practice_client_summary`. A client that failed to load is named in a notice, not silently dropped from the totals.
+- A snapshot can't hold the per-organisation Xero reads, so a snapshot shows the MYOB clients and says so for Xero.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
 
 ## QA test (sandbox / demo organisations only)

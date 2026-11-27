@@ -18,9 +18,9 @@ Use when the user asks for the Financial Overview (PRA-06) across the practice: 
 
 ## Template
 
-| Template slug | Tool (per platform) |
-|---|---|
-| `practice-financial-overview` | `get_practice_financial_overview` on `xero-accounting` and `myob-accounting` |
+| Template slug | Xero | MYOB |
+|---|---|---|
+| `practice-financial-overview` | read per organisation by the report from the Xero API connector (`xero-api`) | `get_practice_financial_overview` on `myob-accounting` |
 
 | Input | Label | Type | Default |
 |---|---|---|---|
@@ -28,6 +28,7 @@ Use when the user asks for the Financial Overview (PRA-06) across the practice: 
 | `to_date` | To | date | `today` |
 | `basis` | Basis | enum (Accrual / Cash) | `Accrual` |
 | `clients` | Clients | string | `` |
+| `org` | Xero organisation (set by the report, one per call: leave empty) | string | `` |
 
 ## Steps
 
@@ -37,7 +38,8 @@ Use when the user asks for the Financial Overview (PRA-06) across the practice: 
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Every client row comes from `get_practice_financial_overview`; a client that failed to load is named in a notice, not silently dropped from the totals.
+- Every Xero row is read by the report from the Xero API connector, one organisation at a time (a large practice can take a minute or two to load, and the report shows its progress); every MYOB row comes from `get_practice_financial_overview`. A client that failed to load is named in a notice, not silently dropped from the totals.
+- A snapshot can't hold the per-organisation Xero reads, so a snapshot shows the MYOB clients and says so for Xero.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
 - Gross profit and net profit follow the same P&L formulas as Client Report Analytics' own Financial Overview, per client — not a separate calculation.
 

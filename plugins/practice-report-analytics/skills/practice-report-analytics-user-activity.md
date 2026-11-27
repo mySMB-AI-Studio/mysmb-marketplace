@@ -18,9 +18,9 @@ Use when the user asks for the User Activity (PRA-12) across the practice: What 
 
 ## Template
 
-| Template slug | Tool (per platform) |
-|---|---|
-| `practice-user-activity` | `get_practice_client_summary` on `xero-accounting` and `myob-accounting` |
+| Template slug | Xero | MYOB |
+|---|---|---|
+| `practice-user-activity` | read per organisation by the report from the Xero API connector (`xero-api`) | `get_practice_client_summary` on `myob-accounting` |
 
 | Input | Label | Type | Default |
 |---|---|---|---|
@@ -35,9 +35,10 @@ Use when the user asks for the User Activity (PRA-12) across the practice: What 
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Every client row comes from `get_practice_client_summary`; a client that failed to load is named in a notice, not silently dropped from the totals.
+- Every Xero row is read by the report from the Xero API connector, one organisation at a time (a large practice can take a minute or two to load, and the report shows its progress); every MYOB row comes from `get_practice_client_summary`. A client that failed to load is named in a notice, not silently dropped from the totals.
+- A snapshot can't hold the per-organisation Xero reads, so a snapshot shows the MYOB clients and says so for Xero.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
-- This reuses get_practice_client_summary's connection-level last-sync field — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.
+- This uses each connection's last-sync time (Xero: the organisation list; MYOB: get_practice_client_summary) — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.
 
 ## QA test (sandbox / demo organisations only)
 
