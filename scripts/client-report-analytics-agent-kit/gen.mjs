@@ -417,7 +417,7 @@ const processDefinition = {
   instructions: PROCESS_INSTRUCTIONS,
   statuses: [
     status('finding', 'Finding the client', 'initial',
-      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call get_connected_tenants and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call list_organisation_details and note whether the client is registered for GST, its GST basis and its BAS period. Rename the job with job_rename to "BAS readiness review: <client> <period label>" so people can find it. Record the outputs and move to Checking.',
+      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call get_connected_tenants and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call list_organisation_details and note whether the client is registered for GST (paysTax), its GST basis (salesTaxBasis: CASH or ACCRUALS) and its BAS period (salesTaxPeriod); the organisation is data._Organisations[0]. Rename the job with job_rename to "BAS readiness review: <client> <period label>" so people can find it. Record the outputs and move to Checking.',
       { outputs: [
         { key: 'clientName', type: 'string' }, { key: 'xeroTenantId', type: 'string' },
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },

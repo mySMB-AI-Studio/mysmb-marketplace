@@ -51,7 +51,7 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 
 - The job's inputs give `clientName`, `periodStart` and `periodEnd` (YYYY-MM-DD).
 - Call `get_connected_tenants` and match `clientName` to a `tenantName`. Use its `tenantId` as `xero_tenant_id` on every other call. If nothing matches, or two do, ask for help and name the organisations you can see. Never guess.
-- Call `list_organisation_details`: record whether the business is registered for GST (`gstRegistered`), its GST basis (`gstBasis`: cash or accrual) and a period label such as "Jul–Sep 2026" (`periodLabel`). Say in a job comment if the period doesn't look like one of its BAS periods.
+- Call `list_organisation_details` (the organisation is `data._Organisations[0]`): record whether the business is registered for GST (`gstRegistered`, from its `paysTax`), its GST basis (`gstBasis`: cash or accrual, from `salesTaxBasis` CASH or ACCRUALS), its BAS period from `salesTaxPeriod` (e.g. QUARTERLY1) and a period label such as "Jul–Sep 2026" (`periodLabel`). Say in a job comment if the period doesn't look like one of its BAS periods.
 
 ## 3. Run the checks (status: Checking)
 
