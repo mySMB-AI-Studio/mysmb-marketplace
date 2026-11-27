@@ -12,3 +12,9 @@ the retiring xero-accounting MCP server; it reads Xero through the Xero API conn
 Verified on 27 Nov 2026: the original TypeScript and this port were run on 2,000 generated Xero ledgers through the
 same fake Xero data; all 2,000 results were identical (every rule fired in hundreds of them). The automation's flow
 passes myHubV2's `flowIrSchema` and `validateFlowSemantics` with no issues.
+
+**Sandbox rule (28 Nov 2026):** node code runs with a guarded `__import__`, and C-level calls that import a helper
+module lazily go through it too. `datetime.strptime` (imports `_strptime`) failed every run on QA, so dates are parsed
+and formatted by hand and there is no `functools` or `strftime`. Before shipping a change, run the step's code under the
+same guard (allowed stdlib roots from myHubV2 `sandbox-bootstrap.py`, banned builtins removed): the 27 Nov version
+failed 300/300 simulated runs, the fixed one passes 300/300 and still matches the TypeScript original on 2,000 ledgers.
