@@ -1,0 +1,183 @@
+{
+  "contentHash": "4bc778a048cfbe7320e8a66bb8d02c8f324763134ae9ff3c6cad56faf407c483",
+  "definition": {
+    "color": null,
+    "description": "One email the triage sync read, linked to the work item it belongs to (or none, if classified as noise). Kept by Email Management: changed only by its own automations.",
+    "fields": [
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "message_title",
+        "kind": "text",
+        "label": "Message",
+        "position": 0,
+        "promoted": "title",
+        "required": true,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "many": false,
+          "onTargetDelete": "unlink",
+          "target": "record:em_work_items"
+        },
+        "groupLabel": null,
+        "key": "work_item",
+        "kind": "relation",
+        "label": "Work item",
+        "position": 1,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "message_id",
+        "kind": "text",
+        "label": "Mailbox message id",
+        "position": 2,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "thread_id",
+        "kind": "text",
+        "label": "Thread id",
+        "position": 3,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "maxLength": 300
+        },
+        "groupLabel": null,
+        "key": "from_address",
+        "kind": "text",
+        "label": "From",
+        "position": 4,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "inbound",
+              "label": "Received"
+            },
+            {
+              "key": "outbound",
+              "label": "Sent"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "direction",
+        "kind": "select",
+        "label": "Direction",
+        "position": 5,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "received_at",
+        "kind": "datetime",
+        "label": "Received",
+        "position": 6,
+        "required": false,
+        "searchable": false,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "config": {
+          "maxLength": 2000
+        },
+        "groupLabel": null,
+        "key": "preview",
+        "kind": "long_text",
+        "label": "Preview",
+        "position": 7,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": false
+      },
+      {
+        "config": {
+          "options": [
+            {
+              "key": "real",
+              "label": "Real correspondence"
+            },
+            {
+              "key": "noise_newsletter",
+              "label": "Newsletter/marketing"
+            },
+            {
+              "key": "noise_notification",
+              "label": "Platform notification"
+            },
+            {
+              "key": "noise_no_reply",
+              "label": "No-reply sender"
+            }
+          ]
+        },
+        "groupLabel": null,
+        "key": "classification",
+        "kind": "select",
+        "label": "Classification",
+        "position": 8,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      },
+      {
+        "groupLabel": null,
+        "key": "is_ignored",
+        "kind": "boolean",
+        "label": "Ignored",
+        "position": 9,
+        "required": false,
+        "searchable": true,
+        "showInDetail": true,
+        "showInList": true
+      }
+    ],
+    "icon": null,
+    "labelPlural": "Email messages",
+    "labelSingular": "Email message",
+    "settings": {
+      "packageWritesOnly": true
+    },
+    "slug": "em_messages",
+    "titleFieldKey": "message_title"
+  },
+  "kind": "record_type",
+  "name": "Email messages",
+  "originKey": "d1f92571-f7a7-4165-ab22-eabd75832922"
+}

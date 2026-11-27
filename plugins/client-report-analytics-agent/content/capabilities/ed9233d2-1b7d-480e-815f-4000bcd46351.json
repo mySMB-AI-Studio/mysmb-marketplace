@@ -1,0 +1,59 @@
+{
+  "contentHash": "7613b7f593996c4482737898fef195c19c7327da12b44be20fa6672c224d8c88",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "id": "id",
+          "includeJunk": "includeJunk",
+          "mailbox": "mailbox"
+        },
+        "scopes": [
+          "Mail.Read"
+        ],
+        "server": "m365-mail-read",
+        "tool": "get_email"
+      }
+    ],
+    "idempotency": {
+      "supported": true
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Email message id.",
+          "type": "string"
+        },
+        "includeJunk": {
+          "description": "Include provider-designated Junk. Omit to exclude it.",
+          "type": "boolean"
+        },
+        "mailbox": {
+          "description": "A shared mailbox, if connected.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "key": "m365.mail.get",
+    "kind": "capability",
+    "originKey": "ed9233d2-1b7d-480e-815f-4000bcd46351",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-read"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "read",
+    "title": "Read one Outlook message"
+  },
+  "kind": "capability",
+  "name": "Read one Outlook message",
+  "originKey": "ed9233d2-1b7d-480e-815f-4000bcd46351"
+}

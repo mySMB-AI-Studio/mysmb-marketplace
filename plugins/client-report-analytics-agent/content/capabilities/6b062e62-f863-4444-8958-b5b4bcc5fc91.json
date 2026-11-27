@@ -1,0 +1,62 @@
+{
+  "contentHash": "9dc36e5abdf9fa52c0e6219fb3efc171eba185d08a8f2f8db551e3613a9db989",
+  "definition": {
+    "bindings": [
+      {
+        "argMap": {
+          "comment": "comment",
+          "messageId": "messageId"
+        },
+        "scopes": [
+          "Mail.ReadWrite"
+        ],
+        "server": "m365-mail-send",
+        "tool": "create_reply_draft"
+      }
+    ],
+    "idempotency": {
+      "supported": false
+    },
+    "inputsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "comment": {
+          "description": "Reply content to seed the draft with.",
+          "type": "string"
+        },
+        "messageId": {
+          "description": "The email message id to reply to.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "messageId"
+      ],
+      "type": "object"
+    },
+    "key": "m365.mail.draft_reply",
+    "kind": "capability",
+    "originKey": "6b062e62-f863-4444-8958-b5b4bcc5fc91",
+    "outputsSchema": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "webLink": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "permissionRequirements": [
+      "connectors:m365-mail-send"
+    ],
+    "schemaVersion": 1,
+    "sideEffectClass": "write_external",
+    "title": "Draft a reply in Outlook"
+  },
+  "kind": "capability",
+  "name": "Draft a reply in Outlook",
+  "originKey": "6b062e62-f863-4444-8958-b5b4bcc5fc91"
+}

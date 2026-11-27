@@ -1,0 +1,121 @@
+{
+  "document": {
+    "actions": [],
+    "bindings": [
+      {
+        "config": {
+          "limit": 10
+        },
+        "id": "b_review",
+        "kind": "agent.decisions"
+      },
+      {
+        "config": {
+          "limit": 5,
+          "status": "in_progress"
+        },
+        "id": "b_open",
+        "kind": "agent.jobs"
+      },
+      {
+        "config": {
+          "limit": 5,
+          "status": "not_started"
+        },
+        "id": "b_queue",
+        "kind": "agent.jobs"
+      },
+      {
+        "config": {
+          "limit": 5,
+          "status": "done"
+        },
+        "id": "b_done",
+        "kind": "agent.jobs"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "root",
+        "parentId": null,
+        "props": {
+          "padding": "none"
+        },
+        "type": "section"
+      },
+      {
+        "id": "h",
+        "parentId": "root",
+        "props": {
+          "level": 2,
+          "text": "Email Management"
+        },
+        "type": "heading"
+      },
+      {
+        "bindingIds": [
+          "b_review"
+        ],
+        "id": "review",
+        "parentId": "root",
+        "props": {
+          "title": "Waiting for you"
+        },
+        "type": "workq"
+      },
+      {
+        "id": "cols",
+        "parentId": "root",
+        "props": {
+          "columns": 2
+        },
+        "type": "columns"
+      },
+      {
+        "bindingIds": [
+          "b_open"
+        ],
+        "id": "open",
+        "parentId": "cols",
+        "props": {
+          "title": "Syncing now"
+        },
+        "type": "workq"
+      },
+      {
+        "bindingIds": [
+          "b_queue"
+        ],
+        "id": "queue",
+        "parentId": "cols",
+        "props": {
+          "title": "Waiting to start"
+        },
+        "type": "workq"
+      },
+      {
+        "bindingIds": [
+          "b_done"
+        ],
+        "id": "done",
+        "parentId": "root",
+        "props": {
+          "title": "Recently finished"
+        },
+        "type": "workq"
+      },
+      {
+        "id": "board",
+        "parentId": "root",
+        "props": {
+          "href": "/records/em_work_items",
+          "label": "Open the Email Work Items board"
+        },
+        "type": "button"
+      }
+    ],
+    "rootId": "root",
+    "schemaVersion": 1
+  },
+  "version": 1
+}
