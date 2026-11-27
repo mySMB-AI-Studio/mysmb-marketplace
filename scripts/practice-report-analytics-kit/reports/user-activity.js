@@ -28,6 +28,8 @@ module.exports = function build() {
     tool: 'get_practice_client_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
+    // Xero rows are read per organisation in the report from xero-api (xero-fan.js); MYOB still uses its tool.
+    xeroFan: { kind: 'connections' },
     qbNote: 'one company per connection — QuickBooks’ own Audit Log is per-company; ask mySidekick or the Client Reporting Agent for that company.',
     notice: 'Neither Xero nor MYOB exposes a practice-wide, bulk audit-log/history API through this connector: Xero’s History & Notes endpoint is per-record only (one call per invoice, bill or contact — not practical across a whole practice); MYOB’s AccountRight API has no general audit-log endpoint. QuickBooks’ Audit Log is per-company and is excluded from every practice-wide report, the same exclusion as PRA-01–06. “Last synced” below is the closest genuine signal available until a bulk audit feed exists — it is a connection-level timestamp, not a ledger event.',
     staticNA: {

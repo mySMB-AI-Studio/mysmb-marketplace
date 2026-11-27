@@ -10,6 +10,8 @@ module.exports = function build() {
     tool: 'get_practice_sales_summary', // named in the footer and the Excel Parameters sheet
     chips: ['Overdue only'],
     sources: { xero: 'xero', myob: 'myob' },
+    // Xero rows are read per organisation in the report from xero-api (xero-fan.js); MYOB still uses its tool.
+    xeroFan: { kind: 'sales' },
     qbNote: 'one company per connection — open its Sales by Tracking Category or Financial Overview from the Client Report Analytics reports (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     // get_practice_sales_summary: both platforms agree on these names.
     fieldAliases: {

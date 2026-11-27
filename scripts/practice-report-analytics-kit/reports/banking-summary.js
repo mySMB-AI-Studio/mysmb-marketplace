@@ -9,6 +9,8 @@ module.exports = function build() {
     tool: 'get_practice_banking_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
+    // Xero rows are read per organisation in the report from xero-api (xero-fan.js); MYOB still uses its tool.
+    xeroFan: { kind: 'banking' },
     qbNote: 'one company per connection, and bank-feed/unreconciled data is not in the QuickBooks Accounting API — the Client Report Analytics reports show what is available for it (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     // get_practice_banking_summary: both platforms agree on these names, except the unreconciled $
     // amount (MYOB: unreconciledAmount, same as Xero — identity, included for clarity/regression safety).
