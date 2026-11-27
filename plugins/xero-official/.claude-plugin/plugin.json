@@ -1,8 +1,8 @@
 {
   "name": "xero-official",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Xero Official",
-  "description": "Connect Workspace to Xero's official hosted MCP server. Read your organisation settings, invoices and the aged receivables/payables, balance sheet and profit and loss reports. Sign in with your Xero login; no Xero developer app needed.",
+  "description": "Connect Workspace to Xero's official hosted MCP server. Read and write Xero accounting data: organisation settings, contacts, invoices, credit notes, bank transactions, payments, manual journals and the P&L, balance sheet, trial balance and aged reports. Sign in with your Xero login; no Xero developer app needed.",
   "author": {
     "name": "mySMB AI Studio"
   },
@@ -26,12 +26,12 @@
     "tagline": "Xero's own hosted MCP server, one-click sign-in"
   },
   "listing": {
-    "longDescription": "**Xero Official** connects Workspace to Xero's own hosted MCP server at `mcp.xero.com`, so Claude can read your Xero data directly from Xero.\n\nClick **Connect**, sign in with your Xero login and choose which organisations to share. mySMB's registered Xero app handles the sign-in, so you never need to create an app in the Xero developer portal.\n\nThe hosted server is **read-only**: it can read organisation settings, invoices, and the aged receivables and payables, balance sheet and profit and loss reports. It cannot create or change anything in Xero. For write access, use the **Xero Accounting** extension.",
+    "longDescription": "**Xero Official** connects Workspace to Xero's own hosted MCP server at `api.xero.com/mcp/v1`, so Claude can work with your Xero data directly through Xero.\n\nClick **Connect**, sign in with your Xero login and choose which organisations to share. mySMB's registered Xero app handles the sign-in, so you never need to create an app in the Xero developer portal.\n\nXero's server has 39 Accounting tools: it can read organisation settings, contacts, invoices, credit notes, items, quotes, bank transactions, payments, manual journals, tracking categories and the profit and loss, balance sheet, trial balance and aged reports, and it can create and update records. Agents should confirm with you before anything is written to Xero.",
     "highlights": [
       "Xero's own hosted MCP server",
       "One-click Connect, no Xero developer app needed",
-      "Invoices, aged receivables and payables, balance sheet, P&L",
-      "Read-only: nothing in Xero is changed"
+      "Contacts, invoices, bank transactions, payments, journals and core reports",
+      "Agents confirm before writing to Xero"
     ],
     "publisher": {
       "name": "mySMB AI Studio",
@@ -55,7 +55,13 @@
       "accounting.invoices.read",
       "accounting.reports.aged.read",
       "accounting.reports.balancesheet.read",
-      "accounting.reports.profitandloss.read"
+      "accounting.reports.profitandloss.read",
+      "accounting.settings.read",
+      "accounting.contacts.read",
+      "accounting.banktransactions.read",
+      "accounting.payments.read",
+      "accounting.manualjournals.read",
+      "accounting.reports.trialbalance.read"
     ],
     "serverClientEnv": {
       "clientId": "XERO_MCP_OAUTH_CLIENT_ID",

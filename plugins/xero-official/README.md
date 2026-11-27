@@ -1,6 +1,8 @@
 # Xero Official
 
-Connects Workspace to **Xero's own hosted MCP server** (`https://mcp.xero.com/mcp`, HTTP transport).
+Connects Workspace to **Xero's own hosted MCP server** (`https://api.xero.com/mcp/v1`, HTTP transport), the URL in Xero's
+Remote MCP docs (developer.xero.com/documentation/guides/remote-mcp/overview). The server publishes OAuth
+protected-resource metadata at `https://api.xero.com/.well-known/oauth-protected-resource/mcp/v1`.
 
 ## Configuration
 
@@ -26,7 +28,15 @@ Shared (admin) connections use `/api/admin/service-connections/oauth/callback` o
 
 ## Scopes and tools
 
-Read-only. Requested scopes match the server's published `scopes_supported`: `openid profile email
-offline_access accounting.settings accounting.invoices.read accounting.reports.aged.read
-accounting.reports.balancesheet.read accounting.reports.profitandloss.read`. For write access use the
-`xero-accounting` plugin.
+Xero's server has 39 Accounting tools (18 read, 21 write); each tool needs its own scope, and an agent can only
+call tools whose scope the connection was granted. Requested scopes (all from the server's published
+`scopes_supported`): `openid profile email offline_access accounting.settings accounting.settings.read
+accounting.invoices.read accounting.contacts.read accounting.banktransactions.read accounting.payments.read
+accounting.manualjournals.read accounting.reports.aged.read accounting.reports.balancesheet.read
+accounting.reports.profitandloss.read accounting.reports.trialbalance.read`.
+
+Write scopes (`accounting.invoices`, `accounting.contacts`, `accounting.banktransactions`, `accounting.payments`,
+`accounting.manualjournals`) are not requested yet; add them when an agent that writes moves to this connector.
+Xero's tools don't ask for confirmation before writing, so an agent must confirm with the user first.
+
+Access to real (non-demo) organisations needs mySMB's Xero app to be on Xero's Core plan or above.
