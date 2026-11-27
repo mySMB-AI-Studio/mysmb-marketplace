@@ -6,14 +6,18 @@ const { ok, done } = suite('activity-count');
 const REF = 'reports/activity-count', man = manifest(REF);
 
 // Xero never sources payroll (separate xero-payroll-au connector) — payrollCount_na is always set.
-const xeroOk = () => ({
-  asOf: '2026-10-08T02:00:00.000Z',
-  clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', salesCount: 40, purchasesCount: 20, bankingCount: 65, journalsCount: 3, payrollCount_na: 'Payroll transaction counts require the Xero Payroll AU connector, which this agent does not connect.', totalCount: 128 },
-    { id: 'xt-2', name: 'Southgate Services Ltd', salesCount: 5, purchasesCount: 2, bankingCount: 8, journalsCount: 0, payrollCount_na: 'Payroll transaction counts require the Xero Payroll AU connector, which this agent does not connect.', totalCount: 15 }
-  ],
-  errors: [], totals: {}, truncated: false
-});
+// Xero side: raw Xero responses per organisation (xero-raw.js) for the report's own fan-out (xero-fan.js): each
+// list is read with page=1 and counted from Xero's pagination.itemCount.
+const { counted, orgs } = require('../xero-raw.js');
+const wheres = [];
+const acts = (sales, purchases, banking, journals) => ({
+  x_inv: (p) => { wheres.push(p.where); return counted('Invoices', /Type=="ACCREC"/.test(p.where) ? sales : purchases); },
+  x_bt: (p) => { wheres.push(p.where); return counted('BankTransactions', banking); },
+  x_mj: (p) => { wheres.push(p.where); return counted('ManualJournals', journals); } });
+const xeroOrgs = () => orgs([
+  { tenantId: 'xt-1', tenantName: 'Irvine Jackson Pty Ltd', fx: acts(40, 20, 65, 3) },
+  { tenantId: 'xt-2', tenantName: 'Southgate Services Ltd', fx: acts(5, 2, 8, 0) }
+]);
 // MYOB sources payroll (listPayrollAdvices lives in the same connector).
 const myobOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
@@ -22,7 +26,7 @@ const myobOk = () => ({
 });
 
 (async () => {
-  let t = await run(REF, man, { xero: xeroOk, myob: myobOk });
+  let t = await run(REF, man, Object.assign(xeroOrgs(), { myob: myobOk }));
   ok('no script errors', !t.errs.length, t.errs);
   const text = (sel) => (t.doc.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' ');
   ok('3 client rows (2 Xero + 1 MYOB)', t.doc.querySelectorAll('tbody tr').length === 3);
@@ -55,9 +59,11 @@ const myobOk = () => ({
   ok('ascending sort by total (Southgate 15 first)', rows[0] === 'Southgate Services Ltd', rows);
 
   // one platform down
-  t = await run(REF, man, { xero: xeroOk, myob: myobOk }, { fail: { myob: { code: 'needs_connection', message: 'needs' } } });
+  t = await run(REF, man, Object.assign(xeroOrgs(), { myob: myobOk }), { fail: { myob: { code: 'needs_connection', message: 'needs' } } });
   ok('Xero rows still show when MYOB is down', t.doc.querySelectorAll('tbody tr').length === 2);
   ok('MYOB connect notice shown', /connect myob/i.test(text('#notices')));
+
+  ok('every Xero count is for the period (1 Jul to 8 Oct 2026)', wheres.filter(Boolean).length > 0 && wheres.filter(Boolean).every((w) => /Date>=DateTime\(2026,7,1\)&&Date<=DateTime\(2026,10,8\)$/.test(w)), [...new Set(wheres)]);
 
   done();
 })();
