@@ -1,0 +1,68 @@
+{
+  "id": "apxium-wip-summary",
+  "title": "Work In Progress (Demo)",
+  "description": "Static demo of an Apxium (Practice Engine) Work In Progress tile — unbilled time and disbursements aged by how long they've sat unbilled, pending a live connection. All figures shown are illustrative, not from a real practice.",
+  "category": "accounting",
+  "tags": ["apxium", "practice engine", "wip", "billing", "unbilled time", "accounting-practice", "demo"],
+  "keywords": ["work in progress", "wip", "unbilled", "billing", "time and billing", "demo"],
+  "connectorsUsed": ["apxium"],
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 7 }
+  },
+  "branding": { "color": "#1f6f54" },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "sub", "div0", "body", "div1", "footer"] },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Receipt", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Work In Progress", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "Unbilled time & disbursements · sample data" } },
+
+      "sub": { "type": "Text", "props": { "text": "Aged by time since the work was recorded", "size": "xs", "tone": "muted" } },
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["headline", "headlineSub", "div0b", "rows"] },
+
+      "headline": { "type": "Heading", "props": { "text": "$184,320", "level": "h1" } },
+      "headlineSub": { "type": "Caption", "props": { "text": "Total unbilled WIP across 5 clients" } },
+      "div0b": { "type": "Divider", "props": {} },
+
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["r1", "rd1", "r2", "rd2", "r3", "rd3", "r4"]
+      },
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+
+      "r1": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["r1Label", "r1Value"] },
+      "r1Label": { "type": "Text", "props": { "text": "0–30 days", "size": "sm" } },
+      "r1Value": { "type": "Text", "props": { "text": "$96,110", "size": "sm", "weight": "medium", "tone": "muted" } },
+
+      "r2": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["r2Label", "r2Value"] },
+      "r2Label": { "type": "Text", "props": { "text": "31–60 days", "size": "sm" } },
+      "r2Value": { "type": "Text", "props": { "text": "$52,480", "size": "sm", "weight": "medium", "tone": "warning" } },
+
+      "r3": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["r3Label", "r3Value"] },
+      "r3Label": { "type": "Text", "props": { "text": "61–90 days", "size": "sm" } },
+      "r3Value": { "type": "Text", "props": { "text": "$24,730", "size": "sm", "weight": "medium", "tone": "warning" } },
+
+      "r4": { "type": "Row", "props": { "gap": "sm", "align": "center", "justify": "between" }, "children": ["r4Label", "r4Value"] },
+      "r4Label": { "type": "Text", "props": { "text": "90+ days", "size": "sm" } },
+      "r4Value": { "type": "Text", "props": { "text": "$11,000", "size": "sm", "weight": "medium", "tone": "destructive" } },
+
+      "div1": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["footerIcon", "footerNote"] },
+      "footerIcon": { "type": "Icon", "props": { "name": "Info", "tone": "muted", "size": "xs" } },
+      "footerNote": { "type": "Text", "props": { "text": "Static demo data — will show live WIP once Apxium is connected", "size": "xs", "tone": "muted" } }
+    }
+  },
+  "status": "published"
+}

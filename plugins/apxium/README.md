@@ -5,11 +5,14 @@ myHub-hosted Apxium MCP gateway. Practice Engine is practice-management software
 used by accounting and legal firms — matters/jobs, time & billing, trust
 accounting, and clients.
 
-This plugin is currently a **connector-only scaffold**: it wires up the
-`.mcp.json` pointer and the Connect modal so the plugin can be installed and
-configured, but it ships **no tiles yet**. The Apxium MCP server itself is being
-built in parallel in a separate `myhub-mcp-servers` PR, and the use case for a
-first tile (e.g. open matters, outstanding billing) hasn't been decided yet.
+This plugin wires up the `.mcp.json` pointer and the Connect modal so it can be
+installed and configured, and ships four **static demo tiles** previewing what
+a live connection will look like: Active Clients, Active Matters, Work In
+Progress, and Trust Account Balances. The Apxium MCP server itself is being
+built in parallel in a separate `myhub-mcp-servers` PR — these tiles have no
+`dataProvider` yet and show illustrative sample data, not a real practice's
+figures, pending that server going live and real field names being confirmed
+against a tenant's own Swagger/ApiHelp.
 
 ## Authentication
 
@@ -37,6 +40,8 @@ Set these when connecting the plugin in myHub (Settings → Plugins → Connecti
 
 ## Status
 
-Scaffold only — no widgets/tiles in this PR. Untested against a live Apxium
-tenant: the paired MCP server isn't deployed yet and no real Apxium credentials
-exist yet.
+Connector scaffold + 4 static demo tiles (no live data yet). Untested against a
+live Apxium tenant: the paired MCP server isn't deployed yet and no real Apxium
+credentials exist. Once both are ready, these tiles need a `dataProvider`
+wired up and their sample rows replaced with real fields confirmed against a
+tenant's own Swagger/ApiHelp.
