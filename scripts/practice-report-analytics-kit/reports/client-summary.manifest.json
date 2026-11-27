@@ -12,23 +12,118 @@
       "type": "string",
       "maxLength": 500,
       "default": ""
+    },
+    {
+      "name": "org",
+      "label": "Xero organisation (set by the report, one per call: leave empty)",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
     }
   ],
   "bindings": [
     {
-      "id": "xero",
+      "id": "xero_connections",
       "tool": {
-        "mcp": "xero-accounting",
-        "name": "get_practice_client_summary"
+        "mcp": "xero-api",
+        "name": "list_connections"
+      },
+      "params": {}
+    },
+    {
+      "id": "x_contacts",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_contacts"
       },
       "params": {
-        "as_at": {
+        "xero_tenant_id": {
           "kind": "input",
-          "input": "as_at"
+          "input": "org"
         },
-        "clients": {
+        "page": {
+          "kind": "static",
+          "value": 1
+        },
+        "summaryOnly": {
+          "kind": "static",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "x_accounts",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_accounts"
+      },
+      "params": {
+        "xero_tenant_id": {
           "kind": "input",
-          "input": "clients"
+          "input": "org"
+        }
+      }
+    },
+    {
+      "id": "x_invoices",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_invoices"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        },
+        "where": {
+          "kind": "static",
+          "value": "Type==\"ACCREC\""
+        },
+        "page": {
+          "kind": "static",
+          "value": 1
+        },
+        "summaryOnly": {
+          "kind": "static",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "x_bills",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_invoices"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        },
+        "where": {
+          "kind": "static",
+          "value": "Type==\"ACCPAY\""
+        },
+        "page": {
+          "kind": "static",
+          "value": 1
+        },
+        "summaryOnly": {
+          "kind": "static",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "x_employees",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_employees"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
         }
       }
     },

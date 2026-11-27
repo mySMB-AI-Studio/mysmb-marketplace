@@ -10,6 +10,8 @@ module.exports = function build() {
     tool: 'get_practice_financial_overview', // named in the footer and the Excel Parameters sheet
     chips: ['Needs attention'],
     sources: { xero: 'xero', myob: 'myob' },
+    // Xero rows are read per organisation in the report from xero-api (xero-fan.js); MYOB still uses its tool.
+    xeroFan: { kind: 'financial' },
     qbNote: 'one company per connection — open its Financial Overview from the Client Report Analytics reports (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     // get_practice_financial_overview: revenue/gross/net profit and bank balance agree on name; the
     // margin and ageing-total names diverge between the two independently-built tools.

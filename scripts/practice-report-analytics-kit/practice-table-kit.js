@@ -30,6 +30,7 @@
 //   columns[].heat?: bool — shades the cell's background by where its value falls between the min and
 //     max of that column among the currently visible rows (a heat strip inside the table itself, not a
 //     separate chart element — this kit's "chart" layer elsewhere is the RAG badge, same approach).
+const { XERO_FAN_JS } = require('./xero-fan.js');
 const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const CSS = `
@@ -66,6 +67,7 @@ function runtime(cfg) {
   return `
 (function () {
   var C = ${data};
+${cfg.xeroFan ? XERO_FAN_JS : ''}
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
   var money = function (v) { if (v == null) return '—'; var n = Number(v); var s = Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (n < 0 ? '(' : '') + '$' + s + (n < 0 ? ')' : ''); };
@@ -230,7 +232,7 @@ function runtime(cfg) {
       params: [].concat(i.as_at ? [['As at', i.as_at]] : [], i.from_date ? [['From', i.from_date]] : [], i.to_date ? [['To', i.to_date]] : [], i.basis ? [['Basis', i.basis]] : []),
       asOf: state.fetchedAt ? new Date(state.fetchedAt).toLocaleString('en-AU') : '—',
       selection: state.requested ? state.requested.length + ' selected: ' + state.requested.join(', ') : 'Every client the connections expose',
-      sources: plats.map(function (p) { return cap(p) + (C.tool ? ' ' + C.tool : ''); }).join(', ') };
+      sources: plats.map(function (p) { return p === 'xero' && C.xeroFan ? 'Xero API connector (read per client)' : cap(p) + (C.tool ? ' ' + C.tool : ''); }).join(', ') };
   }
   // Practice total = Σ clients, against the connectors' own totals (not the rows this page just summed). Compared on the
   // unfiltered view only, and only for columns every platform with rows reported a total for.
@@ -344,7 +346,41 @@ function runtime(cfg) {
   $('table').addEventListener('click', function (e) { var th = e.target.closest('th[data-k]'); if (!th) return; var k = th.getAttribute('data-k'); if (state.sortKey === k) state.sortDir = -state.sortDir; else { state.sortKey = k; state.sortDir = 1; } render(); });
   $('pdf').addEventListener('click', function () { window.print(); });
   $('xls').addEventListener('click', excel);
-  MyHubReport.onData(load);
+  // xeroFan: the Xero rows are built here, one organisation at a time, from the report's own xero-api bindings
+  // (xero-fan.js), because the server that used to compute them is retired. MYOB rows show at once; the Xero rows
+  // follow when every organisation has answered. A newer bundle (Refresh, a changed input) supersedes a running fan.
+  var fanSeq = 0;
+  function fanNote(text) {
+    var el = $('fanprog');
+    if (!el) { $('notices').insertAdjacentHTML('beforebegin', '<div id="fanprog" class="notice" role="status"></div>'); el = $('fanprog'); }
+    el.textContent = text; el.style.display = text ? '' : 'none';
+  }
+  function onBundle(b) {
+    if (!C.xeroFan) { load(b); return; }
+    var seq = ++fanSeq, nb = { data: {}, errors: {}, fetchedAt: b.fetchedAt, inputs: b.inputs };
+    Object.keys(b.data || {}).forEach(function (k) { nb.data[k] = b.data[k]; });
+    Object.keys(b.errors || {}).forEach(function (k) { nb.errors[k] = b.errors[k]; });
+    delete nb.data.xero; delete nb.errors.xero;
+    var connErr = b.errors && b.errors.xero_connections;
+    if (connErr) { nb.errors.xero = connErr; fanNote(''); load(nb); return; }
+    if (!b.data || !Array.isArray(b.data.xero_connections)) { fanNote(''); load(nb); return; }
+    if (MyHubReport.mode === 'snapshot') {
+      nb.data.xero = { clients: [], errors: [{ id: 'snapshot', name: 'Snapshot', message: 'A snapshot cannot hold the per-client Xero calls this report makes. Open the live report to see Xero clients.' }], totals: {}, truncated: false };
+      fanNote(''); load(nb); return;
+    }
+    nb.data.xero = { clients: [], errors: [], totals: {}, truncated: false };
+    load(nb);
+    XF.run(C.xeroFan.kind, b, function (done, total) {
+      if (seq === fanSeq) fanNote(total ? 'Reading Xero clients: ' + done + ' of ' + total + (done < total ? '…' : '') : '');
+    }).then(function (env) {
+      if (seq !== fanSeq) return;
+      nb.data.xero = env; fanNote(''); load(nb);
+    }, function (e) {
+      if (seq !== fanSeq) return;
+      delete nb.data.xero; nb.errors.xero = { code: 'tool_error', message: e && e.message ? e.message : String(e) }; fanNote(''); load(nb);
+    });
+  }
+  MyHubReport.onData(onBundle);
 })();
 `;
 }

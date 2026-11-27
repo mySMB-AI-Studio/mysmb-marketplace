@@ -18,15 +18,17 @@ Use when the user asks for the Activity Count (PRA-08) across the practice: Tran
 
 ## Template
 
-| Template slug | Tool (per platform) |
-|---|---|
-| `practice-activity-count` | `get_practice_activity_count` on `xero-accounting` and `myob-accounting` |
+| Template slug | Xero | MYOB |
+|---|---|---|
+| `practice-activity-count` | read per organisation by the report from the Xero API connector (`xero-api`) | `get_practice_activity_count` on `myob-accounting` |
 
 | Input | Label | Type | Default |
 |---|---|---|---|
 | `from_date` | From | date | `2026-07-01` |
 | `to_date` | To | date | `today` |
 | `clients` | Clients | string | `` |
+| `org` | Xero organisation (set by the report, one per call: leave empty) | string | `` |
+| `where` | Xero filter (set by the report: leave empty) | string | `` |
 
 ## Steps
 
@@ -36,7 +38,8 @@ Use when the user asks for the Activity Count (PRA-08) across the practice: Tran
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Every client row comes from `get_practice_activity_count`; a client that failed to load is named in a notice, not silently dropped from the totals.
+- Every Xero row is read by the report from the Xero API connector, one organisation at a time (a large practice can take a minute or two to load, and the report shows its progress); every MYOB row comes from `get_practice_activity_count`. A client that failed to load is named in a notice, not silently dropped from the totals.
+- A snapshot can't hold the per-organisation Xero reads, so a snapshot shows the MYOB clients and says so for Xero.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
 - Xero never sources payroll (a separate Xero Payroll AU connector this extension doesn't connect) — shown as N/A with that reason, not estimated.
 

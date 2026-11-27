@@ -18,27 +18,80 @@
       "type": "string",
       "maxLength": 500,
       "default": ""
+    },
+    {
+      "name": "org",
+      "label": "Xero organisation (set by the report, one per call: leave empty)",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
     }
   ],
   "bindings": [
     {
-      "id": "xero",
+      "id": "xero_connections",
       "tool": {
-        "mcp": "xero-accounting",
-        "name": "get_practice_sales_summary"
+        "mcp": "xero-api",
+        "name": "list_connections"
+      },
+      "params": {}
+    },
+    {
+      "id": "x_open",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_invoices"
       },
       "params": {
-        "from_date": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        },
+        "where": {
+          "kind": "static",
+          "value": "Type==\"ACCREC\" AND Status==\"AUTHORISED\""
+        }
+      }
+    },
+    {
+      "id": "x_bank",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "get_bank_summary"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        },
+        "fromDate": {
           "kind": "input",
           "input": "from_date"
         },
-        "to_date": {
+        "toDate": {
           "kind": "input",
           "input": "to_date"
-        },
-        "clients": {
+        }
+      }
+    },
+    {
+      "id": "x_pl",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "get_profit_and_loss"
+      },
+      "params": {
+        "xero_tenant_id": {
           "kind": "input",
-          "input": "clients"
+          "input": "org"
+        },
+        "fromDate": {
+          "kind": "input",
+          "input": "from_date"
+        },
+        "toDate": {
+          "kind": "input",
+          "input": "to_date"
         }
       }
     },

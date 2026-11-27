@@ -28,7 +28,10 @@ function metricSkill(id) {
   // convention breaks for a report like user-activity (PRA-12) that deliberately REUSES an existing
   // tool (get_practice_client_summary) instead of shipping its own. Both platform bindings are
   // expected to call the same tool name (every report here keeps names identical across Xero/MYOB).
-  const toolName = mf && mf.bindings.length ? mf.bindings[0].tool.name : 'get_practice_' + id.replace(/-/g, '_');
+  // Since 27 Nov 2026 the Xero side is read per organisation in the report from the xero-api API connector
+  // (xero-fan.js); only MYOB still has a practice tool, so the tool name comes from the MYOB binding.
+  const myobB = mf && mf.bindings.find((b) => b.tool.mcp === 'myob-accounting');
+  const toolName = myobB ? myobB.tool.name : 'get_practice_' + id.replace(/-/g, '_');
   const body = `---
 name: ${PLUGIN}-${key}
 description: ${it.pra} ${it.name} across every client. Use when the user asks for ${it.name.toLowerCase()} for the practice, for all clients, or to compare clients on this metric.
@@ -41,9 +44,9 @@ Use when the user asks for the ${it.name} (${it.pra}) across the practice: ${it.
 ${COMMON}
 ## Template
 
-| Template slug | Tool (per platform) |
-|---|---|
-| \`${r.slug}\` | \`${toolName}\` on \`xero-accounting\` and \`myob-accounting\` |
+| Template slug | Xero | MYOB |
+|---|---|---|
+| \`${r.slug}\` | read per organisation by the report from the Xero API connector (\`xero-api\`) | \`${toolName}\` on \`myob-accounting\` |
 
 ${inputsTable(mf)}
 ## Steps
@@ -54,9 +57,10 @@ ${inputsTable(mf)}
 
 ## Validation (shown in the report, recomputed on every open)
 
-- Every client row comes from \`${toolName}\`; a client that failed to load is named in a notice, not silently dropped from the totals.
+- Every Xero row is read by the report from the Xero API connector, one organisation at a time (a large practice can take a minute or two to load, and the report shows its progress); every MYOB row comes from \`${toolName}\`. A client that failed to load is named in a notice, not silently dropped from the totals.
+- A snapshot can't hold the per-organisation Xero reads, so a snapshot shows the MYOB clients and says so for Xero.
 - The totals row sums only the clients that loaded; switching the view or sorting never changes a row's source platform or client id (no cross-client leakage).
-${id === 'client-summary' ? '' : id === 'financial-overview' ? '- Gross profit and net profit follow the same P&L formulas as Client Report Analytics\' own Financial Overview, per client — not a separate calculation.\n' : id === 'activity-count' ? '- Xero never sources payroll (a separate Xero Payroll AU connector this extension doesn\'t connect) — shown as N/A with that reason, not estimated.\n' : id === 'user-activity' ? '- This reuses get_practice_client_summary\'s connection-level last-sync field — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.\n' : '- Figures follow the same model as the matching Client Report Analytics report, per client — not a separate calculation.\n'}
+${id === 'client-summary' ? '' : id === 'financial-overview' ? '- Gross profit and net profit follow the same P&L formulas as Client Report Analytics\' own Financial Overview, per client — not a separate calculation.\n' : id === 'activity-count' ? '- Xero never sources payroll (a separate Xero Payroll AU connector this extension doesn\'t connect) — shown as N/A with that reason, not estimated.\n' : id === 'user-activity' ? '- This uses each connection\'s last-sync time (Xero: the organisation list; MYOB: get_practice_client_summary) — neither Xero nor MYOB exposes a practice-wide bulk audit-log API through this connector, so "events by user" and "edits/deletes" are shown as a named N/A, not a separate calculation.\n' : '- Figures follow the same model as the matching Client Report Analytics report, per client — not a separate calculation.\n'}
 ## QA test (sandbox / demo organisations only)
 
 On a QA workspace with the Xero demo company and a MYOB sandbox company file connected: ask for the ${it.name} for the practice. The report opens with a green banner (or a named notice for whichever platform isn't connected); every client the connections expose appears as one row; the totals row matches summing the rows by hand.

@@ -28,6 +28,8 @@ module.exports = function build() {
     tool: 'get_practice_activity_count', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
+    // Xero rows are read per organisation in the report from xero-api (xero-fan.js); MYOB still uses its tool.
+    xeroFan: { kind: 'activity' },
     qbNote: 'one company per connection — ask mySidekick or the Client Reporting Agent for this client’s activity instead.',
     rankKey: 'total',
     // get_practice_activity_count agrees on names across both platforms — identity aliases, kept

@@ -18,27 +18,91 @@
       "type": "string",
       "maxLength": 500,
       "default": ""
+    },
+    {
+      "name": "org",
+      "label": "Xero organisation (set by the report, one per call: leave empty)",
+      "type": "string",
+      "maxLength": 64,
+      "default": ""
+    },
+    {
+      "name": "where",
+      "label": "Xero filter (set by the report: leave empty)",
+      "type": "string",
+      "maxLength": 500,
+      "default": ""
     }
   ],
   "bindings": [
     {
-      "id": "xero",
+      "id": "xero_connections",
       "tool": {
-        "mcp": "xero-accounting",
-        "name": "get_practice_activity_count"
+        "mcp": "xero-api",
+        "name": "list_connections"
+      },
+      "params": {}
+    },
+    {
+      "id": "x_inv",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_invoices"
       },
       "params": {
-        "from_date": {
+        "xero_tenant_id": {
           "kind": "input",
-          "input": "from_date"
+          "input": "org"
         },
-        "to_date": {
+        "where": {
           "kind": "input",
-          "input": "to_date"
+          "input": "where"
         },
-        "clients": {
+        "page": {
+          "kind": "static",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "x_bt",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_bank_transactions"
+      },
+      "params": {
+        "xero_tenant_id": {
           "kind": "input",
-          "input": "clients"
+          "input": "org"
+        },
+        "where": {
+          "kind": "input",
+          "input": "where"
+        },
+        "page": {
+          "kind": "static",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": "x_mj",
+      "tool": {
+        "mcp": "xero-api",
+        "name": "list_manual_journals"
+      },
+      "params": {
+        "xero_tenant_id": {
+          "kind": "input",
+          "input": "org"
+        },
+        "where": {
+          "kind": "input",
+          "input": "where"
+        },
+        "page": {
+          "kind": "static",
+          "value": 1
         }
       }
     },

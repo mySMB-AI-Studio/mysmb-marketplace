@@ -41,6 +41,7 @@ async function run(ref, manifest, fx, opts) {
     runScripts: 'dangerously', pretendToBeVisual: true,
     beforeParse(w) {
       w.TextEncoder = require('util').TextEncoder; w.Blob = require('buffer').Blob;
+      w.__XF_PACE = 0; // xero-fan.js: no pacing between per-organisation calls in tests
       const RD = w.Date, NOW = new RD(2026, 9, 8, 10, 52).getTime();
       w.Date = class extends RD { constructor(...a) { if (a.length) super(...a); else super(NOW); } static now() { return NOW; } };
       let cb = null;
@@ -67,9 +68,10 @@ async function run(ref, manifest, fx, opts) {
   const w = dom.window;
   const errs = []; w.addEventListener('error', (e) => errs.push(e.message));
   const bundle = opts.bundle || hydrate(manifest, fx, opts.snapshotInputs || {}, calls, opts.fail);
-  if (opts.bundleInputs) bundle.inputs = resolve(manifest, opts.snapshotInputs || {});
+  // The host sends the resolved inputs with every bundle; the Xero fan-out reads its dates and client list from them.
+  if (opts.bundleInputs || !opts.bundle) bundle.inputs = bundle.inputs || resolve(manifest, opts.snapshotInputs || {});
   w.MyHubReport._deliver(bundle);
-  await new Promise((r) => setTimeout(r, 30));
+  await new Promise((r) => setTimeout(r, opts.wait || 60));
   return { w, doc: w.document, calls, setInputsLog, downloads, errs, settle: (ms) => new Promise((r) => setTimeout(r, ms || 30)) };
 }
 function suite(name) {

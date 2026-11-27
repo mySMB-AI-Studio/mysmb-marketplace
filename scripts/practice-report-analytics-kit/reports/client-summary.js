@@ -12,6 +12,8 @@ module.exports = function build() {
     tool: 'get_practice_client_summary', // named in the footer and the Excel Parameters sheet
     chips: [],
     sources: { xero: 'xero', myob: 'myob' },
+    // Xero rows are read per organisation in the report from xero-api (xero-fan.js); MYOB still uses its tool.
+    xeroFan: { kind: 'client' },
     qbNote: 'one company per connection — open its Client Summary from the Client Report Analytics reports (ask mySidekick or the Client Reporting Agent, or Reports → From your plugins).',
     // get_practice_client_summary agrees on names across both platforms — identity aliases, kept
     // explicit so a future rename on either side is caught by the report tests, not silently wrong.

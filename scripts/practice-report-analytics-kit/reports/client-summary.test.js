@@ -7,17 +7,16 @@ const { run, suite } = require('../harness.js');
 const { ok, done } = suite('client-summary');
 const REF = 'reports/client-summary', man = manifest(REF);
 
-// Fixtures use the real tool's own field names (confirmed against both agents' source 2026-10-08:
-// camelCase *Count fields, identical on both platforms) — this is what actually exercises the
-// fieldAliases remap in practice-table-kit.js, not just the report's own canonical shape.
-const xeroOk = () => ({
-  asOf: '2026-10-08T02:00:00.000Z',
-  clients: [
-    { id: 'xt-1', name: 'Irvine Jackson Pty Ltd', contactsCount: 42, accountsCount: 68, invoicesCount: 120, billsCount: 54, employeesCount: 6, bankAccountsCount: 2, connectionStatus: 'connected' },
-    { id: 'xt-2', name: 'Southgate Services Ltd', contactsCount: 11, accountsCount: 55, invoicesCount: 30, billsCount: 18, employeesCount: 2, bankAccountsCount: 1, connectionStatus: 'connected' }
-  ],
-  errors: [], totals: {}, truncated: false
-});
+// Xero side: raw Xero responses per organisation (xero-raw.js), read by the report's own fan-out (xero-fan.js) the way
+// the retired get_practice_client_summary did server-side: page-1 counts from Xero's pagination.itemCount, accounts
+// counted (bank accounts = Type BANK), employees soft (a failure is N/A, not an error).
+const { counted, accounts, orgs } = require('../xero-raw.js');
+const counts = (contacts, bank, other, invoices, bills, employees) => ({
+  x_contacts: () => counted('Contacts', contacts), x_accounts: () => accounts(bank, other),
+  x_invoices: () => counted('Invoices', invoices), x_bills: () => counted('Invoices', bills), x_employees: () => counted('Employees', employees) });
+const IRVINE = { tenantId: 'xt-1', tenantName: 'Irvine Jackson Pty Ltd', updatedDateUtc: '2026-10-07T09:12:46.7748050', fx: counts(42, 2, 66, 120, 54, 6) };
+const SOUTHGATE = { tenantId: 'xt-2', tenantName: 'Southgate Services Ltd', fx: counts(11, 1, 54, 30, 18, 2) };
+const xeroOk = () => orgs([IRVINE, SOUTHGATE]);
 const myobOk = () => ({
   asOf: '2026-10-08T02:00:00.000Z',
   clients: [{ id: 'cf-mysmb', name: 'mySMB.com', contactsCount: 20, accountsCount: 40, invoicesCount: 15, billsCount: 9, employeesCount: 4, bankAccountsCount: 1, connectionStatus: 'connected' }],
@@ -26,7 +25,7 @@ const myobOk = () => ({
 
 (async () => {
   // 1. both platforms connected and healthy
-  let t = await run(REF, man, { xero: xeroOk, myob: myobOk });
+  let t = await run(REF, man, Object.assign(xeroOk(), { myob: myobOk }));
   ok('no script errors', !t.errs.length, t.errs);
   const text = (sel) => (t.doc.querySelector(sel) || { textContent: '' }).textContent.replace(/\s+/g, ' ');
   ok('3 client rows (2 Xero + 1 MYOB)', t.doc.querySelectorAll('tbody tr').length === 3);
@@ -50,34 +49,35 @@ const myobOk = () => ({
   q.value = ''; q.dispatchEvent(new t.w.Event('input'));
 
   // 4. one platform down: the other's clients still render, failure named, no blank page
-  t = await run(REF, man, { xero: xeroOk, myob: myobOk }, { fail: { myob: { code: 'needs_connection', message: 'needs' } } });
+  t = await run(REF, man, Object.assign(xeroOk(), { myob: myobOk }), { fail: { myob: { code: 'needs_connection', message: 'needs' } } });
   ok('Xero rows still show when MYOB is down', t.doc.querySelectorAll('tbody tr').length === 2);
   ok('MYOB connect notice shown', /connect myob/i.test(text('#notices')));
   ok('checks banner: MYOB failed, Xero passed', /1 check failed/.test(text('#banner')) && /MYOB clients loaded/.test(text('#banner')));
 
   // 5. a client-level error inside the Xero payload doesn't blank the report
-  const xeroPartial = () => ({ ...xeroOk(), clients: [xeroOk().clients[0]], errors: [{ id: 'xt-2', name: 'Southgate Services Ltd', message: 'Xero returned 500' }] });
-  t = await run(REF, man, { xero: xeroPartial, myob: myobOk });
+  const xeroPartial = () => orgs([IRVINE, { ...SOUTHGATE, fx: { ...SOUTHGATE.fx, x_contacts: () => { throw new Error('Xero returned 500'); } } }]);
+  t = await run(REF, man, Object.assign(xeroPartial(), { myob: myobOk }));
   ok('the failing client is named in a notice, the healthy one still renders', /Southgate Services Ltd: Xero returned 500/.test(text('#notices')) && t.doc.querySelectorAll('tbody tr').length === 2);
 
   // 6. truncation is surfaced, not silent
-  const xeroTruncated = () => ({ ...xeroOk(), truncated: true, message: 'narrow the client selection' });
-  t = await run(REF, man, { xero: xeroTruncated, myob: myobOk });
-  ok('truncation notice shown', /first 60 clients/.test(text('#notices')) && /narrow the client selection/.test(text('#notices')));
+  const xeroTruncated = () => orgs(Array.from({ length: 61 }, (_, i) => ({ tenantId: 'xt-' + (100 + i), tenantName: 'Client ' + (i + 1), fx: counts(1, 1, 1, 1, 1, 1) })));
+  t = await run(REF, man, Object.assign(xeroTruncated(), { myob: myobOk }), { wait: 400 });
+  ok('truncation notice shown', /first 60 clients/.test(text('#notices')) && /Showing the first 60 of 61 clients/.test(text('#notices')), text('#notices'));
+  ok('only the first 60 organisations are read', new Set(t.calls.filter((c) => c.requery).map((c) => c.params.xero_tenant_id)).size === 60);
 
   // 7. nothing connected
-  t = await run(REF, man, {}, { fail: { xero: { code: 'needs_connection', message: 'needs' }, myob: { code: 'needs_connection', message: 'needs' } } });
+  t = await run(REF, man, {}, { fail: { xero_connections: { code: 'needs_connection', message: 'needs' }, myob: { code: 'needs_connection', message: 'needs' } } });
   ok('nothing connected: no rows, both notices shown, not a crash', t.doc.querySelectorAll('tbody tr').length === 1 && /No clients matched/.test(text('tbody')) && /connect xero/i.test(text('#notices')) && /connect myob/i.test(text('#notices')));
 
   // 8. downloads + dark theme
-  t = await run(REF, man, { xero: xeroOk, myob: myobOk });
+  t = await run(REF, man, Object.assign(xeroOk(), { myob: myobOk }));
   t.doc.getElementById('xls').click(); await t.settle();
   const blob = t.downloads.find((d) => d.blob);
   const x = blob ? Buffer.from(await blob.blob.arrayBuffer()).toString('utf8') : '';
   ok('Excel download contains every client row', x.includes('Irvine Jackson') && x.includes('Southgate') && x.includes('mySMB.com'));
   t.doc.getElementById('pdf').click();
   ok('Download PDF prints', t.downloads.some((d) => d.print));
-  t = await run(REF, man, { xero: xeroOk, myob: myobOk }, { theme: 'dark' });
+  t = await run(REF, man, Object.assign(xeroOk(), { myob: myobOk }), { theme: 'dark' });
   ok('dark theme stamp honoured, no prefers-color-scheme', t.doc.documentElement.getAttribute('data-myhub-theme') === 'dark' && !/prefers-color-scheme/.test(t.doc.documentElement.outerHTML));
 
   // 9. clients input: declared on the manifest, wired to both bindings, and actually narrows the
@@ -85,10 +85,10 @@ const myobOk = () => ({
   // stands in for that by honouring the same comma-separated-ids contract the real tools accept).
   const clientsInput = man.inputs.find((i) => i.name === 'clients');
   ok('manifest declares a clients input (string, <=500 chars, default empty = every client)', clientsInput && clientsInput.type === 'string' && clientsInput.maxLength <= 500 && clientsInput.default === '');
-  ok('both bindings consume it', man.bindings.every((b) => b.params.clients && b.params.clients.kind === 'input' && b.params.clients.input === 'clients'));
+  ok('MYOB consumes it in its binding; the Xero side applies it in the report (no Xero binding needs it)', man.bindings.filter((b) => b.tool.mcp === 'myob-accounting').every((b) => b.params.clients && b.params.clients.input === 'clients') && man.bindings.filter((b) => b.tool.mcp === 'xero-api').every((b) => !b.params.clients));
 
-  const xeroFiltered = (p) => { const want = (p.clients || '').split(',').filter(Boolean); const all = xeroOk(); return { ...all, clients: want.length ? all.clients.filter((c) => want.includes(c.id)) : all.clients }; };
-  t = await run(REF, man, { xero: xeroFiltered, myob: myobOk }, { snapshotInputs: { clients: 'xt-2' } });
+  t = await run(REF, man, Object.assign(xeroOk(), { myob: myobOk }), { snapshotInputs: { clients: 'xt-2' } });
+  ok('only the selected Xero organisation is read', t.calls.filter((c) => c.requery).every((c) => c.params.xero_tenant_id === 'xt-2'), t.calls.filter((c) => c.requery).map((c) => c.params.xero_tenant_id));
   ok('setting clients narrows Xero to just that id, MYOB (no filter requested of it) still shows its own client', t.doc.querySelectorAll('tbody tr').length === 2 && /Southgate/.test(text('tbody')) && !/Irvine Jackson/.test(text('tbody')) && /mySMB\.com/.test(text('tbody')));
 
   done();
