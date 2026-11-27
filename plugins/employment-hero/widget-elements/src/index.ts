@@ -798,6 +798,129 @@ const leave_approvals_board: ComputedFunction = (args) => {
   };
 };
 
+// ── LEAVE_TYPE_ICONS ──────────────────────────────────────────────────────────
+// A glyph per leave type, so a row is recognisable before it is read. Matched on
+// substrings because Employment Hero lets each organisation name its own types
+// ("Annual Leave", "Annual Holiday", "Personal/Carer's Leave"). Anything
+// unrecognised falls back to a calendar rather than being left blank.
+const LEAVE_TYPE_ICONS: Array<[RegExp, string]> = [
+  [/annual|holiday|vacation/i,          'Sun'],
+  [/sick|personal|carer|compassion/i,   'HeartPulse'],
+  [/parental|maternity|paternity|baby/i,'Baby'],
+  [/long service/i,                     'Award'],
+  [/bereave|funeral/i,                  'Heart'],
+  [/study|training|educat/i,            'GraduationCap'],
+  [/unpaid|leave without pay/i,         'CircleSlash'],
+  [/jury|community|volunteer/i,         'Gavel'],
+];
+
+function leaveTypeIcon(name: string): string {
+  for (const [pattern, icon] of LEAVE_TYPE_ICONS) {
+    if (pattern.test(name)) return icon;
+  }
+  return 'CalendarDays';
+}
+
+// ── my_leave_board ────────────────────────────────────────────────────────────
+// Builds the My Leave Requests tile: one row per request with its type glyph,
+// dates, when it was submitted and — while it is still pending — how long it has
+// been waiting. Pending requests come first, longest wait at the top, because
+// those are the only ones the person can still chase.
+//
+// Args: { value: raw items array from list_leave_requests }
+const my_leave_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw.map(item => {
+    const typeName = String(
+      item.leave_type ?? item.leave_category_name ?? item.leave_type_name ?? '',
+    ).trim() || 'Leave';
+
+    const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+    const { display: endDisplay } = formatEhDate(item.end_date);
+    const dateRange = !endDisplay || endDisplay === startDisplay
+      ? startDisplay
+      : `${startDisplay} → ${endDisplay}`;
+
+    const { display: submittedDisplay, ts: submittedTs } = formatEhDate(
+      item.created_at ?? item.submitted_at ?? item.lodged_at ?? item.lodgement_date,
+    );
+
+    const rawStatus = String(item.status ?? '').toLowerCase();
+    const approved = rawStatus === 'approved';
+    const declined = rawStatus === 'declined' || rawStatus === 'rejected';
+    const pending = !approved && !declined;
+
+    // Declined reads destructive here, unlike the manager-facing approvals tile
+    // where it is a decision taken. From the requester's side it is their request
+    // refused, which is the outcome they need to see.
+    const statusLabel = approved ? 'Approved' : declined ? 'Declined' : 'Pending';
+    const statusTone  = approved ? 'success'  : declined ? 'destructive' : 'warning';
+
+    // Only meaningful while nobody has answered: once a decision exists the wait
+    // is over, and a growing day count would be describing nothing.
+    const waitDays = pending && submittedTs > 0
+      ? Math.max(0, Math.round((todayTs - submittedTs) / 86_400_000))
+      : -1;
+    const waitingLabel = waitDays < 0
+      ? ''
+      : waitDays === 0 ? 'submitted today'
+      : waitDays === 1 ? 'waiting 1 day'
+      : `waiting ${waitDays} days`;
+
+    return {
+      id:              String(item.id ?? ''),
+      leave_type:      typeName,
+      type_tone:       leaveTypeTone(typeName),
+      type_icon:       leaveTypeIcon(typeName),
+      date_range:      dateRange || 'No dates on record',
+      submitted_label: submittedDisplay ? `Submitted ${submittedDisplay}` : 'No submission date',
+      status_label:    statusLabel,
+      status_tone:     statusTone,
+      waiting_label:   waitingLabel,
+      show_waiting:    waitingLabel !== '',
+      pending,
+      start_ts:        startTs,
+      submitted_ts:    submittedTs,
+    };
+  });
+
+  // Still waiting first, oldest submission at the top; then everything decided,
+  // most recent leave first.
+  rows.sort((a, b) => {
+    if (a.pending !== b.pending) return a.pending ? -1 : 1;
+    if (!a.pending) return b.start_ts - a.start_ts;
+    // A request with no submission date cannot claim the longest wait, so it
+    // sorts below the ones whose wait is actually known.
+    const aw = a.submitted_ts > 0 ? a.submitted_ts : Number.MAX_SAFE_INTEGER;
+    const bw = b.submitted_ts > 0 ? b.submitted_ts : Number.MAX_SAFE_INTEGER;
+    return aw - bw;
+  });
+
+  const pendingCount  = rows.filter(r => r.status_label === 'Pending').length;
+  const approvedCount = rows.filter(r => r.status_label === 'Approved').length;
+  const declinedCount = rows.filter(r => r.status_label === 'Declined').length;
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+
+    pending_count:  pendingCount,
+    approved_count: approvedCount,
+    declined_count: declinedCount,
+
+    // A count of nothing is not a state worth colouring, so each dot only takes
+    // its tone once there is something to report.
+    pending_tone:  pendingCount  > 0 ? 'warning'     : 'muted',
+    approved_tone: approvedCount > 0 ? 'success'     : 'muted',
+    declined_tone: declinedCount > 0 ? 'destructive' : 'muted',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'employment-hero',
   functions: {
@@ -812,6 +935,7 @@ const elements: PluginElementsModule = {
     flatten_compliance_at_risk,
     compliance_board,
     leave_approvals_board,
+    my_leave_board,
     flatten_timesheets_to_approve,
     flatten_direct_reports_upcoming_leave,
     flatten_timesheet_daily_summary,
