@@ -5,6 +5,7 @@
 // xero_contact, xero_balances), and the kit wiring. Each report's config sets LCV = { view, title } and includes this file.
 XK.app({
   title: LCV.title, noBasis: true, primary: 'invoices', org: 'org', conns: 'connections',
+  mechanism: 'Xero API connector (xero-api) on the Xero Accounting API',
   inputs: { start: 'from_date', end: 'to_date', org: 'org', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-25', date_where: 'Date>=DateTime(2026,07,01) AND Date<=DateTime(2026,09,25)', from12: '2025-09-26', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":1,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"mysmb","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":""}' },
