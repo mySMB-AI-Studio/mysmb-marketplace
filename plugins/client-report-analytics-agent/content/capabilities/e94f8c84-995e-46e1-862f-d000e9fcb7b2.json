@@ -1,5 +1,5 @@
 {
-  "contentHash": "8c2809d8978fd2223e7076fb9d15415cfe2cbf48cb37926cdcfceb6749a29f69",
+  "contentHash": "f29be3e03ef814d5c56693d27fb4b205d8d5710f3ece1714256c729c6b5ff161",
   "definition": {
     "bindings": [
       {
@@ -8,13 +8,13 @@
           "paymentsOnly": "paymentsOnly",
           "periods": "periods",
           "timeframe": "timeframe",
-          "xero_tenant_id": "xero_tenant_id"
+          "xero_tenant_id": "xeroTenantId"
         },
         "scopes": [
-          "accounting.reports.read"
+          "accounting.reports.balancesheet.read"
         ],
-        "server": "xero-accounting",
-        "tool": "get_balance_sheet"
+        "server": "xero-official",
+        "tool": "list_report_balance_sheet"
       }
     ],
     "idempotency": {
@@ -44,7 +44,7 @@
           "type": "string"
         },
         "xero_tenant_id": {
-          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "description": "The client's Xero organisation id (tenantId from get_connected_tenants).",
           "type": "string"
         }
       },
@@ -69,7 +69,7 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-official"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",

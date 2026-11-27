@@ -1,17 +1,15 @@
 {
-  "contentHash": "0cdf1eb9ccc68672bd0c33a009d6dfa06b0cf547e5a56852963f07c7994caaac",
+  "contentHash": "39f395b10c55426a4af0a3d4e143e4baec6281ce5adb9f2ce8c1a22e996a5f21",
   "definition": {
     "bindings": [
       {
         "argMap": {
-          "order": "order",
-          "where": "where",
-          "xero_tenant_id": "xero_tenant_id"
+          "xero_tenant_id": "xeroTenantId"
         },
         "scopes": [
           "accounting.settings.read"
         ],
-        "server": "xero-accounting",
+        "server": "xero-official",
         "tool": "list_tax_rates"
       }
     ],
@@ -21,16 +19,8 @@
     "inputsSchema": {
       "additionalProperties": false,
       "properties": {
-        "order": {
-          "description": "Optional Xero order clause, e.g. \"Date DESC\".",
-          "type": "string"
-        },
-        "where": {
-          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\".",
-          "type": "string"
-        },
         "xero_tenant_id": {
-          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "description": "The client's Xero organisation id (tenantId from get_connected_tenants).",
           "type": "string"
         }
       },
@@ -55,7 +45,7 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-official"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",

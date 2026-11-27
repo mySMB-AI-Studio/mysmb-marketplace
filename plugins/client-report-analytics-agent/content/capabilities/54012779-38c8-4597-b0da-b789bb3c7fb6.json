@@ -1,5 +1,5 @@
 {
-  "contentHash": "e02bed7560fa26b8cbd7456c87086b1743e64306cd01c05d478f75e9bd5908b8",
+  "contentHash": "9c053439277dea00485c6144a226239c424fb1a0d4958d545a40838eabefef4e",
   "definition": {
     "bindings": [
       {
@@ -9,13 +9,13 @@
           "periods": "periods",
           "timeframe": "timeframe",
           "toDate": "toDate",
-          "xero_tenant_id": "xero_tenant_id"
+          "xero_tenant_id": "xeroTenantId"
         },
         "scopes": [
-          "accounting.reports.read"
+          "accounting.reports.profitandloss.read"
         ],
-        "server": "xero-accounting",
-        "tool": "get_profit_and_loss"
+        "server": "xero-official",
+        "tool": "list_profit_and_loss"
       }
     ],
     "idempotency": {
@@ -33,7 +33,7 @@
           "type": "boolean"
         },
         "periods": {
-          "description": "Comparison periods.",
+          "description": "Comparison periods (1 to 11).",
           "type": "integer"
         },
         "timeframe": {
@@ -49,7 +49,7 @@
           "type": "string"
         },
         "xero_tenant_id": {
-          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "description": "The client's Xero organisation id (tenantId from get_connected_tenants).",
           "type": "string"
         }
       },
@@ -74,7 +74,7 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-official"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",

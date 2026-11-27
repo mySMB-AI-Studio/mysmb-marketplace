@@ -50,12 +50,12 @@ Mark each group Stop (must be fixed before lodging) or Note (flag it, carry on).
 ## 2. Find the client and the period (status: Finding the client)
 
 - The job's inputs give `clientName`, `periodStart` and `periodEnd` (YYYY-MM-DD).
-- Call `list_connections` and match `clientName` to a `tenantName`. Use its `tenantId` as `xero_tenant_id` on every other call. If nothing matches, or two do, ask for help and name the organisations you can see. Never guess.
-- Call `get_organisation`: record whether the business is registered for GST (`gstRegistered`), its GST basis (`gstBasis`: cash or accrual) and a period label such as "Jul–Sep 2026" (`periodLabel`). Say in a job comment if the period doesn't look like one of its BAS periods.
+- Call `get_connected_tenants` and match `clientName` to a `tenantName`. Use its `tenantId` as `xero_tenant_id` on every other call. If nothing matches, or two do, ask for help and name the organisations you can see. Never guess.
+- Call `list_organisation_details` (the organisation is `data._Organisations[0]`): record whether the business is registered for GST (`gstRegistered`, from its `paysTax`), its GST basis (`gstBasis`: cash or accrual, from `salesTaxBasis` CASH or ACCRUALS), its BAS period from `salesTaxPeriod` (e.g. QUARTERLY1) and a period label such as "Jul–Sep 2026" (`periodLabel`). Say in a job comment if the period doesn't look like one of its BAS periods.
 
 ## 3. Run the checks (status: Checking)
 
-**Call `get_xero_bas_readiness_checks` once** with `xero_tenant_id`, `periodStart` and `periodEnd` (add `gstRegistered` only if a person told you). Add `changedSince` as the setup setting `prior_period_from` says:
+**Run the BAS readiness checks tool** (Client Reporting Agent: BAS readiness checks) **once** with `xero_tenant_id`, `period_start` and `period_end` (add `gst_registered`, yes or no, only if a person told you). Its `result` output holds the checks. Add `changed_since` as the setup setting `prior_period_from` says:
 
 - `previous_review` (the default, also when the setting isn't listed): the date the previous review (section 3b says which file) was approved, read from its Outcome section.
 - `lock_date`: the client's lock date (`organisation.lockDate` from Finding the client, or the row in `BAS readiness/Lock dates.md`). With no lock date, use the previous review's approval date.
@@ -86,7 +86,7 @@ The previous review is the summary file in `BAS reviews/` for the period just be
 
 If it has drafted client questions, carry each one into this review, **whatever its outcome was** (a Not ready review's questions still go to the client):
 
-- **Re-check the previous period.** This review's checks only read this period, so they can't tell whether last period's items were fixed. Call `get_xero_bas_readiness_checks` a second time with the previous review's own `periodStart` and `periodEnd` (no `changedSince`); it returns findings only, so the reply stays small.
+- **Re-check the previous period.** This review's checks only read this period, so they can't tell whether last period's items were fixed. Run the BAS readiness checks tool a second time with the previous review's own `period_start` and `period_end` (no `changed_since`); it returns findings only, so the reply stays small.
 - **Compare each question** with that call's findings: the same document or contact still flagged = **open**; no longer flagged (receipt attached, ABN added, item reconciled, duplicate removed) = **answered or fixed**. A question no check can answer (for example "were these invoices issued?" or "what was this payment for?") stays **open** unless a person said on this job that the client answered it.
 - **Mark each open question on its own line**, never as one group: **Stop** when it is about GST (GST claimed, an ABN or tax invoice for a GST claim, GST coding) or about an amount at or above the setup setting `material_question_amount` (default $1,000 when the setting isn't listed); **Note** otherwise. The open ones are the `clientQuestionsOpen` finding (count = open questions; it is a Stop when any open question is a Stop).
 - In the summary, list each carried question with its status (open Stop, open Note, or answered or fixed) and what decided it.

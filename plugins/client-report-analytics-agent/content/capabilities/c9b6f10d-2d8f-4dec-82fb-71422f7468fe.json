@@ -1,18 +1,18 @@
 {
-  "contentHash": "bbff9e7cbcad49544d07f583390d6f39b6011412ee514040eba0d58de27d3f5e",
+  "contentHash": "363975ec5786924d4ca2b229ba132e4d681d06efdc399029e4e3f566bb9854f4",
   "definition": {
     "bindings": [
       {
         "argMap": {
           "date": "date",
           "paymentsOnly": "paymentsOnly",
-          "xero_tenant_id": "xero_tenant_id"
+          "xero_tenant_id": "xeroTenantId"
         },
         "scopes": [
-          "accounting.reports.read"
+          "accounting.reports.trialbalance.read"
         ],
-        "server": "xero-accounting",
-        "tool": "get_trial_balance"
+        "server": "xero-official",
+        "tool": "list_trial_balance"
       }
     ],
     "idempotency": {
@@ -30,7 +30,7 @@
           "type": "boolean"
         },
         "xero_tenant_id": {
-          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "description": "The client's Xero organisation id (tenantId from get_connected_tenants).",
           "type": "string"
         }
       },
@@ -55,7 +55,7 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-official"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",
