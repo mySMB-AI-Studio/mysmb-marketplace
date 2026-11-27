@@ -85,20 +85,30 @@ def s_(v: Any) -> str:
     return str(v)
 
 
+# The automation sandbox blocks lazy stdlib imports (datetime.strptime imports _strptime, strftime imports time), so
+# dates are parsed and formatted by hand.
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def ymd(d) -> str:
+    return f"{d.year:04d}-{d.month:02d}-{d.day:02d}"
+
+
 def parse_ms(day: str) -> int:
-    d = datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    return int(d.timestamp() * 1000)
+    d = datetime(int(day[0:4]), int(day[5:7]), int(day[8:10]), tzinfo=timezone.utc)
+    return (d - EPOCH).days * 86400000
 
 
 def iso_from_ms(ms: int) -> str:
-    return (datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(milliseconds=ms)).strftime("%Y-%m-%d")
+    return ymd(EPOCH + timedelta(milliseconds=ms))
 
 
 def is_real_day(s: str) -> bool:
     if not isinstance(s, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
         return False
     try:
-        return datetime.strptime(s, "%Y-%m-%d").strftime("%Y-%m-%d") == s
+        datetime(int(s[0:4]), int(s[5:7]), int(s[8:10]))
+        return True
     except ValueError:
         return False
 
@@ -124,14 +134,14 @@ def js_add_months(day: str, months: int) -> str:
     total = (y * 12 + (m - 1)) + months
     ny, nm = divmod(total, 12)
     first = datetime(ny, nm + 1, 1)
-    return (first + timedelta(days=d - 1)).strftime("%Y-%m-%d")
+    return ymd(first + timedelta(days=d - 1))
 
 
 def js_add_years_plus_day(day: str, years: int) -> str:
     """setUTCFullYear(y + years) then setUTCDate(d + 1), with JavaScript's day overflow (29 Feb rolls to 1 Mar)."""
     y, m, d = (int(p) for p in day.split("-"))
     first = datetime(y + years, m, 1)
-    return (first + timedelta(days=d - 1) + timedelta(days=1)).strftime("%Y-%m-%d")
+    return ymd(first + timedelta(days=d - 1) + timedelta(days=1))
 
 
 def norm_number(n: str) -> str:
@@ -569,12 +579,8 @@ def abns_to_check(l: dict) -> dict:
         add(d, "purchases")
     for d in [x for x in docs if x["kind"] == "invoice" and live(x)] + [b for b in bank if b["kind"] == "receive"]:
         add(d, "sales")
-    import functools
-
-    def order(a, b):
-        return (cmp(b["gstClaimed"], a["gstClaimed"]) or cmp(b["purchases"] + b["sales"], a["purchases"] + a["sales"])
-                or cmp(locale_key(a["contact"]), locale_key(b["contact"])))
-    allrows = sorted(by_abn.values(), key=functools.cmp_to_key(order))
+    # Most GST claimed first, then most documents, then name (no functools: the sandbox blocks lazy imports).
+    allrows = sorted(by_abn.values(), key=lambda r: (-r["gstClaimed"], -(r["purchases"] + r["sales"]), locale_key(r["contact"])))
     return {"abns": allrows[:MAX_ABNS_TO_CHECK], "more": max(0, len(allrows) - MAX_ABNS_TO_CHECK)}
 
 
@@ -671,7 +677,7 @@ def run_checks(invoke, tenant_id: str, period_start: str, period_end: str, gst_r
     if (parse_ms(period_end) - parse_ms(period_start)) / 86400000 >= MAX_PERIOD_DAYS:
         raise ValueError(f"The period is longer than {MAX_PERIOD_DAYS} days: run one BAS period at a time")
     if today_iso is None:
-        today_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today_iso = ymd(datetime.now(timezone.utc))
     in_period = f"Date>={date_time(period_start)}&&Date<={date_time(period_end)}"
     not_deleted = f'{in_period}&&Status!="DELETED"'
     year_ago = js_add_years_plus_day(period_end, -1)
