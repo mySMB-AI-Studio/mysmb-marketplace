@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+// WARNING (27 Nov 2026): plugins/client-report-analytics-agent on dev has drifted ahead of this kit (the Email
+// Management agent, its mail servers, capabilities and process were added outside it). Running this generator as is
+// DELETES them. The Xero official-MCP change was applied to the dev files directly (same edits as below, contentHash
+// recomputed) and here; bring the Email Management parts into this kit before regenerating.
 // Generates the client-report-analytics-agent package content (Agents 2.0) from src/.
 //
 //   node scripts/client-report-analytics-agent-kit/gen.mjs
@@ -96,7 +100,12 @@ const setup = withHash({
   definition: {
     version: 2,
     connections: [
-      { key: 'xero', label: 'Xero', oneOf: ['xero-accounting'], required: true, scope: 'either' },
+      // Xero's official MCP (27 Nov 2026: our xero-accounting server is retiring). Connect it through the Xero Official
+      // extension: its connection block holds mySMB's Xero app, and a sign-in is shared by server name.
+      { key: 'xero', label: 'Xero', oneOf: ['xero-official'], required: true, scope: 'either' },
+      // Temporary: the BAS readiness checks still run on the retiring xero-accounting server until they move to an
+      // automation on the Xero API connector (computed tools stay up until the cut-over day).
+      { key: 'xero_bas', label: 'Xero BAS readiness checks (temporary connector)', oneOf: ['xero-accounting'], required: false, scope: 'either' },
       { key: 'abr', label: 'ABR Lookup (ABN register checks)', oneOf: ['abr'], required: false, scope: 'either' },
     ],
     // BAS review settings (19 Nov 2026): our own answers to the bookkeeper's open questions 5, 7 and 9, as defaults a
@@ -139,32 +148,33 @@ const setup = withHash({
 
 // ── capabilities (read-only; one tool each: the store runs the first binding on the bound server) ──
 
-const TENANT = { type: 'string', description: "The client's Xero organisation id (tenantId from list_connections)." };
+const TENANT = { type: 'string', description: "The client's Xero organisation id (tenantId from get_connected_tenants)." };
 const str = (description) => ({ type: 'string', description });
 const int = (description) => ({ type: 'integer', description });
 const bool = (description) => ({ type: 'boolean', description });
-const FILTERS = {
-  where: str('Optional Xero filter, e.g. Status=="ACTIVE".'),
-  order: str('Optional Xero order clause, e.g. "Date DESC".'),
-};
+// Xero's official MCP (api.xero.com/mcp/v1): its list tools take no `where` or `order` filter (paging, a few id/status
+// filters and ifModifiedSince only), pages default to 25 rows (pageSize up to 1000), and the organisation parameter is
+// xeroTenantId. The capability keeps xero_tenant_id (the process and skills use it) and maps it in argMap.
+const PAGING = { page: int('Page number (1 = first).'), pageSize: int('Rows per page: default 25, at most 1000.') };
+const MODIFIED = { ifModifiedSince: str('Only rows changed after this UTC time, yyyy-MM-ddTHH:mm:ss.') };
 const xeroCaps = [
-  ['xero.organisation.read', 'Read the client organisation', 'get_organisation', 'accounting.settings.read', {}, ['Organisations']],
-  ['xero.accounts.read', 'Read the chart of accounts', 'list_accounts', 'accounting.settings.read', { ...FILTERS }, ['Accounts']],
-  ['xero.tax_rates.read', 'Read the tax rates', 'list_tax_rates', 'accounting.settings.read', { ...FILTERS }, ['TaxRates']],
+  ['xero.organisation.read', 'Read the client organisation', 'list_organisation_details', 'accounting.settings.read', {}, ['Organisations']],
+  ['xero.accounts.read', 'Read the chart of accounts', 'list_accounts', 'accounting.settings.read', { ...MODIFIED }, ['Accounts']],
+  ['xero.tax_rates.read', 'Read the tax rates', 'list_tax_rates', 'accounting.settings.read', {}, ['TaxRates']],
   ['xero.contacts.read', 'Read contacts', 'list_contacts', 'accounting.contacts.read',
-    { ...FILTERS, ids: str('Comma-separated ContactIDs.'), page: int('Page (100 per page).'), includeArchived: bool('Include archived contacts.'), summaryOnly: bool('Lighter rows.'), searchTerm: str('Search name, email or number.') }, ['Contacts']],
-  ['xero.invoices.read', 'Read invoices and bills', 'list_invoices', 'accounting.transactions.read',
-    { ...FILTERS, ids: str('Comma-separated InvoiceIDs.'), invoiceNumbers: str('Comma-separated invoice numbers.'), contactIDs: str('Comma-separated ContactIDs.'), statuses: str('Comma-separated statuses, e.g. AUTHORISED,PAID.'), page: int('Page (100 per page).'), summaryOnly: bool('Lighter rows.'), searchTerm: str('Search number or reference.') }, ['Invoices']],
-  ['xero.credit_notes.read', 'Read credit notes', 'list_credit_notes', 'accounting.transactions.read', { ...FILTERS, page: int('Page (100 per page).') }, ['CreditNotes']],
-  ['xero.bank_transactions.read', 'Read bank transactions', 'list_bank_transactions', 'accounting.transactions.read', { ...FILTERS, page: int('Page (100 per page).') }, ['BankTransactions']],
-  ['xero.profit_and_loss.read', 'Read the Profit and Loss', 'get_profit_and_loss', 'accounting.reports.read',
-    { fromDate: str('YYYY-MM-DD'), toDate: str('YYYY-MM-DD'), periods: int('Comparison periods.'), timeframe: { type: 'string', enum: ['MONTH', 'QUARTER', 'YEAR'] }, paymentsOnly: bool('Cash basis.') }, ['Reports']],
-  ['xero.balance_sheet.read', 'Read the Balance Sheet', 'get_balance_sheet', 'accounting.reports.read',
+    { ...PAGING, searchTerm: str('Search name, email or number.') }, ['Contacts']],
+  ['xero.invoices.read', 'Read invoices and bills', 'list_invoices', 'accounting.invoices.read',
+    { ...PAGING, ...MODIFIED, ids: str('Comma-separated InvoiceIDs.'), invoiceNumbers: str('Comma-separated invoice numbers.'), contactIds: str('Comma-separated ContactIDs.'), statuses: str('Comma-separated statuses, e.g. AUTHORISED,PAID.'), summaryOnly: bool('Lighter rows (no line items).'), searchTerm: str('Search number or reference.') }, ['Invoices']],
+  ['xero.credit_notes.read', 'Read credit notes', 'list_credit_notes', 'accounting.invoices.read', { ...PAGING, ...MODIFIED, contactId: str('One ContactID.') }, ['CreditNotes']],
+  ['xero.bank_transactions.read', 'Read bank transactions', 'list_bank_transactions', 'accounting.banktransactions.read', { ...PAGING, ...MODIFIED }, ['BankTransactions']],
+  ['xero.profit_and_loss.read', 'Read the Profit and Loss', 'list_profit_and_loss', 'accounting.reports.profitandloss.read',
+    { fromDate: str('YYYY-MM-DD'), toDate: str('YYYY-MM-DD'), periods: int('Comparison periods (1 to 11).'), timeframe: { type: 'string', enum: ['MONTH', 'QUARTER', 'YEAR'] }, paymentsOnly: bool('Cash basis.') }, ['Reports']],
+  ['xero.balance_sheet.read', 'Read the Balance Sheet', 'list_report_balance_sheet', 'accounting.reports.balancesheet.read',
     { date: str('As-at date, YYYY-MM-DD.'), periods: int('Comparison periods.'), timeframe: { type: 'string', enum: ['MONTH', 'QUARTER', 'YEAR'] }, paymentsOnly: bool('Cash basis.') }, ['Reports']],
-  ['xero.trial_balance.read', 'Read the Trial Balance', 'get_trial_balance', 'accounting.reports.read',
+  ['xero.trial_balance.read', 'Read the Trial Balance', 'list_trial_balance', 'accounting.reports.trialbalance.read',
     { date: str('As-at date, YYYY-MM-DD.'), paymentsOnly: bool('Cash basis.') }, ['Reports']],
 ];
-function capability(key, title, server, tool, scopes, props, required, outputKeys) {
+function capability(key, title, server, tool, scopes, props, required, outputKeys, rename = {}) {
   const originKey = deterministicUuid(`capability:${SLUG}:${key}`);
   const definition = {
     kind: 'capability',
@@ -180,20 +190,22 @@ function capability(key, title, server, tool, scopes, props, required, outputKey
       additionalProperties: true,
       properties: Object.fromEntries(outputKeys.map((k) => [k, { type: 'array', items: { type: 'object' } }])),
     },
-    bindings: [{ server, tool, argMap: Object.fromEntries(Object.keys(props).map((k) => [k, k])), ...(scopes.length ? { scopes } : {}) }],
+    bindings: [{ server, tool, argMap: Object.fromEntries(Object.keys(props).map((k) => [k, rename[k] || k])), ...(scopes.length ? { scopes } : {}) }],
     permissionRequirements: [`connectors:${server}`],
   };
   return withHash({ kind: 'capability', originKey, name: title, definition });
 }
 const capabilities = [
   ...xeroCaps.map(([key, title, tool, scope, props, out]) =>
-    capability(key, title, 'xero-accounting', tool, [scope], { xero_tenant_id: TENANT, ...props }, ['xero_tenant_id'], out)),
+    capability(key, title, 'xero-official', tool, [scope], { xero_tenant_id: TENANT, ...props }, ['xero_tenant_id'], out, { xero_tenant_id: 'xeroTenantId' })),
   capability('abr.abns.check', 'Check ABNs against the Australian Business Register', 'abr', 'abr_lookup_abns', [],
     { abns: { description: 'ABNs to check: an array, or one string separated by commas, semicolons or new lines.', oneOf: [{ type: 'array', items: { type: 'string' } }, { type: 'string' }] } },
     ['abns'], ['results']),
   capability('abr.abn.read', 'Read one ABN record from the Australian Business Register', 'abr', 'abr_get_abn_details', [],
     { abn: str('The ABN (11 digits; spaces allowed).'), include_history: bool('Include past statuses, GST periods and names.') },
     ['abn'], []),
+  // TEMPORARY (27 Nov 2026): still on the retiring xero-accounting server; it moves to an automation on the Xero API
+  // connector before the cut-over (Xero's official MCP has no computed checks and no date filters).
   // The BAS checks run on the Xero server for one period and come back as a short list of findings: a quarter of
   // invoices with line items is too large for a job thread's tool result (myhub-mcp-servers #951).
   capability('xero.bas_checks.read', 'Run the BAS readiness checks for one period', 'xero-accounting', 'get_xero_bas_readiness_checks',
@@ -203,8 +215,8 @@ const capabilities = [
       changedSince: str('When the previous BAS for this client was prepared (YYYY-MM-DD), for the prior-period adjustments check; leave out to use periodStart.') },
     ['xero_tenant_id', 'periodStart', 'periodEnd'], ['findings', 'notRun', 'alsoSeen']),
   // Finds a client's Xero organisation by name (no tenant id needed): the BAS review step starts from a client name.
-  capability('xero.connections.read', 'List the Xero organisations this connection can see', 'xero-accounting', 'list_connections',
-    ['accounting.settings.read'], {}, [], ['tenants']),
+  capability('xero.connections.read', 'List the Xero organisations this connection can see', 'xero-official', 'get_connected_tenants',
+    [], {}, [], ['tenants']),
 ];
 const capabilityKey = Object.fromEntries(capabilities.map((c) => [c.definition.key, c.originKey]));
 
@@ -405,7 +417,7 @@ const processDefinition = {
   instructions: PROCESS_INSTRUCTIONS,
   statuses: [
     status('finding', 'Finding the client', 'initial',
-      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call list_connections and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call get_organisation and note whether the client is registered for GST, its GST basis and its BAS period. Rename the job with job_rename to "BAS readiness review: <client> <period label>" so people can find it. Record the outputs and move to Checking.',
+      'Read the practice\'s checklist (BAS readiness/Checklist.md in your files) with files_read. If it is missing, write the default checklist from the skill there with files_write and say so in a job comment. Then call get_connected_tenants and match clientName to one organisation; if none or several match, ask for help and name the organisations you can see. Call list_organisation_details and note whether the client is registered for GST, its GST basis and its BAS period. Rename the job with job_rename to "BAS readiness review: <client> <period label>" so people can find it. Record the outputs and move to Checking.',
       { outputs: [
         { key: 'clientName', type: 'string' }, { key: 'xeroTenantId', type: 'string' },
         { key: 'periodLabel', type: 'string' }, { key: 'gstRegistered', type: 'boolean' }, { key: 'gstBasis', type: 'string' },
@@ -484,6 +496,8 @@ for (const s of agent.skills) if (!skillFiles.includes(`${s}.md`)) throw new Err
 
 writeJson(join(PLUGIN, '.mcp.json'), {
   mcpServers: {
+    'xero-official': { type: 'http', url: 'https://api.xero.com/mcp/v1' },
+    // Temporary: only the BAS readiness checks capability uses it (see above).
     'xero-accounting': { type: 'http', url: `${PROD_MCP}/xero-accounting/mcp` },
     abr: { type: 'http', url: `${PROD_MCP}/abr/mcp`, headers: { Authorization: 'Bearer ${ABR_ACCESS_KEY}' } },
   },

@@ -1,17 +1,16 @@
 {
-  "contentHash": "554b8c1b2e05a3d96c628d2421bf8d1561d87136ac63d3fbc64b126537bcc53d",
+  "contentHash": "0a737fdfbadc81a4a570ec40ae2b5d247e6cddef0b9d44eb2e5d5d7cb27f6735",
   "definition": {
     "bindings": [
       {
         "argMap": {
-          "order": "order",
-          "where": "where",
-          "xero_tenant_id": "xero_tenant_id"
+          "ifModifiedSince": "ifModifiedSince",
+          "xero_tenant_id": "xeroTenantId"
         },
         "scopes": [
           "accounting.settings.read"
         ],
-        "server": "xero-accounting",
+        "server": "xero-official",
         "tool": "list_accounts"
       }
     ],
@@ -21,16 +20,12 @@
     "inputsSchema": {
       "additionalProperties": false,
       "properties": {
-        "order": {
-          "description": "Optional Xero order clause, e.g. \"Date DESC\".",
-          "type": "string"
-        },
-        "where": {
-          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\".",
+        "ifModifiedSince": {
+          "description": "Only rows changed after this UTC time, yyyy-MM-ddTHH:mm:ss.",
           "type": "string"
         },
         "xero_tenant_id": {
-          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "description": "The client's Xero organisation id (tenantId from get_connected_tenants).",
           "type": "string"
         }
       },
@@ -55,7 +50,7 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-official"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",
