@@ -1,0 +1,71 @@
+{
+  "id": "xonboard-onboarding-pipeline",
+  "title": "Onboarding Pipeline (Demo)",
+  "description": "Static demo of a Xonboard (built on SuperAPI) Onboarding Pipeline tile — illustrative sample stage counts for a fictional accounting/payroll practice's new-hire onboarding, not real practice data, pending a live connection.",
+  "category": "hr",
+  "tags": ["xonboard", "superapi", "onboarding", "new hire", "super", "demo"],
+  "keywords": ["onboarding pipeline", "new hire", "stages", "demo"],
+  "connectorsUsed": ["xonboard"],
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "branding": { "color": "#3457a6" },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "sub", "div0", "body", "div1", "footer"] },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "ListChecks", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Onboarding Pipeline", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "4 stages · sample data" } },
+
+      "sub": { "type": "Text", "props": { "text": "New-hire onboarding, by stage", "size": "xs", "tone": "muted" } },
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["rows"] },
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["r1", "rd1", "r2", "rd2", "r3", "rd3", "r4"]
+      },
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+
+      "r1": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r1Stack", "r1Badge"] },
+      "r1Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r1Name", "r1Sub"] },
+      "r1Name": { "type": "Text", "props": { "text": "Invited", "size": "sm", "weight": "medium" } },
+      "r1Sub": { "type": "Caption", "props": { "text": "Invitation sent, not yet started" } },
+      "r1Badge": { "type": "Badge", "props": { "text": "12", "tone": "info", "variant": "soft" } },
+
+      "r2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r2Stack", "r2Badge"] },
+      "r2Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r2Name", "r2Sub"] },
+      "r2Name": { "type": "Text", "props": { "text": "In Progress", "size": "sm", "weight": "medium" } },
+      "r2Sub": { "type": "Caption", "props": { "text": "Employee is completing onboarding steps" } },
+      "r2Badge": { "type": "Badge", "props": { "text": "8", "tone": "brand", "variant": "soft" } },
+
+      "r3": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r3Stack", "r3Badge"] },
+      "r3Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r3Name", "r3Sub"] },
+      "r3Name": { "type": "Text", "props": { "text": "Pending Fund Response", "size": "sm", "weight": "medium" } },
+      "r3Sub": { "type": "Caption", "props": { "text": "Waiting on super fund verification" } },
+      "r3Badge": { "type": "Badge", "props": { "text": "5", "tone": "warning", "variant": "soft" } },
+
+      "r4": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r4Stack", "r4Badge"] },
+      "r4Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r4Name", "r4Sub"] },
+      "r4Name": { "type": "Text", "props": { "text": "Completed", "size": "sm", "weight": "medium" } },
+      "r4Sub": { "type": "Caption", "props": { "text": "Onboarding finished, fund confirmed" } },
+      "r4Badge": { "type": "Badge", "props": { "text": "23", "tone": "success", "variant": "soft" } },
+
+      "div1": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["footerIcon", "footerNote"] },
+      "footerIcon": { "type": "Icon", "props": { "name": "Info", "tone": "muted", "size": "xs" } },
+      "footerNote": { "type": "Text", "props": { "text": "Static demo data — will show live onboarding counts once Xonboard is connected", "size": "xs", "tone": "muted" } }
+    }
+  },
+  "status": "published"
+}

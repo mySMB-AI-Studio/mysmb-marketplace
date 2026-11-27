@@ -1,0 +1,71 @@
+{
+  "id": "xonboard-fund-selections",
+  "title": "Super Fund Selections (Demo)",
+  "description": "Static demo of a Xonboard (built on SuperAPI) Super Fund Selections tile — illustrative sample recent employees and which super fund they ended up with for a fictional accounting/payroll practice, not real practice data, pending a live connection.",
+  "category": "hr",
+  "tags": ["xonboard", "superapi", "super fund", "stapled fund", "demo"],
+  "keywords": ["super fund selections", "stapled fund", "employee choice", "default fund", "demo"],
+  "connectorsUsed": ["xonboard"],
+  "sizing": {
+    "preferred": { "colSpan": 4, "rowSpan": 5 },
+    "min": { "colSpan": 3, "rowSpan": 4 },
+    "max": { "colSpan": 6, "rowSpan": 8 }
+  },
+  "branding": { "color": "#3457a6" },
+  "spec": {
+    "root": "card",
+    "elements": {
+      "card": { "type": "Card", "props": {}, "children": ["headerRow", "sub", "div0", "body", "div1", "footer"] },
+
+      "headerRow": { "type": "Row", "props": { "justify": "between", "align": "center" }, "children": ["titleGroup"] },
+      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["titleIcon", "titleStack"] },
+      "titleIcon": { "type": "Icon", "props": { "name": "Landmark", "tone": "brand", "size": "sm" } },
+      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
+      "title": { "type": "Heading", "props": { "text": "Super Fund Selections", "level": "h2" } },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "4 shown · sample data" } },
+
+      "sub": { "type": "Text", "props": { "text": "Recent employees and how their fund was set", "size": "xs", "tone": "muted" } },
+      "div0": { "type": "Divider", "props": {} },
+
+      "body": { "type": "Body", "props": {}, "children": ["rows"] },
+      "rows": {
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["r1", "rd1", "r2", "rd2", "r3", "rd3", "r4"]
+      },
+      "rd1": { "type": "Divider", "props": {} },
+      "rd2": { "type": "Divider", "props": {} },
+      "rd3": { "type": "Divider", "props": {} },
+
+      "r1": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r1Stack", "r1Badge"] },
+      "r1Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r1Name", "r1Sub"] },
+      "r1Name": { "type": "Text", "props": { "text": "Sarah Thompson", "size": "sm", "weight": "medium" } },
+      "r1Sub": { "type": "Caption", "props": { "text": "AustralianSuper" } },
+      "r1Badge": { "type": "Badge", "props": { "text": "Stapled Fund Matched", "tone": "info", "variant": "soft" } },
+
+      "r2": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r2Stack", "r2Badge"] },
+      "r2Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r2Name", "r2Sub"] },
+      "r2Name": { "type": "Text", "props": { "text": "Daniel Kim", "size": "sm", "weight": "medium" } },
+      "r2Sub": { "type": "Caption", "props": { "text": "HESTA" } },
+      "r2Badge": { "type": "Badge", "props": { "text": "Employee Choice", "tone": "success", "variant": "soft" } },
+
+      "r3": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r3Stack", "r3Badge"] },
+      "r3Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r3Name", "r3Sub"] },
+      "r3Name": { "type": "Text", "props": { "text": "Ayesha Rahman", "size": "sm", "weight": "medium" } },
+      "r3Sub": { "type": "Caption", "props": { "text": "Host Plus (Default MySuper)" } },
+      "r3Badge": { "type": "Badge", "props": { "text": "Default Fund Assigned", "tone": "muted", "variant": "soft" } },
+
+      "r4": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["r4Stack", "r4Badge"] },
+      "r4Stack": { "type": "Stack", "props": { "gap": "none", "grow": true }, "children": ["r4Name", "r4Sub"] },
+      "r4Name": { "type": "Text", "props": { "text": "Tom Walsh", "size": "sm", "weight": "medium" } },
+      "r4Sub": { "type": "Caption", "props": { "text": "Rest Super" } },
+      "r4Badge": { "type": "Badge", "props": { "text": "Employee Choice", "tone": "success", "variant": "soft" } },
+
+      "div1": { "type": "Divider", "props": {} },
+      "footer": { "type": "Row", "props": { "gap": "xs", "align": "center" }, "children": ["footerIcon", "footerNote"] },
+      "footerIcon": { "type": "Icon", "props": { "name": "Info", "tone": "muted", "size": "xs" } },
+      "footerNote": { "type": "Text", "props": { "text": "Static demo data — will show live fund selections once Xonboard is connected", "size": "xs", "tone": "muted" } }
+    }
+  },
+  "status": "published"
+}
