@@ -50,6 +50,14 @@ function formatEhDate(raw: unknown): { display: string; ts: number } {
   };
 }
 
+// ── initialsOf ────────────────────────────────────────────────────────────────
+// First letter of the first two words of a name, for Avatar initials.
+function initialsOf(name: string): string {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
 // ── flatten_employees ─────────────────────────────────────────────────────────
 // Sort and normalise raw EH employee objects into display-ready row data.
 // Args: { value: raw items array, key: sort key e.g. "full_name|asc" }
@@ -613,6 +621,555 @@ const flatten_team_timesheet_entries: ComputedFunction = (args) => {
   return rows;
 };
 
+// ── team_timesheet_board ──────────────────────────────────────────────────────
+// Builds the whole Team Timesheet This Week tile. Groups the week's entries by
+// employee, totals the hours, and gives each person a bar scaled against the
+// person with the most hours, so the list reads as a ranking rather than as
+// progress towards a target nobody has told us about. The week label comes from
+// the server's own window, so it can never disagree with the entries shown.
+// Args: { value: items from get_timesheets_this_week, start, end }
+const team_timesheet_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const { display: startDisplay } = formatEhDate(args.start);
+  const { display: endDisplay } = formatEhDate(args.end);
+  const weekLabel = !startDisplay ? 'This week'
+    : startDisplay === endDisplay ? startDisplay
+    : `${startDisplay} → ${endDisplay}`;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  type EmpGroup = { name: string; hours: number; statuses: string[]; dates: string[]; days: Set<string> };
+  const groups = new Map<string, EmpGroup>();
+
+  for (const item of raw) {
+    const empId = String(item.employee_id ?? item.id ?? '');
+    if (!empId) continue;
+    const hrs = Number(item.hours ?? 0);
+    const status = String(item.status ?? '').toLowerCase();
+    const date = String(item.date ?? '');
+    const existing = groups.get(empId);
+    if (existing) {
+      existing.hours += Number.isFinite(hrs) ? hrs : 0;
+      existing.statuses.push(status);
+      existing.dates.push(date);
+      if (date) existing.days.add(date);
+    } else {
+      groups.set(empId, {
+        name: String(item.employee_name ?? '').trim(),
+        hours: Number.isFinite(hrs) ? hrs : 0,
+        statuses: [status],
+        dates: [date],
+        days: new Set(date ? [date] : []),
+      });
+    }
+  }
+
+  const people = Array.from(groups.entries()).map(([empId, g]) => {
+    const hrs = Math.round(g.hours * 10) / 10;
+    const allApproved = g.statuses.length > 0 && g.statuses.every(s => s === 'approved');
+    const overdue = !allApproved && g.statuses.some((s, i) => {
+      const { ts } = formatEhDate(g.dates[i]);
+      return (s === 'pending' || s === '') && ts > 0 && ts < todayTs;
+    });
+    return { empId, name: g.name || 'Unknown employee', hours: hrs, dayCount: g.days.size, allApproved, overdue };
+  });
+
+  const maxHours = people.reduce((m, p) => (p.hours > m ? p.hours : m), 0);
+  const totalHours = Math.round(people.reduce((s, p) => s + p.hours, 0) * 10) / 10;
+
+  const rows = people.map(p => ({
+    id: p.empId,
+    employee_name: p.name,
+    initials: initialsOf(p.name),
+    // One decimal throughout, so a genuine zero reads as a measured zero
+    // rather than as a missing value.
+    hours_value: p.hours.toFixed(1),
+    days_note: p.dayCount === 1 ? '1 day' : `${p.dayCount} days`,
+    // Floored at 3 so somebody who logged a little is still visibly on the
+    // chart instead of looking like they logged nothing at all.
+    pct: maxHours > 0 && p.hours > 0 ? Math.max(3, Math.round((p.hours / maxHours) * 100)) : 0,
+  }));
+
+  rows.sort((a, b) => Number(b.hours_value) - Number(a.hours_value) || a.employee_name.localeCompare(b.employee_name));
+
+  const awaiting = people.filter(p => !p.allApproved).length;
+  const peopleCount = people.length;
+  const avgHours = peopleCount > 0 ? Math.round((totalHours / peopleCount) * 10) / 10 : 0;
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+    week_label: weekLabel,
+    total_value: totalHours.toFixed(1),
+    people_count: String(peopleCount),
+    avg_value: avgHours.toFixed(1),
+    awaiting_label: awaiting === 1 ? '1 pending approval' : `${awaiting} pending approval`,
+    has_awaiting: awaiting > 0,
+  };
+};
+
+// ── compliance_board ──────────────────────────────────────────────────────────
+// Builds the whole Compliances at Risk tile from the pre-filtered at-risk
+// certification list. The server decides what counts as at risk; this adds the
+// display shape — employee split from certification, initials, a days-past-due
+// badge and the three summary figures — and sorts most overdue first.
+// Args: { value: pre-filtered items array from list_compliance_documents }
+const compliance_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw.map(item => {
+    const certName = String(
+      item.name ?? item.certification_name ?? item.document_name ?? item.title ?? '',
+    ).trim();
+    const empName = String(item.employee_name ?? '').trim();
+
+    const dueRaw = item.due_date ?? item.expiry_date ?? item.expires_at;
+    const { display: dueDisplay, ts: dueTs } = formatEhDate(dueRaw);
+
+    // Days are measured from the date the row actually shows, so the badge and
+    // the date beneath it can never disagree. A record with no usable date gets
+    // -1 and sorts to the bottom rather than reading as "due today".
+    const days = dueTs > 0 ? Math.round((todayTs - dueTs) / 86_400_000) : -1;
+
+    return {
+      id:            String(item.id ?? ''),
+      employee_name: empName || 'Unknown employee',
+      initials:      initialsOf(empName),
+      cert_name:     certName || 'Certification',
+      due_display:   dueDisplay ? `Due ${dueDisplay}` : 'Date not set',
+      badge_label:   days > 0 ? `${days}d overdue` : days === 0 ? 'Due today' : 'No due date',
+      badge_tone:    days > 0 ? 'destructive' : days === 0 ? 'warning' : 'muted',
+      days,
+    };
+  });
+
+  rows.sort((a, b) => b.days - a.days || a.employee_name.localeCompare(b.employee_name));
+
+  const overdue = rows.filter(r => r.days > 0);
+  const dueToday = rows.filter(r => r.days === 0).length;
+  const oldest = overdue.length > 0 ? overdue[0].days : 0;
+  const people = new Set(rows.map(r => r.employee_name)).size;
+  const certTypes = new Set(rows.map(r => r.cert_name)).size;
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+
+    overdue_count: overdue.length,
+    // The caption names the items due today only when there are some, so the
+    // headline figure is never read as covering them.
+    overdue_note: dueToday > 0
+      ? `plus ${dueToday} due today`
+      : overdue.length === 1 ? 'certification' : 'certifications',
+    overdue_tone: overdue.length > 0 ? 'destructive' : 'warning',
+
+    // "Oldest" is a span of time, so with nothing past its date there is no
+    // number to show — saying none is truer than showing a zero.
+    oldest_value: overdue.length > 0 ? `${oldest} days` : 'None',
+    oldest_note:  overdue.length > 0 ? 'past due date' : 'nothing past due',
+    oldest_tone:  overdue.length > 0 ? 'destructive' : 'warning',
+
+    people_count: people,
+    cert_note:    `${certTypes} certification type${certTypes === 1 ? '' : 's'}`,
+  };
+};
+
+// ── LEAVE_TYPE_TONES ──────────────────────────────────────────────────────────
+// Leave type is a category, not a state, so it must not borrow status colours.
+// `chart-*` is the token set reserved for exactly this (widget-tokens: "non-status,
+// categorical colors ... where accent/success/warning/destructive/info would wrongly
+// imply status semantics"). The tone is picked by hashing the type name so a given
+// leave type keeps the same colour every render, with no ordering dependency.
+const LEAVE_TYPE_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+
+function leaveTypeTone(name: string): string {
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+  return LEAVE_TYPE_TONES[sum % LEAVE_TYPE_TONES.length];
+}
+
+// ── leave_approvals_board ─────────────────────────────────────────────────────
+// Splits the leave queue into what still needs a decision and what has already
+// been decided, and builds both groups plus the three summary figures.
+//
+// The server labels a still-pending request Overdue once its start date has
+// passed, Starts Today on the day, and Pending before that — all three are
+// undecided, so all three sit in the action group. Approved and Declined are
+// decisions and sit below.
+//
+// Args: { value: raw items array from get_leave_approvals_queue }
+const leave_approvals_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const DECIDED = new Set(['Approved', 'Declined']);
+
+  const rows = raw.map(item => {
+    const empName = String(item.employee_name ?? '').trim();
+
+    const typeFull = String(
+      item.leave_category_name ?? item.leave_type ?? item.leave_type_name ?? '',
+    ).trim();
+    // "Annual Leave" → "Annual": the pill sits inside a tile called Leave
+    // Request Approvals, so repeating the word costs width and says nothing.
+    const typeShort = typeFull.replace(/\s*leave\s*$/i, '').trim() || typeFull || 'Leave';
+
+    const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+    const { display: endDisplay } = formatEhDate(item.end_date);
+    const dateRange = !endDisplay || endDisplay === startDisplay
+      ? startDisplay
+      : `${startDisplay} → ${endDisplay}`;
+
+    const statusLabel = String(item.status_label ?? '');
+    const decided = DECIDED.has(statusLabel);
+
+    // The server tones a Declined request destructive. A decision that was taken
+    // deliberately is not a fault state, so it reads muted here; destructive is
+    // kept for the requests that have gone past their start date undecided.
+    const statusTone = statusLabel === 'Declined'
+      ? 'muted'
+      : String(item.status_tone ?? 'muted');
+
+    return {
+      id:            String(item.id ?? ''),
+      employee_name: empName || 'Unknown employee',
+      initials:      initialsOf(empName),
+      leave_type:    typeShort,
+      type_tone:     leaveTypeTone(typeFull || typeShort),
+      date_range:    dateRange || 'No dates on record',
+      status_label:  statusLabel || 'Pending',
+      status_tone:   statusTone,
+      avatar_tone:   decided ? 'muted' : statusTone,
+      review_url:    String(item.review_url ?? ''),
+      show_review:   !decided && Boolean(item.review_url),
+      start_ts:      startTs,
+      decided,
+    };
+  });
+
+  // Undecided: soonest start first — the one that has been waiting longest is
+  // also the one furthest past its date. Decided: most recent first.
+  const action = rows.filter(r => !r.decided).sort((a, b) => a.start_ts - b.start_ts);
+  const done   = rows.filter(r => r.decided).sort((a, b) => b.start_ts - a.start_ts);
+
+  const overdue  = action.filter(r => r.status_label === 'Overdue').length;
+  const approved = done.filter(r => r.status_label === 'Approved').length;
+  const declined = done.filter(r => r.status_label === 'Declined').length;
+
+  const plural = (n: number) => (n === 1 ? 'request' : 'requests');
+
+  return {
+    action_rows:  action,
+    decided_rows: done,
+    has_rows:     rows.length > 0,
+    has_action:   action.length > 0,
+    has_decided:  done.length > 0,
+
+    action_heading:  `NEEDS A DECISION (${action.length})`,
+    decided_heading: `DECIDED (${done.length})`,
+
+    action_count: action.length,
+    // Names the overdue subset rather than implying the whole figure is overdue.
+    action_note:  action.length === 0
+      ? 'nothing waiting'
+      : overdue > 0 ? `${overdue} already overdue` : 'none overdue yet',
+    action_tone:  action.length === 0 ? 'success' : overdue > 0 ? 'destructive' : 'warning',
+
+    approved_count: approved,
+    approved_note:  plural(approved),
+    declined_count: declined,
+    declined_note:  plural(declined),
+  };
+};
+
+// ── LEAVE_TYPE_ICONS ──────────────────────────────────────────────────────────
+// A glyph per leave type, so a row is recognisable before it is read. Matched on
+// substrings because Employment Hero lets each organisation name its own types
+// ("Annual Leave", "Annual Holiday", "Personal/Carer's Leave"). Anything
+// unrecognised falls back to a calendar rather than being left blank.
+const LEAVE_TYPE_ICONS: Array<[RegExp, string]> = [
+  [/annual|holiday|vacation/i,          'Sun'],
+  [/sick|personal|carer|compassion/i,   'HeartPulse'],
+  [/parental|maternity|paternity|baby/i,'Baby'],
+  [/long service/i,                     'Award'],
+  [/bereave|funeral/i,                  'Heart'],
+  [/study|training|educat/i,            'GraduationCap'],
+  [/unpaid|leave without pay/i,         'CircleSlash'],
+  [/jury|community|volunteer/i,         'Gavel'],
+];
+
+function leaveTypeIcon(name: string): string {
+  for (const [pattern, icon] of LEAVE_TYPE_ICONS) {
+    if (pattern.test(name)) return icon;
+  }
+  return 'CalendarDays';
+}
+
+// ── my_leave_board ────────────────────────────────────────────────────────────
+// Builds the My Leave Requests tile: one row per request with its type glyph,
+// dates, when it was submitted and — while it is still pending — how long it has
+// been waiting. Pending requests come first, longest wait at the top, because
+// those are the only ones the person can still chase.
+//
+// Args: { value: raw items array from list_leave_requests }
+const my_leave_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw.map(item => {
+    const typeName = String(
+      item.leave_type ?? item.leave_category_name ?? item.leave_type_name ?? '',
+    ).trim() || 'Leave';
+
+    const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+    const { display: endDisplay } = formatEhDate(item.end_date);
+    const dateRange = !endDisplay || endDisplay === startDisplay
+      ? startDisplay
+      : `${startDisplay} → ${endDisplay}`;
+
+    const { display: submittedDisplay, ts: submittedTs } = formatEhDate(
+      item.created_at ?? item.submitted_at ?? item.lodged_at ?? item.lodgement_date,
+    );
+
+    const rawStatus = String(item.status ?? '').toLowerCase();
+    const approved = rawStatus === 'approved';
+    const declined = rawStatus === 'declined' || rawStatus === 'rejected';
+    const pending = !approved && !declined;
+
+    // Declined reads destructive here, unlike the manager-facing approvals tile
+    // where it is a decision taken. From the requester's side it is their request
+    // refused, which is the outcome they need to see.
+    const statusLabel = approved ? 'Approved' : declined ? 'Declined' : 'Pending';
+    const statusTone  = approved ? 'success'  : declined ? 'destructive' : 'warning';
+
+    // Only meaningful while nobody has answered: once a decision exists the wait
+    // is over, and a growing day count would be describing nothing.
+    const waitDays = pending && submittedTs > 0
+      ? Math.max(0, Math.round((todayTs - submittedTs) / 86_400_000))
+      : -1;
+    const waitingLabel = waitDays < 0
+      ? ''
+      : waitDays === 0 ? 'submitted today'
+      : waitDays === 1 ? 'waiting 1 day'
+      : `waiting ${waitDays} days`;
+
+    return {
+      id:              String(item.id ?? ''),
+      leave_type:      typeName,
+      type_tone:       leaveTypeTone(typeName),
+      type_icon:       leaveTypeIcon(typeName),
+      date_range:      dateRange || 'No dates on record',
+      submitted_label: submittedDisplay ? `Submitted ${submittedDisplay}` : 'No submission date',
+      status_label:    statusLabel,
+      status_tone:     statusTone,
+      waiting_label:   waitingLabel,
+      show_waiting:    waitingLabel !== '',
+      pending,
+      start_ts:        startTs,
+      submitted_ts:    submittedTs,
+    };
+  });
+
+  // Still waiting first, oldest submission at the top; then everything decided,
+  // most recent leave first.
+  rows.sort((a, b) => {
+    if (a.pending !== b.pending) return a.pending ? -1 : 1;
+    if (!a.pending) return b.start_ts - a.start_ts;
+    // A request with no submission date cannot claim the longest wait, so it
+    // sorts below the ones whose wait is actually known.
+    const aw = a.submitted_ts > 0 ? a.submitted_ts : Number.MAX_SAFE_INTEGER;
+    const bw = b.submitted_ts > 0 ? b.submitted_ts : Number.MAX_SAFE_INTEGER;
+    return aw - bw;
+  });
+
+  const pendingCount  = rows.filter(r => r.status_label === 'Pending').length;
+  const approvedCount = rows.filter(r => r.status_label === 'Approved').length;
+  const declinedCount = rows.filter(r => r.status_label === 'Declined').length;
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+
+    pending_count:  pendingCount,
+    approved_count: approvedCount,
+    declined_count: declinedCount,
+
+    // A count of nothing is not a state worth colouring, so each dot only takes
+    // its tone once there is something to report.
+    pending_tone:  pendingCount  > 0 ? 'warning'     : 'muted',
+    approved_tone: approvedCount > 0 ? 'success'     : 'muted',
+    declined_tone: declinedCount > 0 ? 'destructive' : 'muted',
+  };
+};
+
+// ── upcoming_leave_board ──────────────────────────────────────────────────────
+// Builds the My Upcoming Leave tile: the soonest booked leave as a hero with a
+// countdown, then everything after it.
+//
+// "Upcoming" means a start date today or later that has not been refused, so an
+// approved booking and one still awaiting a decision both appear — each carrying
+// its own status — while a declined request is dropped, because leave that was
+// refused is not leave you have coming.
+//
+// Args: { value: raw items array from list_leave_requests }
+const upcoming_leave_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw
+    .filter(item => {
+      const status = String(item.status ?? '').toLowerCase();
+      if (status === 'declined' || status === 'rejected' || status === 'cancelled') return false;
+      const { ts } = formatEhDate(item.start_date);
+      return ts > 0 && ts >= todayTs;
+    })
+    .map(item => {
+      const typeName = String(
+        item.leave_type ?? item.leave_category_name ?? item.leave_type_name ?? '',
+      ).trim() || 'Leave';
+
+      const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+      const { display: endDisplay } = formatEhDate(item.end_date);
+      const dateRange = !endDisplay || endDisplay === startDisplay
+        ? startDisplay
+        : `${startDisplay} → ${endDisplay}`;
+
+      const approved = String(item.status ?? '').toLowerCase() === 'approved';
+
+      return {
+        id:           String(item.id ?? ''),
+        leave_type:   typeName,
+        type_icon:    leaveTypeIcon(typeName),
+        type_tone:    leaveTypeTone(typeName),
+        date_range:   dateRange,
+        status_label: approved ? 'Approved' : 'Pending',
+        status_tone:  approved ? 'success'  : 'warning',
+        days_until:   Math.round((startTs - todayTs) / 86_400_000),
+        start_ts:     startTs,
+      };
+    })
+    .sort((a, b) => a.start_ts - b.start_ts);
+
+  const next = rows[0];
+  const days = next ? next.days_until : 0;
+
+  return {
+    has_rows:  rows.length > 0,
+    has_later: rows.length > 1,
+    later_rows: rows.slice(1),
+
+    next_type:         next ? next.leave_type   : '',
+    next_icon:         next ? next.type_icon    : 'CalendarDays',
+    next_tone:         next ? next.type_tone    : 'muted',
+    next_dates:        next ? next.date_range   : '',
+    next_status_label: next ? next.status_label : '',
+    next_status_tone:  next ? next.status_tone  : 'muted',
+    next_days:         days,
+    // The count stays a bare number and the caption carries the grammar, so a
+    // zero never has to read as a quantity of days.
+    next_days_note:    days === 0 ? 'starts today' : days === 1 ? 'day to go' : 'days to go',
+  };
+};
+
+// ── payroll_board ─────────────────────────────────────────────────────────────
+// Builds the Payrolls to Approve tile from pending timesheet entries already
+// grouped per employee by the connector. Each group becomes a card: how late it
+// is against its own period end, the period itself, and the hours logged.
+//
+// The employee name is rendered only when the connector supplies one.
+// list_pending_timesheets_by_employee does not join against /employees the way
+// the leave tools do, so today it returns an empty name and the card simply
+// leads with the pay period. It will start naming people the moment that join
+// is added, with no change here.
+//
+// Args: { value: grouped items array from list_pending_timesheets_by_employee }
+const payroll_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw.map(item => {
+    const name = String(item.employee_name ?? '').trim();
+
+    const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+    const { display: endDisplay,   ts: endTs }   = formatEhDate(item.end_date);
+    const periodRange = !endDisplay || endDisplay === startDisplay
+      ? startDisplay
+      : `${startDisplay} → ${endDisplay}`;
+
+    // Inclusive of both ends: a Monday-to-Monday period is 8 days of timesheet,
+    // not 7, which is what someone checking the dates would count.
+    const spanDays = startTs > 0 && endTs > 0
+      ? Math.round((endTs - startTs) / 86_400_000) + 1
+      : 0;
+
+    const daysLate = endTs > 0 ? Math.round((todayTs - endTs) / 86_400_000) : 0;
+    const overdue = endTs > 0 && daysLate > 0;
+
+    const hours = Number(item.total_hours ?? 0);
+
+    return {
+      id:           String(item.id ?? ''),
+      has_name:     name !== '',
+      employee_name: name,
+      initials:     name ? initialsOf(name) : '',
+
+      status_label: overdue ? 'Overdue' : 'Pending',
+      status_tone:  overdue ? 'destructive' : 'warning',
+      late_note:    overdue ? `${daysLate} days past period end` : 'Period still open',
+      late_tone:    overdue ? 'destructive' : 'muted',
+
+      period_range: periodRange || 'No period on record',
+      period_days:  spanDays > 0 ? `${spanDays} days` : '',
+      show_span:    spanDays > 0,
+
+      // One decimal throughout, so a genuine zero reads as a measured zero
+      // rather than as a missing value.
+      hours_value:  hours.toFixed(1),
+
+      days_late:    daysLate,
+      end_ts:       endTs,
+    };
+  });
+
+  // Furthest past its period end first.
+  rows.sort((a, b) => b.days_late - a.days_late);
+
+  const overdueRows = rows.filter(r => r.days_late > 0);
+  const oldest = overdueRows.length > 0 ? overdueRows[0].days_late : 0;
+  const totalHours = raw.reduce((sum, item) => sum + Number(item.total_hours ?? 0), 0);
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+
+    count:      rows.length,
+    count_note: rows.length === 1 ? 'timesheet' : 'timesheets',
+    count_tone: overdueRows.length > 0 ? 'destructive' : rows.length > 0 ? 'warning' : 'success',
+
+    oldest_value: overdueRows.length > 0 ? `${oldest} days` : 'None',
+    oldest_note:  overdueRows.length > 0 ? 'past due' : 'nothing past due',
+    oldest_tone:  overdueRows.length > 0 ? 'destructive' : 'success',
+
+    hours_total: totalHours.toFixed(1),
+    hours_note:  'total logged',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'employment-hero',
   functions: {
@@ -625,10 +1182,16 @@ const elements: PluginElementsModule = {
     flatten_my_leave_requests,
     flatten_my_upcoming_leave,
     flatten_compliance_at_risk,
+    compliance_board,
+    leave_approvals_board,
+    my_leave_board,
+    upcoming_leave_board,
+    payroll_board,
     flatten_timesheets_to_approve,
     flatten_direct_reports_upcoming_leave,
     flatten_timesheet_daily_summary,
     flatten_team_timesheet_entries,
+    team_timesheet_board,
   },
 };
 

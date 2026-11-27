@@ -1,16 +1,47 @@
 {
   "id": "employment-hero-leave-approvals",
   "title": "Leave Request Approvals",
-  "description": "Pending leave requests from your direct reports, with smart urgency status.",
+  "description": "Leave requests from your team, split by whether they still need a decision from you. Requests waiting on you come first, soonest start date at the top, each with a direct link into Employment Hero to act on it. Decisions already taken sit underneath so the tile shows the whole picture rather than only the backlog. The three figures across the top say how many are waiting, how many have been approved and how many declined.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "leave", "approvals", "manager"],
-  "keywords": ["leave approvals", "pending leave", "direct reports", "approve", "employment hero"],
-  "connectorsUsed": ["employment-hero"],
+  "tags": [
+    "employment-hero",
+    "hr",
+    "leave",
+    "approvals",
+    "manager"
+  ],
+  "keywords": [
+    "leave approvals",
+    "pending leave",
+    "approve leave",
+    "decline leave",
+    "direct reports",
+    "time off",
+    "annual leave",
+    "sick leave",
+    "employment hero"
+  ],
+  "connectorsUsed": [
+    "employment-hero"
+  ],
   "popularity": 0,
+  "branding": {
+    "color": "#7b61ff"
+  },
+  "brandColor": "#7b61ff",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 8 },
-    "min":       { "colSpan": 4, "rowSpan": 6 },
-    "max":       { "colSpan": 10, "rowSpan": 14 }
+    "preferred": {
+      "colSpan": 7,
+      "rowSpan": 6
+    },
+    "min": {
+      "colSpan": 5,
+      "rowSpan": 5
+    },
+    "max": {
+      "colSpan": 12,
+      "rowSpan": 12
+    }
   },
   "dataProvider": {
     "mcp": "employment-hero",
@@ -20,128 +51,817 @@
   "spec": {
     "root": "card",
     "elements": {
-
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": [
+          "header",
+          "loading",
+          "kpiGrid",
+          "body",
+          "footer"
+        ],
         "watch": {
           "/employment-hero/get_leave_approvals_queue/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/approvalRows", "value": { "$computed": "employment-hero_flatten_leave_requests", "args": { "value": { "$state": "/employment-hero/get_leave_approvals_queue/data/items" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "employment-hero_leave_approvals_board",
+                  "args": {
+                    "value": {
+                      "$state": "/employment-hero/get_leave_approvals_queue/data/items"
+                    }
+                  }
+                }
+              }
+            }
           ]
         }
       },
-
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "CheckSquare", "tone": "success", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "Leave Request Approvals", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
-
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
+      },
+      "titleGroup": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
+      },
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckSquare",
+          "tone": "brand",
+          "size": "sm"
+        }
+      },
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
+      },
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "Leave Request Approvals",
+          "level": "h2"
+        }
+      },
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "EMPLOYMENT HERO"
+        }
+      },
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/employment-hero.get_leave_approvals_queue" }
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skKpi",
+          "skRow1",
+          "skRow2",
+          "skRow3"
+        ],
+        "visible": {
+          "$state": "/_loading/employment-hero.get_leave_approvals_queue"
+        }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No leave requests found." },
+      "skKpi": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4.5rem",
+          "rounded": "md"
+        }
+      },
+      "skRow1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "skRow2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "skRow3": {
+        "type": "Skeleton",
+        "props": {
+          "height": "3.5rem",
+          "rounded": "md"
+        }
+      },
+      "kpiGrid": {
+        "type": "Grid",
+        "props": {
+          "cols": 3,
+          "gap": "sm"
+        },
+        "children": [
+          "kpiAction",
+          "kpiApproved",
+          "kpiDeclined"
+        ],
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.get_leave_approvals_queue", "not": true },
-            { "$state": "/ui/approvalRows/0", "not": true }
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_rows"
+            }
           ]
         }
       },
-
-      "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["approvalRow"],
-        "repeat": { "statePath": "/ui/approvalRows", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/employment-hero.get_leave_approvals_queue", "not": true },
-            { "$state": "/ui/approvalRows/0" }
-          ]
-        }
+      "kpiAction": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "kpiActionStack"
+        ]
       },
-
-      "approvalRow": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["approvalRowContent", "approvalRowDivider"]
+      "kpiActionStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kpiActionHead",
+          "kpiActionValue",
+          "kpiActionNote"
+        ]
       },
-      "approvalRowContent": {
+      "kpiActionHead": {
         "type": "Row",
-        "props": { "justify": "between", "align": "start" },
-        "children": ["approvalLeft", "approvalStatus"]
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "kpiActionDot",
+          "kpiActionLabel"
+        ]
       },
-      "approvalLeft": {
-        "type": "Stack", "props": { "gap": "none" },
-        "children": ["requestorLabel", "employeeName", "dateLeaveLine", "reviewRow"]
+      "kpiActionDot": {
+        "type": "Dot",
+        "props": {
+          "tone": {
+            "$state": "/ui/board/action_tone"
+          },
+          "size": "sm"
+        }
       },
-      "requestorLabel": {
-        "type": "Eyebrow", "props": { "text": "Requestor" }
+      "kpiActionLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "NEEDS ACTION"
+        }
       },
-      "employeeName": {
-        "type": "Text",
-        "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "semibold", "truncate": true }
+      "kpiActionValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h1",
+          "text": {
+            "$state": "/ui/board/action_count"
+          }
+        }
       },
-      "dateLeaveLine": {
+      "kpiActionNote": {
         "type": "Caption",
-        "props": { "text": { "$item": "date_leave_line" } }
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$state": "/ui/board/action_note"
+          }
+        }
       },
-      "reviewRow": {
+      "kpiApproved": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "kpiApprovedStack"
+        ]
+      },
+      "kpiApprovedStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kpiApprovedHead",
+          "kpiApprovedValue",
+          "kpiApprovedNote"
+        ]
+      },
+      "kpiApprovedHead": {
         "type": "Row",
-        "props": { "align": "center", "clickable": true },
-        "children": ["reviewCaption"],
-        "visible": { "$item": "show_review_link" },
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "kpiApprovedDot",
+          "kpiApprovedLabel"
+        ]
+      },
+      "kpiApprovedDot": {
+        "type": "Dot",
+        "props": {
+          "tone": "success",
+          "size": "sm"
+        }
+      },
+      "kpiApprovedLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "APPROVED"
+        }
+      },
+      "kpiApprovedValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h1",
+          "text": {
+            "$state": "/ui/board/approved_count"
+          }
+        }
+      },
+      "kpiApprovedNote": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$state": "/ui/board/approved_note"
+          }
+        }
+      },
+      "kpiDeclined": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "kpiDeclinedStack"
+        ]
+      },
+      "kpiDeclinedStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "kpiDeclinedHead",
+          "kpiDeclinedValue",
+          "kpiDeclinedNote"
+        ]
+      },
+      "kpiDeclinedHead": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "kpiDeclinedDot",
+          "kpiDeclinedLabel"
+        ]
+      },
+      "kpiDeclinedDot": {
+        "type": "Dot",
+        "props": {
+          "tone": "muted",
+          "size": "sm"
+        }
+      },
+      "kpiDeclinedLabel": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "DECLINED"
+        }
+      },
+      "kpiDeclinedValue": {
+        "type": "Heading",
+        "props": {
+          "level": "h1",
+          "text": {
+            "$state": "/ui/board/declined_count"
+          }
+        }
+      },
+      "kpiDeclinedNote": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$state": "/ui/board/declined_note"
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "groups",
+          "emptyPanel"
+        ]
+      },
+      "actionHeading": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/ui/board/action_heading"
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_action"
+            }
+          ]
+        }
+      },
+      "actionList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "actionRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/board/action_rows",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_action"
+            }
+          ]
+        }
+      },
+      "actionRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "2.5rem minmax(0, 1fr) 7rem"
+        },
+        "children": [
+          "actionAvatar",
+          "actionIdentity",
+          "actionRight"
+        ]
+      },
+      "actionAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": {
+            "$item": "avatar_tone"
+          },
+          "size": "lg"
+        }
+      },
+      "actionIdentity": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "actionNameRow",
+          "actionDateRow"
+        ]
+      },
+      "actionNameRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "actionName",
+          "actionTypeBadge"
+        ]
+      },
+      "actionName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "employee_name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "actionTypeBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "leave_type"
+          },
+          "tone": {
+            "$item": "type_tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "actionDateRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "actionDateIcon",
+          "actionDates"
+        ]
+      },
+      "actionDateIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Calendar",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "actionDates": {
+        "type": "Text",
+        "props": {
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$item": "date_range"
+          }
+        }
+      },
+      "actionRight": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs",
+          "align": "end"
+        },
+        "children": [
+          "actionBadgeRow",
+          "actionReviewRow"
+        ]
+      },
+      "actionBadgeRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "justify": "end"
+        },
+        "children": [
+          "actionStatusBadge"
+        ]
+      },
+      "actionStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "status_tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "actionReviewRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "justify": "end"
+        },
+        "children": [
+          "actionReviewButton"
+        ],
+        "visible": {
+          "$item": "show_review"
+        }
+      },
+      "actionReviewButton": {
+        "type": "Button",
+        "props": {
+          "label": "Review",
+          "variant": "secondary",
+          "size": "sm"
+        },
         "on": {
           "click": {
             "action": "open_url",
             "params": {
-              "url": { "$computed": "identity", "args": { "value": { "$item": "review_url" } } },
+              "url": {
+                "$computed": "identity",
+                "args": {
+                  "value": {
+                    "$item": "review_url"
+                  }
+                }
+              },
               "target": "_blank"
             }
           }
         }
       },
-      "reviewCaption": {
-        "type": "Caption",
-        "props": { "text": "Review in Employment Hero →", "tone": "accent" }
+      "decidedHeading": {
+        "type": "Eyebrow",
+        "props": {
+          "text": {
+            "$state": "/ui/board/decided_heading"
+          }
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_decided"
+            }
+          ]
+        }
       },
-      "approvalStatus": {
+      "decidedList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "decidedRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/board/decided_rows",
+          "key": "id"
+        },
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_decided"
+            }
+          ]
+        }
+      },
+      "decidedRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "2.5rem minmax(0, 1fr) 7rem"
+        },
+        "children": [
+          "decidedAvatar",
+          "decidedIdentity",
+          "decidedRight"
+        ]
+      },
+      "decidedAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": {
+            "$item": "initials"
+          },
+          "tone": {
+            "$item": "avatar_tone"
+          },
+          "size": "lg"
+        }
+      },
+      "decidedIdentity": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "decidedNameRow",
+          "decidedDateRow"
+        ]
+      },
+      "decidedNameRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "decidedName",
+          "decidedTypeBadge"
+        ]
+      },
+      "decidedName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "employee_name"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "decidedTypeBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
+          "text": {
+            "$item": "leave_type"
+          },
+          "tone": {
+            "$item": "type_tone"
+          },
           "variant": "soft"
         }
       },
-      "approvalRowDivider": { "type": "Divider", "props": {} },
-
-      "footer": {
-        "type": "Row", "props": { "justify": "center" },
-        "children": ["footerText"],
+      "decidedDateRow": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "align": "center"
+        },
+        "children": [
+          "decidedDateIcon",
+          "decidedDates"
+        ]
+      },
+      "decidedDateIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Calendar",
+          "tone": "muted",
+          "size": "xs"
+        }
+      },
+      "decidedDates": {
+        "type": "Text",
+        "props": {
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$item": "date_range"
+          }
+        }
+      },
+      "decidedRight": {
+        "type": "Row",
+        "props": {
+          "gap": "xs",
+          "justify": "end"
+        },
+        "children": [
+          "decidedStatusBadge"
+        ]
+      },
+      "decidedStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "status_tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "emptyPanel": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "emptyStack"
+        ],
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.get_leave_approvals_queue", "not": true },
-            { "$state": "/ui/approvalRows/0" }
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_rows",
+              "not": true
+            }
+          ]
+        }
+      },
+      "emptyStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "emptyIcon",
+          "emptyTitle",
+          "emptyNote"
+        ]
+      },
+      "emptyIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CheckSquare",
+          "tone": "success",
+          "size": "lg"
+        }
+      },
+      "emptyTitle": {
+        "type": "Text",
+        "props": {
+          "text": "Nothing to approve",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "emptyNote": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": "Leave requests from your team appear here as soon as someone files one."
+        }
+      },
+      "footer": {
+        "type": "Row",
+        "props": {
+          "justify": "center"
+        },
+        "children": [
+          "footerText"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.get_leave_approvals_queue",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_rows"
+            }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Requests to approve · Employment Hero" }
+        "props": {
+          "tone": "muted",
+          "text": "Requests to approve · Employment Hero. Items needing a decision are listed first."
+        }
+      },
+      "groups": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "actionHeading",
+          "actionList",
+          "decidedHeading",
+          "decidedList"
+        ]
       }
-
     }
   },
   "status": "published"
