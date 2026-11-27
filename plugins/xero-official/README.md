@@ -40,3 +40,15 @@ Write scopes (`accounting.invoices`, `accounting.contacts`, `accounting.banktran
 Xero's tools don't ask for confirmation before writing, so an agent must confirm with the user first.
 
 Access to real (non-demo) organisations needs mySMB's Xero app to be on Xero's Core plan or above.
+
+## Xero API connector (tiles, reports, automations)
+
+This extension also ships the **Xero API** API connector (`.api.json`, name `xero-api`): 64 read operations straight
+to Xero's Accounting API, named and shaped like the retiring `xero-accounting` MCP tools, so a tile, report or
+automation moves over by changing its connector name only. Agents can't use an API connector (the platform refuses
+one); they use the MCP server above. It connects separately from the MCP server, through the same mySMB Xero app
+(`XERO_MCP_OAUTH_CLIENT_ID` / `XERO_MCP_OAUTH_CLIENT_SECRET`), with read scopes for transactions, contacts, settings,
+reports, journals, budgets and attachments.
+
+Only one extension can own an API connector, so every Xero extension binds to `xero-api` from here; this extension
+has to be installed wherever those tiles, reports and automations run.
