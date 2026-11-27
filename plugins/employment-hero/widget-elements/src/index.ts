@@ -921,6 +921,78 @@ const my_leave_board: ComputedFunction = (args) => {
   };
 };
 
+// ── upcoming_leave_board ──────────────────────────────────────────────────────
+// Builds the My Upcoming Leave tile: the soonest booked leave as a hero with a
+// countdown, then everything after it.
+//
+// "Upcoming" means a start date today or later that has not been refused, so an
+// approved booking and one still awaiting a decision both appear — each carrying
+// its own status — while a declined request is dropped, because leave that was
+// refused is not leave you have coming.
+//
+// Args: { value: raw items array from list_leave_requests }
+const upcoming_leave_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  const rows = raw
+    .filter(item => {
+      const status = String(item.status ?? '').toLowerCase();
+      if (status === 'declined' || status === 'rejected' || status === 'cancelled') return false;
+      const { ts } = formatEhDate(item.start_date);
+      return ts > 0 && ts >= todayTs;
+    })
+    .map(item => {
+      const typeName = String(
+        item.leave_type ?? item.leave_category_name ?? item.leave_type_name ?? '',
+      ).trim() || 'Leave';
+
+      const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+      const { display: endDisplay } = formatEhDate(item.end_date);
+      const dateRange = !endDisplay || endDisplay === startDisplay
+        ? startDisplay
+        : `${startDisplay} → ${endDisplay}`;
+
+      const approved = String(item.status ?? '').toLowerCase() === 'approved';
+
+      return {
+        id:           String(item.id ?? ''),
+        leave_type:   typeName,
+        type_icon:    leaveTypeIcon(typeName),
+        type_tone:    leaveTypeTone(typeName),
+        date_range:   dateRange,
+        status_label: approved ? 'Approved' : 'Pending',
+        status_tone:  approved ? 'success'  : 'warning',
+        days_until:   Math.round((startTs - todayTs) / 86_400_000),
+        start_ts:     startTs,
+      };
+    })
+    .sort((a, b) => a.start_ts - b.start_ts);
+
+  const next = rows[0];
+  const days = next ? next.days_until : 0;
+
+  return {
+    has_rows:  rows.length > 0,
+    has_later: rows.length > 1,
+    later_rows: rows.slice(1),
+
+    next_type:         next ? next.leave_type   : '',
+    next_icon:         next ? next.type_icon    : 'CalendarDays',
+    next_tone:         next ? next.type_tone    : 'muted',
+    next_dates:        next ? next.date_range   : '',
+    next_status_label: next ? next.status_label : '',
+    next_status_tone:  next ? next.status_tone  : 'muted',
+    next_days:         days,
+    // The count stays a bare number and the caption carries the grammar, so a
+    // zero never has to read as a quantity of days.
+    next_days_note:    days === 0 ? 'starts today' : days === 1 ? 'day to go' : 'days to go',
+  };
+};
+
 const elements: PluginElementsModule = {
   slug: 'employment-hero',
   functions: {
@@ -936,6 +1008,7 @@ const elements: PluginElementsModule = {
     compliance_board,
     leave_approvals_board,
     my_leave_board,
+    upcoming_leave_board,
     flatten_timesheets_to_approve,
     flatten_direct_reports_upcoming_leave,
     flatten_timesheet_daily_summary,

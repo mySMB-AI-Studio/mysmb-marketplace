@@ -1,121 +1,522 @@
 {
   "id": "employment-hero-my-upcoming-leave",
   "title": "My Upcoming Leave",
-  "description": "Your upcoming approved leave from Employment Hero.",
+  "description": "Booked leave that has not started yet. The next one leads, with its dates and a countdown of days to go, because that is the one worth planning around. Anything after it is listed below. Each entry carries its leave type and whether it is approved or still waiting on a decision, so time off that is not yet certain is never mistaken for time off that is.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "leave", "upcoming", "user"],
-  "keywords": ["upcoming leave", "approved leave", "time off", "my leave", "employment hero"],
-  "connectorsUsed": ["employment-hero"],
+  "tags": [
+    "employment-hero",
+    "hr",
+    "leave",
+    "upcoming",
+    "user"
+  ],
+  "keywords": [
+    "upcoming leave",
+    "approved leave",
+    "booked leave",
+    "next leave",
+    "time off",
+    "holiday",
+    "my leave",
+    "countdown",
+    "employment hero"
+  ],
+  "connectorsUsed": [
+    "employment-hero"
+  ],
   "popularity": 0,
+  "branding": {
+    "color": "#7b61ff"
+  },
+  "brandColor": "#7b61ff",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
-    "max":       { "colSpan": 10, "rowSpan": 12 }
+    "preferred": {
+      "colSpan": 5,
+      "rowSpan": 5
+    },
+    "min": {
+      "colSpan": 4,
+      "rowSpan": 3
+    },
+    "max": {
+      "colSpan": 10,
+      "rowSpan": 12
+    }
   },
   "dataProvider": {
     "mcp": "employment-hero",
     "tool": "list_leave_requests",
-    "params": { "status": "approved", "per_page": 25, "my_requests_only": true }
+    "params": {
+      "per_page": 25,
+      "my_requests_only": true
+    }
   },
   "spec": {
     "root": "card",
     "elements": {
-
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": [
+          "header",
+          "loading",
+          "nextPanel",
+          "emptyPanel",
+          "body"
+        ],
         "watch": {
           "/employment-hero/list_leave_requests/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/myUpcomingRows", "value": { "$computed": "employment-hero_flatten_my_upcoming_leave", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "employment-hero_upcoming_leave_board",
+                  "args": {
+                    "value": {
+                      "$state": "/employment-hero/list_leave_requests/data/items"
+                    }
+                  }
+                }
+              }
+            }
           ]
         }
       },
-
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "Flag", "tone": "destructive", "size": "sm" } },
-      "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
-      "title": { "type": "Heading", "props": { "text": "My Upcoming Leave", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
-
-      "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
-        "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
+      "header": {
+        "type": "Header",
+        "props": {},
+        "children": [
+          "titleGroup"
+        ]
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No upcoming leave." },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/myUpcomingRows/0", "not": true }
-          ]
-        }
-      },
-
-      "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["leaveRow"],
-        "repeat": { "statePath": "/ui/myUpcomingRows", "key": "id" },
-        "visible": {
-          "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/myUpcomingRows/0" }
-          ]
-        }
-      },
-
-      "leaveRow": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["leaveRowContent", "leaveRowDivider"]
-      },
-      "leaveRowContent": {
+      "titleGroup": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center", "hover": true },
-        "children": ["leaveLeft", "daysLabel"]
+        "props": {
+          "gap": "sm",
+          "align": "start"
+        },
+        "children": [
+          "titleIcon",
+          "titleStack"
+        ]
       },
-      "leaveLeft": {
-        "type": "Stack", "props": { "gap": "none" },
-        "children": ["leaveTypeName", "leaveDates"]
+      "titleIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "CalendarDays",
+          "tone": "brand",
+          "size": "sm"
+        }
       },
-      "leaveTypeName": {
-        "type": "Text",
-        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "semibold", "truncate": true }
+      "titleStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "title",
+          "eyebrow"
+        ]
       },
-      "leaveDates": {
-        "type": "Caption",
-        "props": { "text": { "$item": "date_range" }, "tone": "accent" }
+      "title": {
+        "type": "Heading",
+        "props": {
+          "text": "My Upcoming Leave",
+          "level": "h2"
+        }
       },
-      "daysLabel": {
-        "type": "Caption",
-        "props": { "text": { "$item": "days_label" } }
+      "eyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "EMPLOYMENT HERO"
+        }
       },
-      "leaveRowDivider": { "type": "Divider", "props": {} },
-
-      "footer": {
-        "type": "Row", "props": { "justify": "center" },
-        "children": ["footerText"],
+      "loading": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm"
+        },
+        "children": [
+          "skHero",
+          "skRow1",
+          "skRow2"
+        ],
+        "visible": {
+          "$state": "/_loading/employment-hero.list_leave_requests"
+        }
+      },
+      "skHero": {
+        "type": "Skeleton",
+        "props": {
+          "height": "4.5rem",
+          "rounded": "md"
+        }
+      },
+      "skRow1": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "skRow2": {
+        "type": "Skeleton",
+        "props": {
+          "height": "2.75rem",
+          "rounded": "md"
+        }
+      },
+      "nextPanel": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "nextRow"
+        ],
         "visible": {
           "$and": [
-            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/myUpcomingRows/0" }
+            {
+              "$state": "/_loading/employment-hero.list_leave_requests",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_rows"
+            }
           ]
         }
       },
-      "footerText": {
+      "nextRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "template": "2.75rem minmax(0, 1fr) 4.5rem"
+        },
+        "children": [
+          "nextIconBox",
+          "nextStack",
+          "nextCountdown"
+        ]
+      },
+      "nextIconBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "nextIcon"
+        ]
+      },
+      "nextIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$state": "/ui/board/next_icon"
+          },
+          "tone": {
+            "$state": "/ui/board/next_tone"
+          },
+          "size": "lg"
+        }
+      },
+      "nextStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "nextTopRow",
+          "nextName",
+          "nextDates"
+        ]
+      },
+      "nextEyebrow": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "NEXT LEAVE"
+        }
+      },
+      "nextName": {
+        "type": "Heading",
+        "props": {
+          "level": "h1",
+          "text": {
+            "$state": "/ui/board/next_type"
+          }
+        }
+      },
+      "nextDates": {
+        "type": "Text",
+        "props": {
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$state": "/ui/board/next_dates"
+          }
+        }
+      },
+      "nextStatusBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$state": "/ui/board/next_status_label"
+          },
+          "tone": {
+            "$state": "/ui/board/next_status_tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "nextCountdown": {
+        "type": "Stack",
+        "props": {
+          "gap": "none",
+          "align": "center"
+        },
+        "children": [
+          "nextDays",
+          "nextDaysNote"
+        ]
+      },
+      "nextDays": {
+        "type": "Stat",
+        "props": {
+          "size": "sm",
+          "value": {
+            "$state": "/ui/board/next_days"
+          }
+        }
+      },
+      "nextDaysNote": {
         "type": "Caption",
-        "props": { "text": "Your upcoming leave · Employment Hero" }
+        "props": {
+          "tone": "muted",
+          "text": {
+            "$state": "/ui/board/next_days_note"
+          }
+        }
+      },
+      "body": {
+        "type": "Body",
+        "props": {},
+        "children": [
+          "laterGroup"
+        ]
+      },
+      "laterGroup": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "laterHeading",
+          "laterList"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.list_leave_requests",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_later"
+            }
+          ]
+        }
+      },
+      "laterHeading": {
+        "type": "Eyebrow",
+        "props": {
+          "text": "LATER"
+        }
+      },
+      "laterList": {
+        "type": "Stack",
+        "props": {
+          "gap": "xs"
+        },
+        "children": [
+          "laterRow"
+        ],
+        "repeat": {
+          "statePath": "/ui/board/later_rows",
+          "key": "id"
+        }
+      },
+      "laterRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "2.75rem minmax(0, 1fr) auto"
+        },
+        "children": [
+          "laterIconBox",
+          "laterStack",
+          "laterBadge"
+        ]
+      },
+      "laterIconBox": {
+        "type": "Section",
+        "props": {
+          "variant": "muted"
+        },
+        "children": [
+          "laterIcon"
+        ]
+      },
+      "laterIcon": {
+        "type": "Icon",
+        "props": {
+          "name": {
+            "$item": "type_icon"
+          },
+          "tone": {
+            "$item": "type_tone"
+          },
+          "size": "md"
+        }
+      },
+      "laterStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "none"
+        },
+        "children": [
+          "laterName",
+          "laterDates"
+        ]
+      },
+      "laterName": {
+        "type": "Text",
+        "props": {
+          "text": {
+            "$item": "leave_type"
+          },
+          "size": "sm",
+          "weight": "medium",
+          "truncate": true
+        }
+      },
+      "laterDates": {
+        "type": "Text",
+        "props": {
+          "tone": "muted",
+          "truncate": true,
+          "text": {
+            "$item": "date_range"
+          }
+        }
+      },
+      "laterBadge": {
+        "type": "Badge",
+        "props": {
+          "text": {
+            "$item": "status_label"
+          },
+          "tone": {
+            "$item": "status_tone"
+          },
+          "variant": "soft"
+        }
+      },
+      "emptyPanel": {
+        "type": "Section",
+        "props": {
+          "variant": "bordered"
+        },
+        "children": [
+          "emptyStack"
+        ],
+        "visible": {
+          "$and": [
+            {
+              "$state": "/_loading/employment-hero.list_leave_requests",
+              "not": true
+            },
+            {
+              "$state": "/ui/board/has_rows",
+              "not": true
+            }
+          ]
+        }
+      },
+      "emptyStack": {
+        "type": "Stack",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "emptyIcon",
+          "emptyTitle",
+          "emptyNote",
+          "emptyButtonRow"
+        ]
+      },
+      "emptyIcon": {
+        "type": "Icon",
+        "props": {
+          "name": "Palmtree",
+          "tone": "brand",
+          "size": "lg"
+        }
+      },
+      "emptyTitle": {
+        "type": "Text",
+        "props": {
+          "text": "No upcoming leave",
+          "size": "sm",
+          "weight": "medium"
+        }
+      },
+      "emptyNote": {
+        "type": "Caption",
+        "props": {
+          "tone": "muted",
+          "text": "Leave you have booked that has not started yet appears here with its dates and a countdown."
+        }
+      },
+      "emptyButtonRow": {
+        "type": "Row",
+        "props": {
+          "justify": "center"
+        },
+        "children": [
+          "emptyButton"
+        ]
+      },
+      "emptyButton": {
+        "type": "Button",
+        "props": {
+          "label": "Open Employment Hero",
+          "variant": "secondary",
+          "size": "sm"
+        },
+        "on": {
+          "click": {
+            "action": "open_url",
+            "params": {
+              "url": "https://secure.employmenthero.com/",
+              "target": "_blank"
+            }
+          }
+        }
+      },
+      "nextTopRow": {
+        "type": "Row",
+        "props": {
+          "gap": "sm",
+          "align": "center"
+        },
+        "children": [
+          "nextEyebrow",
+          "nextStatusBadge"
+        ]
       }
-
     }
   },
   "status": "published"
