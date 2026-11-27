@@ -621,6 +621,96 @@ const flatten_team_timesheet_entries: ComputedFunction = (args) => {
   return rows;
 };
 
+// ── team_timesheet_board ──────────────────────────────────────────────────────
+// Builds the whole Team Timesheet This Week tile. Groups the week's entries by
+// employee, totals the hours, and gives each person a bar scaled against the
+// person with the most hours, so the list reads as a ranking rather than as
+// progress towards a target nobody has told us about. The week label comes from
+// the server's own window, so it can never disagree with the entries shown.
+// Args: { value: items from get_timesheets_this_week, start, end }
+const team_timesheet_board: ComputedFunction = (args) => {
+  const raw = Array.isArray(args.value) ? (args.value as Record<string, unknown>[]) : [];
+
+  const { display: startDisplay } = formatEhDate(args.start);
+  const { display: endDisplay } = formatEhDate(args.end);
+  const weekLabel = !startDisplay ? 'This week'
+    : startDisplay === endDisplay ? startDisplay
+    : `${startDisplay} → ${endDisplay}`;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTs = today.getTime();
+
+  type EmpGroup = { name: string; hours: number; statuses: string[]; dates: string[]; days: Set<string> };
+  const groups = new Map<string, EmpGroup>();
+
+  for (const item of raw) {
+    const empId = String(item.employee_id ?? item.id ?? '');
+    if (!empId) continue;
+    const hrs = Number(item.hours ?? 0);
+    const status = String(item.status ?? '').toLowerCase();
+    const date = String(item.date ?? '');
+    const existing = groups.get(empId);
+    if (existing) {
+      existing.hours += Number.isFinite(hrs) ? hrs : 0;
+      existing.statuses.push(status);
+      existing.dates.push(date);
+      if (date) existing.days.add(date);
+    } else {
+      groups.set(empId, {
+        name: String(item.employee_name ?? '').trim(),
+        hours: Number.isFinite(hrs) ? hrs : 0,
+        statuses: [status],
+        dates: [date],
+        days: new Set(date ? [date] : []),
+      });
+    }
+  }
+
+  const people = Array.from(groups.entries()).map(([empId, g]) => {
+    const hrs = Math.round(g.hours * 10) / 10;
+    const allApproved = g.statuses.length > 0 && g.statuses.every(s => s === 'approved');
+    const overdue = !allApproved && g.statuses.some((s, i) => {
+      const { ts } = formatEhDate(g.dates[i]);
+      return (s === 'pending' || s === '') && ts > 0 && ts < todayTs;
+    });
+    return { empId, name: g.name || 'Unknown employee', hours: hrs, dayCount: g.days.size, allApproved, overdue };
+  });
+
+  const maxHours = people.reduce((m, p) => (p.hours > m ? p.hours : m), 0);
+  const totalHours = Math.round(people.reduce((s, p) => s + p.hours, 0) * 10) / 10;
+
+  const rows = people.map(p => ({
+    id: p.empId,
+    employee_name: p.name,
+    initials: initialsOf(p.name),
+    // One decimal throughout, so a genuine zero reads as a measured zero
+    // rather than as a missing value.
+    hours_value: p.hours.toFixed(1),
+    days_note: p.dayCount === 1 ? '1 day' : `${p.dayCount} days`,
+    // Floored at 3 so somebody who logged a little is still visibly on the
+    // chart instead of looking like they logged nothing at all.
+    pct: maxHours > 0 && p.hours > 0 ? Math.max(3, Math.round((p.hours / maxHours) * 100)) : 0,
+  }));
+
+  rows.sort((a, b) => Number(b.hours_value) - Number(a.hours_value) || a.employee_name.localeCompare(b.employee_name));
+
+  const awaiting = people.filter(p => !p.allApproved).length;
+  const peopleCount = people.length;
+  const avgHours = peopleCount > 0 ? Math.round((totalHours / peopleCount) * 10) / 10 : 0;
+
+  return {
+    rows,
+    has_rows: rows.length > 0,
+    week_label: weekLabel,
+    total_value: totalHours.toFixed(1),
+    people_count: String(peopleCount),
+    avg_value: avgHours.toFixed(1),
+    awaiting_label: awaiting === 1 ? '1 pending approval' : `${awaiting} pending approval`,
+    has_awaiting: awaiting > 0,
+  };
+};
+
 // ── compliance_board ──────────────────────────────────────────────────────────
 // Builds the whole Compliances at Risk tile from the pre-filtered at-risk
 // certification list. The server decides what counts as at risk; this adds the
@@ -1101,6 +1191,7 @@ const elements: PluginElementsModule = {
     flatten_direct_reports_upcoming_leave,
     flatten_timesheet_daily_summary,
     flatten_team_timesheet_entries,
+    team_timesheet_board,
   },
 };
 
