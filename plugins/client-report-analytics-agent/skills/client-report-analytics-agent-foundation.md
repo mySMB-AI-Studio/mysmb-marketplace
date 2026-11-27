@@ -36,7 +36,7 @@ If the ask matches no row, ask one question to narrow it down, offering the two 
 
 Set **only** these inputs. Every other input keeps the template's default, and the report fixes its own derived inputs when it opens.
 
-1. **Client (`org`)**: the Xero organisation id. Call `list_connections` (xero-accounting) once and match the client's name to a `tenantName`. Use its `tenantId`. If no connection matches, or two do, say so, list the names you can see and ask. Never guess, and never put another client's id in a report. For the catalogue the input is `client` = `xero:<tenantId>`, not `org`.
+1. **Client (`org`)**: the Xero organisation id. Call `get_connected_tenants` (xero-official) once and match the client's name to a `tenantName`. Use its `tenantId`. If no connection matches, or two do, say so, list the names you can see and ask. Never guess, and never put another client's id in a report. For the catalogue the input is `client` = `xero:<tenantId>`, not `org`.
 2. **Period** (every template except the catalogue and Estimate Accuracy): it is controlled by the `display` input's `p` key **and** `from_date` / `to_date`. When the report opens, it re-sets the dates from `p` unless `p` is `custom`.
    - For a named period, set only `display` with `p` set to the preset: `this_month`, `last_month`, `this_quarter`, `last_quarter`, `this_fy`, `this_fy_td` (this financial year to date), `last_fy`, `last_12m`. Leave the dates alone.
    - For explicit dates, set `from_date` and `to_date` (`YYYY-MM-DD`) **and** `display` with `p` set to `custom`.
@@ -77,4 +77,4 @@ Say this in one line when you hand over a report that needs more than Xero.
 - `needs_connection`: "Connect Xero (Settings → Connections)". Show any other tool error word for word, and retry at most once.
 - Read-only: you never change anything in Xero.
 
-Example: "Health check for Irvine Jackson, last quarter" → `list_connections` → `tenantId` for "Irvine Jackson Pty Ltd" → `artifact_from_template` { plugin `client-report-analytics`, slug `client-xero-health-check`, title "Health Check — Irvine Jackson Pty Ltd — Jul–Sep 2026", inputs { `org`: "<tenantId>", `display`: the health-check default string with `"p":"last_quarter"` } }.
+Example: "Health check for Irvine Jackson, last quarter" → `get_connected_tenants` → `tenantId` for "Irvine Jackson Pty Ltd" → `artifact_from_template` { plugin `client-report-analytics`, slug `client-xero-health-check`, title "Health Check — Irvine Jackson Pty Ltd — Jul–Sep 2026", inputs { `org`: "<tenantId>", `display`: the health-check default string with `"p":"last_quarter"` } }.

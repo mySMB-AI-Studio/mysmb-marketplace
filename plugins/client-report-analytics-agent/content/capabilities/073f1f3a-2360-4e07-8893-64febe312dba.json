@@ -1,24 +1,24 @@
 {
-  "contentHash": "447c489f8d8bd7195a9e8df3543c4ce48f22b16b07a7abf62b6f648f4d779410",
+  "contentHash": "e2c9b4efc82f7bf5fe4c6f3d0bd2f919ae43907663d5ac1915f81cbdead753a6",
   "definition": {
     "bindings": [
       {
         "argMap": {
-          "contactIDs": "contactIDs",
+          "contactIds": "contactIds",
           "ids": "ids",
+          "ifModifiedSince": "ifModifiedSince",
           "invoiceNumbers": "invoiceNumbers",
-          "order": "order",
           "page": "page",
+          "pageSize": "pageSize",
           "searchTerm": "searchTerm",
           "statuses": "statuses",
           "summaryOnly": "summaryOnly",
-          "where": "where",
-          "xero_tenant_id": "xero_tenant_id"
+          "xero_tenant_id": "xeroTenantId"
         },
         "scopes": [
-          "accounting.transactions.read"
+          "accounting.invoices.read"
         ],
-        "server": "xero-accounting",
+        "server": "xero-official",
         "tool": "list_invoices"
       }
     ],
@@ -28,7 +28,7 @@
     "inputsSchema": {
       "additionalProperties": false,
       "properties": {
-        "contactIDs": {
+        "contactIds": {
           "description": "Comma-separated ContactIDs.",
           "type": "string"
         },
@@ -36,16 +36,20 @@
           "description": "Comma-separated InvoiceIDs.",
           "type": "string"
         },
+        "ifModifiedSince": {
+          "description": "Only rows changed after this UTC time, yyyy-MM-ddTHH:mm:ss.",
+          "type": "string"
+        },
         "invoiceNumbers": {
           "description": "Comma-separated invoice numbers.",
           "type": "string"
         },
-        "order": {
-          "description": "Optional Xero order clause, e.g. \"Date DESC\".",
-          "type": "string"
-        },
         "page": {
-          "description": "Page (100 per page).",
+          "description": "Page number (1 = first).",
+          "type": "integer"
+        },
+        "pageSize": {
+          "description": "Rows per page: default 25, at most 1000.",
           "type": "integer"
         },
         "searchTerm": {
@@ -57,15 +61,11 @@
           "type": "string"
         },
         "summaryOnly": {
-          "description": "Lighter rows.",
+          "description": "Lighter rows (no line items).",
           "type": "boolean"
         },
-        "where": {
-          "description": "Optional Xero filter, e.g. Status==\"ACTIVE\".",
-          "type": "string"
-        },
         "xero_tenant_id": {
-          "description": "The client's Xero organisation id (tenantId from list_connections).",
+          "description": "The client's Xero organisation id (tenantId from get_connected_tenants).",
           "type": "string"
         }
       },
@@ -90,7 +90,7 @@
       "type": "object"
     },
     "permissionRequirements": [
-      "connectors:xero-accounting"
+      "connectors:xero-official"
     ],
     "schemaVersion": 1,
     "sideEffectClass": "read",

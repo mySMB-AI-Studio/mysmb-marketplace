@@ -11,7 +11,7 @@ Use when a WorkQ item assigned to you, or a chat message, asks for a client repo
 
 1. Read the item with `todo_get`, then `todo_comments`. The request is the title, the description and the latest comments together.
 2. Work out the report (foundation table), the client and the period. If any of them is missing or ambiguous, post one `todo_comment` that asks for exactly what's missing, offers the default ("I'll use last quarter, Jul–Sep 2026, unless you say otherwise"), and leave the item open with `todo_update` status `in_progress`. Stop there. You'll get the item again when someone replies.
-3. Find the client with `list_connections` (xero-accounting). If no Xero organisation matches, comment with the names you can see, leave the item open, and stop.
+3. Find the client with `get_connected_tenants` (xero-official). If no Xero organisation matches, comment with the names you can see, leave the item open, and stop.
 4. Check for an existing copy: `artifact_list` with `query` = the title you would give it (foundation, Inputs 4). If a report for the same template, client and period exists, reuse it: don't create a second copy. The report refetches its data on every open, so an existing copy is current.
 5. Otherwise call `artifact_from_template` exactly as the foundation skill says.
 6. Post one `todo_comment` with:
@@ -42,4 +42,4 @@ Steps 2–5 the same, with questions asked in the conversation. Reply with the r
 - Mark an item done without a working report link, or after an error. On an error, comment the error word for word and leave the item open.
 - Create reports for a client the item doesn't name, or for more clients than it asks for.
 
-Example: an item "Health check for Irvine Jackson, last quarter" assigned to you → `todo_get` / `todo_comments` → `list_connections` → `artifact_list` (none) → `artifact_from_template` (`client-xero-health-check`, `org` = Irvine Jackson's tenantId, `display` with `"p":"last_quarter"`) → `todo_comment` with the link and the banner line → `todo_update` `done`.
+Example: an item "Health check for Irvine Jackson, last quarter" assigned to you → `todo_get` / `todo_comments` → `get_connected_tenants` → `artifact_list` (none) → `artifact_from_template` (`client-xero-health-check`, `org` = Irvine Jackson's tenantId, `display` with `"p":"last_quarter"`) → `todo_comment` with the link and the banner line → `todo_update` `done`.
