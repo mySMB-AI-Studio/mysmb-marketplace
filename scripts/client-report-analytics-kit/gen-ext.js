@@ -12,7 +12,7 @@ const S = (key) => PLUGIN + ':' + PLUGIN + '-' + key;
 const ITEM_14 = { cra: 'CRA-14', name: 'Ledger User Activity' };
 const CLIENT_INPUT = { xero: 'the organisation id (`tenantId` from `list_connections`)', myob: 'the company file id (`Id` from `list_company_files`)', quickbooks: 'none: QuickBooks is the one connected company' };
 const CLIENT_IS = ' The client is a connected Xero organisation, MYOB company file or QuickBooks company, named in full or in part (for example "Irvine Jackson" for Irvine Jackson Pty Ltd); it is never a contact.';
-const DISCOVERY = { xero: '`list_connections` (xero-accounting)', myob: '`list_company_files` (myob-accounting)', quickbooks: '`qbo_query` with `SELECT * FROM CompanyInfo` (quickbooks-accounting)' };
+const DISCOVERY = { xero: '`get_connected_tenants` (xero-official)', myob: '`list_company_files` (myob-accounting)', quickbooks: '`qbo_query` with `SELECT * FROM CompanyInfo` (quickbooks-accounting)' };
 
 function inputsTable(m) {
   if (!m) return '_Not built yet._\n';

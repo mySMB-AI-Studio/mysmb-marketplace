@@ -17,7 +17,7 @@ XK.app({
   uses: { projects_open: ['org'], projects_closed: ['org'], tasks: ['project'], org: ['org'], connections: [] },
   sources: { projects_open: { name: 'Xero Projects' }, projects_closed: { name: 'Xero Projects' }, tasks: { name: 'Xero Projects', optional: true, quiet: function () { return true; } } },
   tools: { projects_open: 'list_projects (Xero Projects, in progress)', projects_closed: 'list_projects (Xero Projects, closed)', tasks: 'list_tasks (Xero Projects, one call per project)', org: 'get_organisation', connections: 'list_connections' },
-  mechanism: 'xero-projects connector (Xero Projects API) for the estimates, xero-accounting for the organisation — mySMB custom MCP servers',
+  mechanism: 'xero-projects connector (Xero Projects API) for the estimates, the Xero API connector for the organisation',
   fan: {
     tasks: function (inp, c) { return xeProjects(c).slice(0, XE_CAP).map(function (p) { return { key: p.projectId, inputs: { project: p.projectId } }; }); }
   },

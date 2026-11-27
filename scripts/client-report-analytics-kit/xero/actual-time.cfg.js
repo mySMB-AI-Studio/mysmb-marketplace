@@ -22,7 +22,7 @@ XK.app({
   sources: { projects_open: { name: 'Xero Projects' }, projects_closed: { name: 'Xero Projects' }, users: { name: 'Xero Projects', optional: true },
     entries: { name: 'Xero Projects', optional: true, quiet: function () { return true; } } },
   tools: { projects_open: 'list_projects (Xero Projects, in progress)', projects_closed: 'list_projects (Xero Projects, closed)', users: 'list_project_users (names)', entries: 'list_time_entries (Xero Projects, one call per project with time logged)', org: 'get_organisation', connections: 'list_connections' },
-  mechanism: 'xero-projects connector (Xero Projects API) for the time, xero-accounting for the organisation — mySMB custom MCP servers',
+  mechanism: 'xero-projects connector (Xero Projects API) for the time, the Xero API connector for the organisation',
   presets: [['this_month', 'This month'], ['last_month', 'Last month'], ['this_quarter', 'This quarter'], ['last_quarter', 'Last quarter'], ['this_fy_td', 'This financial year to date'], ['this_fy', 'This financial year'], ['last_fy', 'Last financial year'], ['custom', 'Custom']],
   fan: {
     entries: function (inp, c) {
