@@ -90,7 +90,7 @@ async function conformance(id, ok, maxTokens) {
   const before = t.calls.length, sel = t.doc.getElementById('xk-client');
   ok(id + ': client picker (LIB-002) lists the connection\'s organisations, first control', sel && [...sel.options].map((o) => o.textContent).join('|') === N1 + '|' + N2 && t.doc.querySelector('#xk-controls select') === sel);
   sel.value = L.T2; sel.dispatchEvent(new t.w.Event('change')); await t.settle(); await t.settle(); await wait(200);
-  const re = t.calls.slice(before).filter((x) => x.params), orgBound = m.bindings.filter((b) => b.tool.mcp === 'xero-accounting' && b.tool.name !== 'list_connections').map((b) => b.id);
+  const re = t.calls.slice(before).filter((x) => x.params), orgBound = m.bindings.filter((b) => b.tool.mcp === 'xero-api' && b.tool.name !== 'list_connections').map((b) => b.id);
   ok(id + ': switching client refetches every Xero binding for the new organisation only', orgBound.every((b) => re.some((x) => x.id === b && x.params.xero_tenant_id === L.T2)) && !re.some((x) => x.params.xero_tenant_id && x.params.xero_tenant_id !== L.T2), orgBound.filter((b) => !re.some((x) => x.id === b && x.params.xero_tenant_id === L.T2)));
   const page2 = report(t.doc), t3 = await run(ref, m, onlyT2(fixtures(m))); await wait(150);
   const f1 = figures(page1), f3 = figures(report(t3.doc)), left = [...figures(page2)].filter((x) => f1.has(x) && !f3.has(x));
