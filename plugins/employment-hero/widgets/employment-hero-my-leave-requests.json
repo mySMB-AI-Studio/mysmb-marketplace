@@ -1,15 +1,17 @@
 {
   "id": "employment-hero-my-leave-requests",
   "title": "My Leave Requests",
-  "description": "Status of leave requests you have submitted in Employment Hero.",
+  "description": "Leave requests and where each one stands. Anything still waiting on a decision comes first, longest wait at the top, with the number of days it has been sitting — the only thing on the tile you can act on. Decided requests follow, most recent leave first. Each row carries its leave type, the dates booked and the date it was submitted, and the three figures across the top count how many are pending, approved and declined.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "leave", "approvals", "user"],
-  "keywords": ["leave request", "my requests", "approval status", "pending", "approved", "declined", "employment hero"],
+  "tags": ["employment-hero", "hr", "leave", "requests", "user"],
+  "keywords": ["leave request", "my requests", "my leave", "approval status", "pending", "approved", "declined", "time off", "annual leave", "sick leave", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
+  "branding": { "color": "#7b61ff" },
+  "brandColor": "#7b61ff",
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 5, "rowSpan": 6 },
+    "min":       { "colSpan": 4, "rowSpan": 4 },
     "max":       { "colSpan": 10, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -24,104 +26,177 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": ["header", "loading", "kpiGrid", "body", "footer"],
         "watch": {
           "/employment-hero/list_leave_requests/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/myLeaveRows", "value": { "$computed": "employment-hero_flatten_my_leave_requests", "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "employment-hero_my_leave_board",
+                  "args": { "value": { "$state": "/employment-hero/list_leave_requests/data/items" } }
+                }
+              }
+            }
           ]
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardList", "tone": "accent", "size": "sm" } },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "ClipboardList", "tone": "brand", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "My Leave Requests", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "EMPLOYMENT HERO" } },
 
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skKpi", "skRow1", "skRow2", "skRow3"],
         "visible": { "$state": "/_loading/employment-hero.list_leave_requests" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "4rem", "rounded": "md" } },
+      "skKpi":  { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "skRow1": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "skRow2": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
+      "skRow3": { "type": "Skeleton", "props": { "height": "3.5rem", "rounded": "md" } },
 
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No leave requests found." },
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["kpiPending", "kpiApproved", "kpiDeclined"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/myLeaveRows/0", "not": true }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
 
+      "kpiPending": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiPendingStack"] },
+      "kpiPendingStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiPendingHead", "kpiPendingValue"] },
+      "kpiPendingHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiPendingDot", "kpiPendingLabel"] },
+      "kpiPendingDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/pending_tone" }, "size": "sm" } },
+      "kpiPendingLabel": { "type": "Eyebrow", "props": { "text": "PENDING" } },
+      "kpiPendingValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/pending_count" } } },
+
+      "kpiApproved": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiApprovedStack"] },
+      "kpiApprovedStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiApprovedHead", "kpiApprovedValue"] },
+      "kpiApprovedHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiApprovedDot", "kpiApprovedLabel"] },
+      "kpiApprovedDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/approved_tone" }, "size": "sm" } },
+      "kpiApprovedLabel": { "type": "Eyebrow", "props": { "text": "APPROVED" } },
+      "kpiApprovedValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/approved_count" } } },
+
+      "kpiDeclined": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiDeclinedStack"] },
+      "kpiDeclinedStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiDeclinedHead", "kpiDeclinedValue"] },
+      "kpiDeclinedHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiDeclinedDot", "kpiDeclinedLabel"] },
+      "kpiDeclinedDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/declined_tone" }, "size": "sm" } },
+      "kpiDeclinedLabel": { "type": "Eyebrow", "props": { "text": "DECLINED" } },
+      "kpiDeclinedValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/declined_count" } } },
+
+      "body": { "type": "Body", "props": {}, "children": ["list", "emptyPanel"] },
+
       "list": {
-        "type": "Stack", "props": { "gap": "xs" },
+        "type": "Stack",
+        "props": { "gap": "xs" },
         "children": ["leaveRow"],
-        "repeat": { "statePath": "/ui/myLeaveRows", "key": "id" },
+        "repeat": { "statePath": "/ui/board/rows", "key": "id" },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/myLeaveRows/0" }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
 
       "leaveRow": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["leaveRowContent", "leaveRowDivider"]
-      },
-      "leaveRowContent": {
         "type": "Row",
-        "props": { "justify": "between", "align": "start", "hover": true },
-        "children": ["leaveLeft", "leaveStatus"]
+        "props": { "gap": "sm", "align": "center", "hover": true, "template": "2.75rem minmax(0, 1fr) 7rem" },
+        "children": ["leaveIconBox", "leaveIdentity", "leaveRight"]
       },
-      "leaveLeft": {
-        "type": "Stack", "props": { "gap": "none" },
-        "children": ["leaveTypeName", "leaveDates", "submittedLabel"]
+      "leaveIconBox": {
+        "type": "Section",
+        "props": { "variant": "muted" },
+        "children": ["leaveIcon"]
+      },
+      "leaveIcon": {
+        "type": "Icon",
+        "props": { "name": { "$item": "type_icon" }, "tone": { "$item": "type_tone" }, "size": "lg" }
+      },
+      "leaveIdentity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["leaveTypeName", "leaveDateRow", "leaveSubmitted"]
       },
       "leaveTypeName": {
         "type": "Text",
-        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "semibold", "truncate": true }
+        "props": { "text": { "$item": "leave_type" }, "size": "sm", "weight": "medium", "truncate": true }
       },
-      "leaveDates": {
-        "type": "Caption",
-        "props": { "text": { "$item": "date_range" } }
+      "leaveDateRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["leaveDateIcon", "leaveDates"]
       },
-      "submittedLabel": {
-        "type": "Caption",
-        "props": { "text": { "$item": "submitted_label" } }
+      "leaveDateIcon": { "type": "Icon", "props": { "name": "Calendar", "tone": "muted", "size": "xs" } },
+      "leaveDates": { "type": "Text", "props": { "tone": "muted", "truncate": true, "text": { "$item": "date_range" } } },
+      "leaveSubmitted": { "type": "Caption", "props": { "tone": "muted", "text": { "$item": "submitted_label" } } },
+
+      "leaveRight": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["leaveBadgeRow", "leaveWaitingRow"]
       },
-      "leaveStatus": {
+      "leaveBadgeRow": { "type": "Row", "props": { "gap": "xs", "justify": "end" }, "children": ["leaveStatusBadge"] },
+      "leaveStatusBadge": {
         "type": "Badge",
-        "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
-          "variant": "soft"
+        "props": { "text": { "$item": "status_label" }, "tone": { "$item": "status_tone" }, "variant": "soft" }
+      },
+      "leaveWaitingRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "justify": "end" },
+        "children": ["leaveWaiting"],
+        "visible": { "$item": "show_waiting" }
+      },
+      "leaveWaiting": { "type": "Caption", "props": { "tone": "warning", "text": { "$item": "waiting_label" } } },
+
+      "emptyPanel": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
+            { "$state": "/ui/board/has_rows", "not": true }
+          ]
         }
       },
-      "leaveRowDivider": { "type": "Divider", "props": {} },
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "ClipboardList", "tone": "brand", "size": "lg" } },
+      "emptyTitle": { "type": "Text", "props": { "text": "No leave requests", "size": "sm", "weight": "medium" } },
+      "emptyNote": { "type": "Caption", "props": { "tone": "muted", "text": "Requests appear here once one is filed in Employment Hero." } },
 
       "footer": {
-        "type": "Row", "props": { "justify": "center" },
+        "type": "Row",
+        "props": { "justify": "center" },
         "children": ["footerText"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_leave_requests", "not": true },
-            { "$state": "/ui/myLeaveRows/0" }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Requests you've submitted · Employment Hero" }
+        "props": { "tone": "muted", "text": "Requests you've submitted · Employment Hero. Still waiting first." }
       }
 
     }
