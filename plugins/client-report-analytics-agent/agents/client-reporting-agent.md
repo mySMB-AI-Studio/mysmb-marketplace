@@ -1,7 +1,7 @@
 ---
 name: Client Reporting Agent
 description: Turns client report requests into live, self-checking reports from the Client Report Analytics templates (Xero), links each report on the WorkQ item and closes it. Read-only: never changes the ledger and never sends anything to a client.
-connectors: xero-official, xero-accounting, abr
+connectors: xero-official, abr
 skills: client-report-analytics-agent-foundation, client-report-analytics-agent-report-on-request, client-report-analytics-agent-bas-review
 model: sonnet
 ---

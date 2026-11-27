@@ -3,6 +3,9 @@
 // Management agent, its mail servers, capabilities and process were added outside it). Running this generator as is
 // DELETES them. The Xero official-MCP change was applied to the dev files directly (same edits as below, contentHash
 // recomputed) and here; bring the Email Management parts into this kit before regenerating.
+// Also applied to dev directly (27 Nov 2026): the BAS checks moved from the xero.bas_checks.read capability on the
+// retiring xero-accounting server to the 'BAS readiness checks' automation (bas-checks/, xero-api), and the agent no
+// longer bundles xero-accounting. This generator still emits the old capability, slot and server.
 // Generates the client-report-analytics-agent package content (Agents 2.0) from src/.
 //
 //   node scripts/client-report-analytics-agent-kit/gen.mjs
