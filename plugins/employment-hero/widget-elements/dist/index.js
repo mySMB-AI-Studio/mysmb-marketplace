@@ -635,6 +635,95 @@ const compliance_board = (args) => {
         cert_note: `${certTypes} certification type${certTypes === 1 ? '' : 's'}`,
     };
 };
+// ── LEAVE_TYPE_TONES ──────────────────────────────────────────────────────────
+// Leave type is a category, not a state, so it must not borrow status colours.
+// `chart-*` is the token set reserved for exactly this (widget-tokens: "non-status,
+// categorical colors ... where accent/success/warning/destructive/info would wrongly
+// imply status semantics"). The tone is picked by hashing the type name so a given
+// leave type keeps the same colour every render, with no ordering dependency.
+const LEAVE_TYPE_TONES = ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'];
+function leaveTypeTone(name) {
+    let sum = 0;
+    for (let i = 0; i < name.length; i++)
+        sum += name.charCodeAt(i);
+    return LEAVE_TYPE_TONES[sum % LEAVE_TYPE_TONES.length];
+}
+// ── leave_approvals_board ─────────────────────────────────────────────────────
+// Splits the leave queue into what still needs a decision and what has already
+// been decided, and builds both groups plus the three summary figures.
+//
+// The server labels a still-pending request Overdue once its start date has
+// passed, Starts Today on the day, and Pending before that — all three are
+// undecided, so all three sit in the action group. Approved and Declined are
+// decisions and sit below.
+//
+// Args: { value: raw items array from get_leave_approvals_queue }
+const leave_approvals_board = (args) => {
+    const raw = Array.isArray(args.value) ? args.value : [];
+    const DECIDED = new Set(['Approved', 'Declined']);
+    const rows = raw.map(item => {
+        const empName = String(item.employee_name ?? '').trim();
+        const typeFull = String(item.leave_category_name ?? item.leave_type ?? item.leave_type_name ?? '').trim();
+        // "Annual Leave" → "Annual": the pill sits inside a tile called Leave
+        // Request Approvals, so repeating the word costs width and says nothing.
+        const typeShort = typeFull.replace(/\s*leave\s*$/i, '').trim() || typeFull || 'Leave';
+        const { display: startDisplay, ts: startTs } = formatEhDate(item.start_date);
+        const { display: endDisplay } = formatEhDate(item.end_date);
+        const dateRange = !endDisplay || endDisplay === startDisplay
+            ? startDisplay
+            : `${startDisplay} → ${endDisplay}`;
+        const statusLabel = String(item.status_label ?? '');
+        const decided = DECIDED.has(statusLabel);
+        // The server tones a Declined request destructive. A decision that was taken
+        // deliberately is not a fault state, so it reads muted here; destructive is
+        // kept for the requests that have gone past their start date undecided.
+        const statusTone = statusLabel === 'Declined'
+            ? 'muted'
+            : String(item.status_tone ?? 'muted');
+        return {
+            id: String(item.id ?? ''),
+            employee_name: empName || 'Unknown employee',
+            initials: initialsOf(empName),
+            leave_type: typeShort,
+            type_tone: leaveTypeTone(typeFull || typeShort),
+            date_range: dateRange || 'No dates on record',
+            status_label: statusLabel || 'Pending',
+            status_tone: statusTone,
+            avatar_tone: decided ? 'muted' : statusTone,
+            review_url: String(item.review_url ?? ''),
+            show_review: !decided && Boolean(item.review_url),
+            start_ts: startTs,
+            decided,
+        };
+    });
+    // Undecided: soonest start first — the one that has been waiting longest is
+    // also the one furthest past its date. Decided: most recent first.
+    const action = rows.filter(r => !r.decided).sort((a, b) => a.start_ts - b.start_ts);
+    const done = rows.filter(r => r.decided).sort((a, b) => b.start_ts - a.start_ts);
+    const overdue = action.filter(r => r.status_label === 'Overdue').length;
+    const approved = done.filter(r => r.status_label === 'Approved').length;
+    const declined = done.filter(r => r.status_label === 'Declined').length;
+    const plural = (n) => (n === 1 ? 'request' : 'requests');
+    return {
+        action_rows: action,
+        decided_rows: done,
+        has_rows: rows.length > 0,
+        has_action: action.length > 0,
+        has_decided: done.length > 0,
+        action_heading: `NEEDS A DECISION (${action.length})`,
+        decided_heading: `DECIDED (${done.length})`,
+        action_count: action.length,
+        // Names the overdue subset rather than implying the whole figure is overdue.
+        action_note: action.length === 0
+            ? 'nothing waiting'
+            : overdue > 0 ? `${overdue} already overdue` : 'none overdue yet',
+        action_tone: action.length === 0 ? 'success' : overdue > 0 ? 'destructive' : 'warning',
+        approved_count: approved,
+        approved_note: plural(approved),
+        declined_count: declined,
+        declined_note: plural(declined),
+    };
+};
 const elements = {
     slug: 'employment-hero',
     functions: {
@@ -648,6 +737,7 @@ const elements = {
         flatten_my_upcoming_leave,
         flatten_compliance_at_risk,
         compliance_board,
+        leave_approvals_board,
         flatten_timesheets_to_approve,
         flatten_direct_reports_upcoming_leave,
         flatten_timesheet_daily_summary,
