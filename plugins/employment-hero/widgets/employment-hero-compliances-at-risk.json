@@ -1,15 +1,15 @@
 {
   "id": "employment-hero-compliances-at-risk",
   "title": "Compliances at Risk",
-  "description": "Certifications that are overdue or due today in Employment Hero.",
+  "description": "Certifications in Employment Hero that have passed their date or fall due today. The three figures across the top say how many are overdue, how far past its date the worst one is, and how many people are involved, so the size of the problem is clear before the list is read. Each row names the person first, because a certification is chased through them, and carries the number of days it is overdue beside the date it was due. Most overdue first.",
   "category": "hr",
-  "tags": ["employment-hero", "hr", "compliance", "risk", "expiry"],
-  "keywords": ["compliance", "at risk", "expired", "due today", "certifications", "documents", "employment hero"],
+  "tags": ["employment-hero", "hr", "compliance", "risk", "expiry", "certifications"],
+  "keywords": ["compliance", "at risk", "expired", "overdue", "due today", "certifications", "licences", "training", "employment hero"],
   "connectorsUsed": ["employment-hero"],
   "popularity": 0,
   "sizing": {
-    "preferred": { "colSpan": 5, "rowSpan": 7 },
-    "min":       { "colSpan": 4, "rowSpan": 5 },
+    "preferred": { "colSpan": 6, "rowSpan": 6 },
+    "min":       { "colSpan": 5, "rowSpan": 4 },
     "max":       { "colSpan": 10, "rowSpan": 12 }
   },
   "dataProvider": {
@@ -24,108 +24,181 @@
       "card": {
         "type": "Card",
         "props": {},
-        "children": ["header", "body", "footer"],
+        "children": ["header", "loading", "kpiGrid", "body", "footer"],
         "watch": {
           "/employment-hero/list_compliance_documents/data/items": [
-            { "action": "setState", "params": { "statePath": "/ui/complianceRows", "value": { "$computed": "employment-hero_flatten_compliance_at_risk", "args": { "value": { "$state": "/employment-hero/list_compliance_documents/data/items" } } } } }
+            {
+              "action": "setState",
+              "params": {
+                "statePath": "/ui/board",
+                "value": {
+                  "$computed": "employment-hero_compliance_board",
+                  "args": { "value": { "$state": "/employment-hero/list_compliance_documents/data/items" } }
+                }
+              }
+            }
           ]
         }
       },
 
-      "header": { "type": "Header", "props": {}, "children": ["headerRow"] },
-      "headerRow": { "type": "Row", "props": { "align": "center", "template": "1fr auto" }, "children": ["titleGroup"] },
-      "titleGroup": { "type": "Row", "props": { "gap": "sm", "align": "start" }, "children": ["titleIcon", "titleStack"] },
-      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "accent", "size": "sm" } },
+      "header": { "type": "Header", "props": {}, "children": ["titleGroup"] },
+      "titleGroup": {
+        "type": "Row",
+        "props": { "gap": "sm", "align": "start" },
+        "children": ["titleIcon", "titleStack"]
+      },
+      "titleIcon": { "type": "Icon", "props": { "name": "AlertTriangle", "tone": "destructive", "size": "sm" } },
       "titleStack": { "type": "Stack", "props": { "gap": "none" }, "children": ["title", "eyebrow"] },
       "title": { "type": "Heading", "props": { "text": "Compliances at Risk", "level": "h2" } },
-      "eyebrow": { "type": "Eyebrow", "props": { "text": "Employment Hero" } },
-
-      "body": { "type": "Body", "props": {}, "children": ["loading", "empty", "list"] },
+      "eyebrow": { "type": "Eyebrow", "props": { "text": "EMPLOYMENT HERO" } },
 
       "loading": {
-        "type": "Stack", "props": { "gap": "sm" },
-        "children": ["sk1", "sk2", "sk3"],
+        "type": "Stack",
+        "props": { "gap": "sm" },
+        "children": ["skKpi", "skRow1", "skRow2", "skRow3"],
         "visible": { "$state": "/_loading/employment-hero.list_compliance_documents" }
       },
-      "sk1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
-      "sk3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "skKpi":  { "type": "Skeleton", "props": { "height": "4.5rem", "rounded": "md" } },
+      "skRow1": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "skRow2": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
+      "skRow3": { "type": "Skeleton", "props": { "height": "3rem", "rounded": "md" } },
 
-      "empty": {
-        "type": "Empty",
-        "props": { "message": "No compliance items at risk." },
+      "kpiGrid": {
+        "type": "Grid",
+        "props": { "cols": 3, "gap": "sm" },
+        "children": ["kpiOverdue", "kpiOldest", "kpiPeople"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_compliance_documents", "not": true },
-            { "$state": "/ui/complianceRows/0", "not": true }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
+
+      "kpiOverdue": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiOverdueStack"] },
+      "kpiOverdueStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiOverdueHead", "kpiOverdueValue", "kpiOverdueNote"] },
+      "kpiOverdueHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiOverdueDot", "kpiOverdueLabel"] },
+      "kpiOverdueDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/overdue_tone" }, "size": "sm" } },
+      "kpiOverdueLabel": { "type": "Eyebrow", "props": { "text": "OVERDUE" } },
+      "kpiOverdueValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/overdue_count" } } },
+      "kpiOverdueNote": { "type": "Caption", "props": { "tone": "muted", "text": { "$state": "/ui/board/overdue_note" } } },
+
+      "kpiOldest": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiOldestStack"] },
+      "kpiOldestStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiOldestHead", "kpiOldestValue", "kpiOldestNote"] },
+      "kpiOldestHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiOldestDot", "kpiOldestLabel"] },
+      "kpiOldestDot": { "type": "Dot", "props": { "tone": { "$state": "/ui/board/oldest_tone" }, "size": "sm" } },
+      "kpiOldestLabel": { "type": "Eyebrow", "props": { "text": "OLDEST" } },
+      "kpiOldestValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/oldest_value" } } },
+      "kpiOldestNote": { "type": "Caption", "props": { "tone": "muted", "text": { "$state": "/ui/board/oldest_note" } } },
+
+      "kpiPeople": { "type": "Section", "props": { "variant": "muted" }, "children": ["kpiPeopleStack"] },
+      "kpiPeopleStack": { "type": "Stack", "props": { "gap": "xs" }, "children": ["kpiPeopleHead", "kpiPeopleValue", "kpiPeopleNote"] },
+      "kpiPeopleHead": { "type": "Row", "props": { "gap": "sm", "align": "center" }, "children": ["kpiPeopleDot", "kpiPeopleLabel"] },
+      "kpiPeopleDot": { "type": "Dot", "props": { "tone": "info", "size": "sm" } },
+      "kpiPeopleLabel": { "type": "Eyebrow", "props": { "text": "PEOPLE" } },
+      "kpiPeopleValue": { "type": "Heading", "props": { "level": "h1", "text": { "$state": "/ui/board/people_count" } } },
+      "kpiPeopleNote": { "type": "Caption", "props": { "tone": "muted", "text": { "$state": "/ui/board/cert_note" } } },
+
+      "body": { "type": "Body", "props": {}, "children": ["list", "emptyPanel"] },
 
       "list": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["complianceRow"],
-        "repeat": { "statePath": "/ui/complianceRows", "key": "id" },
+        "type": "Stack",
+        "props": { "gap": "xs" },
+        "children": ["riskRow"],
+        "repeat": { "statePath": "/ui/board/rows", "key": "id" },
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_compliance_documents", "not": true },
-            { "$state": "/ui/complianceRows/0" }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
 
-      "complianceRow": {
-        "type": "Stack", "props": { "gap": "xs" },
-        "children": ["complianceRowContent", "complianceRowDivider"]
-      },
-      "complianceRowContent": {
+      "riskRow": {
         "type": "Row",
-        "props": { "justify": "between", "align": "center", "hover": true },
-        "children": ["complianceLeft", "complianceRight"]
+        "props": {
+          "gap": "sm",
+          "align": "center",
+          "hover": true,
+          "template": "2.5rem minmax(0, 1fr) 8rem"
+        },
+        "children": ["riskAvatar", "riskIdentity", "riskDueCell"]
       },
-      "complianceLeft": {
-        "type": "Stack", "props": { "gap": "none" },
-        "children": ["complianceName", "complianceDueLabel"]
+      "riskAvatar": {
+        "type": "Avatar",
+        "props": {
+          "initials": { "$item": "initials" },
+          "tone": { "$item": "badge_tone" },
+          "size": "lg"
+        }
       },
-      "complianceName": {
+      "riskIdentity": {
+        "type": "Stack",
+        "props": { "gap": "none" },
+        "children": ["riskName", "riskCertRow"]
+      },
+      "riskName": {
         "type": "Text",
-        "props": { "text": { "$item": "display_name" }, "size": "sm", "weight": "medium", "truncate": true }
+        "props": { "text": { "$item": "employee_name" }, "size": "sm", "weight": "medium", "truncate": true }
       },
-      "complianceDueLabel": {
-        "type": "Caption",
-        "props": { "text": "Due Date" }
+      "riskCertRow": {
+        "type": "Row",
+        "props": { "gap": "xs", "align": "center" },
+        "children": ["riskCertIcon", "riskCertName"]
       },
-      "complianceRight": {
-        "type": "Stack", "props": { "gap": "none", "align": "end" },
-        "children": ["complianceStatus", "complianceDue"]
+      "riskCertIcon": { "type": "Icon", "props": { "name": "Award", "tone": "muted", "size": "xs" } },
+      "riskCertName": { "type": "Text", "props": { "tone": "muted", "truncate": true, "text": { "$item": "cert_name" } } },
+
+      "riskDueCell": {
+        "type": "Stack",
+        "props": { "gap": "xs", "align": "end" },
+        "children": ["riskBadgeRow", "riskDueDate"]
       },
-      "complianceStatus": {
+      "riskBadgeRow": { "type": "Row", "props": { "gap": "xs", "justify": "end" }, "children": ["riskBadge"] },
+      "riskBadge": {
         "type": "Badge",
         "props": {
-          "text": { "$item": "status_label" },
-          "tone": { "$item": "status_tone" },
+          "text": { "$item": "badge_label" },
+          "tone": { "$item": "badge_tone" },
           "variant": "soft"
         }
       },
-      "complianceDue": {
-        "type": "Caption",
-        "props": { "text": { "$item": "due_date" } }
+      "riskDueDate": { "type": "Caption", "props": { "tone": "muted", "text": { "$item": "due_display" } } },
+
+      "emptyPanel": {
+        "type": "Section",
+        "props": { "variant": "bordered" },
+        "children": ["emptyStack"],
+        "visible": {
+          "$and": [
+            { "$state": "/_loading/employment-hero.list_compliance_documents", "not": true },
+            { "$state": "/ui/board/has_rows", "not": true }
+          ]
+        }
       },
-      "complianceRowDivider": { "type": "Divider", "props": {} },
+      "emptyStack": {
+        "type": "Stack",
+        "props": { "gap": "sm", "align": "center" },
+        "children": ["emptyIcon", "emptyTitle", "emptyNote"]
+      },
+      "emptyIcon": { "type": "Icon", "props": { "name": "ShieldCheck", "tone": "success", "size": "lg" } },
+      "emptyTitle": { "type": "Text", "props": { "text": "Nothing at risk", "size": "sm", "weight": "medium" } },
+      "emptyNote": { "type": "Caption", "props": { "tone": "muted", "text": "Every certification in Employment Hero is still within its date." } },
 
       "footer": {
-        "type": "Row", "props": { "justify": "center" },
+        "type": "Row",
+        "props": { "justify": "center" },
         "children": ["footerText"],
         "visible": {
           "$and": [
             { "$state": "/_loading/employment-hero.list_compliance_documents", "not": true },
-            { "$state": "/ui/complianceRows/0" }
+            { "$state": "/ui/board/has_rows" }
           ]
         }
       },
       "footerText": {
         "type": "Caption",
-        "props": { "text": "Certifications only · Employment Hero" }
+        "props": { "tone": "muted", "text": "Certifications only · Employment Hero. Most overdue first." }
       }
 
     }
