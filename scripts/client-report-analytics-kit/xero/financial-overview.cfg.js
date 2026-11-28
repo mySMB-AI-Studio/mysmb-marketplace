@@ -1,5 +1,6 @@
 XK.app({
   title: 'Xero · Financial Overview', primary: 'pnl', dated: ['pnl', 'pnl_cash', 'bank', 'tb'], org: 'org', conns: 'connections',
+  mechanism: 'Xero API connector (xero-api) on the Xero Accounting API',
   inputs: { start: 'from_date', end: 'to_date', basis: 'basis', org: 'org', display: 'display' },
   defaults: { from_date: '2026-07-01', to_date: '2026-09-25', prior_from: '2025-07-01', prior_to: '2025-09-25', basis: 'Accrual', org: '', page: 1,
     display: '{"cents":1,"k":0,"zeros":0,"neg":"paren","red":1,"hdr":1,"ftr":1,"style":"mysmb","dens":"100","p":"this_fy_td","a":"custom","c":"none","v":""}' },
