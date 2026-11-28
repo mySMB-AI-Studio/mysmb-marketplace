@@ -127,3 +127,107 @@ describe("validateConnectionRequirements", () => {
     ]);
   });
 });
+
+const ledgers = pluginDir(["xero-accounting", "myob-accounting", "quickbooks-accounting"]);
+const GROUPS = {
+  schema: 1,
+  required: [],
+  groups: [
+    {
+      id: "accounting_system",
+      label: "Accounting system",
+      min: 1,
+      options: [
+        { id: "xero", label: "Xero", servers: ["xero-accounting"] },
+        { id: "myob", label: "MYOB", servers: ["myob-accounting"] },
+      ],
+    },
+  ],
+};
+
+describe("validateConnectionRequirements — groups", () => {
+  it("accepts an at-least-one group of the package's own servers", () => {
+    expect(validateConnectionRequirements(entry(GROUPS), ledgers, dirOf)).toEqual([]);
+  });
+
+  it("refuses a minimum above the options, a zero minimum, duplicate ids and a server named twice", () => {
+    const g = GROUPS.groups[0];
+    const check = (group: unknown, required: string[] = []) =>
+      validateConnectionRequirements(entry({ schema: 1, required, groups: [group] }), ledgers, dirOf);
+    expect(check({ ...g, min: 3 })).toContainEqual(expect.stringContaining("needs 3 of only 2 options"));
+    expect(check({ ...g, min: 0 })).not.toEqual([]);
+    expect(check({ ...g, options: [g.options[0], g.options[0]] })).toContainEqual(expect.stringContaining("option ids must be unique"));
+    expect(check({ ...g, options: [g.options[0], { ...g.options[1], servers: ["xero-accounting"] }] })).toContainEqual(
+      expect.stringContaining('"xero-accounting", which is already named'),
+    );
+    expect(check(g, ["xero-accounting"])).toContainEqual(expect.stringContaining("already named"));
+  });
+
+  it("refuses a group server the package (or the named package) does not ship", () => {
+    const g = GROUPS.groups[0];
+    expect(
+      validateConnectionRequirements(
+        entry({ ...GROUPS, groups: [{ ...g, options: [...g.options, { id: "sage", label: "Sage", servers: ["sage-accounting"] }] }] }),
+        ledgers,
+        dirOf,
+      ),
+    ).toEqual(['group "accounting_system" option "sage": server "sage-accounting" is not in the package\'s .mcp.json']);
+    expect(
+      validateConnectionRequirements(
+        entry({ ...GROUPS, groups: [{ ...g, options: [...g.options, { id: "gmail", label: "Gmail", servers: ["google-workspace-drive"], package: "google-workspace" }] }] }),
+        ledgers,
+        dirOf,
+      ),
+    ).toEqual(['group "accounting_system" option "gmail": package "google-workspace" does not ship server "google-workspace-drive"']);
+  });
+});
+
+describe("the live marketplace entries", () => {
+  const marketplace = JSON.parse(readFileSync(join(repoRoot, ".claude-plugin", "marketplace.json"), "utf8")) as { plugins: Rec[] };
+  const pluginsDir = join(repoRoot, "plugins");
+  const live = (name: string) => marketplace.plugins.find((p) => p.name === name)!;
+  const errors = (name: string) =>
+    validateConnectionRequirements(live(name), join(pluginsDir, name), (n) =>
+      marketplace.plugins.some((p) => p.name === n) ? join(pluginsDir, n) : null,
+    );
+  type Block = { required: string[]; groups?: Array<{ min: number; options: Array<{ id: string; servers: string[] }> }> };
+  const block = (name: string) => live(name).connectionRequirements as Block;
+  const servers = (name: string) => Object.keys(JSON.parse(readFileSync(join(pluginsDir, name, ".mcp.json"), "utf8")).mcpServers).sort();
+
+  it("Practice Report Analytics: at least one of Xero and MYOB, nothing required on its own", () => {
+    expect(errors("practice-report-analytics")).toEqual([]);
+    expect(block("practice-report-analytics").required).toEqual([]);
+    expect(block("practice-report-analytics").groups?.map((g) => [g.min, g.options.map((o) => [o.id, o.servers])])).toEqual([
+      [1, [["xero", ["xero-accounting"]], ["myob", ["myob-accounting"]]]],
+    ]);
+  });
+
+  it("Client Report Analytics: at least one of Xero, MYOB and QuickBooks", () => {
+    expect(errors("client-report-analytics")).toEqual([]);
+    expect(block("client-report-analytics").required).toEqual([]);
+    expect(block("client-report-analytics").groups?.map((g) => [g.min, g.options.map((o) => [o.id, o.servers])])).toEqual([
+      [1, [["xero", ["xero-accounting"]], ["myob", ["myob-accounting"]], ["quickbooks", ["quickbooks-accounting"]]]],
+    ]);
+  });
+
+  it("Hammerjack: Sprout Employee and Time & Attendance required, HR General optional", () => {
+    expect(errors("hammerjack")).toEqual([]);
+    expect(block("hammerjack")).toEqual({ schema: 1, required: ["sprout-employee", "sprout-time-attendance"] });
+    expect(servers("hammerjack")).toContain("sprout-hr-general");
+  });
+
+  it("Microsoft 365: every server is its own optional feature, at least one needed, nothing required", () => {
+    expect(errors("microsoft-365")).toEqual([]);
+    const b = block("microsoft-365");
+    expect(b.required).toEqual([]);
+    expect(b.groups).toHaveLength(1);
+    expect(b.groups![0].min).toBe(1);
+    // One feature per server, and every server the package ships is a feature — work and Hotmail alike.
+    expect(b.groups![0].options.every((o) => o.servers.length === 1)).toBe(true);
+    expect(b.groups![0].options.flatMap((o) => o.servers).sort()).toEqual(servers("microsoft-365"));
+  });
+
+  it("Google Workspace carries no block: every service it ships stays required", () => {
+    expect(live("google-workspace")).not.toHaveProperty("connectionRequirements");
+  });
+});
